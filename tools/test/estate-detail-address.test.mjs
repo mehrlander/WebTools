@@ -66,7 +66,11 @@ await tick(10);
 // `openRows` is a derived chain (openBranches over `activity`), and overriding
 // it on the Alpine proxy silently does not take, which is how the first cut of
 // this file asserted against a list of one and read it as a stepping bug.
-data.activity = {
+// A FACTORY, not a literal assigned once: a later test calls loadActivity()
+// against a registry that throws, which empties `activity`, and every test
+// after it then opened a list of one and read the emptiness as a feature that
+// had not taken.
+const makeActivity = () => ({
   'me/tools': {
     defaultBranch: 'main',
     // A PR per branch: the default scope is what is IN FLIGHT, and a bare
@@ -83,7 +87,8 @@ data.activity = {
       subject: 'work on ' + n, aheadBy: 2, behindBy: 0,
     })) },
   },
-};
+});
+data.activity = makeActivity();
 await tick(4);
 const ROWS = [...data.openRows];
 
@@ -227,6 +232,104 @@ test('a deep link opens even when the branch list could not be read at all', asy
   await tick(4);
   assert.ok(data.detail, 'the takeover opened');
   assert.equal(data.detailRow.name, 'claude/feat-b');
+});
+
+// ── &pane= and &file=, the two keys the surfacing caption links with ────────
+// Added 2026-08-26, when the caption stopped enumerating files in chat and
+// started pointing here instead. Both ride `_openFiles`, the seam the verdict
+// chip has used since it shipped, so what these pin is the PARSING and the
+// handing-off: what the slide is given. What the slide then DOES with a file
+// is branch-brief-address.test.mjs, and that it really mounts a deck is
+// tools/render/scenarios/branch-address.mjs, since a deck is a browser gesture.
+
+// Two traps in reading a slide's options back, and both produce the same wrong
+// answer: options with nothing on them. The deck mounts the active slide AND
+// its neighbours, so the branch has to be the key rather than document order.
+// And a closed deck's slides are still in the document, so the query is scoped
+// to the deck that is OPEN; without that, a lookup by branch finds the same
+// branch's slide from a previous test and reads it as a feature that did not
+// take.
+const allOpts = () => [...(data._deck?.deck.track
+  .querySelectorAll('[x-data^="branchBrief"]') || [])].map(el => Alpine.$data(el).opts);
+const slideOpts = (branch = data.detailRow?.name) =>
+  allOpts().find(o => o.branch === branch) || {};
+
+// Torn down with drop(), not closeDetail(). Close leaves through HISTORY and
+// lands a tick later, so a case that closes and immediately opens the next one
+// lets the old deck's popstate arrive on top of the new deck and take it down
+// with it; the symptom is every other case seeing a slide with nothing on it.
+// drop() is the app's own move for exactly this (openBranchDetail drops an open
+// takeover rather than closing it) and touches no history at all.
+const openAddress = async (qs) => {
+  if (data._deck) { const d = data._deck; data._deck = null; d.drop(); }
+  data.detail = null;
+  await tick(4);
+  data.activity = makeActivity();      // see makeActivity: an earlier test empties it
+  await tick(4);
+  data._detailFromUrl = false;
+  data._openFiles = null;
+  window.history.replaceState(null, '', qs);
+  data.openDetailFromUrl();
+  await tick(8);
+  // Slides are built by the deck's own rAF, which jsdom runs at most once per
+  // document, so only the first deck of the file mounted anything and every
+  // later case read an empty track as a feature that had not taken. Driving
+  // build() is the same honesty as driving onDeckSlide above: the gesture is
+  // the browser's and is proven in tools/render/scenarios/branch-address.mjs;
+  // what belongs here is what the shell hands a slide once one exists.
+  const d = data._deck?.deck, i = data.detail?.i ?? 0;
+  if (d) { d.build(i - 1); d.build(i); d.build(i + 1); await tick(4); }
+};
+
+test('&pane=files hands the slide the pane, so a link lands on the files', async () => {
+  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&pane=files');
+  assert.equal(data.detailRow.name, 'claude/feat-b');
+  assert.equal(slideOpts().pane, 'files');
+  assert.equal(slideOpts().file, undefined, 'a pane link names no file');
+});
+
+test('&file= hands the slide the path, and lands the list under it on Files', async () => {
+  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&file=lib/kits/file-deck.js');
+  assert.equal(slideOpts().file, 'lib/kits/file-deck.js');
+  // Not decoration: backing out of the deck should leave the reader on the list
+  // holding that file, never on a guide they did not ask for.
+  assert.equal(slideOpts().pane, 'files');
+});
+
+test('&pane=guide is honoured, since a file address is not the only reason to link', async () => {
+  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&pane=guide');
+  assert.equal(slideOpts().pane, 'guide');
+});
+
+test('a junk pane is ignored rather than passed through', async () => {
+  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&pane=nonsense');
+  assert.equal(slideOpts().pane, undefined, 'the component picks its own default');
+});
+
+test('only the slide the address named gets the pane', async () => {
+  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&pane=files');
+  const others = allOpts().filter(o => o.branch !== 'claude/feat-b');
+  assert.ok(others.length && others.every(o => !o.pane),
+    'a neighbour opens on its own default, not on the pane a link named for one branch');
+});
+
+test('the copied link carries the pane the slide reported, and never the file', async () => {
+  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&file=lib/kits/file-deck.js');
+  // The stub slide reports nothing, so the link carries no pane until one does.
+  assert.doesNotMatch(data.detailLink(), /pane=/);
+  data.onSlideMeta(data.detail.i, { repo: 'me/tools', branch: 'claude/feat-b', pane: 'files' });
+  assert.match(data.detailLink(), /pane=files/);
+  assert.doesNotMatch(data.detailLink(), /file=/,
+    'the deck is a level below the address this button names');
+});
+
+test('a step drops the pane rather than carrying it to the next branch', async () => {
+  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&pane=files');
+  data.onSlideMeta(data.detail.i, { repo: 'me/tools', branch: 'claude/feat-b', pane: 'files' });
+  assert.match(data.detailLink(), /pane=files/);
+  data.onDeckSlide(2);
+  assert.doesNotMatch(data.detailLink(), /pane=/,
+    'the next branch reports its own; a carried pane would claim one it never chose');
 });
 
 test('mounting is quiet', () => {

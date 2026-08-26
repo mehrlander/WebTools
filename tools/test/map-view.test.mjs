@@ -101,6 +101,9 @@ window.GH = class {
 // The Registries tab reads three CSVs, so the kit that parses them has to be in
 // the window the same way the pre-build puts it there.
 new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))();
+// The ambient bundle, in the same position gh-boot's BOOT manifest gives it
+// (first): the doc deck's rendition escapes through window.esc.
+new window.Function(readFileSync(path.join(repoRoot, 'lib/vanilla-bundle.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
 Alpine.start();
 await tick(3);
@@ -170,9 +173,10 @@ test('Owners loads its own carrier, separately from Docs', async () => {
   await data.loadOwnersReg();
   assert.equal(data.ownersErr, '');
   assert.ok(data.ownersReg.owners.length > 3);
-  // The scope moved to the registry row on 2026-08-16, where every other
-  // registry's scope already lived; owners.csv used to carry a second copy.
-  assert.ok(data.ownersReg.scope, 'the tab reads the scope from the registry row');
+  // Two files, not three: the tab pulled docs/registries.csv as well while its
+  // header carried a scope line, and stopped on 2026-08-26 when the header came
+  // off. The scope is read on the Registries tab, where every registry's is.
+  assert.equal(data.propsReg, null, 'opening Claims does not pull the registry pair');
   assert.equal(data.OWNERS_MANIFEST, 'docs/owners.csv');
   assert.equal(data.OWNERS_REPS, 'docs/repetitions.csv');
 });
