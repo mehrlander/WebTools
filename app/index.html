@@ -1728,7 +1728,7 @@ const RAIL_KIND = { link: 'ph-arrow-up-right', action: 'ph-lightning', repo: 'ph
 // The Map view's tabs, in render order, first = default. Named HERE rather than
 // in map() because the shell validates the ?tab= param before the component
 // mounts; map() renders whichever of these is set.
-const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'claims', 'tests', 'harness', 'skills', 'registries'];
+const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'growth', 'claims', 'tests', 'harness', 'skills', 'registries'];
 
 // marked, loaded once on demand for the overview README render. kits/md-doc.js
 // rides with it, because every one of these renders lands in a fixed-width
@@ -2327,7 +2327,18 @@ function app(){ return {
                 // none of the meaning. Optional, so a page that declares none
                 // is reached by its address and nothing changes for it.
                 slug: typeof pg.slug === 'string' ? pg.slug.trim() : '',
-                key: t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path,
+                // A page a repo promotes may need arguments to be the view that
+                // repo means: home and web-tools promote the same doc-growth
+                // page and differ only in which payload it reads. appViewUrl
+                // already carries a query; without this it could only ever come
+                // from the address bar, so a manifest could name the page but
+                // not what it should show.
+                query: typeof pg.query === 'string' ? pg.query.replace(/^\?/, '') : '',
+                // Query is part of the identity: two repos may promote the same
+                // page and differ only in what they point it at, and a key that
+                // ignored the query would make them one entry.
+                key: t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path +
+                     (typeof pg.query === 'string' && pg.query ? '?' + pg.query.replace(/^\?/, '') : ''),
               });
             }
           }
