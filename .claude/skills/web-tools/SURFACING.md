@@ -123,16 +123,16 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
   - 🟠 **Attention:** a concrete problem or risk to address before going further, not routine uncertainty. Amber is the alarm here, and red is not a louder version of it.
   - ⚪ **Clean exit:** work here is done. Recommend wrapping up or merging.
   - 🟣 **Merged:** this workstream's branch merged. Say what shipped in one line.
-  - 🔴 **Closed:** this workstream's branch closed unmerged, the same red show-repo's Activity list and GitHub already paint on a closed branch. Say why in one line.
+  - 🔴 **Closed:** this workstream's branch closed unmerged. Say why in one line.
   - 🔵 **Short answer:** answered, with no work proposed. The marker carries "Short answer," so the bold lead is a short, recognizable version of the question with the answer right behind it: 🔵 **Did we get to the double back tap?** No. Shorten toward the sharper question, never the safer one.
 
-  Keep the states literal. The one that needs guarding is 🆚, since it is the easiest to reach for: **uncertainty alone is not a choice.** When the session could reasonably investigate the question itself, that is ❇️.
+  Keep the states literal. **Uncertainty alone is not a choice:** when the session could reasonably investigate the question itself, that is ❇️.
 
-  Keep each state short and understandable on its own. Where it names something the reader may act on, name the concrete thing rather than leaning on terms established above, and link the file if one is relevant: the reader should be able to tell what is being proposed without reading the message it closes. When a reply ends on the state it ended on last time and nothing has moved, say so in one line instead of restating the case.
+  Keep each state short and understandable without the message it closes: name the concrete thing rather than leaning on terms established above, and link the file if one is relevant. When a reply ends on the state it ended on last time and nothing has moved, say so in one line instead of restating the case.
 
   🟣 and 🔴 mark the branch, not a task. A task dropped or deferred inside a live branch does not make the branch 🔴.
 
-  Revised 2026-08-26. The old 🟡 read **Decision needed** and became the catch-all for anything needing the user at all, so a finished, green PR whose merge the session had already recommended was closed 🟡 on two turns running. ❇️ gives uncertainty somewhere to go besides the user's lap, 🆚 keeps what is genuinely a choice, and ⚪ says the work is done rather than that nothing more is proposed. Older replies keep the markers they were written with, ⚫ among them.
+  Revised 2026-08-26, after 🟡 **Decision needed** became the catch-all for anything needing the user at all: a finished, green PR whose merge the session had already recommended was closed 🟡 on two turns running. Older replies keep the markers they were written with, ⚫ among them.
 * **External proxies:** prohibited. Third-party GitHub renderers such as `htmlpreview.github.io`, `raw.githack.com`, and `gitcdn.link` fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
 * **Subscribe the workstream PR 📬:** on creating a workstream's pull request, call `subscribe_pr_activity` for it. The body is the surfacing moment going out; the subscription is the way back in, and a session that opens a PR without one has built a mailbox it cannot hear. Three words carry the behavior and they are not interchangeable:
 
