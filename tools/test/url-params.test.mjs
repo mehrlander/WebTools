@@ -11,7 +11,7 @@ import { repoRoot } from './bootstrap.mjs';
 
 const win = { URLSearchParams };
 new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/url-params.js'), 'utf8')).call(win, win);
-const { get, first, source, withKey } = win.UrlParams;
+const { get, first, source, withKey, subject } = win.UrlParams;
 
 const loc = (hash, search) => ({ hash: hash || '', search: search || '' });
 
@@ -114,4 +114,77 @@ test('both renderer pages read their inputs through the helper', () => {
     assert.doesNotMatch(src, /new URLSearchParams\(location\.(hash|search)\)[^)]*\.get\('(gz|src)'\)/,
       p + ': no inline param read left behind');
   }
+});
+
+// ── subject(): which half of an address belongs to the page being framed ────
+//
+// The rule show-repo's shell settled on, and the reason it is a rule rather
+// than a list: the framer owns the query, the subject owns the fragment. A
+// shared namespace needs a reserved list on both sides, the two sides live in
+// different repos, and nothing compares them, so the next key either one adds
+// is a silent collision. These cases pin the split, not one app's key names.
+
+const SHELL = ['stage', 'prompts', 'mode'];
+
+test('subject: the fragment is handed on whole', () => {
+  assert.equal(subject(SHELL, loc('#view=data&data=design_view_tabs')),
+    'view=data&data=design_view_tabs');
+});
+
+test('subject: a key the framer reserves in the fragment is withheld', () => {
+  // stage/prompts/mode are the shell's there (StageLink.read), and only those.
+  assert.equal(subject(SHELL, loc('#stage=a/b:c&view=data&mode=diff')), 'view=data');
+});
+
+test('subject: a key nobody has thought of yet still travels', () => {
+  // The whole point of the split. `view` collides with the shell's own route
+  // key in the QUERY and is carried anyway, because the fragment is not shared.
+  assert.equal(subject(SHELL, loc('#view=x&tab=y&q=z&whatever=1')),
+    'view=x&tab=y&q=z&whatever=1');
+});
+
+test('subject: no fragment falls back to ?on=, decoded', () => {
+  assert.equal(subject(SHELL, loc('', '?app=budget-drs&on=' +
+    encodeURIComponent('view=data&data=design_view_tabs'))),
+    'view=data&data=design_view_tabs');
+});
+
+test('subject: the fragment wins over ?on=, the file\'s own precedence', () => {
+  assert.equal(subject(SHELL, loc('#view=spend', '?on=' + encodeURIComponent('view=data'))),
+    'view=spend');
+});
+
+test('subject: the framer\'s reserved keys are filtered out of ?on= too', () => {
+  // Otherwise the fallback would be a way around the split rather than a
+  // spelling of it.
+  assert.equal(subject(SHELL, loc('', '?on=' + encodeURIComponent('mode=diff&view=data'))),
+    'view=data');
+});
+
+test('subject: nothing addressed is an empty string, not null', () => {
+  // The caller concatenates the result onto an address, so the empty case has
+  // to be falsy AND safe to append.
+  assert.equal(subject(SHELL, loc('', '')), '');
+  assert.equal(subject(SHELL, loc('#', '')), '');
+  assert.equal(subject(SHELL, loc('#stage=a/b:c', '')), '');
+});
+
+test('subject: a fragment that is only the framer\'s keys does not mask ?on=', () => {
+  // Same shape as the empty-value rule above: the filtered fragment is empty,
+  // so the query fallback is still reached.
+  assert.equal(subject(SHELL, loc('#stage=a/b:c', '?on=' + encodeURIComponent('view=data'))),
+    'view=data');
+});
+
+test('subject: an empty reserved set withholds nothing', () => {
+  assert.equal(subject([], loc('#stage=a/b:c&view=data')), 'stage=a/b:c&view=data');
+  assert.equal(subject(undefined, loc('#view=data')), 'view=data');
+});
+
+test('subject: a payload segment is not re-encoded on the way through', () => {
+  // The reason this returns a param STRING rather than a URLSearchParams: a
+  // round trip would re-encode a base64url payload and rewrite tens of
+  // kilobytes, the same reason withKey() does string surgery.
+  const gz = 'H4sIAAAAA-_AAAA__w';
+  assert.equal(subject(SHELL, loc('#gz=' + gz + '&view=data')), 'gz=' + gz + '&view=data');
 });
