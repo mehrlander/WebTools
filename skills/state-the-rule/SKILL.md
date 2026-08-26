@@ -122,9 +122,14 @@ recurrence rule the estate's snags log runs on.
   Annotate one to find out; a result near 100% `KEEP` is the signal to stop.
 - Do not fold a doctrine change into a compression. Rewriting what a rule *says*
   is a separate decision from stating it more directly.
-- The tooling has no test. Every figure it has produced was read by hand.
+- The tooling's checks are tested (`tools/test/state-the-rule.test.mjs`, in the
+  hub only). The judgment steps are not testable and every figure in `runs.csv`
+  was read by hand.
 
 ## Files
 
 `segment.py` · `reanchor.py` (survive an edit; offsets are a hint, the quote
 selector is the anchor) · `check.py` · `runs.csv` · `LOG.md`
+
+In the hub, `tools/test/state-the-rule.test.mjs` pins the five rules the checks
+learned by getting them wrong.

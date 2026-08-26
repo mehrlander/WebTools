@@ -44,3 +44,21 @@ it changed nothing, because the sentence really was gone.
 mid-branch. Newer text is authoritative: re-apply the compression to it rather
 than merging with it, and keep fresh deliberate work whole even at the cost of
 the headline number.
+
+## 2026-08-26, giving the checks a test (web-tools #516)
+
+**The registry enforced this skill's own discipline on it.** `docs/tests.csv`
+caps `protects` at 320 characters and says to name what breaks in one sentence,
+letting `assertion_names` carry the list. The first draft was a 430-character
+inventory and was rejected. The estate had already arrived at declaration over
+enumeration for a different artifact, which is worth knowing before proposing it
+as a new idea anywhere.
+
+**Every rule worth pinning was one that had been got wrong.** The five
+assertions map one-to-one onto entries above: a vanished `KEEP`, a surviving
+`DROP`, an excused reference, a real lost reference, a path made more specific.
+Nothing was invented to reach a count.
+
+**Segmentation determinism was assumed for three runs and never checked.** It
+now is. Had it drifted, every stored annotation would have orphaned at once and
+the contract would have been worthless without saying so.
