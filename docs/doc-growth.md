@@ -107,6 +107,15 @@ registry's, so it reports shape (grew, held, was cut) and never size. Size is
 already the number beside it, and one mark cannot carry both without lying
 about one of them.
 
+**The delta is text, so it wears an ink token.** The first cut coloured the
+numbers in warning and success tones at 70 to 80 percent opacity, which on a
+phone in daylight washed out completely: every figure was on the page and none
+of it was readable, which is worse than absent because it looks deliberate. The
+dataviz rule covers this exactly (values and labels stay in primary, secondary
+or muted ink; a coloured mark beside them carries identity), and the sign
+already says which direction the number went. Colour lives on the sparkline,
+which is a mark.
+
 The chart itself is deliberately not in Map. It is already an app view, a peer
 of Repos and Stage, so putting it in a tab as well would be a second door to
 one thing. What Map adds is what the chart cannot do from its own view: the
