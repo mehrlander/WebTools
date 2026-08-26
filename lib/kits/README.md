@@ -550,7 +550,10 @@ window.mdDoc.reference(sec, addr)  // the provenance line(s), as an array
 window.mdDoc.payload(sec, addr)    // reference + blank line + sec.raw
 window.mdDoc.html(src, o)          // a prose HTML string, tables contained
 window.mdDoc.render(host, src, o)  // mounts into host -> { box, sections }
-window.mdDoc.contain(el)          // el, nothing left that can widen a column
+window.mdDoc.enhance(box, src, o)  // the same over markup another renderer made
+window.mdDoc.contain(el)           // el, nothing left that can widen a column
+window.mdDoc.locate(node)          // { addr, sections, section } for any node in a render
+window.mdDoc.sourceRef(node)       // "docs/APP.md § Mechanism (lines 16-28)"
 ```
 
 **Contain.** A table's intrinsic min-content width is a floor no ancestor can
@@ -560,12 +563,28 @@ prose sideways along with the table. The wrapper does not force `max-content`:
 typography's `width: 100%` still wraps cells, so only a table that genuinely
 cannot fit starts scrolling.
 
-**Cut.** Every top-level heading gets a control that copies **that section's
-source**, with the address on top. Sections nest the way Wikipedia's do: a
-section runs to the next heading of equal or higher rank, so `##` carries its
-`###`s and each of those still has its own control. Headings are found through
-`marked.lexer`, not a line regex, so a `#` inside a fence is not one; the
-rendered box's direct-child headings pair against the same list by order.
+**Cut.** Every top-level heading gets a control over **that section's source**:
+copy it, copy it with a revision ask on top, or open a note pinned to it. One
+menu rather than three glyphs, since a heading has room for one mark. Sections
+nest the way Wikipedia's do: a section runs to the next heading of equal or
+higher rank, so `##` carries its `###`s and each of those still has its own
+control. Headings are found through `marked.lexer`, not a line regex, so a `#`
+inside a fence is not one; the rendered box's direct-child headings pair against
+the same list by order.
+
+**Declare.** The rendered box says which source and which address it is a
+rendering of, so `locate()` can answer for any node inside it in the source's
+terms. `annotate.js` reads that: on a declared render every note's `Path:` line
+is `docs/APP.md § Mechanism (lines 16-28)` rather than a css path, and its
+`section` targeting mode is raised from this menu, since the heading is the one
+thing that knows which section it opens.
+
+**Enhance** is render's second half, for markup another renderer produced.
+`guide-render.js` renders a doc with the link re-aiming a guide body needs, and
+the Files pane reads markdown through it; that reader wants the containment and
+the controls without giving up the re-aiming. The `src` handed to it must be the
+source that produced that markup, and nothing can check it: get it wrong and
+every control copies the wrong lines.
 
 Copying the **source** rather than the selection is the whole point. A rendered
 section copies as prose with the structure flattened out, and a model asked to

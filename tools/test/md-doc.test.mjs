@@ -204,18 +204,157 @@ test('each top-level heading gets a copy control, and it is not part of the text
   }
 });
 
+// The control opens a MENU: a heading has room for one mark, and the reader's
+// question at a heading is "what can I do with this part".
+const openMenu = (host, i) => {
+  const heads = [...host.querySelectorAll('[data-md-section]')];
+  heads[i].querySelector('button').click();
+  const menus = [...window.document.body.querySelectorAll('div')]
+    .filter(n => n.className.includes('z-[80]'));
+  return menus[menus.length - 1];
+};
+const rowLabels = (menu) => [...menu.querySelectorAll('button')]
+  .map(b => b.querySelector('span span').textContent);
+
 test('the control copies its own section, with the address', async () => {
   const host = window.document.createElement('div');
   const copied = [];
   window.io = { copy: async (t) => { copied.push(t); } };
   mdDoc.render(host, DOC, { addr: ADDR });
-  const heads = [...host.querySelectorAll('[data-md-section]')];
-  heads[1].querySelector('button').click();
+  const menu = openMenu(host, 1);
+  menu.querySelectorAll('button')[0].click();
   await new Promise(r => setTimeout(r, 0));
   assert.equal(copied.length, 1);
   assert.match(copied[0], /^From mehrlander\/web-tools@main:docs\/APP\.md lines /);
   assert.match(copied[0], /\n## First\n/);
   delete window.io;
+});
+
+test('copy for revision leads with an ask the answer has to fit', async () => {
+  // A revision that arrives as advice about the section is not a revision, so
+  // the ask names the shape of the answer as well as the job.
+  const host = window.document.createElement('div');
+  const copied = [];
+  window.io = { copy: async (t) => { copied.push(t); } };
+  mdDoc.render(host, DOC, { addr: ADDR });
+  const menu = openMenu(host, 1);
+  menu.querySelectorAll('button')[1].click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(copied[0].startsWith(mdDoc.REVISE), true);
+  assert.match(copied[0], /\n\nFrom mehrlander\/web-tools@main:docs\/APP\.md lines /);
+  assert.match(copied[0], /\n## First\n/);
+  delete window.io;
+});
+
+test('the note row appears only where the annotator is actually running', () => {
+  // A control that opens nothing is worse than an absent one: the reader has
+  // no way to tell which kind they are looking at.
+  const host = window.document.createElement('div');
+  mdDoc.render(host, DOC, { addr: ADDR });
+  assert.deepEqual(rowLabels(openMenu(host, 1)), ['Copy section', 'Copy for revision']);
+
+  window.Annotate = { enabled: true, noteSection: () => true };
+  const host2 = window.document.createElement('div');
+  mdDoc.render(host2, DOC, { addr: ADDR });
+  assert.deepEqual(rowLabels(openMenu(host2, 1)),
+    ['Copy section', 'Copy for revision', 'Note this section']);
+
+  window.Annotate = { enabled: false, noteSection: () => true };
+  const host3 = window.document.createElement('div');
+  mdDoc.render(host3, DOC, { addr: ADDR });
+  assert.equal(rowLabels(openMenu(host3, 1)).length, 2, 'present but not enabled is still no row');
+  delete window.Annotate;
+});
+
+test('the menu survives a scroll that was already in flight when it opened', () => {
+  // A scrollIntoView, or a phone still settling from a flick, delivers its
+  // scroll event AFTER the tap that opened the menu. Closing on any scroll lost
+  // that race: the menu opened and vanished in the same frame. It follows the
+  // heading instead, and closes only when the heading leaves the viewport.
+  const host = window.document.createElement('div');
+  window.document.body.append(host);
+  mdDoc.render(host, DOC, { addr: ADDR });
+  const menu = openMenu(host, 1);
+  assert.ok(menu, 'the menu opened');
+  window.dispatchEvent(new window.Event('scroll'));
+  assert.equal(window.document.body.contains(menu), true, 'still open after a scroll');
+  host.remove();
+});
+
+test('a tap outside closes it, and so does Escape', () => {
+  const host = window.document.createElement('div');
+  window.document.body.append(host);
+  mdDoc.render(host, DOC, { addr: ADDR });
+
+  const m1 = openMenu(host, 1);
+  window.document.dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+  assert.equal(window.document.body.contains(m1), false);
+
+  const m2 = openMenu(host, 1);
+  const esc = new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+  window.document.dispatchEvent(esc);
+  assert.equal(window.document.body.contains(m2), false);
+  host.remove();
+});
+
+// ── Declare ─────────────────────────────────────────────────────────────────
+
+test('any node in a render can be answered for in the source\'s terms', () => {
+  const host = window.document.createElement('div');
+  window.document.body.append(host);
+  mdDoc.render(host, DOC, { addr: ADDR });
+  const p = [...host.querySelectorAll('p')].find(n => n.textContent.startsWith('A paragraph'));
+  const loc = mdDoc.locate(p);
+  assert.equal(loc.section.title, 'First', 'a paragraph belongs to the heading it is under');
+  assert.equal(loc.addr.path, 'docs/APP.md');
+  assert.equal(mdDoc.sourceRef(p),
+    `docs/APP.md § First (lines ${loc.section.startLine}-${loc.section.endLine})`);
+  host.remove();
+});
+
+test('a node before the first heading locates the document but no section', () => {
+  const host = window.document.createElement('div');
+  window.document.body.append(host);
+  mdDoc.render(host, 'Preamble prose.\n\n# Later\n\nmore\n', { addr: ADDR });
+  const p = host.querySelector('p');
+  const loc = mdDoc.locate(p);
+  assert.equal(loc.section, null);
+  assert.equal(mdDoc.sourceRef(p), 'docs/APP.md', 'the file, with nothing invented after it');
+  host.remove();
+});
+
+test('a node outside any declared render locates nothing', () => {
+  const loose = window.document.createElement('p');
+  window.document.body.append(loose);
+  assert.equal(mdDoc.locate(loose), null);
+  assert.equal(mdDoc.sourceRef(loose), '');
+  loose.remove();
+});
+
+// ── Enhance ─────────────────────────────────────────────────────────────────
+
+test('enhance does the same over markup another renderer produced', () => {
+  // kits/guide-render.js renders a doc with the link re-aiming a guide body
+  // needs. That reader wants the containment and the controls without giving
+  // up the re-aiming, so render() is enhance() with a parse in front of it.
+  const box = window.document.createElement('div');
+  window.document.body.append(box);
+  box.innerHTML = marked.parse(DOC);
+  const out = mdDoc.enhance(box, DOC, { addr: ADDR });
+  assert.equal(out.sections.length, 4);
+  assert.equal(box.querySelectorAll('[data-md-section]').length, 4);
+  assert.equal(box.querySelectorAll('[data-md-scroll]').length, 1);
+  assert.equal(mdDoc.locate(box.querySelector('p')).addr.path, 'docs/APP.md');
+  box.remove();
+});
+
+test('enhancing twice does not stack a second control on a heading', () => {
+  const box = window.document.createElement('div');
+  box.innerHTML = marked.parse(DOC);
+  mdDoc.enhance(box, DOC, { addr: ADDR });
+  mdDoc.enhance(box, DOC, { addr: ADDR });
+  const h = box.querySelector('[data-md-section]');
+  assert.equal(h.querySelectorAll('button').length, 1);
 });
 
 test('a heading inside a blockquote is not a section', () => {
