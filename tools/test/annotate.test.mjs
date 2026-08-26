@@ -1903,7 +1903,7 @@ test('copy rides the format row, so it needs no word at all', () => {
   assert.equal(S.serialCopy.textContent.trim(), '', 'the glyph alone: the chips beside it are the qualifier');
   assert.match(S.serialCopy.title, /markdown/, 'the title still says which, for a pointer that hovers');
   assert.ok(S.readBar.contains(S.serialCopy), 'and it rides the format row, not a footer under it');
-  assert.equal(S.serialCopy.style.visibility, 'visible');
+  assert.equal(S.serialCopy.style.display, 'flex');
 
   A.setReading('json');
   assert.match(S.serialCopy.title, /JSON/, 'and it follows the chip it sits beside');
@@ -1911,8 +1911,7 @@ test('copy rides the format row, so it needs no word at all', () => {
   // Both leave the row where they mean nothing. A Copy beside the Notes chip
   // has no bytes on screen to take.
   A.setReading('notes');
-  assert.equal(S.serialCopy.style.visibility, 'hidden', 'gone, but still holding its place');
-  assert.equal(S.serialCopy.style.display, 'flex', 'so the stretched group beside it does not resize');
+  assert.equal(S.serialCopy.style.display, 'none');
 
   // The footer keeps only what is neither a reading nor a format.
   const acts = [...S.setActs.querySelectorAll('button')].map(b => b.textContent);
