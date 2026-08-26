@@ -1,0 +1,70 @@
+# Doc growth
+
+[⭐ Doc Growth](https://mehrlander.github.io/web-tools/pages/doc-growth.html)
+
+A Gapminder-style animated bubble chart of a repository's markdown over time.
+Every file is a bubble: **x** is its length in words on a log scale, **y** is
+either how hard it is being worked (edits per month) or what it gained that week,
+bubble area is lifetime edit count, and the play control sweeps the whole history
+week by week. [`scripts/doc-growth.py`](../scripts/doc-growth.py) produces the
+payload; [`pages/doc-growth.html`](../pages/doc-growth.html) reads it.
+
+It exists because documentation length is easy to worry about and hard to see.
+The first run against this repo answered the worry: of the 60 markdown files
+edited in five or more commits, the great majority end larger than they started,
+and `docs/show-repo.md` alone went from 5,279 words to 28,397 across 181 commits.
+
+## Pointing it at a repository
+
+```bash
+python3 scripts/doc-growth.py <clone> -o data/doc-growth/<name>.json --name owner/repo
+```
+
+`--days` changes the sampling interval, `--ext` the file type, and `--min-edits`
+drops files below an edit count. That last one matters on a repo carrying
+generated markdown: `mehrlander/home` has 4,314 markdown files but 2,907 of them
+were committed once and never revised, so `--min-edits 2` cuts the payload from
+2.1 MB to 679 KB and removes nothing anyone would look at.
+
+The page takes its data three ways, cheapest first: `#gz=<payload>` inline,
+`?url=<address>`, or `?src=owner/repo[@ref]:path` read through the viewer's
+stored `ghToken`, which is the only route that reaches a private repo.
+
+**A shallow clone will quietly lie.** Claude Code web checks out shallow, so the
+history looks like a week no matter how old the repo is. `git fetch --unshallow`
+first, and without `--filter=blob:none`: the partial-clone filter turns every
+diff into a lazy blob fetch over the network, which takes this from seconds to
+longer than anyone will wait.
+
+## Two word counts, and why
+
+`w` counts every token; `r` skips fenced code blocks and YAML frontmatter. They
+diverge exactly where the authored and mechanical halves of a corpus divide, so
+a file whose two numbers are far apart is mostly table and snippet rather than
+prose. The page toggles between them.
+
+## Why it is not on the commit hook
+
+Every commit shifts the last frame, so a hook that regenerated the payload would
+make every commit touch it, and the artifact could never be byte-deterministic in
+the way [`tools/README.md`](../tools/README.md#the-refresh-model) requires. It is
+refreshed on demand instead, and `generated` in the payload says when. This is
+also why it is neither a registry ([registries.md](registries.md): a registry
+carries assertions, and this carries measurements) nor a projection of one.
+
+## The bug worth remembering
+
+The extractor reads blob contents through one `git cat-file --batch`. Writing the
+whole request list before reading any output deadlocks as soon as the batch
+outgrows a pipe buffer: git blocks writing content nobody is draining, so the
+write never returns. A repo small enough to fit both sides in 64K runs clean and
+hides it, which is exactly what happened here, and the failure looks like a hang
+rather than an error. The request list is fed from a thread.
+
+## Colors
+
+A bubble chart is scored on the dataviz all-pairs pairlist, where only three
+categorical slots clear the separation floors. So three folder groups carry hue
+at a time and the rest fold into a recessive gray; the legend swaps which three.
+The light-mode aqua slot sits under 3:1 contrast, which obliges relief, and the
+table view and the always-on tooltip are it.

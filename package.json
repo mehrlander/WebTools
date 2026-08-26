@@ -57,7 +57,8 @@
     "test:data-view-links": "node tools/test/data-view-links.mjs",
     "tests-index": "node tools/build/tests-index.mjs",
     "test:playground": "node tools/test/playground-pass.mjs",
-    "tools-index": "node tools/build/tools-index.mjs"
+    "tools-index": "node tools/build/tools-index.mjs",
+    "doc-growth": "python3 scripts/doc-growth.py"
   },
   "devDependencies": {
     "@alpinejs/collapse": "^3.15.12",
