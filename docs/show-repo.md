@@ -1470,10 +1470,12 @@ scoped list, and lapse back to All when the scope stops holding that repo.
 
 Tapping a row, on either the ask or the short id, opens the session as a
 **conversation**: the record is fetched and handed to the swipe deck
-(`lib/kits/session-render.js`), one card per ask and per assistant prose turn, with
-the tool calls attaching to the turn that issued them. Both halves are there,
-the calls carry their arguments and whatever body the record kept, and fenced
-blocks get chat-render's live views. The record is cached per id, and the
+(`lib/kits/session-render.js`), one card per exchange, so a slide carries a
+question, every sentence of its answer, and everything that ran in between.
+Each run of consecutive tool calls folds into one line naming what ran, opening
+on tap, which is what keeps a whole exchange readable. The calls carry their
+arguments and whatever body the record kept, and fenced blocks get chat-render's
+live views. The record is cached per id, and the
 renderer chain loads on first use, so a visit that never opens a session pays
 nothing for it.
 
