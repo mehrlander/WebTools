@@ -24,29 +24,24 @@ export default async function (page) {
   await page.waitForSelector('.sd-track', { timeout: 10000 });
   await page.waitForTimeout(900);
 
-  // The sequence fold, then a step inside it: two taps is the whole depth of
-  // the structure, and this is the shot that proves the second level renders
-  // rather than being asserted about. Scoped to the SLIDE in the viewport,
-  // since the deck keeps neighbouring slides in the DOM and a bare
-  // `.sd-track details` would open one the reader cannot see.
+  // The fold opened. There is one level, so one tap is the whole depth, and
+  // this is the shot that proves what is behind it is the work itself rather
+  // than another menu. Scoped to the SLIDE in the viewport, since the deck
+  // keeps neighbouring slides in the DOM and a bare `.sd-track details` would
+  // open one the reader cannot see.
   if (OPEN_FOLD) {
     await page.waitForSelector('.sd-track details summary', { timeout: 10000 });
-    const onSlide = (i) => page.evaluate((n) => {
+    await page.evaluate(() => {
       const slide = [...document.querySelectorAll('.sd-track > *')]
         .find(s => { const r = s.getBoundingClientRect(); return r.left > -50 && r.left < 50 && r.width; });
-      const d = slide?.querySelectorAll(n === 1 ? 'details' : 'details details')[0];
-      if (d) d.querySelector('summary').click();
-      return !!d;
-    }, i);
-    await onSlide(1);
-    await page.waitForTimeout(500);
-    if (process.env.OPEN_FOLD === '2') { await onSlide(2); await page.waitForTimeout(700); }
-    await page.waitForTimeout(400);
+      slide?.querySelector('details summary')?.click();
+    });
+    await page.waitForTimeout(900);
   }
 
-  // The measurement the picture cannot make: how much of the card is prose and
-  // how much is folded machinery. A card whose folds outnumber its sentences
-  // several times over is one the grouping has not condensed.
+  // The measurement the picture cannot make: how many folds a card carries.
+  // More than one or two closed folds on a card means a run of preparation did
+  // not collapse, which is the failure this layout exists to prevent.
   const shape = await page.evaluate(() => {
     const slide = [...document.querySelectorAll('.sd-track > *')]
       .find(s => s.offsetParent !== null && s.textContent.trim());
