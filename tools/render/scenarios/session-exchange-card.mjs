@@ -24,11 +24,24 @@ export default async function (page) {
   await page.waitForSelector('.sd-track', { timeout: 10000 });
   await page.waitForTimeout(900);
 
+  // The sequence fold, then a step inside it: two taps is the whole depth of
+  // the structure, and this is the shot that proves the second level renders
+  // rather than being asserted about. Scoped to the SLIDE in the viewport,
+  // since the deck keeps neighbouring slides in the DOM and a bare
+  // `.sd-track details` would open one the reader cannot see.
   if (OPEN_FOLD) {
-    const fold = '.sd-track details summary';
-    await page.waitForSelector(fold, { timeout: 10000 });
-    await page.click(fold);
-    await page.waitForTimeout(900);
+    await page.waitForSelector('.sd-track details summary', { timeout: 10000 });
+    const onSlide = (i) => page.evaluate((n) => {
+      const slide = [...document.querySelectorAll('.sd-track > *')]
+        .find(s => { const r = s.getBoundingClientRect(); return r.left > -50 && r.left < 50 && r.width; });
+      const d = slide?.querySelectorAll(n === 1 ? 'details' : 'details details')[0];
+      if (d) d.querySelector('summary').click();
+      return !!d;
+    }, i);
+    await onSlide(1);
+    await page.waitForTimeout(500);
+    if (process.env.OPEN_FOLD === '2') { await onSlide(2); await page.waitForTimeout(700); }
+    await page.waitForTimeout(400);
   }
 
   // The measurement the picture cannot make: how much of the card is prose and

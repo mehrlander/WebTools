@@ -13,15 +13,16 @@
 //   concatenation order, which puts the calls above the sentence introducing
 //   them. It looks fine on any fixture whose seconds happen not to collide.
 //
-//   The GROUPING is one card per exchange, and what makes that readable is the
-//   FOLD: a run of consecutive tool calls collapses to one line, and so does
-//   the short sentence that introduced it ("Now let me render it"), which
-//   becomes that line's label. The first version split a card at each prose
-//   turn as well, because without the fold a slide carried a hundred expanded
-//   tool entries. All of it is pinned here, since dropping any one piece is
-//   what breaks it: a card per exchange with no folding is a slab, folding the
-//   calls alone still leaves the narration between the question and its
-//   answer, and folding prose by length alone would swallow the answer.
+//   The GROUPING is one card per exchange, and what makes that readable is
+//   the FOLD, in two levels. A run of tool calls plus the short sentence that
+//   introduced it ("Now let me render it") is one STEP; a run of adjacent
+//   steps is one SEQUENCE. The first version split a card at each prose turn
+//   as well, because without any of this a slide carried a hundred expanded
+//   tool entries. Every piece is pinned here, since dropping any one brings
+//   the slab back in a smaller size: no folding at all is the original slab,
+//   folding calls alone leaves the narration between question and answer,
+//   folding steps alone leaves seven or eight lines of preparation, and
+//   folding prose by length alone would swallow the answer itself.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -94,11 +95,26 @@ test('a short turn that introduces work folds with the work it introduced', () =
   // followed by the calls they announce. Expanded, they sit between the
   // question and the reply that answers it.
   const b = blocks(groups(turns(REC))[0]);
-  assert.deepEqual(b.map(x => x.tools ? 'step:' + x.tools.length : x.turn.role),
-    ['user', 'step:2', 'step:1'],
-    'a fold per call would condense nothing; a fold across the prose would lose the sequence');
-  assert.equal(b[1].lead, 'Let me look at the plugin.',
+  assert.deepEqual(b.map(x => x.steps ? 'seq:' + x.steps.length : x.turn.role), ['user', 'seq:2']);
+  assert.deepEqual(b[1].steps.map(st => st.tools.length), [2, 1],
+    'a fold per call would condense nothing; a fold across the prose would lose the order');
+  assert.equal(b[1].steps[0].lead, 'Let me look at the plugin.',
     'the sentence is the label: it places a run that the tool names only describe');
+});
+
+test('adjacent steps collapse into one sequence, and a lone step does not', () => {
+  // The complaint one level up: seven folded steps still stand between the
+  // question and its answer, so the run folds again. Wrapping a single step
+  // would name nothing its own label does not, and would cost a tap.
+  const one = { ...REC, replies: [{ at: at(5), text: 'Let me look at the plugin.' }],
+    calls: REC.calls.filter(c => c.at === at(5)) };
+  const b = blocks(groups(turns(one))[0]);
+  assert.deepEqual(b.map(x => x.steps ? 'seq' : x.tools ? 'step' : x.turn.role), ['user', 'step']);
+});
+
+test('a sequence counts its steps and its calls, since that line is the card', () => {
+  const b = blocks(groups(turns(REC))[0]);
+  assert.equal(b[1].label, '2 steps  ·  3 calls  ·  2× Bash, Read  ·  1 failed');
 });
 
 test('a turn long enough to be saying something stays expanded', () => {
@@ -113,10 +129,10 @@ test('a turn long enough to be saying something stays expanded', () => {
   assert.ok(!b[2].lead, 'an expanded turn must not also be repeated as a fold label');
 });
 
-test('a run says what it holds, since a closed fold is all a reader sees', () => {
-  const b = blocks(groups(turns(REC))[0]);
-  assert.equal(b[1].label, '2 calls  ·  Bash, Read');
-  assert.equal(b[2].label, '1 call  ·  Bash  ·  1 failed',
+test('a step says what it holds, since a closed fold is all a reader sees', () => {
+  const [, seq] = blocks(groups(turns(REC))[0]);
+  assert.equal(seq.steps[0].label, '2 calls  ·  Bash, Read');
+  assert.equal(seq.steps[1].label, '1 call  ·  Bash  ·  1 failed',
     'a failure inside a closed fold is invisible unless the summary names it');
 });
 
@@ -132,12 +148,13 @@ test('a real session shape stays readable: three asks, three cards, the work fol
   const g = groups(turns({ schema: 4, prompts, replies, calls, exchanges: 3, prompts_stored: 3 }));
   assert.equal(g.length, 3, 'a question and its answer must land on one slide');
   const b = g.map(blocks);
-  assert.deepEqual(b.map(x => x.length), [5, 5, 5],
-    'a card is the ask plus four folded steps, not sixty entries');
-  assert.ok(b.every(card => card.filter(x => x.tools).every(x => x.tools.length === 5)),
-    'each run of five calls must fold as one');
-  assert.ok(b.every(card => card.filter(x => x.tools).every(x => x.lead)),
-    'each step keeps the sentence that introduced it as its label');
+  assert.deepEqual(b.map(x => x.length), [2, 2, 2],
+    'a card is the ask and one line for the work, not sixty entries');
+  const seqs = b.map(card => card[1]);
+  assert.ok(seqs.every(q => q.steps.length === 4), 'four steps behind each sequence');
+  assert.ok(seqs.every(q => q.steps.every(st => st.tools.length === 5 && st.lead)),
+    'each step keeps its five calls and the sentence that introduced them');
+  assert.ok(seqs.every(q => /^4 steps {2}· {2}20 calls/.test(q.label)));
 });
 
 test('a complete schema-4 record gets no capture note', () => {

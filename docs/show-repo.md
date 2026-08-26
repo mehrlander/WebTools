@@ -1472,9 +1472,11 @@ Tapping a row, on either the ask or the short id, opens the session as a
 **conversation**: the record is fetched and handed to the swipe deck
 (`lib/kits/session-render.js`), one card per exchange, so a slide carries a
 question, every sentence of its answer, and everything that ran in between.
-Each run of consecutive tool calls folds into one line, opening on tap, and the
-short sentence that announced the run becomes that line's label, so what stays
-expanded on the card is the question and the reply that answered it. The calls carry their
+The work folds in two levels: a run of tool calls plus the short sentence that
+announced it is one **step**, and a run of adjacent steps is one **sequence**.
+So a card closed is the question, one line for everything done to answer it, and
+the reply; opening that line gives the steps back as labelled lines, and opening
+a step gives its calls. The calls carry their
 arguments and whatever body the record kept, and fenced blocks get chat-render's
 live views. The record is cached per id, and the
 renderer chain loads on first use, so a visit that never opens a session pays
