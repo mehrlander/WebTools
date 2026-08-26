@@ -9,8 +9,8 @@ description: Separate a governing document's authoritative rules from the explan
 
 An **executed document** is one an agent loads and acts on without being asked:
 a `CLAUDE.md`, an injected conventions file, a `SKILL.md`. Every word in it is a
-runtime cost paid on every turn, and every word of justification competes with
-the rule it justifies.
+runtime cost paid on every turn, so cut harder here than in a document someone
+chooses to open.
 
 The method separates two things that fuse as a document grows:
 
@@ -51,8 +51,7 @@ One label per unit, in a TSV keyed by `uid`.
 | `NAV` | a pointer to the document or gate that owns something | apparatus |
 | `META` | a statement about this document | apparatus |
 
-**`WHY-OP` is the one that pays attention.** An operative reason nearly always
-contains a **criterion**: a condition, a threshold, a named exception. Lift the
+**An operative reason nearly always contains a criterion**: a condition, a threshold, a named exception. Lift the
 criterion into the declaration and the remainder becomes `WHY-MOT`. Where no
 criterion can be extracted, keep the clause: it is part of the rule.
 
@@ -72,8 +71,7 @@ Each entry: the rule, then its form where there is a syntax, then its boundary
 where a clause changes application at an edge.
 
 **Expect to beat the removal floor, and do not expect it.** `KEEP` units
-compress too, and a sentence-level pass cannot see that. Measured: +12 points
-over floor on loose prose, −7 on prose already tight.
+compress too, and a sentence-level pass cannot see that. Per-run figures are in `runs.csv`.
 
 ### 5. Route what leaves
 
@@ -85,9 +83,9 @@ over floor on loose prose, −7 on prose already tight.
 | coherent depth that names cleanly | its own linked document |
 | `WHY-MOT` | deleted; git holds it |
 
-**Never route to a shadow file.** An annotation anchors to text that exists;
-removed prose has no span, and a note about it anchors to the rule it justified,
-which is the sentence most likely to be edited next.
+**Never route to a shadow file.** An annotation anchors to text that exists, so a
+note about removed prose anchors to the rule it justified, which is the sentence
+most likely to be edited next.
 
 ### 6. Check
 
@@ -102,8 +100,8 @@ references, and the size delta.
 reworded survivors. Probe each candidate for its distinctive content before
 calling it a loss.
 
-**The check does not replace the repo's own gates.** Run them too. Both times a
-pointer was lost in a way `check.py` passed, `npm run docs-reach` caught it.
+**The check does not replace the repo's own gates.** Run them too: a lost pointer
+has twice passed `check.py` and been caught by the repo's own derivation.
 
 ### 7. Record
 
@@ -113,8 +111,7 @@ file changes that file's derived state, so recording the run is itself an edit
 the generators have to see.
 
 **A lesson that recurs a third time earns a change to this skill or its
-tooling.** That is the whole improvement mechanism, and it is the same
-recurrence rule the estate's snags log runs on.
+tooling.**
 
 ## Boundaries
 
@@ -131,8 +128,8 @@ recurrence rule the estate's snags log runs on.
 
 ## Files
 
-`segment.py` · `reanchor.py` (survive an edit; offsets are a hint, the quote
-selector is the anchor) · `check.py` · `runs.csv` · `LOG.md`
+`segment.py` · `check.py` · `runs.csv` · `LOG.md`
 
-In the hub, `tools/test/state-the-rule.test.mjs` pins the five rules the checks
-learned by getting them wrong.
+`reanchor.py` is for the case this pass does not have: an annotation that must
+outlive edits to its source rather than being consumed by one run. Offsets are a
+hint; the quote selector is the anchor. Four runs have not needed it.

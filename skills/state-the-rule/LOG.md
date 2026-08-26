@@ -70,3 +70,34 @@ reach from `app` to `skill`. Third ordering mistake of the same family in one
 session (the earlier two reverted a fix by re-splicing from a stale source), so
 by this log's own recurrence rule it is now a step in the skill: **run every
 generator after the last edit, including edits to this file.**
+
+## 2026-08-26, run on its own SKILL.md (web-tools #516)
+
+**84% `KEEP`, the highest of four runs, and a 9% floor.** A document written to
+this discipline has little surplus, which is the expected result and the first
+confirmation that the Boundaries stop-signal is calibrated somewhere sensible.
+
+**The pass still found four defects, so a high `KEEP` is not a clean bill.** On
+an already-tight document it yields corrections rather than compression: net 2%
+after adding a clarification the run showed was needed, against roughly 9% of
+removal.
+
+**It carried copies of its own records.** The `+12 / −7` measurement duplicated
+`runs.csv` and the lost-pointer anecdote duplicated `LOG.md`. A skill that
+maintains records is a skill that can quote them back at itself.
+
+**A within-file duplicate, in the document that teaches looking for them.** The
+Files section and the Boundaries section both named the test file and what it
+pins. Invisible to a cross-file scanner by construction, and it survived being
+written, reviewed and shipped.
+
+**The check caught a botched edit batch.** A Python `assert` fired before any
+replacement ran, so four of seven edits silently never applied while the script
+reported success on the other three. `not-removed 1` was the only signal that
+anything was wrong. Verifying against the annotation is worth doing even when
+you believe you just made the change.
+
+**`reanchor.py` now states its condition instead of shipping uncalled.** Four
+runs have consumed their annotation rather than storing it, so nothing has
+needed it. It is for an annotation that must outlive edits to its source, and
+the Files section says so rather than listing it as though a step used it.
