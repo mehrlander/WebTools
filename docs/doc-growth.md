@@ -3,10 +3,23 @@
 [⭐ Doc Growth](https://mehrlander.github.io/web-tools/pages/doc-growth.html)
 
 A Gapminder-style animated bubble chart of a repository's markdown over time.
-Every file is a bubble: **x** is its length in words on a log scale, **y** is
-either how hard it is being worked (edits per month) or what it gained that week,
-bubble area is lifetime edit count, and the play control sweeps the whole history
-week by week. [`scripts/doc-growth.py`](../scripts/doc-growth.py) produces the
+Every file is a bubble: **x** is its length in words on a log scale, bubble area
+is lifetime edit count, and the play control sweeps the whole history week by
+week. **y** answers one of three questions:
+
+| Mode | y is | Reads |
+| --- | --- | --- |
+| Effort | edits per month | up is actively worked |
+| Net change | words gained that week | the zero line, and how little crosses below it |
+| Settled | days since last touched | up is a monument, down is contested |
+
+Settled is the thinnest of the three at the newest frame, since an active repo
+has touched most of its files inside one sample and they pile on the zero line.
+That is the honest reading, not a defect, and the mode earns its place two ways:
+the few bubbles that float clear are the large documents nobody is maintaining,
+which neither other mode surfaces, and under playback a file climbs as it goes
+quiet and drops the moment it is edited. It is derived from the churn array
+rather than carried in the payload, since it is the same fact counted backwards. [`scripts/doc-growth.py`](../scripts/doc-growth.py) produces the
 payload; [`pages/doc-growth.html`](../pages/doc-growth.html) reads it.
 
 It exists because documentation length is easy to worry about and hard to see.

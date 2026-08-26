@@ -83,6 +83,8 @@
                   @click="yMode='churn'; draw()">Effort</button>
           <button class="join-item btn btn-xs" :class="yMode==='net' && 'btn-active'"
                   @click="yMode='net'; draw()">Net change</button>
+          <button class="join-item btn btn-xs" :class="yMode==='age' && 'btn-active'"
+                  @click="yMode='age'; draw()">Settled</button>
         </div>
         <div class="join">
           <button class="join-item btn btn-xs" :class="unit==='w' && 'btn-active'"
@@ -191,6 +193,7 @@ function growth() {
         r: { x: Math.max(100, ...all.map(f => peak(f, 'r'))) },
         net: Math.max(50, ...all.flatMap(f => f.n.map(Math.abs))),
         churn: Math.max(4, ...all.flatMap((f) => f.e.map((_, k) => this.churn(f, k)))),
+        age: Math.max(this.data.days, ...all.map(f => this.age(f, f.w.length - 1))),
       };
       this.t = this.data.frames.length - 1;
       addEventListener('resize', () => this.draw());
@@ -208,9 +211,11 @@ function growth() {
     get frameLabel() { return this.data?.frames[Math.round(this.t)] ?? ''; },
     get caption() {
       const n = this.visible, tot = this.shown().length;
-      return this.yMode === 'churn'
-        ? `${n} of ${tot} files on screen (edited in ${this.minEdits}+ commits). Up means actively worked; right means long.`
-        : `${n} of ${tot} files on screen. Above the line gained words that week, below it gave some back.`;
+      if (this.yMode === 'churn')
+        return `${n} of ${tot} files on screen (edited in ${this.minEdits}+ commits). Up means actively worked; right means long.`;
+      if (this.yMode === 'age')
+        return `${n} of ${tot} files on screen. Up means untouched for longer, so the top right is a monument and the bottom right is contested.`;
+      return `${n} of ${tot} files on screen. Above the line gained words that week, below it gave some back.`;
     },
     get tipMeta() {
       const f = this.hovered; if (!f) return '';
@@ -256,6 +261,15 @@ function growth() {
       const k = Math.round(t), lo = Math.max(0, k - 3);
       return f.e.slice(lo, k + 1).reduce((s, v) => s + v, 0);
     },
+    // Days since the file was last touched, at this frame. Read back out of the
+    // churn array rather than carried in the payload: it is the same fact
+    // counted from the other end, and a second copy is a second thing to keep
+    // true. A file never touched inside the window ages from its first frame.
+    age(f, t) {
+      const k = Math.round(t);
+      for (let i = k; i >= 0; i--) if (f.e[i]) return (k - i) * this.data.days;
+      return Math.max(0, k - f.born) * this.data.days;
+    },
 
     draw() {
       if (!this.data) return;
@@ -268,12 +282,12 @@ function growth() {
 
       const P = { l: 44, r: 14, t: 12, b: 30 };
       const files = this.shown();
-      const net = this.yMode === 'net';
+      const net = this.yMode === 'net', age = this.yMode === 'age';
 
       // x: words, log. y: effort (linear) or net change (symlog, zero centred).
       const xMax = this.bounds[this.unit].x;
       const lx = v => P.l + (Math.log10(Math.max(v, 10)) - 1) / (Math.log10(xMax) - 1) * (W - P.l - P.r);
-      const yTop = net ? this.bounds.net : this.bounds.churn;
+      const yTop = net ? this.bounds.net : age ? this.bounds.age : this.bounds.churn;
       const sym = v => Math.sign(v) * Math.log10(Math.abs(v) + 1);
       const ly = v => net
         ? P.t + (1 - (sym(v) / sym(yTop) + 1) / 2) * (H - P.t - P.b)
@@ -292,6 +306,7 @@ function growth() {
       c.fillStyle = this.ink; c.font = '10px ui-monospace, monospace';
       c.textAlign = 'right'; c.textBaseline = 'middle';
       const yTicks = net ? [-yTop, -yTop / 10, 0, yTop / 10, yTop]
+                   : age ? [0, 7, 28, yTop].filter((v, i, a) => v <= yTop && a.indexOf(v) === i)
                          : [0, 1, 5, 20, yTop].filter((v, i, a) => v <= yTop && a.indexOf(v) === i);
       for (const v of yTicks) {
         const y = Math.round(ly(v)) + 0.5;
@@ -299,7 +314,7 @@ function growth() {
         c.strokeStyle = (net && v === 0) ? this.grid.replace(/[\d.]+\)$/, '0.35)') : this.grid;
         c.stroke();
         c.globalAlpha = 0.55;
-        c.fillText(net ? fmt(v) : Math.round(v), P.l - 6, y);
+        c.fillText(net ? fmt(v) : Math.round(v) + (age ? 'd' : ''), P.l - 6, y);
         c.globalAlpha = 1;
       }
       c.textAlign = 'center'; c.textBaseline = 'top';
@@ -314,7 +329,8 @@ function growth() {
       c.globalAlpha = 0.45;
       c.fillText('words →', W - P.r, H - P.b + 18);
       c.save(); c.translate(11, P.t + 2); c.rotate(-Math.PI / 2); c.textAlign = 'right';
-      c.fillText(net ? 'words gained ↑' : 'edits / month ↑', 0, 0); c.restore();
+      c.fillText(net ? 'words gained ↑' : age ? 'days untouched ↑' : 'edits / month ↑', 0, 0);
+      c.restore();
       c.globalAlpha = 1;
 
       // bubbles, largest first so the small ones stay clickable on top
@@ -322,13 +338,13 @@ function growth() {
       for (const f of files) {
         const w = this.at(f[this.unit], this.t);
         if (w == null || this.t < f.born - 0.5) continue;
-        const y = net ? this.at(f.n, this.t) : this.churn(f, this.t);
+        const y = net ? this.at(f.n, this.t) : age ? this.age(f, this.t) : this.churn(f, this.t);
         const r = Math.max(2.5, Math.sqrt(f.edits) * 1.5);
         pts.push({ f, x: lx(w), y: ly(y ?? 0), r });
       }
       pts.sort((a, b) => b.r - a.r);
 
-      if (this.trails && this.picked) this.drawTrail(c, lx, ly, net);
+      if (this.trails && this.picked) this.drawTrail(c, lx, ly, net, age);
 
       for (const p of pts) {
         const g = this.data.groups[p.f.g], s = this.slot(g);
@@ -359,13 +375,13 @@ function growth() {
       }
     },
 
-    drawTrail(c, lx, ly, net) {
+    drawTrail(c, lx, ly, net, age) {
       const f = this.picked, s = f[this.unit];
       c.beginPath();
       let started = false;
       for (let k = 0; k <= Math.round(this.t); k++) {
         if (s[k] == null) continue;
-        const y = net ? f.n[k] : this.churn(f, k);
+        const y = net ? f.n[k] : age ? this.age(f, k) : this.churn(f, k);
         const x = lx(s[k]), yy = ly(y ?? 0);
         started ? c.lineTo(x, yy) : (c.moveTo(x, yy), started = true);
       }
