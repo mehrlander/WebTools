@@ -45,7 +45,7 @@ configured repo already on the new name. Fields:
   "landing": "pages/landing.html",
   "pages": [
     { "path": "pages/news/news.html", "title": "News", "note": "The news dashboard.",
-      "appView": true, "viewLabel": "News", "icon": "ph-newspaper" }
+      "appView": true, "viewLabel": "News", "icon": "ph-newspaper", "slug": "news" }
   ],
   "pins": ["pages", "lib/alpineComponents", "docs/CONVENTIONS.md"],
   "stage": {
@@ -55,6 +55,24 @@ configured repo already on the new name. Fields:
   "conventions": "optout"
 }
 ```
+
+A promoted page's `slug` is the one field that is an address rather than a
+description of one. `?app=news` opens it, which is short because a path is most
+of an address and none of the meaning, and a slug is a name. It resolves only
+against the collected app views, so it is meaningful with `appView: true` and
+inert without it, and a slug that no repo declares lands the reader on the
+estate rather than an empty frame.
+
+A deep link INTO a promoted page rides the fragment, not the query. The shell
+owns the query and the subject owns the fragment, so
+`?app=news#view=archive&q=budget` hands `view=archive&q=budget` to the page as
+its own params, and neither side needs to know the other's key names. That
+matters because they would otherwise have to: the shell's route table and a
+framed page's params already collide on `view` and `tab`, and the pages gallery
+claims `q` from outside the route table, where a convention would never have
+looked. The rule and its fallback for contexts that strip the '#' are in
+[`lib/kits/url-params.js`](../lib/kits/url-params.js) (`subject()`), pinned by
+`tools/test/url-params.test.mjs` and `tools/test/app-view-address.test.mjs`.
 
 Every path in that config is an address, and nothing used to read them: `dead-links.py` enumerates a repo with `git ls-files *.md`, so a declared page could be moved or deleted with no check anywhere noticing. [`scripts/declared-paths.py`](../scripts/declared-paths.py) checks `landing`, `pages[].path` and `stage.files` against the working tree and sibling checkouts, and belongs in the declaring repo's own verify suite: the mover is the only party who can catch a rename at the moment of the rename. That makes declaring a page load-bearing rather than decorative. If it is worth another repo embedding, it is worth declaring here.
 
