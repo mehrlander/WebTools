@@ -295,16 +295,24 @@ test('readership joins the repo-qualified cache path to the hub-relative registr
   assert.equal(data.docReadsSessions, 42);
   assert.equal(data.docReadLabel({ path: 'docs/show-repo.md', reach: 'project' }), '9 reads');
   assert.match(data.docReadHint({ path: 'docs/show-repo.md', reach: 'project' }), /9 of 42/);
-  assert.match(data.docReadHint({ path: 'docs/show-repo.md', reach: 'project' }), /file tools only/,
-    'the counting caveat moved from the retired standing paragraph into the title');
+  assert.match(data.docReadHint({ path: 'docs/show-repo.md', reach: 'project' }), /shell reads/,
+    'the counting caveat moved from the retired standing paragraph into the title, and names both channels');
   // Another repo's docs/ file is in the same rollup and must not be read as this one's.
   assert.equal(data.docReadLabel({ path: 'docs/elsewhere.md', reach: 'orphan' }), '');
 });
 
-test('an injected doc says so instead of reporting the zero no file tool can avoid', () => {
+// The label used to close with "not measurable here, and not zero". The first
+// half is a fact about this column; the second was a claim about a delivery
+// path nothing was checking, and it was false from 2026-08-07, when the hook
+// carrying both documents began arriving as a 2 KB preview of 36 KB. So what is
+// pinned here is that the label states the limit rather than vouching for the
+// channel: a tooltip is a bad place to keep a promise nothing enforces.
+test('an injected doc says what this column cannot see, not that the text arrived', () => {
   const injected = { path: 'docs/CONVENTIONS.md', reach: 'injected' };
   assert.equal(data.docReadLabel(injected), 'injected');
-  assert.match(data.docReadHint(injected), /not zero/);
+  assert.match(data.docReadHint(injected), /cannot measure it/);
+  assert.doesNotMatch(data.docReadHint(injected), /not zero/,
+    'the retired half: never vouch for a delivery path from a tooltip');
   // Unmeasurable stays distinguishable from unread: injected carries a word,
   // a never-opened doc shows nothing at all (the tail hides on empty).
   assert.equal(data.docReadLabel({ path: 'docs/nobody-opens-this.md', reach: 'orphan' }), '');
