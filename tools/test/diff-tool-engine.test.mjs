@@ -32,6 +32,9 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 // The kit: a plain IIFE that attaches window.textDiff.
 const kitSrc = await readFile(path.join(repoRoot, 'lib', 'kits', 'text-diff.js'), 'utf8');
 const win = globalThis;
+// The ambient bundle first, the same order gh-boot's BOOT manifest uses: the
+// kit escapes through window.esc, which this file supplies.
+new Function('window', await readFile(path.join(repoRoot, 'lib', 'vanilla-bundle.js'), 'utf8'))(win);
 new Function('window', kitSrc)(win);
 const textDiff = win.textDiff;
 assert.ok(textDiff && textDiff.lines, 'kits/text-diff.js did not attach window.textDiff');
