@@ -116,10 +116,23 @@ or muted ink; a coloured mark beside them carries identity), and the sign
 already says which direction the number went. Colour lives on the sparkline,
 which is a mark.
 
-The chart itself is deliberately not in Map. It is already an app view, a peer
-of Repos and Stage, so putting it in a tab as well would be a second door to
-one thing. What Map adds is what the chart cannot do from its own view: the
-trend in place, on the table where the question is actually asked.
+The chart itself is in Map too, as its own **Growth** tab, which frames the page
+rather than porting it. That tab is lazily mounted (`x-if`, not `x-show`), so
+opening the Map on any other tab never fetches a payload nobody asked to see,
+and it routes through the toss renderer when a `?use=` ref is set, since Pages
+serves the page file from main regardless.
+
+The two are not redundant, and the split is the point: **Docs answers "is this
+document growing", one row at a time, and Growth answers "what is the whole
+corpus doing", every file at once and moving.** A sparkline cannot show a file
+overtaking another, and a bubble cloud cannot tell you which row of a registry
+to go read.
+
+I argued against the tab first, on the grounds that the chart was already an app
+view and a second entry would be a second door to one thing. That was wrong in a
+specific way worth keeping: an app view and a Map tab are not two doors to one
+room, because Map is where this estate goes to ask questions *about itself*, and
+a corpus-wide view of its own documentation belongs there whatever else exists.
 
 The payload is optional here. It is refreshed on demand rather than by a hook,
 so a missing or stale one costs the sparklines and nothing else; the tab is the
