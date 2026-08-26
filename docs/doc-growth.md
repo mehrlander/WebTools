@@ -70,6 +70,18 @@ write never returns. A repo small enough to fit both sides in 64K runs clean and
 hides it, which is exactly what happened here, and the failure looks like a hang
 rather than an error. The request list is fed from a thread.
 
+## In the app
+
+Both web-tools and home promote this page as an app view through their
+`.web-tools.json` manifests, and they differ only in which payload it reads:
+`?app=doc-growth` opens web-tools' own, `?app=home-growth` opens home's. That
+needed `pages[].query` on a promoted page, since a manifest could previously
+name a page but not its subject, and the query is part of the view's identity
+key so the two promotions are two entries rather than one.
+
+The slugs differ on purpose. Slug uniqueness is not enforced across repos, and
+a collision resolves to whichever entry sorts first rather than erroring.
+
 ## Verifying it against the real CDN
 
 `npm run shot` mirrors CDN requests from `node_modules` through

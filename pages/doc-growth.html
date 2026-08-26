@@ -430,7 +430,15 @@ async function loadPayload(q) {
     headers: { Accept: 'application/vnd.github.raw', ...(token && { Authorization: `Bearer ${token}` }) },
   });
   if (!r.ok) throw new Error(`${src} (HTTP ${r.status}${r.status === 404 && !token ? ', no stored token' : ''})`);
-  return r.json();
+  // The raw media type is a request, not a guarantee: anything that does not
+  // honor it answers with the contents envelope instead, and the payload is
+  // then base64 inside `content` rather than the body. Both shapes are normal.
+  const d = await r.json();
+  if (d && d.content && d.encoding === 'base64') {
+    const bin = atob(String(d.content).replace(/\s/g, ''));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0))));
+  }
+  return d;
 }
 </script>
 
