@@ -60,6 +60,7 @@ tools/render/scenarios/annotate-stitch.mjs,"the composer pad's stitch key: a car
 tools/render/scenarios/annotate-tap-canvas.mjs,"a tap on the blank canvas below the text, which jsdom cannot judge: whether it reaches a listener at all, and whether the painted rects say it missed the words",tools/render/scenarios,103,driver,no,no,no
 tools/render/scenarios/annotate-triple-tap.mjs,"the buffer scrolled to its newest line in a box of whole lines, then three taps in a run taking the whole thing",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/annotate-units-demo.mjs,"the two unit modes, element pick and region drag, driven through real pointer events",tools/render/scenarios,54,driver,no,no,no
+tools/render/scenarios/branch-address.mjs,,tools/render/scenarios,83,driver,no,no,yes
 tools/render/scenarios/branch-brief-errors.mjs,"the branch page's failure states, driven through the real load() path",tools/render/scenarios,59,driver,no,no,no
 tools/render/scenarios/branch-deck.mjs,,tools/render/scenarios,131,driver,no,yes,no
 tools/render/scenarios/branch-file-card.mjs,a branch row's file pair opened as a card over the seeded Activity view,tools/render/scenarios,140,driver,no,no,no

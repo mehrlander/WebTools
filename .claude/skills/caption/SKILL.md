@@ -1,24 +1,24 @@
 ---
 name: caption
 description: >-
-  Emit the surfacing caption for the current branch: the uniform file list
-  with [new]/[main]/[diff] links plus ⭐/🥏/📦 render lines, at full
-  (everything since main), turn (this turn's files), bare (just the 🧭 guide
-  link), or recap (the full caption wrapped in a fixed-form session re-entry)
-  size. Also the engine for syncing a guide PR body's managed region. Use
-  when the user says "caption" or asks for the file-link list, when a guide
-  PR body needs a sync after a push, or when the user says "reorient",
-  "recap", "catch me up", or "where are we".
+  Emit the surfacing caption for the current branch: the 🌿 branch-page line
+  with the file count and the turn's commit, plus ⭐/🥏/📦 render lines and
+  the 🧭 guide pointer, at closer (the default), files (the enumerated
+  [new]/[main]/[diff] list, for a reader with no GitHub token), or recap (the
+  closer wrapped in a fixed-form session re-entry) size. Also the engine for
+  syncing a guide PR body's managed region. Use when the user says "caption"
+  or asks for the file-link list, when a guide PR body needs a sync after a
+  push, or when the user says "reorient", "recap", "catch me up", or "where
+  are we".
 ---
 
 # Caption
 
-The caption is a fixed, predictable way to surface files in chat: one uniform
-row per file, filename plain, link words tappable. This skill emits that
-format. Two questions are separable: which files (selection) and how each row
-reads (format). The sizes below are selection presets over the session's
-changes; a caption can also be requested on a topic (see Topical captions),
-where the user names the file set and change state is beside the point.
+The caption is the fixed, predictable close on a file-modifying turn. Since
+2026-08-26 it says **where to look** rather than listing what moved: the branch
+page enumerates the changed files already, grouped, current on every load, with
+each file's diff a tap away, so a hand-built list restates it, ages against it,
+and costs a turn's work to make. This skill emits that close.
 
 Formats follow the surfacing conventions (`docs/SURFACING.md` in
 `mehrlander/web-tools`, or the copy loaded in this session). Substitute the
@@ -26,17 +26,52 @@ current repo into all URL templates.
 
 ## Sizes
 
-- **full** (default): every file changed since main, from
-  `git diff origin/main...HEAD --name-status`.
-- **turn**: only the files this turn changed, taken from the conversation
-  context (git cannot see turn boundaries); the default closer for a
-  file-modifying reply.
-- **bare**: no list, just the 🧭 guide link; for turns that changed nothing.
-- **recap**: the re-entry size: the full caption wrapped in the session's
-  story, in the fixed form below. For "where are we", "catch me up", or a
-  long gap in the conversation.
+- **closer** (default): the 🌿 line, the render line, the 🧭 tail. What a
+  file-modifying reply ends with.
+- **files**: the enumerated `[new]/[main]/[diff]` list. Not the default: it is
+  the fallback for a reader with no stored GitHub token, or a repo whose branch
+  page is not deployed. Ask for it by name.
+- **recap**: the re-entry size: the closer wrapped in the session's story, in
+  the fixed form below. For "where are we", "catch me up", or a long gap in the
+  conversation.
 
-## Rows
+A caption can also be requested on a topic (see Topical captions), where the
+user names the file set and change state is beside the point; a topical caption
+is always enumerated, since there is no branch reading to point at.
+
+## The closer
+
+```
+🌿 [<branch>](…/pages/branch.html#gh=<owner>/<repo>@<branch>) · <N> files · [this turn](…/commit/<sha>)
+```
+
+- `<N>` is `git diff origin/main...HEAD --name-only | wc -l`.
+- `<sha>` is `git rev-parse HEAD`, the turn's own commit. It answers the one
+  question the page cannot, since the page reads the whole branch. Drop the
+  segment where `git rev-list --count origin/main..HEAD` is 1 and the branch and
+  the turn are the same thing.
+- Where the branch has a PR, address it as `#gh=<owner>/<repo>&pr=<n>` instead,
+  which resolves to the head and base the PR was opened against. See Tail.
+
+Two things it does not do. It **replaces the list, never the prose**: a turn
+that changed something non-obvious still says so in words, and a closer of two
+links over an unexplained change is the failure this shape invites. And it does
+not carry the render line, which follows it unchanged and under the same honesty
+gate.
+
+**Addressing one file, or one pane.** `&file=<path>` opens the page's file deck
+on that file; for a changed file that beats a `[new]` blob, since the slide
+carries the diff, the file rendered as itself, and the sidebar's compare bar,
+where the blob carries the tip alone. `&pane=files` opens on the file list
+rather than the guide. Both ride the standalone page and the in-app takeover
+(`app/?view=activity&detail=<owner>/<repo>@<branch>&pane=files&file=<path>`).
+
+## Rows (the `files` size)
+
+The enumerated form, kept because the branch page is token-gated and these are
+plain `github.com` links that resolve on any signed-in session. Reach for it
+when the reader has no stored token, when the repo has no deployed branch page,
+or when the user asks for it; not otherwise.
 
 One bullet per file, filename plain, link words tappable, rows uniform (no
 bullet swaps, no per-row icons), a file's links not repeated within a turn. A
@@ -218,7 +253,7 @@ fallback.
 
 ## The branch line (🌿) and its authored layer
 
-The full caption's judgment can ride the branch page instead of being re-typed
+The caption's judgment can ride the branch page instead of being re-typed
 per turn: `build-branch-review.mjs` (bundled beside this file) serializes it as
 a **branch-review/1 surface**, the authored envelope `pages/branch.html`
 renders over its live derived layer. This is the decided format: `/caption`
@@ -269,11 +304,15 @@ one link. Count the URL before writing it either way.
 
 ## Tail
 
-When the branch has a guide PR, close with **both** pointers, 🌿 first:
+The 🌿 line IS the caption now rather than a tail after a list, so it carries
+the closer's counts. When the branch has a guide PR, close with **both**
+pointers, 🌿 first:
 
 ```
-🌿 [branch](https://mehrlander.github.io/web-tools/pages/branch.html#gh=<owner>/<repo>&pr=<n>) · 🧭 [PR #N](<url>)
+🌿 [branch](https://mehrlander.github.io/web-tools/pages/branch.html#gh=<owner>/<repo>&pr=<n>) · <N> files · [this turn](…/commit/<sha>) · 🧭 [PR #N](<url>)
 ```
+
+Break it across two lines where it runs long on a phone, 🧭 on the second.
 
 They name the same PR and are not redundant, because they open different
 readings of it:
@@ -286,8 +325,10 @@ readings of it:
   the merge button. It is also the tokenless fallback when 🌿 will not resolve.
 
 With no PR, 🌿 still works on the branch alone
-(`#gh=<owner>/<repo>@<branch>`) and 🧭 is omitted. Drop 🌿 in a repo whose
-branches the viewer's token cannot read.
+(`#gh=<owner>/<repo>@<branch>`) and 🧭 is omitted. In a repo whose branches the
+viewer's token cannot read, 🌿 is dropped and the caption falls back to the
+`files` size, since dropping it otherwise leaves the turn with no account of
+what moved.
 
 ## The recap form
 
@@ -298,8 +339,9 @@ the user can scan by section.
 1. **Goal:** one sentence: what this session set out to do and why.
 2. **Decisions:** the choices settled so far, one line each, in the order
    they were made. State the decision, not the deliberation.
-3. **State:** the full caption: branch anchor, the file list per Rows above,
-   render lines, PRs and tracker tasks touched, the 🧭 tail.
+3. **State:** the closer: branch anchor, the 🌿 line with its counts, render
+   lines, PRs and tracker tasks touched, the 🧭 tail. Enumerate only at the
+   `files` size.
 4. **Open:** questions raised but not settled, one line each.
 5. **Next:** the immediate next actions, in order.
 
@@ -322,11 +364,12 @@ and the branch page's Files pane both derive that list and are current by
 construction, so a body row can only restate them and go stale. The body carries
 the judgment layer instead, a change-set paragraph in prose naming only the files
 with something non-obvious to say, paths plain and no link triplets
-(`docs/SURFACING.md`, "The body does not enumerate files"). The full
-`[new]/[main]/[diff]` caption above is the CHAT format. Emitting it into a body
-also walks the rows straight into the write-path fault below, which is how the
-contradiction stayed cheap enough to survive: it produced a body that was merely
-redundant most of the time and dead links some of the time.
+(`docs/SURFACING.md`, "The body does not enumerate files"). Chat closes the same
+way as of 2026-08-26, so the two are now one rule rather than two; the
+enumerated list is the tokenless fallback in both places. Emitting it into a
+body also walks the rows straight into the write-path fault below, which is how
+the contradiction stayed cheap enough to survive: it produced a body that was
+merely redundant most of the time and dead links some of the time.
 
 **Count every URL you write to a body or a comment.** The GitHub MCP write path
 wraps a URL of 150 characters or more in backticks, storing the link as literal
