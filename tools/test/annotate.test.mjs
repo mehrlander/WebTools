@@ -1284,6 +1284,44 @@ test('the launcher-staged page draft opens idle: an offer, not a recorder', () =
   A.disable();
 });
 
+test('an unaimed note is a page note, and the menu names the aim in force', async () => {
+  // The page was a chip on the header, which read as though page association
+  // were something a control supplied. It never was: mdHead and jsonFor put the
+  // title and address at the head of every serialization, whatever the target.
+  // What the page target carries is the ABSENCE of an anchor, so it is what an
+  // unaimed note resolves to, and the card offers only the aims that are not
+  // the default.
+  A.enable({ doc, subject: { title: 'x', url: 'https://e.test/p' } });
+  A.clear();
+  const S = A._state;
+
+  const bare = A.add(null, 'no aim at all');
+  assert.deepEqual(bare.target, { type: 'page' }, 'an omitted target is the page');
+  assert.match(A.toMarkdown(), /## 1\. the page/, 'and it serializes as one');
+
+  // The button carries the aim in force, which at rest is the default.
+  assert.equal(S.aimLabel.textContent, 'Page');
+  assert.equal(S.aimMenu.style.display, 'none', 'and the alternatives cost nothing until asked for');
+
+  S.aimBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.aimMenu.style.display, 'block');
+
+  // Arming an aim renames the button and lights it, so a mode is never a state
+  // you have to remember being in.
+  S.modeChips.region.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.aimLabel.textContent, 'Region');
+  assert.equal(S.aimBtn.style.backgroundColor, 'rgb(250, 204, 21)');
+  assert.equal(S.aimMenu.style.display, 'none', 'and picking closes the menu');
+
+  // AND PAGE IS THE WAY OUT. Backing out of a mode used to mean knowing to tap
+  // the lit chip again, an exit with nothing on screen naming it.
+  S.pageChip.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.mode, null, 'the mode is off');
+  assert.equal(S.aimLabel.textContent, 'Page');
+  A.clear();
+  A.disable();
+});
+
 test('the card spends its whitespace evenly: an empty list is not a band', () => {
   // The list's bottom padding separates the last note from the card's edge.
   // With no notes there is nothing to separate, and the 8px stacked under the
@@ -1300,7 +1338,10 @@ test('the card spends its whitespace evenly: an empty list is not a band', () =>
   A.add({ target: { type: 'page' }, note: 'one' });
   assert.equal(S.listEl.style.paddingBottom, '8px', 'and it returns with the first note');
 
-  assert.match(S.pageChip.getAttribute('style'), /min-height:\s*28px/, 'and a chip plus its group border makes 30');
+  // The aim button is the header's third control and matches the two beside
+  // it: a control half the height of its neighbours reads as a label that
+  // happens to be tappable.
+  assert.match(S.aimBtn.getAttribute('style'), /min-height:\s*30px/, 'and the aim button matches the title and the eye');
   A.disable();
 });
 

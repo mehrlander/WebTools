@@ -16,6 +16,13 @@
 // it, and the pane showing the bytes Copy would hand over rather than a
 // description of them.
 export default async (page) => {
+  // The aims moved behind one menu button, so reaching one is two taps rather
+  // than one. Opening first, by the button's own title, keeps the scenario
+  // driving the same controls a reader does instead of calling the API.
+  const aim = async (title) => {
+    await page.click('button[data-annotate-ui][title^="What the next note is about"]');
+    await page.click(`button[data-annotate-ui][title^="${title}"]`);
+  };
   await page.waitForSelector('#doc h1', { timeout: 15000 });
   const q = new URL(page.url()).searchParams;
   const reading = q.get('reading') || 'notes';
@@ -75,7 +82,7 @@ export default async (page) => {
 
     // A page note takes no gesture at all, which is the case the other targets
     // cannot serve: a complaint about the document itself.
-    await page.click('button[data-annotate-ui][title^="Note this page as a whole"]');
+    await aim('Note this page as a whole');
     await save('Three sections in and the scope is still not stated.');
   }
 
