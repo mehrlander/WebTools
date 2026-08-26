@@ -1,0 +1,4 @@
+date,target,units,words_before,words_after,floor_pct,achieved_pct,real_losses,caught_by
+2026-08-26,web-tools docs/SURFACING.md primitives,155,3226,1772,33,45,6,check.py stage two
+2026-08-26,web-tools docs/CONVENTIONS.md,94,1599,1389,20,13,0,-
+2026-08-26,web-tools docs/SURFACING.md primitives (rebased on #505/#507),155,3342,2087,33,38,0,-
