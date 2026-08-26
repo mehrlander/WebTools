@@ -114,21 +114,25 @@ This prose is the authoritative statement of the primitives; [`docs/surfacing.js
 
   Keep the reply and the guide body in sync. A bare reply implies nothing is viewable yet. The render line is part of the caption at **every size**, turn-size refinement closers included: the smaller a diff feels, the more the reader wants to look, so if there is no render link, say why (the renderer itself is what changed, the page's data is an untracked build artifact), never omit it silently.
 * **Session diff:** summarize substantial work with `Session diff: [main...branch](url)`.
-* **Closing state:** every reply that finishes work or proposes more ends with exactly one of seven labeled states, so the cheapest useful answer is one word. The bold label carries the meaning; the color makes it scannable:
+* **Closing state:** end a reply that finishes work, proposes work, or leaves something open with exactly one state. It says what posture the session is in, so the next move is cheap to recognize.
 
-  - 🟢 **Ready to continue:** named work available on "go", listed as bullets. "Go" authorizes only what the list names, and "go 1, 3" takes a subset. Work the session conceives belongs here as a proposal (Keep focus), never done unprompted.
-  - 🟡 **Decision needed:** continuation depends on the user's call, and the state names the decision.
-  - ⚪ **Natural stopping point:** no further work proposed; the wrap-up offer lives here.
-  - 🔵 **Short answer:** for an answer-only or answer-mainly response, briefly restate what was asked and the answer.
-  - 🟠 **Attention:** something concrete needs addressing before proceeding. Reserved for an actual problem or risk, not routine uncertainty. Amber is the alarm here, and red is not a louder version of it.
-  - 🟣 **Merged:** this workstream's branch merged. One line on what shipped.
-  - 🔴 **Closed:** this workstream's branch abandoned, its PR closed unmerged. Say why in one line.
+  - 🟢 **Ready to continue:** work is ready to do now. Name the work available on "go"; "go 1, 3" takes a subset. Work the session conceives is proposed here, never done unprompted (Keep focus).
+  - ❇️ **Ready to assess:** a question is ready to investigate. "Go" means assess it and report back, not implement whatever the assessment suggests.
+  - 🟡 **Pending:** keep this visible, but not ready yet. Use it for work waiting on another action, an answer, or a dependency.
+  - 🆚 **Choice needed:** a genuine choice remains. Give the assessment and the recommendation, then state what the user needs to choose.
+  - 🟠 **Attention:** a concrete problem or risk to address before going further, not routine uncertainty. Amber is the alarm here, and red is not a louder version of it.
+  - ⚪ **Clean exit:** work here is done. Recommend wrapping up or merging.
+  - 🟣 **Merged:** this workstream's branch merged. Say what shipped in one line.
+  - 🔴 **Closed:** this workstream's branch closed unmerged, the same red show-repo's Activity list and GitHub already paint on a closed branch. Say why in one line.
+  - 🔵 **Short answer:** answered, with no work proposed. The marker carries "Short answer," so the bold lead is a short, recognizable version of the question with the answer right behind it: 🔵 **Did we get to the double back tap?** No. Shorten toward the sharper question, never the safer one.
 
-  **🟢, 🟡 and 🟠 all put something to the reader to act on, so write each one to be understood on its own.** Keep it to one or two lines, but describe each piece with simple precision, not terms that may have been established in the text above. If you refer to a file, link the file. The reader should not need to read the whole message in order to understand what is being proposed: the purpose is to highlight the decision so the reader can decide whether to read the full message or not.
+  Keep the states literal. The one that needs guarding is 🆚, since it is the easiest to reach for: **uncertainty alone is not a choice.** When the session could reasonably investigate the question itself, that is ❇️.
 
-  **Red marks a terminal state, not an alarm.** That is the whole rule, and it is why the escalating state is amber while the finished one is red: a closed branch is usually a decision rather than a failure, and nothing follows it. Red was banned outright until 2026-08-16, on the reading that it could only ever mean panic. Adopting it here settles a split instead, since show-repo's Activity list has always painted a closed branch's rail red, matching Claude Code's own session list and GitHub. A closing state and a branch rail now say the same thing in the same color. ⚫ is retired; a reply written before the change keeps it.
+  Keep each state short and understandable on its own. Where it names something the reader may act on, name the concrete thing rather than leaning on terms established above, and link the file if one is relevant: the reader should be able to tell what is being proposed without reading the message it closes. When a reply ends on the state it ended on last time and nothing has moved, say so in one line instead of restating the case.
 
-  The last two mark the branch, not a task: a task dropped inside a live branch is ⚪.
+  🟣 and 🔴 mark the branch, not a task. A task dropped or deferred inside a live branch does not make the branch 🔴.
+
+  Revised 2026-08-26. The old 🟡 read **Decision needed** and became the catch-all for anything needing the user at all, so a finished, green PR whose merge the session had already recommended was closed 🟡 on two turns running. ❇️ gives uncertainty somewhere to go besides the user's lap, 🆚 keeps what is genuinely a choice, and ⚪ says the work is done rather than that nothing more is proposed. Older replies keep the markers they were written with, ⚫ among them.
 * **External proxies:** prohibited. Third-party GitHub renderers such as `htmlpreview.github.io`, `raw.githack.com`, and `gitcdn.link` fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
 * **Subscribe the workstream PR 📬:** on creating a workstream's pull request, call `subscribe_pr_activity` for it. The body is the surfacing moment going out; the subscription is the way back in, and a session that opens a PR without one has built a mailbox it cannot hear. Three words carry the behavior and they are not interchangeable:
 
