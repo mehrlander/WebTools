@@ -68,7 +68,18 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
 
 * **Task marker 🎫.** Where the repo uses [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md), surface a task as `🎫 [title](<task blob url>)`. The filename id never shows.
 
-* **Surfacing caption.** End a file-modifying turn with a uniform bulleted file list; filenames stay plain and link words are tappable.
+* **Surfacing caption.** End a file-modifying turn by saying **where to look**, not by listing what moved. The branch page already enumerates the changed files, grouped through the content registry, current on every load, each file's diff a tap away; a hand-built list can only restate that, go stale against it, and spend a turn's work being produced. Name in the prose the files with something non-obvious to say, linked per Reference is a link, and enumerate nothing.
+  **Form:**
+  ```
+  🌿 [<branch>](…/pages/branch.html#gh=<owner>/<repo>@<branch>) · <N> files · [this turn](…/commit/<sha>)
+
+  🥏 [pages/index.html](…)
+  ```
+  `<N>` is `git diff origin/main...HEAD --name-only | wc -l`. `this turn` is that turn's own commit, and it answers the one question the page cannot, since the page reads the whole branch; drop it where the branch has a single commit and the two say the same thing. The render line is unchanged and still follows.
+
+  **Addressing one file, or one pane.** `&file=<path>` on the branch page opens its file deck on that file, and for a changed file that beats a `[new]` blob: the slide carries the diff, the file rendered as itself, and the sidebar's compare bar, where the blob carries the tip alone. `&pane=files` opens on the file list rather than the guide. Both ride the standalone page and the in-app takeover (`?view=activity&detail=owner/repo@branch&pane=files&file=<path>`).
+
+  **Where the enumerated list still applies.** The branch page is token-gated, so a reader with no stored token, or a repo with no deployed page, needs the list; ask for it as `/caption files`. Its rows stay uniform, filenames plain, link words tappable, and a file's links are not repeated within a turn:
 
   | File state | Links |
   | --- | --- |
@@ -76,13 +87,10 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
   | New | `[new]`, or `[new]/[diff]` after several branch commits |
   | Deleted | `[main]/[diff]` |
 
-  `[new]` is the branch tip, `[main]` the baseline; `[main]/[diff]` is the net change against main and `[new]/[diff]` is on-branch history. Add `#L120` or `#L120-L145` for line anchors. Keep rows uniform and do not repeat a file's links within a turn. When a renderable page changed, put its 🥏 or 📦 render after the list, not in a row: the list carries source, the render line carries the running page. Keep the reply and the guide body in sync.
-  **Form:**
-  ```
-  - pages/index.html ([new](…), [main](…)/[diff](…))
+  `[new]` is the branch tip, `[main]` the baseline; `[main]/[diff]` is the net change against main and `[new]/[diff]` is on-branch history. Add `#L120` or `#L120-L145` for line anchors.
 
-  🥏 [pages/index.html](…)
-  ```
+  Decided 2026-08-26, extending to chat the 2026-08-08 decision that took the file list out of the guide PR body. That decision carved chat out as the place "where no Files tab exists," which was true when it was written; deploying `pages/branch.html` as a canonical address removed the premise, and nobody went back to re-ask the question.
+
   In an MCP-written body, **150 characters or more inside a markdown link is wrapped in backticks and renders as literal text; 149 or fewer survives.** Length only: the label does not contribute, however long it runs. The count applies to a URL **anywhere in the text**, not only inside a link, since a plain code span at 150 or more is stored double-backticked with quotes added around the address. Both write paths, a PR body and an issue comment alike. Chat replies are untouched and keep the full forms.
 
   Count the URL and get under 150, in this order:
@@ -95,7 +103,7 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
   | a deep `:path` in a toss | the branch page, or a `#gz=` in chat |
   | anything still over | drop the render link from the body; put it in the chat caption |
 
-  **Boundary:** apply the ⭐ honesty gate. The render line belongs to every size, turn-size closers included; where there is no render link, say why rather than omitting it. A bare reply implies nothing is viewable yet. `[main](…)/[diff](…)` slash-joined pairs are the same arithmetic over a longer span, not an exception: `)/[` does not end the URL, so the count runs from the first URL's first character through the second URL's last, joining punctuation and the second label included. Separate them with `, `, which ends the run and puts each URL back on its own count. The 150-character measurement, with every probe and control: [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
+  **Boundary:** apply the ⭐ honesty gate. The render line belongs to every size; where there is no render link, say why rather than omitting it. A bare reply implies nothing is viewable yet. The 🌿 line replaces the list, never the prose: a turn that changed something non-obvious still says so in words, and a closer of two links over an unexplained change is the failure this shape invites. Where the enumerated list is used, `[main](…)/[diff](…)` slash-joined pairs are the same arithmetic over a longer span, not an exception: `)/[` does not end the URL, so the count runs from the first URL's first character through the second URL's last, joining punctuation and the second label included. Separate them with `, `, which ends the run and puts each URL back on its own count. The 150-character measurement, with every probe and control: [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
 * **Session diff.** Summarize substantial work with `Session diff: [main...branch](url)`.
 
 * **Closing state.** End a reply that finishes work, proposes work, or leaves something open with exactly one state. It says what posture the session is in, so the next move is cheap to recognize.
@@ -110,7 +118,7 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
   - 🔴 **Closed:** this workstream's branch closed unmerged. Say why in one line.
   - 🔵 **Short answer:** answered, with no work proposed. The marker carries "Short answer," so the bold lead is a short, recognizable version of the question with the answer right behind it: 🔵 **Did we get to the double back tap?** No. Shorten toward the sharper question, never the safer one.
 
-  **Boundary:** keep the states literal. **Uncertainty alone is not a choice:** where the session could reasonably investigate the question itself, that is ❇️. Write each state to be understood without the message it closes: name the concrete thing rather than leaning on terms established above, and link the file where one is relevant. Where a reply ends on the state it ended on last time and nothing has moved, say so in one line instead of restating the case. 🟣 and 🔴 mark the branch, not a task; a task dropped or deferred inside a live branch does not make the branch 🔴. Older replies keep the markers they were written with, ⚫ among them.
+  **Boundary:** Write each state to be understood without the message it closes: do not lean on terms established above, and link referenced files. A wake from CI or other subscribed event should not re-summarize the closing state. 🟣 and 🔴 mark the branch, not a task; a task dropped or deferred inside a live branch does not make the branch 🔴. Older replies keep the markers they were written with, ⚫ among them. Where the session could reasonably investigate the question itself, that is ❇️.
 * **External proxies: prohibited.** Never `htmlpreview.github.io`, `raw.githack.com`, `gitcdn.link` or their kin: they fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
 
 * **Subscribe the workstream PR 📬.** On creating a workstream's pull request, call `subscribe_pr_activity` for it.
@@ -127,7 +135,7 @@ It leads with:
 1. **Outcome + why:** one sentence, no preamble.
 2. **The thing to open:** ⭐ hosted URL, else 🥏 branch toss, else an honest `[new]` source view.
 
-**The body does not enumerate files.** GitHub's Files tab and the branch page's Files pane already do, current by construction, the branch page grouping them through the repo's content registry where one is declared (`content-registry` owns that convention). What the body carries instead is what no derived list can produce: a change-set paragraph in prose, naming only the files with something non-obvious to say (paths plain; the branch page styles them), `renders on:` consumers for a shared component, and only non-obvious notes. The full `[new]/[main]/[diff]` caption stays the CHAT format, where no Files tab exists. Bodies written before 2026-08-08 keep the Changed list they were written with.
+**The body does not enumerate files.** GitHub's Files tab and the branch page's Files pane already do, current by construction, the branch page grouping them through the repo's content registry where one is declared (`content-registry` owns that convention). What the body carries instead is what no derived list can produce: a change-set paragraph in prose, naming only the files with something non-obvious to say (paths plain; the branch page styles them), `renders on:` consumers for a shared component, and only non-obvious notes. The chat reply answers to the same rule (Surfacing caption). Bodies written before 2026-08-08 keep the Changed list they were written with.
 
 ### The guide PR
 
