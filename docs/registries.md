@@ -249,6 +249,21 @@ declares them in its own properties registry; the repo-level table covers the
 repo's own carriers and does not enumerate a project's internals. The integrity
 rule spans levels unchanged: no pair, anywhere, has two owners.
 
+### The level above: the estate
+
+The same delegation runs one level up, and there `span` says which way. A
+hub-scoped registry is bounded by this checkout; an estate-scoped one holds an
+aggregate of rows each repo authors about itself, the crawl collecting rather
+than the hub inspecting. Four of twenty-two currently span the estate.
+
+A third shape does not fit the table at all: a governed artifact each repo
+carries with no aggregate anywhere, which is why `.paths.json` is still
+unregistered after the audits kept naming it. The gate requires a carrier that
+exists here and is a CSV, and both facts about `.paths.json` are the opposite.
+That refusal is correct, and [estate-span.md](estate-span.md) is where it is
+recorded, along with the outbound/inbound asymmetry it belongs to and the
+measurement behind the column.
+
 ### Two normal forms, and how to pick
 
 budget-drs's `properties.csv` and this repo's registry pair express the same

@@ -1,0 +1,267 @@
+// The 24-hour source strip: what the estate DID, drawn from the only timestamps
+// that say so.
+//
+// The reading this replaces was `updated`, the commit date of the cache file,
+// which is a fact about the crawl rather than about the estate. Every failure
+// mode here is the same one wearing a different hat: a number that looks like
+// source activity and is actually crawl activity. The strip makes that
+// substitution visible, so the tests are mostly about refusing it.
+//
+// No network, no pixels.
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { makeWindow, startAlpine, repoRoot } from './bootstrap.mjs';
+
+const HOUR = 3600 * 1000;
+const now = Date.now();
+const iso = (hoursAgo) => new Date(now - hoursAgo * HOUR).toISOString();
+
+// Two caches in the shape the kits actually build.
+const ACTIVITY = {
+  repos: {
+    'me/a': { recentCommits: [{ sha: 'a2', date: iso(1) }, { sha: 'a1', date: iso(5) }] },
+    'me/b': { recentCommits: [{ sha: 'b1', date: iso(12) }, { sha: 'b0', date: iso(40) }] },
+  },
+};
+const SESSIONS = {
+  rows: [
+    // A LIVE session: started outside the window, still writing. The recorder is
+    // a Stop hook and fires every turn, so `ended` walks forward while `started`
+    // stays pinned. This row is the whole reason the rail reads `ended`.
+    { started: iso(30), ended: iso(0.2) },
+    { started: iso(2), ended: iso(1.5) },
+    { started: iso(40), ended: iso(39) },
+  ],
+};
+
+class FakeGH {
+  constructor(conf = {}) { this.repo = conf.repo || ''; }
+  ago(){ return 'a while ago'; }
+  async ls(){ return []; }
+  async repos(){ return []; }
+  async history(){ return []; }
+  async req(){ throw new Error('404'); }
+  async get(p){
+    if (p.endsWith('activity.json')) return { text: JSON.stringify(ACTIVITY) };
+    if (p.endsWith('sessions.json')) return { text: JSON.stringify(SESSIONS) };
+    throw new Error('404');
+  }
+}
+
+const { window } = makeWindow({
+  html: `<!doctype html><html><body><div id="sv" x-data="stateView()"></div></body></html>`,
+});
+window.TOKEN = 'tkn';
+window.GH = FakeGH;
+window.__shell = { REGISTRY_REPO: 'me/registry', hasToken: () => true, crawlProgress: {}, crawlChecking: {} };
+
+const Alpine = await startAlpine(window, [
+  'lib/alpine-bundle.js',
+  'lib/kits/crawl-runs.js',
+  'lib/kits/repo-activity-cache.js',
+  'lib/alpineComponents/state-view.js',
+]);
+const data = Alpine.$data(window.document.getElementById('sv'));
+const row = (key) => data.rows.find(r => r.key === key);
+await data.loadPulse();
+
+test('only a row with a truthful stream gets a strip', () => {
+  // Repo configs stores one timestamp per history entry and it is the CRAWL's
+  // `at`, never the moment the manifest changed. A rail there would be a
+  // picture of when the cache was written under a label that says the estate
+  // moved, which is the substitution this whole reading exists to refuse.
+  assert.ok(data.pulse.activity, 'Branches draws commits');
+  assert.ok(data.pulse.sessions, 'Sessions draws session starts');
+  assert.equal(data.pulse.configs, undefined, 'Repo configs must draw nothing');
+  assert.equal(row('configs').stream, undefined);
+});
+
+test('only events inside the window get a tick', () => {
+  // 1h, 5h and 12h are in; the 40h commit is out. Counting it would make the
+  // rail claim a day held four commits when it held three.
+  assert.equal(data.pulse.activity.n, 3);
+  assert.equal(data.pulse.activity.ticks.length, 3);
+  // Two sessions were ACTIVE inside the day: the live one (last active 12
+  // minutes ago, though it began 30 hours ago) and the one that ended 1.5h ago.
+  // The 40h session is genuinely outside.
+  assert.equal(data.pulse.sessions.n, 2);
+});
+
+test('a tick is placed by time alone, left is older', () => {
+  const t = data.pulse.activity.ticks;
+  // 24h window: 12h ago sits at 50%, 5h at ~79%, 1h at ~96%. Sorted ascending,
+  // so the array is oldest first and the rail reads left to right.
+  assert.ok(t[0] < t[1] && t[1] < t[2], 'ascending in time');
+  assert.ok(Math.abs(t[0] - 50) < 1, `12h ago should sit mid-rail, got ${t[0]}`);
+  assert.ok(t[2] > 90, 'an hour ago sits hard right');
+});
+
+test('every tick is identical, so density is the only other variable', () => {
+  // The strip encodes time and count. A per-event magnitude would need a second
+  // variable, and no event here carries one: a commit is not bigger than
+  // another commit. Held in the template, since that is where a height or a
+  // heat scale would have to appear.
+  const src = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'state-view.js'), 'utf8');
+  const tick = src.slice(src.indexOf('x-for="(t, i) in (pulse['), src.indexOf('</template>', src.indexOf('x-for="(t, i) in (pulse[')));
+  assert.match(tick, /w-px h-3/, 'a fixed width and height');
+  // One colour class, with its alpha baked in, and the same one on every tick.
+  // The alpha is what makes overlap compound, so it belongs on the mark rather
+  // than on anything computed per event.
+  //
+  // PRIMARY, and not green: on this view green means one verb (bring this up to
+  // date) and lives on the Refresh controls alone, so tinting a reading with it
+  // would spend the one colour that still carries meaning here.
+  assert.match(tick, /bg-primary\/\d+/, 'one fixed accent and alpha');
+  // Only steps the app already generates. Tailwind's browser build emits an
+  // opacity modifier only where it finds one in the scanned source, so /45 and
+  // /15 rendered fully transparent here on 2026-08-22 while /20, /30 and /60,
+  // which the estate already used, resolved. A tick nobody can see is the
+  // failure this catches, and it looks identical to a quiet day.
+  assert.ok(/bg-primary\/(10|20|30|60|70)\b/.test(tick),
+    'use an opacity step the app already generates, or the tick paints transparent');
+  assert.doesNotMatch(tick, /height:|opacity:|scale/, 'nothing may vary per event');
+  // The alpha is on the tick itself so overlapping marks compound, which is how
+  // a dense hour gets darker without anything computing a density.
+  assert.match(tick, /:style="'left:' \+ t \+ '%'"/, 'position is the only bound style');
+});
+
+test('last change is the newest SOURCE event, not the cache commit', () => {
+  // The whole point. The cache file could have been committed a minute ago over
+  // a day-old commit, or hold a fresh commit and not have been rebuilt since.
+  const r = { ...row('activity'), builtAgo: 'THE CACHE COMMIT', builtAt: 'x' };
+  assert.equal(data.changeAgo(r), 'a while ago');
+  assert.match(data.changeTitle(r), /when the source last moved/);
+  assert.equal(data.pulse.activity.newest, iso(1));
+});
+
+test('a row with no stream still says when the cache was rebuilt', () => {
+  // `updated` remains exact for what it names. Two readings, two words.
+  const r = { ...row('configs'), builtAgo: '2d ago', builtAt: 'x' };
+  assert.equal(data.changeAgo(r), '2d ago');
+  assert.match(data.changeTitle(r), /when this cache file was last committed/i);
+});
+
+test('a quiet day reads as quiet, not as missing', () => {
+  const quiet = data.strip([{ t: now - 40 * HOUR, name: 'me/a', detail: '' }],
+                           now - 24 * HOUR, now - 40 * HOUR);
+  assert.equal(quiet.n, 0);
+  assert.equal(quiet.partial, false, 'the list reaches past the window, so the rail is trustworthy');
+  assert.equal(data.changeAgo({ stream: 'commits', key: 'x' }), 'unknown');
+});
+
+test('a list that runs out inside the window says so', () => {
+  // RepoActivityCache.COMMIT_CAP is 30 a repo, so a busy repo's stored history
+  // can be younger than a day. An empty left half then means "the list ended",
+  // not "nothing happened", and those must not read alike.
+  const short = data.strip([{ t: now - 2 * HOUR, name: 'me/a', detail: '' }],
+                           now - 24 * HOUR, now - 2 * HOUR);
+  assert.equal(short.partial, true);
+  data.pulse = { ...data.pulse, probe: short };
+  assert.match(data.pulseTitle({ key: 'probe', stream: 'commits' }), /unknown rather than quiet/);
+});
+
+test('teardown clears the tick and the listeners', () => {
+  data.destroy();
+});
+
+test('the rail says its own span, and says it once', () => {
+  // A row of marks over an unstated span is not a timeline: nothing on screen
+  // separates 24 hours from a week. The label is derived from the same number
+  // the arithmetic uses, since two copies of one figure is how a rail comes to
+  // say 24h over a week of events.
+  assert.equal(data.windowLabel, '24h');
+  assert.equal(data.WINDOW_H, 24);
+  assert.equal(data.rows.find(r => r.key === 'activity').window, '24h');
+  const src = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'state-view.js'), 'utf8');
+  const rail = src.slice(src.indexOf('const TICKS ='), src.indexOf('// THE BAR,'));
+  assert.match(rail, /x-text="\$\{r\}\.window"/, 'the label reads the row, never a literal');
+  assert.doesNotMatch(rail, />24h</, 'no typed copy of the span');
+});
+
+test('a session still running counts as active now, not at its start', () => {
+  // THE BUG THIS FILE EXISTS TO PREVENT REPEATING. `started` is pinned at
+  // session start; the recorder is a Stop hook firing every turn, so `ended`
+  // is the record's last-active stamp and the only one that tracks a live
+  // session. Drawing `started` put one tick at the top of a session and
+  // nothing across the hours it was working, so a session running right now
+  // read as silence.
+  const live = data.pulse.sessions;
+  assert.equal(live.newest, iso(0.2), 'the newest event is the live session, minutes ago');
+  // Its tick sits hard right, where a session active minutes ago belongs, and
+  // NOT off the left end where its 30h-old start would have put it.
+  assert.ok(Math.max(...live.ticks) > 99, 'the live session ticks at the right edge');
+});
+
+test('the two rails cannot contradict each other over one estate', () => {
+  // How this was caught: Branches showed commits 17 minutes old while Sessions
+  // claimed nothing in two hours, and every one of those commits was made by a
+  // session. A commit inside the window implies a session was active at least
+  // that recently, so the sessions rail must reach at least as far right as the
+  // commits rail. A single rail could never have run this check on itself.
+  const newest = (k) => Math.max(...data.pulse[k].ticks);
+  assert.ok(newest('sessions') >= newest('activity') - 1,
+    'commits with no session active around them means the wrong field is being drawn');
+});
+
+// ── The window, and the control that is the label ──────────────────────────
+
+test('cycling the window re-derives rather than re-reading', () => {
+  // The window is a reading of events already in hand, so changing it must not
+  // touch the network: two cache reads per tap would make a toggle cost what
+  // opening the view costs.
+  const before = data.pulse.activity.n;
+  data.cycleWindow();
+  assert.equal(data.WINDOW_H, 168);
+  assert.equal(data.windowLabel, '7d');
+  // 168h reaches the 30h and 40h events the 24h window excluded.
+  assert.ok(data.pulse.activity.n >= before, 'a wider window cannot hold fewer events');
+  assert.equal(data.pulse.sessions.n, 3, 'all three sessions are inside a week');
+  assert.equal(data.rows.find(r => r.key === 'activity').window, '7d', 'the label follows');
+  data.cycleWindow();
+  assert.equal(data.WINDOW_H, 24, 'two spans, so it cycles back');
+});
+
+test('a day is said in hours, a week in days', () => {
+  // "1d" reads as a rounding of something; "24h" is the span itself. And 168h
+  // states a week without communicating one.
+  data.WINDOW_H = 24;  assert.equal(data.windowLabel, '24h');
+  data.WINDOW_H = 168; assert.equal(data.windowLabel, '7d');
+  data.WINDOW_H = 24;
+  data.restrip();
+});
+
+// ── The tick under the pointer ─────────────────────────────────────────────
+
+test('the nearest event answers, which is what makes a 1px mark reachable', () => {
+  // A tick is 1px wide, so it is not a target for a thumb and barely one for a
+  // mouse. One overlay resolving the nearest event behaves the same either way
+  // and gets BETTER as the rail gets busier, where per-tick hit boxes would be
+  // piling on top of each other.
+  const marks = data.pulse.activity.marks;
+  assert.ok(marks.length && marks.every(m => 'left' in m && 't' in m && 'name' in m),
+    'position and identity travel together');
+  const box = { left: 0, width: 100 };
+  const ev = { currentTarget: { getBoundingClientRect: () => box }, clientX: marks[0].left };
+  data.peekAt(row('activity'), ev);
+  assert.equal(data.peek.key, 'activity');
+  assert.equal(data.peek.left, marks[0].left, 'the resolved mark is the nearest one');
+  assert.ok(data.peek.ago, 'it says when');
+  assert.ok(data.peek.name, 'and what');
+  // Aiming at the far end resolves to the far mark, not the first one.
+  data.peekAt(row('activity'), { ...ev, clientX: 100 });
+  assert.equal(data.peek.left, marks[marks.length - 1].left);
+  data.clearPeek();
+  assert.equal(data.peek, null);
+});
+
+test('a rail with no events cannot open a card', () => {
+  // An empty window is the common case on a quiet day, and a tap on it must do
+  // nothing rather than resolve to an event outside the span.
+  data.pulse = { ...data.pulse, empty: { marks: [], ticks: [], n: 0 } };
+  data.peekAt({ key: 'empty' }, { currentTarget: { getBoundingClientRect: () => ({ left: 0, width: 100 }) }, clientX: 50 });
+  assert.equal(data.peek, null);
+});
+

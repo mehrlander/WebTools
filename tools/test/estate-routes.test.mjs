@@ -22,8 +22,9 @@ const MANIFEST = {
   routes: [
     { key: 'map', address: '?view=map', label: 'Map', group: 'estate', what: 'the coordination layer',
       files: ['lib/alpineComponents/map.js'] },
-    { key: 'guides', address: '?view=guides', label: 'Guides', group: 'estate', what: 'the shelf',
-      files: ['lib/alpineComponents/estate.js', 'lib/kits/guide-index.js'] },
+    { key: 'sessions', address: '?view=sessions', label: 'Sessions', group: 'estate',
+      what: 'the work that made the branches',
+      files: ['lib/alpineComponents/estate.js', 'lib/kits/repo-sessions-cache.js'] },
     { key: 'landing', address: '?repo=owner/name', label: 'Landing', group: 'estate',
       what: 'a repo front door', files: [], note: 'inline in the shell' },
   ],
@@ -50,7 +51,7 @@ const VOCAB_CSV = csv(['registry', 'property', 'value', 'label', 'gloss'],
 // Newest first per path, so the ranking has something to order by.
 const COMMITS = {
   'lib/alpineComponents/map.js': { sha: 'aaaaaaa1', date: '2026-08-14T10:00:00Z', msg: 'map: registries tab' },
-  'lib/kits/guide-index.js':     { sha: 'bbbbbbb2', date: '2026-08-02T10:00:00Z', msg: 'guides: derive the session' },
+  'lib/kits/repo-sessions-cache.js': { sha: 'bbbbbbb2', date: '2026-08-02T10:00:00Z', msg: 'sessions: derive the branch' },
   // estate.js and the shell deliberately have no entry: one exercises the
   // no-commits path, the other must not date anything even when it does.
   'app/index.html': { sha: 'ccccccc3', date: '2026-08-14T23:00:00Z', msg: 'shell: route table' },
@@ -145,15 +146,15 @@ test('the loader asks for exactly the declared carriers plus the shell', async (
     'app/index.html',
     'lib/alpineComponents/estate.js',
     'lib/alpineComponents/map.js',
-    'lib/kits/guide-index.js',
+    'lib/kits/repo-sessions-cache.js',
   ]);
 });
 
 test('a carrier with no commits leaves its route undated rather than throwing', () => {
-  const guides = data.routeRows.find(r => r.key === 'guides');
-  // estate.js answered empty; guide-index.js dated the row.
-  assert.equal(guides.lastTouch.sha, 'bbbbbbb2');
-  assert.equal(guides.files.find(f => f.path === 'lib/alpineComponents/estate.js').touch, null);
+  const sessions = data.routeRows.find(r => r.key === 'sessions');
+  // estate.js answered empty; repo-sessions-cache.js dated the row.
+  assert.equal(sessions.lastTouch.sha, 'bbbbbbb2');
+  assert.equal(sessions.files.find(f => f.path === 'lib/alpineComponents/estate.js').touch, null);
 });
 
 test('the shell dates its own row and no route', () => {
@@ -163,7 +164,7 @@ test('the shell dates its own row and no route', () => {
 });
 
 test('rows rank freshest first, undated last', () => {
-  assert.deepEqual(plain_(data.routeRows.map(r => r.key)), ['map', 'guides', 'landing']);
+  assert.deepEqual(plain_(data.routeRows.map(r => r.key)), ['map', 'sessions', 'landing']);
 });
 
 test('open PRs join on the files they touch, and only those', () => {
@@ -260,4 +261,28 @@ test('the group is a row label read off the manifest, not a section', async () =
   assert.equal(data.routeGroupLabel('estate'), 'Estate');
   // An unknown key labels itself rather than rendering blank.
   assert.equal(data.routeGroupLabel('nope'), 'nope');
+});
+
+// The ref on the chip, which is the whole reason the reverse join is drawn on a
+// branch row at all. Before this the chip called the shell's own dispatcher,
+// which walks the page you are already on to that view: main, at the one moment
+// the branch was the point.
+test('a branch row chip opens the view running THAT branch', async () => {
+  await data.loadRoutes(true);
+  const sha = 'a'.repeat(40);
+  const r = data.branchRoutes({ repo: 'mehrlander/web-tools', name: 'claude/registries', sha });
+  assert.equal(r.on[0].key, 'map');
+  assert.equal(r.on[0].url,
+    'https://mehrlander.github.io/web-tools/app/?use=' + sha + '&view=map');
+});
+
+// A SHA and never the branch name: ?use= is interpolated straight into a
+// raw.githubusercontent path and every branch here has a slash in its name, so
+// a row the crawl has no tip for keeps the in-shell hop rather than minting an
+// address that may not resolve. The chip's title is what tells the reader.
+test('a row with no crawled tip keeps the old behavior instead of guessing', async () => {
+  await data.loadRoutes(true);
+  const r = data.branchRoutes({ repo: 'mehrlander/web-tools', name: 'claude/registries' });
+  assert.equal(r.on[0].url, '', 'no tip, no address');
+  assert.equal(r.on[0].key, 'map', 'the chip is still there');
 });

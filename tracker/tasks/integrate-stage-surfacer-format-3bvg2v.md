@@ -2,7 +2,7 @@
 id: integrate-stage-surfacer-format-3bvg2v
 title: Integrate the stage with the surfacer's .surface format
 status: done
-track: depends-on:stage-links-main-area-explorer-7a6gd7
+depends-on: stage-links-main-area-explorer-7a6gd7
 opened: 2026-07-14
 ---
 # Integrate the stage with the surfacer's .surface format

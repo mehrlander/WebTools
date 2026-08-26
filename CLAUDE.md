@@ -15,11 +15,14 @@ CONVENTIONS.md is one of several docs written to travel; the full to-go bag (con
 
 The mechanisms, what each reaches and misses, and the rule for picking one are **not restated here**. They live as data in [`docs/showing-mechanisms.csv`](docs/showing-mechanisms.csv) and render in the app's **Map view, Showing tab**; the frame and the record are in [`docs/showing.md`](docs/showing.md). This section used to be 1,589 words, 63% of this file, and it still did not stop a session with all of it in context from handing over the wrong link. The app holds it now.
 
-The one thing worth carrying in your head, because it is the trap:
-
-> **`?use=` swaps only the code a page LOADS.** github.io serves the page **file** from the default branch, so a change to a page's own shell (its markup, an inline `x-data`) shows the old shell wrapped around new lib, silently. Shell change → 🥏 toss `pages/toss-render.html?use=<ref>#gh=mehrlander/web-tools@<ref>:pages/<page>.html`. Lib change → ⭐ `pages/<page>.html?use=<ref>`.
-
-The honesty rule still applies: only a page renders this way; for a kit or doc, ⭐ links the `[new]` blob. Say when no link can show a change, and send a headless screenshot instead.
+**So do not decide it by reading. Run it:** `npm run showing` reads the branch's
+changed files and prints the render line to paste, or an honest no-link with the
+reason ([`scripts/showing.py`](scripts/showing.py); `/caption` calls it). It
+happened again on 2026-08-22, with the `?use=` trap itself in context, which is
+why the last rule this section stated in prose is now executable. The honesty
+rule survives, since no script supplies it: only a page renders this way, for a
+kit or doc ⭐ links the `[new]` blob, and where no link reaches a change, say so
+and send a headless screenshot.
 
 ## Per-session refresh: thumbnails
 
@@ -45,13 +48,13 @@ Every **deterministic** derived artifact is owned by one commit-time hook, [`.gi
 
 - `lib/` changed → `npm run build:lib` → `dist/web-tools.js`
 - `pages/**/*.html` changed → `npm run pages-index` → `pages/README.md` + `pages/index.html`
-- skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` and `words` fields in `docs/docs.json`
-- `docs/docs.json` changed → `npm run docs-readme` → `docs/README.md`, then `npm run docs-reach` again (leg 3c)
+- skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` and `words` fields in `docs/docs.csv`
+- `docs/docs.csv` changed → `npm run docs-readme` → `docs/README.md`, then `npm run docs-reach` again (leg 3c)
 - `docs/SNAGS.md` changed → `npm run snags-index` → the index block at its top
-- `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.json`
+- `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.csv`
 
 `reach` and `words` are the odd ones: derived fields in an otherwise authored
-file, so `docs/docs.json` is hand-edited everywhere except those two keys.
+file, so `docs/docs.csv` is hand-edited everywhere except those two keys.
 `reach` says who can get to a doc and moves when a skill or page names a file,
 an edit nowhere near the registry; `words` says how much of the folder it is.
 The two disagree, which is why the Docs tab shows both: the orphans are the

@@ -42,7 +42,7 @@ states its `#gh=`-vs-`#gz=` split.
 Open a repo with `?repo=owner/repo`, optionally `&ref=<branch|tag|sha>`. Public
 repos browse with no auth; private repos and branches need the viewer's token.
 Deep-link params: `&view=` takes any of `estate`, `activity`, `sessions`,
-`guides`, `chats`, `todo`, `jots`, `stage`, `surfaces`, `tools`, `map`,
+`chats`, `todo`, `jots`, `stage`, `surfaces`, `tools`, `map`,
 `state`, `search`, `proposals`, `public`, `app` (the estate's own views) or
 `landing`, `pages`, `atlas`, `config`, `project` (a repo's). `files` and
 `branches` are retired per-repo views whose keys still resolve, to the Files
@@ -91,7 +91,7 @@ says. No other URL changes shape.
 all-repo context) or in a **repo** (a per-repo context with its own views).
 
 The **header carries the app-level nav**: a fixed, app-owned set of the estate's
-own views, **Activity** (Branches / Sessions by pill), **Lists**, **Repos**,
+own views, **Activity** (Sessions / Branches and four more by pill), **Lists**, **Repos**,
 **Stage**, **Tools**, and **Map**, as icon buttons (icon + label on desktop,
 icon-only on mobile), lit on the active view and present on every viewport. The
 `#repo` component sits beside the nav but renders nothing (it is the repo/auth
@@ -200,11 +200,27 @@ to be empty wherever anyone looked. The scan now reads the element's own scope.
 
 **A third half arrived on 2026-08-19: `menu`,** which fills the launcher's
 long-press menu rather than anything inside the drawer. A component exposing
-`[{ label, icon, run }]` gets one row per entry under the built-in "Take a
-note", and show-repo contributes exactly one, the app-wide paste. The contract
-exists because the drawer is the wrong place for a verb you want *before* the
-drawer: opening it is a tap and a tab, and for the paste specifically it would
-also spend the user activation a clipboard read has to ride.
+`[{ label, icon, run }]` gets one row per entry under the built-in rows. The
+contract exists because the drawer is the wrong place for a verb you want
+*before* the drawer: opening it is a tap and a tab, and for a paste
+specifically it would also spend the user activation a clipboard read has to
+ride.
+
+**It has no user now, and that is the contract working rather than failing.**
+show-repo contributed exactly one row through it, the app-wide paste, and on
+2026-08-22 that row was promoted into the fab beside "Take a note" and "Web
+Tools home". The promotion is the argument: a paste is worth most exactly where
+there is no other way in, and a contributed row could only ever appear on the
+page that already had a Stage on screen. What being everywhere costs is a
+carrier, since the stage is `Alpine.store('browser').stage`, a store array held
+for one page load, and the navigation that reaches a Stage is what would
+otherwise discard the paste. So the fab defers to `pasteAnywhere` on a document
+that renders the Stage, and parks the clipboard's flavors through
+[`kits/stage-handoff.js`](../lib/kits/stage-handoff.js) everywhere else, for
+this app to drain at boot. The carrier moves **flavors, not staged items**: what
+a pasted thing becomes is this file's intake decision, and making the sending
+page decide would mean pulling the 233K stage component on a long press for a
+paste that may never happen.
 
 Two things are load-bearing about it. **Rows are read when the menu opens, not
 when the drawer scans.** `detect()` runs on drawer open, so a menu sourced from
@@ -450,10 +466,10 @@ the header nav the way a repo shows landing/atlas/files/…:
 - **Stage** — one nav stop with two pill-switched sub-views, each keeping its
   own deep link: the **bench** (`?view=stage`) and **Saved** (`?view=surfaces`)
   (below).
-- **Activity** — the estate's own motion: one nav stop with four pill-switched
-  sub-tabs, each keeping its own deep link: **Branches** (`?view=activity`),
-  **Sessions** (`?view=sessions`), **Guides** (`?view=guides`), and **Chats**
-  (`?view=chats`) (all below).
+- **Activity** — the estate's own motion: one nav stop with five pill-switched
+  sub-tabs, each keeping its own deep link: **Sessions** (`?view=sessions`),
+  **Branches** (`?view=activity`), **State** (`?view=state`), **Chats**
+  (`?view=chats`), and **Routes** (`?view=routes`) (all below).
 - **Lists** — the two personal piles, To-do over Jot, in one pane rather than
   two tabs. Both `?view=todo` and `?view=jots` resolve here (below).
 - **Files** (`?view=search`) — the central file surface: file names at any ref under any folder, contents through the code-search API, the session records, and the file itself read in place (below). The `?view=` key stays `search`, its name since the view was a results list: an address is not a label, and every link ever shared still opens it.
@@ -632,25 +648,29 @@ body), `embed` (a renderer page in an iframe via a toss-render route).
 **Activity** gathers the estate's own motion under one header-nav stop. Five
 panes on a segmented pill (the shared internal-tab style), switching at every
 width, each keeping its own view key so `?view=activity`, `?view=sessions`,
-`?view=guides`, `?view=chats`, and `?view=routes` deep-link directly. Where a
+`?view=chats`, and `?view=routes` deep-link directly. Where a
 pane reads a cache, its **age pill** rides the pill row: it states the age at
 every width and opens the **State** view, where that cache's Refresh lives
 beside its cost and its throttle. It replaced an as-of reading that was hidden
 below `sm` next to a Refresh button that was not.
 
-The first three are readings of the repos. **Branches** is what is in flight and
+The first two are readings of the repos. **Branches** is what is in flight and
 **Sessions** is the work that made it: a branch is the artifact and a session is
-the act, and each row cross-references the other. **Guides** is the account,
-the shelf of `pages/guides/*.html` across the estate, in flight first.
+the act, and each row cross-references the other.
 **Chats** is not a reading of the repos at all, and that is why it belongs
 rather than despite it. It is a separate **venue**: the conversation half of the
 work, read from `mehrlander/chat-histories`. No key joins a chat to a branch or
 a session, the archive's ids are chat uuids while sessions carry harness
 `session_...` ids, and the two corpora do not overlap in time, so the pane
 cross-links chat to chat (tags) and claims no join it does not have. The test it
-passes is the one the other three pass, that it reports where work actually
+passes is the one the others pass, that it reports where work actually
 happens; it is the only one that can say so about thinking done outside a
 checkout. To-do and Jot failed exactly that test and left (below).
+
+**Guides was a third reading and left 2026-08-23:** the shelf held one file
+estate-wide, and its "in flight" was the open PRs Branches and Sessions already
+carry. `pages/guides/` stays, indexed by Pages; so does `kits/guide-render.js`,
+which renders a guide PR body and is a different thing wearing a similar name.
 
 Three things about Chats follow from the archive rather than from taste.
 
@@ -692,7 +712,7 @@ identical on screen and mean opposite things.
 ### Routes (`?view=routes`)
 
 **Routes** is the fifth pane and the first keyed to something other than git.
-Branches, Sessions, Guides and Chats all answer *who was working, and when*: the
+Branches, Sessions and Chats all answer *who was working, and when*: the
 unit is a piece of work. Routes answers *on what*: the unit is a destination in
 the app. The estate had no reading of that at all, though the UI layer is where
 most of the work lands, and the app could not previously say what its own
@@ -1249,8 +1269,8 @@ spent 66 calls, a fifth of the run, asking for the same commits and the same two
 PR lists twice inside a minute. The seconds it bought back were real and did not
 cover that, so the Refresh button and the arrival kick each run one crawl,
 scan included. The quick shape stays supported because one caller still wants
-it: `goGuides` warms this cache for a pane that needs the repo list and the open
-PRs and no branch verdicts at all. Retired 2026-08-17; the run record still
+it: the State view's arrival kick warms this cache for rows that need the repo
+list and the open PRs and no branch verdicts at all. Retired 2026-08-17; the run record still
 carries `pass: 'quick' | 'scan'`, since those two differ by an order of
 magnitude in cost and averaging them would mean nothing.
 
@@ -1349,9 +1369,8 @@ retried because it may have landed.
 
 The cache is what makes this affordable. The branch review costs ~2 + 2N calls to
 scan N branches, so scanning every repo live on a dashboard is a flood.
-Instead `refreshActivityCache` crawls each estate repo on a ~12h per-browser
-throttle (heavier than the config crawl, so a longer interval) and stores the
-capped landed/stranded scan plus cheap summary signals; the branch review, the
+Instead `refreshActivityCache` crawls each estate repo on a ~30m per-browser
+throttle and stores the capped landed/stranded scan plus cheap summary signals; the branch review, the
 estate cards, and this view all render from the stored result. The per-repo
 branch review is **cache-first** too: with a token it renders Landed / Stranded
 from `state/activity.json` and marks the header `cached`, running the live fanout
@@ -1359,6 +1378,42 @@ only on an explicit Refresh or where the cache has no coverage. Same scan math
 either way (`lib/kits/branch-status.js` `scanBranchLive`, shared by the view and the
 crawl). Source-of-truth rule as ever: the cache is derived and may be briefly
 stale; Refresh re-scans live.
+
+**Two gates decide what a pass actually pays for**, and they answer different
+questions. The **scan gate** has been there since the crawl was written: a repo
+whose `pushed_at` has not moved since its last `scannedAt` cannot have changed a
+branch verdict, so its stored rows carry forward and the tree reads go where
+something moved. The **watermark gate** is newer and covers the rest of the
+pass. Measured 2026-08-21, a run over ten repos spent 231 calls, of which 168
+were the scan the first gate already rations; the remaining ~62 were four calls
+per repo fired unconditionally, so a completely quiet estate still paid them.
+
+A repo is **quiet** when both its `pushed_at` and its **PR watermark**
+(`gh.prWatermark`, one row of the same `pulls?state=all&sort=updated` list
+`branchPulls` reads a hundred of) match what the last successful crawl recorded.
+A quiet repo is skipped whole and carries its stored entry forward through the
+same `buildCache` path a failed repo takes. A quiet estate therefore costs one
+account listing plus one watermark per repo, about a dozen calls, which is what
+let the throttle come down from twelve hours to thirty minutes: the floor fell,
+not the ceiling. A repo that moved still pays its summary, and one that was
+pushed still pays its scan.
+
+**Both halves are required, and the second is the one to keep.** `pushed_at`
+cannot see a pull request opening, merging or closing, and this cache stores
+exactly that in `openPRs`, `branchPRs` and `prReach`. Gating on pushes alone
+would freeze every branch row's PR verdict until something happened to push,
+and nothing on screen would look wrong. The watermark over-reports instead
+(`updated_at` moves on a comment or a review), which costs a crawl that then
+finds nothing material and skips its commit. That is the direction a gate must
+err in.
+
+The watermarks live in `localStorage`, not in the cache, because the committed
+file has no safe place for them: riding the material hash would restamp and
+recommit a 700 KB file whenever anyone commented on a PR, and staying out of it
+would mean a crawl never persists what it just learned, so the next pass sees
+the same movement and never converges. A forced pass ignores the gate entirely,
+since Refresh has to mean "go and look". `tools/test/activity-watermark-gate.test.mjs`
+holds each of those clauses.
 
 ### Sessions
 
@@ -1405,9 +1460,7 @@ while it runs, the pane's age pill is joined by `Reading records · 18 of 120
 records` over a determinate bar above the list. It is the lighter of the two
 crawls (a tree read, then up to 120 record blobs six at a time, against a branch
 scan per repo), but a cold pass is still tens of seconds, and it had a spinner
-and one word. The Guides shelf gets neither line nor bar: it is assembled in
-memory from one listing per repo, with no denominator worth drawing, so its pill
-says `Reading…` and that is the honest whole of it.
+and one word.
 
 Two axes, the same shape as Branches. **Scope** is time (`Week`, `Month`, `All`)
 plus **Snagged**, which is not a time window at all: it is every session that hit
@@ -1417,10 +1470,15 @@ scoped list, and lapse back to All when the scope stops holding that repo.
 
 Tapping a row, on either the ask or the short id, opens the session as a
 **conversation**: the record is fetched and handed to the swipe deck
-(`lib/kits/session-render.js`), one card per ask and per assistant prose turn, with
-the tool calls attaching to the turn that issued them. Both halves are there,
-the calls carry their arguments and whatever body the record kept, and fenced
-blocks get chat-render's live views. The record is cached per id, and the
+(`lib/kits/session-render.js`), one card per exchange, so a slide carries a
+question, every sentence of its answer, and everything that ran in between.
+The work folds into one line: a run of tool calls plus the short sentence that
+announced it is a **step**, and a run of adjacent steps collapses into a single
+fold. So a card closed is the question, one line for everything done to answer
+it, and the reply; opening that line lays the work out flat, sentence then
+calls, step after step. The calls carry their
+arguments and whatever body the record kept, and fenced blocks get chat-render's
+live views. The record is cached per id, and the
 renderer chain loads on first use, so a visit that never opens a session pays
 nothing for it.
 
@@ -1471,9 +1529,11 @@ record is addressed by a git blob sha, so one recursive trees call names every
 record and its sha, and `stalePaths` re-reads only those whose sha moved. In
 steady state that is the day's handful plus the live session's own record, which
 is republished on every Stop and so is always stale by design, with no special
-case for "the current one". `refreshSessionsCache` runs it on a ~3h per-browser
-throttle (lighter than the activity crawl, being a tree read and a few blobs, so
-a shorter interval) and commits only when the folded rows materially changed.
+case for "the current one". `refreshSessionsCache` runs it on a ~15m per-browser
+throttle (lighter than the activity crawl, being a tree read and a few blobs) and
+commits only when the folded rows materially changed. This crawl never needed the
+activity crawl's watermark gate: being incremental by blob sha, a pass over a
+store where nothing moved is one tree read and no blob reads at all.
 
 The fold's scope is the **full** listing, never the batch it read: a record the
 per-crawl cap deferred keeps its row, and only a record genuinely gone from the
@@ -1855,8 +1915,32 @@ keeps derived, each piece with its age, what builds it, what the build costs,
 and a Refresh where one is possible. It is the address the age pills open, and
 the reason the four estate Refresh buttons could go.
 
+**Branches and Sessions share one Refresh.** They are two crawls over two
+sources into two files, and nothing about that changed: the branch scan reads
+every estate repo on github.com (231 calls and about 28 seconds on the run
+logged 2026-08-21) while the sessions fold reads one folder in the registry and
+a blob per record that moved (4 calls, about a second). They are two rows for
+that reason, each with its own store, throttle, history, and probe. What they
+are not is two decisions. A session ending moves both at once, its record
+landing in the registry and its commits landing on a branch, so a press that
+refreshed one and left the other was asking the reader about a boundary that is
+internal to the crawls. The two rows sit in an **Activity** group under one
+button, which runs both, sessions first, and reports once; the throttled
+background passes stay independent on their own intervals, since the cost gap is
+a real reason to fetch one four times as often as the other. `GROUPS` in
+`state-view.js` declares the group and names the shell method that runs it,
+and `tools/test/state-view-groups.test.mjs` holds the fold and checks that the
+method the view names is one the shell actually defines.
+
+The row that reads `Branches` was `Branch activity` until the group arrived.
+That label was the confusion in three words: **Activity** is the nav stop over
+five views with Sessions among them, so a row wearing it read as *the* activity
+cache and made the Sessions row look like a half that had been split off. Under
+the group heading the row is Branches, which is what its own `used by` chip
+always said.
+
 **Each row says who uses it, as view keys.** `feeds` is a list of shell view
-keys (`estate`, `activity`, `sessions`, `guides`, `search`) rendered as chips
+keys (`estate`, `activity`, `sessions`, `search`) rendered as chips
 that route through the shell's own `go*` methods, so a tap goes and looks at the
 data being consumed. The list is deliberately only the clean answers. The prose
 it replaced also named the sidebar, quick links, and things below view
@@ -1891,8 +1975,12 @@ GitHub/Raw/CDN menu, all stacked above the data on a phone. That is an editor's
 chrome, and nothing here is edited: the crawl owns these files, so every control
 but copy answered a question the row does not raise. The full multi-mode reading
 stays one tap away at the github mark and at the data route
-(`toss-render.html#data=`), where a reader who wants to pivot a table should go.
-Nothing is re-serialized, since the crawls already write a 2-space indent and the
+(`toss-render.html#data=`). **Wrong 2026-08-21:** that sentence used to end "where
+a reader who wants to pivot a table should go," and the data route has never had
+grouping or aggregation in it. It is a viewer, five ways of reading the same
+bytes. Grouping lives in the transform workbench's Pivot view
+([`pages/transform.html`](../pages/transform.html)), a different page for a
+different verb. Nothing is re-serialized, since the crawls already write a 2-space indent and the
 row's promise is that this is what is committed. One row is open at a time: these run 68 KB to 818 KB,
 so mounting four is a cost with no reader. The fetch is not cached, since the
 row's whole promise is that what you are looking at is what is committed now.
@@ -1925,12 +2013,10 @@ viewport, not a fixed 26rem that was cramped on a phone and stingy on a desktop.
 The card's icon rides its title line rather than a gutter to the left. Hanging
 it cost about 28px of width on every row, narrowed the description into three
 wrapped lines on a phone, and left every line beneath it choosing between a
-matching indent and a ragged edge. The guides row has
-none of these controls, because the shelf is assembled in memory: there is
-nothing committed to look at, and nothing with a past to read.
+matching indent and a ragged edge.
 
 **An age pill aims at its row.** `?view=state&item=<key>` names one entry
-(`configs`, `activity`, `sessions`, `entities`, `guides`, `search`, `page`), in
+(`configs`, `activity`, `sessions`, `entities`, `search`, `page`), in
 the same idiom `&detail=` uses to open one branch inside the Activity takeover:
 the estate addresses one entry in a rendered set by naming it in the URL, not by
 scrolling on a callback. Rows carry `id="state-<key>"`, so the anchor is a real
@@ -1946,10 +2032,9 @@ recompute** (the search caches, the stage bundle, an Inspect rescan) is instant,
 stores nothing, and has no age at all. Both wore the same button in six places,
 and the as-of reading that says whether to press was the part hidden below `sm`,
 so a phone kept the control and dropped the fact. Three sections carry the
-split: **Derived** (the registry's `state/`), **Read live** (the guides shelf,
-cheap enough to redo on demand, so nothing is committed), and **This browser**
-(the search caches and the page itself, both gone on reload, neither estate
-state).
+split: **Derived** (the registry's `state/`) and **This browser** (the search
+caches and the page itself, both gone on reload, neither estate state). A third,
+**Read live**, held the guides shelf alone and went with it.
 
 **Built and checked are two different ages, and one alone misreads.** `built` is
 the last commit touching the file; `checked` is this browser's throttle stamp
@@ -1988,8 +2073,7 @@ progress bar must never say. The refresh is one pass now (the second was
 re-fetching the first's cheap reads), so items finished over items total is
 again the whole measure. The throttled background passes publish into no slot and so
 draw no bar, which is the point: a list refreshing on its own schedule must not
-grow a progress bar nobody asked for. The guides row has no bar either, having
-nothing to count.
+grow a progress bar nobody asked for.
 
 **Under the bar, the wire.** The bar says how far along; the line beneath it
 says what the crawl is doing right now, as the request itself: `GET
@@ -2182,11 +2266,8 @@ The shell announces `web-tools:auth-state` from the same watch that reloads the
 estate, and the view re-reads on it. Signed out is a note, not an error: nothing
 has gone wrong, the registry rows simply have no ages yet.
 
-Reaching the two rows the shell does not own: the guides shelf keeps its stamp
-in the estate component (it is the one derived thing with no file to read a date
-off), mirrored onto `__shell.guidesLoadedAt` as it lands, and re-read by
-announcement (`web-tools:refresh-guides`); the page reload asks the fab for its
-`hardRefresh`, the one implementation, via `web-tools:hard-refresh`. The
+Reaching the one row the shell does not own: the page reload asks the fab for
+its `hardRefresh`, the one implementation, via `web-tools:hard-refresh`. The
 registry's authored content (lists, surfaces, the private config) and its
 captured records (sessions, mailbox, proposals) are named at the foot of the
 view and deliberately have no rows: neither is derived, so neither has an age to

@@ -50,6 +50,11 @@ shows what the diff is a diff of:
 - `[new]/[diff]` is the file's on-branch history (prior branch state to tip):
   optional, only when more than one branch commit touched the file.
 
+The slash-joined pair is a **chat** shape. Chat renders it correctly; the GitHub
+MCP write path measures the two links as one span and kills the pair well before
+either URL looks long (see Syncing a guide PR body). A body never carries this
+list anyway, so the two rules do not collide in practice.
+
 The changed-file row, with URLs, is:
 
 ```
@@ -156,10 +161,34 @@ topical caption keeps the full triple.
 
 After the list, a blank line, then one 🥏 or ⭐ line per changed renderable HTML
 page, link text the page path. Honesty gate: a kit, doc, or asset gets none.
-Choose per the repo's preview mechanism; in web-tools: lib/dist change → ⭐
-`?use=<sha>` on the deployed page URL; page-shell change on an un-deployed
-branch → 🥏 toss `#gh=<owner>/<repo>@<sha>:<path>`. With no preview mechanism,
-the portable fallback is the 🥏 `#gz=` toss.
+
+**Do not decide this by reading. Run `npm run showing`** (web-tools;
+`python3 scripts/showing.py` anywhere the script has travelled). It reads the
+branch's own changed files and prints the render line ready to paste, or an
+honest "no link reaches this" with the reason, and it checks the two things
+that go wrong silently: that the SHA it names is pushed, and that `dist/` was
+rebuilt so `?use=` carries the lib change rather than last week's bundle.
+
+The rules it runs are the ones this section used to state: lib or dist change →
+⭐ `?use=<sha>` on the deployed page; a page's own file → 🥏 toss
+`#gh=<owner>/<repo>@<sha>:<path>` with `?use=` in the renderer's query; the
+renderer itself → a nested toss; a shell change acting on the top-level
+document (title, favicon, history, navigation) → no link at all, send a
+screenshot. They are stated once as data in `docs/routes.json` and
+`docs/showing-mechanisms.csv`, and the script is what executes them.
+
+**Why a command rather than a paragraph.** The paragraph was here, correct and
+complete, on 2026-08-22 when a session changed `lib/alpineComponents/estate.js`
+and reported that no link could show it. It never opened the table, because it
+was sure it already knew, and a wrong pick does not error: it yields a link
+that resolves and shows the wrong week. Reading cannot fix a failure whose
+first symptom is confidence.
+
+Two things the script cannot do, so they stay yours: it cannot tell whether the
+change is VISIBLE (a refactor gets a valid link that shows nothing new), and it
+cannot see pixels. Where it names several pages, pick the one the change is
+about. With no preview mechanism and no script, the portable fallback is the 🥏
+`#gz=` toss.
 
 A page published as an artifact this session gets a 📦 line: link text the
 page path, URL the claude.ai artifact URL. Pick by where the link opens: the
@@ -213,11 +242,30 @@ the surface gzipped into the fragment:
 🌿 [<repo>@<branch>](…/pages/branch.html#gh=<repo>@<branch>&base=main&gz=<payload>)
 ```
 
-Emit it at guide-PR sync or wrap-up, and record the link in the PR (body or a
-comment): the fragment never reaches a server, so the link itself is the
-instance's only carrier. The derived layer stays live either way; the envelope
-only ever adds. Gated by `tools/test/branch-review-emit.test.mjs` (schema
-validity, the page reader's projection, the gz round-trip).
+Emit it at guide-PR sync or wrap-up. The derived layer stays live either way;
+the envelope only ever adds. Gated by
+`tools/test/branch-review-emit.test.mjs` (schema validity, the page reader's
+projection, the gz round-trip).
+
+**The `&gz=` link is for chat, never for a PR body or a comment.** The payload
+carries the whole surface, so the address runs into the hundreds of characters
+(844 for an almost-empty notes file, and it grows with the notes), and anything
+at 150 or more is wrapped in backticks by the write path and stored as dead
+text. That failure is unusually expensive here: the fragment never reaches a
+server, so the link is the instance's only carrier, and a defanged one is lost
+content rather than an inconvenient link.
+
+To put the judgment somewhere durable, write the surface to a file instead of a
+fragment, commit it, and address it:
+
+```
+node .claude/skills/caption/build-branch-review.mjs --notes notes.json --out <path>
+🌿 …/pages/branch.html#gh=<owner>/<repo>@<branch>&base=main&src=<owner>/<repo>@<branch>:<path>
+```
+
+`&src=` names the committed envelope rather than embedding it, which keeps the
+address short enough to survive a body and gives the surface a home that outlives
+one link. Count the URL before writing it either way.
 
 ## Tail
 
@@ -261,12 +309,42 @@ omitting it, so the form stays fixed.
 
 ## Syncing a guide PR body
 
-The full caption is the core of the guide PR body's managed region, delimited by
-the markdown link labels `[//]: # (guide)` … `[//]: # (/guide)`. To sync after a
-push: regenerate the region (⭐ Look line, Changed list, Next steps / open
-threads, Notes / Risk), rewrite only that region via the GitHub API
+The guide PR body's managed region is delimited by the markdown link labels
+`[//]: # (guide)` … `[//]: # (/guide)`. To sync after a push: regenerate the
+region (⭐ Look line, change-set paragraph, Next steps / open threads,
+Notes / Risk), rewrite only that region via the GitHub API
 (`update_pull_request`), and leave everything outside the delimiters untouched.
 Narrative goes in PR comments, not the body.
+
+**The body is not the caption, and this section used to say it was.** Since
+2026-08-08 the guide body does not enumerate files at all: GitHub's Files tab
+and the branch page's Files pane both derive that list and are current by
+construction, so a body row can only restate them and go stale. The body carries
+the judgment layer instead, a change-set paragraph in prose naming only the files
+with something non-obvious to say, paths plain and no link triplets
+(`docs/SURFACING.md`, "The body does not enumerate files"). The full
+`[new]/[main]/[diff]` caption above is the CHAT format. Emitting it into a body
+also walks the rows straight into the write-path fault below, which is how the
+contradiction stayed cheap enough to survive: it produced a body that was merely
+redundant most of the time and dead links some of the time.
+
+**Count every URL you write to a body or a comment.** The GitHub MCP write path
+wraps a URL of 150 characters or more in backticks, storing the link as literal
+text that renders dead on GitHub and everywhere downstream; 149 or fewer
+survives, and the label never counts. The slash-joined pair is the trap, because
+`)/[` does not end the URL token: the measured span runs from the first URL's
+first character through the second URL's last, joining punctuation and the
+second label included, so two clean 70-character links make one 149-character
+span and a single character more kills the pair. Comma-joining ends the run.
+Check a body before writing it:
+
+```
+python3 scripts/mcp-link-safe.py --check body.md
+```
+
+Add `--unescape-entities` when checking a body read back through the MCP, whose
+readback expands `&` into `&amp;` and inflates the count. Evidence, with every
+probe and its control, is in `docs/environment/capabilities.md`.
 
 **Read both delimiters, write only the link-label one.** Bodies written before
 2026-07-28 carry `<!-- guide -->` … `<!-- /guide -->`, so treat either pair as

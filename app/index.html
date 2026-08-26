@@ -140,6 +140,17 @@
   // The line/word differ behind the stage's Diff lens, shared with
   // pages/diff-tool.html (window.textDiff).
   await gh.load('kits/text-diff.js');
+  // The drag handle on the docked deck's edge. swipe-deck treats it as an
+  // OPTIONAL dependency and mounts the seam only when `window.dockSplit` is
+  // present, the same bargain session-render makes with session-export: the
+  // host loads it, the kit notices. Nothing here loaded it, so this shell
+  // installed both dock hooks, docked correctly, and never grew a seam, from
+  // the day the splitter shipped until 2026-08-23. What hid it is that the
+  // splitter's own test loads the kit itself before driving the app, which is
+  // exactly the dependency the app was missing, so a passing check and a dead
+  // feature were perfectly consistent. deck-dock-reflow.mjs now asserts the
+  // seam is there on the app's OWN boot, which is the claim that was untested.
+  await gh.load('kits/dock-split.js');
 </script>
 <style>[x-cloak]{display:none!important}
 .no-scrollbar::-webkit-scrollbar{display:none}
@@ -193,7 +204,12 @@
    Below lg there is no dock and the toggle does not render: three columns do
    not fit, and a phone's answer to "see the list and the file" is the deck's
    own back gesture, which already works. */
-@media (min-width:1024px){:root[data-deck-pane="dock"]{--deck-left:calc(var(--deck-side,0px) + clamp(17rem,30vw,26rem));--deck-border:1px}}
+/* The clamp is the DEFAULT, not the value: --deck-dock-left is whatever the
+   reader last dragged the seam to (kits/dock-split.js, driven from
+   swipe-deck), and the clamp is what a reader who has never dragged it
+   gets. Keeping the fallback inside the var() is what lets the preference
+   be cleared by simply removing the property. */
+@media (min-width:1024px){:root[data-deck-pane="dock"]{--deck-left:var(--deck-dock-left,calc(var(--deck-side,0px) + clamp(17rem,30vw,26rem)));--deck-border:1px}}
 /* AND THE LIST HAS TO BE GIVEN THE WIDTH BACK. The deck is `fixed`, so it takes
    no layout space and the pane underneath still measures the whole window: the
    first docked build looked right and was not, because every list row simply ran
@@ -204,7 +220,17 @@
    Padding rather than width so nothing inside has to opt in, and only under
    [data-deck-pane="dock"], since "inset" and "full" both cover the pane
    completely and narrowing it there would reflow a list nobody can see. */
-@media (min-width:1024px){:root[data-deck-pane="dock"] main{padding-right:calc(100vw - var(--deck-left));transition:padding-right .15s ease-out}}
+/* AND ONLY WHILE A DECK IS ACTUALLY OPEN. `data-deck-pane` records the
+   reader's standing preference and rightly outlives any one deck, so keying
+   the reflow on it alone left main padded by the width of a deck that had
+   been closed: squeezed on every view, and across reloads, since the
+   preference is stored. `data-deck-open` is the kit's fact and the deck's
+   lifetime; the pane is the host's and the reader's. Both, or no reflow. */
+@media (min-width:1024px){:root[data-deck-pane="dock"][data-deck-open] main{padding-right:calc(100vw - var(--deck-left));transition:padding-right .15s ease-out}}
+/* Except while the seam is being dragged. A 150ms ease is right for the
+   toggle, which is a jump, and wrong for a drag, where it makes the list
+   trail the finger by a frame and a half and reads as lag in the page. */
+html.dk-dragging main{transition:none !important}
 /* The Repos row's two menu buttons. Narrow and chrome-free on a fine pointer,
    where they are a pair of glyphs at the row's edge and a hover background made
    each one read as a separate tile; the row's own hover tint is the feedback,
@@ -1618,13 +1644,6 @@
          and a local recompute with no age at all), spread over six surfaces, with
          the as-of reading that tells you whether to press hidden below `sm`.
          Estate-level, token-gated, its own component and lazy mount. -->
-    <div x-show="view==='state'" data-pane="state" class="h-full overflow-y-auto">
-      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-4xl">
-        <template x-if="stateSeen">
-          <div x-data="stateView()"></div>
-        </template>
-      </div>
-    </div>
 
   </main>
 </div>
@@ -1703,15 +1722,32 @@ const RAIL_KIND = { link: 'ph-arrow-up-right', action: 'ph-lightning', repo: 'ph
 // mounts; map() renders whichever of these is set.
 const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'claims', 'tests', 'harness', 'skills', 'registries'];
 
-// marked, loaded once on demand for the overview README render.
+// marked, loaded once on demand for the overview README render. kits/md-doc.js
+// rides with it, because every one of these renders lands in a fixed-width
+// column and a wide table in a README would widen that column until the page
+// itself scrolled sideways. The kit is what puts the table in its own box, and
+// mdHtml() is the one call every README-ish render here goes through, so a
+// fifth one cannot be added without it. Best effort on the kit: if the load
+// fails the prose still renders, and only the containment is missing.
 let _markedP = null;
 function loadMarked(){
-  return _markedP ??= new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
-    s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
+  return _markedP ??= Promise.all([
+    new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    }),
+    window.mdDoc ? Promise.resolve()
+      : (window.gh?.load ? window.gh.load('kits/md-doc.js').catch(() => {}) : Promise.resolve()),
+  ]);
+}
+// One markdown string → the prose markup these views hang on x-html. The
+// container class lives on the <article> in the template, so what comes back
+// here is the body: mdDoc.html() would wrap it in a second prose box, and its
+// `proseClass: ''` says the caller already has one.
+function mdHtml(src){
+  return window.mdDoc ? window.mdDoc.html(src, { proseClass: '' }) : window.marked.parse(src);
 }
 
 // ── Shell: repo context + view state. The header carries the app-level nav,
@@ -1752,32 +1788,24 @@ function app(){ return {
               run: () => ({ nav: href }) }];
   },
 
-  // FAB LONG-PRESS MENU contract (`menu`), the third beside `actions` and
-  // `toggles`. One row: the app-wide paste, which belongs here rather than in
-  // the drawer because it is a verb you want at the cost of one gesture on a
-  // control already floating over every view, and because the drawer would
-  // spend the tap's user activation getting itself open (a clipboard read has
-  // to ride the gesture that asked for it, which is why pasteAnywhere awaits
-  // nothing before takeClipboard).
+  // THE FAB'S PASTE ROW IS NOT CONTRIBUTED ANY MORE. This is where the
+  // `menu` contract's one and only row lived from 2026-08-19 to 2026-08-22:
+  // the app-wide paste, offered on the launcher's long press because a phone
+  // has no other intake gesture and the drawer would spend the tap's user
+  // activation getting itself open.
   //
-  // IT IS ALSO THE PHONE'S ONLY INTAKE, since the header button that shipped
-  // beside it on 2026-08-19 came straight back out (see the header markup for
-  // where it stood). That is a real trade: a long press is not discoverable,
-  // and nothing on screen says the menu exists. It was taken because the
-  // header is the app's scarcest row and the gesture was confirmed working on
-  // a device; if the menu turns out to be too well hidden, the button is
-  // twenty lines and it comes back. One implementation (pasteAnywhere) behind
-  // two triggers now, counting the bench's own button.
+  // It is built into the fab now, for the reason it was worth having in the
+  // first place taken one step further: a paste is most valuable exactly where
+  // there is no other way in, and a contributed row could only ever appear on
+  // the page that already had a Stage on screen. The fab still calls
+  // pasteAnywhere here, since a document rendering the Stage should stage in
+  // place rather than navigate; it finds it by scanning for the method, so
+  // this stays the app's implementation and the fab's fallback (parking the
+  // paste through kits/stage-handoff.js) is for everywhere else.
   //
-  // A long press is not a static condition, so the row is offered
-  // unconditionally rather than hidden when the clipboard looks empty: nothing
-  // can read the clipboard to find out without the very gesture the row exists
-  // to collect.
-  get menu(){
-    return [{ label: 'Paste to Stage', icon: 'ph-clipboard-text',
-              title: 'Read the clipboard and stage what is on it',
-              run: () => this.pasteAnywhere() }];
-  },
+  // The `menu` contract itself stays. It has no user now, which is a fact
+  // worth stating rather than a reason to delete: the row it carried earned
+  // promotion by being built through it.
   view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
   // Window-level drag counter for the app-wide drop (init wires the listeners;
   // nested enter/leave is why it counts rather than flips), and what the cue
@@ -1855,7 +1883,15 @@ function app(){ return {
   // repo's config through the same config cache, token-gated: no token, no app
   // views (like the Stage). Each is a sidebar entry in the estate switcher,
   // rendered live through toss-render #gh=.
-  appViews: [],     // resolved [{repo, path, label, icon, order, key}]
+  appViews: [],     // resolved [{repo, path, label, icon, order, slug, key}]
+  // Settles when the crawl above has been read once. A slug address awaits it;
+  // a token-less or failed load still settles, so the wait cannot hang, and the
+  // lookup then simply misses. Pre-set to a resolved promise so a caller that
+  // runs before init (a test, a popstate on a cold frame) awaits nothing.
+  appViewsReady: Promise.resolve(),
+  // One-shot fragment for the next syncUrl; see goAppView. `undefined` means
+  // "carry location.hash through", which is every other caller.
+  _nextHash: undefined,
   appView: null,    // the selected app view when view==='app'
   // The rail: `rail: true` items from the links board a repo declares with
   // `links` in its own config (loadRail). Outbound destinations, not views, so
@@ -1911,12 +1947,6 @@ function app(){ return {
   // naming it in the URL, not by scrolling on a callback. Blank when the nav
   // opened the view, since arriving with nothing named singles out nothing.
   stateItem: new URLSearchParams(location.search).get('item') || '',
-  // The guides shelf's read stamp, mirrored here by the estate component as it
-  // lands. Every other derived thing carries its age in a file the State view
-  // can read; this one has no file, so the shell holds the only copy outside
-  // the component that produced it.
-  guidesLoadedAt: '',
-  guidesBusy: false,   // mirrored the same way, so the State row can spin
   configRefreshing: false,  // the estate refresh button is mid-crawl
   activityRefreshing: false, // the activity crawl (heavier: per-repo scan) is running
   // ── Live crawl progress, one channel for all three crawls ──────────────
@@ -1941,6 +1971,22 @@ function app(){ return {
   // that fans out all at once (configs) reports no `active` at all: "every
   // repo" is not a reading.
   crawlProgress: { configs: null, activity: null, sessions: null },
+  // ── The arrival crawls, while they are in flight ────────────────────────
+  //
+  // Separate from the three `*Refreshing` flags beside them, and the split is
+  // the whole point rather than a duplicate. Those flags belong to the Refresh
+  // BUTTONS: they disable the control, spin its icon, and bracket a run whose
+  // progress slot is opened and closed, and closing writes that run's call log,
+  // which is a commit. An arrival crawl must not cost a commit per visit, so it
+  // cannot borrow them.
+  //
+  // What it can do is say it is running, which is the reading a row was missing
+  // entirely: the number went from "1d ago" to "22m ago" with nothing in
+  // between, so the one moment the view had something live to report was the
+  // one moment it said nothing. No progress bar rides this, and the reason is
+  // the same commit: `tickCrawl` no-ops without an open slot, and opening one
+  // is what writes the log. A word is honest and free; a bar is not.
+  crawlChecking: { configs: false, activity: false, sessions: false },
   // Recently-committed files for the current repo@ref, shown in the sidebar.
   // Generated artifacts a build hook writes on every commit are noise here,
   // not real edits, so they're filtered out for web-tools specifically.
@@ -1991,7 +2037,12 @@ function app(){ return {
     // and reload when auth arrives. Editing any repo's config (config-saved)
     // can change membership, so that path rebuilds the cache and reloads.
     this.$watch(() => this._authState, (s) => {
-      if (s === 'auth') { this.loadEstateSidebar().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()); this.processMailbox(); this.loadProposalCount(); }
+      // Sessions rides beside activity here, and its absence was a real gap:
+      // a load that lands straight on ?view=sessions routes before auth
+      // resolves, so the pane's own arrival kick ran against no token and
+      // declined, and nothing afterwards went back for it. Announced through
+      // warmSessionsCache, so a commit reaches the pane.
+      if (s === 'auth') { this.loadEstateSidebar().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()).then(() => this.warmSessionsCache()); this.processMailbox(); this.loadProposalCount(); }
       // Announced for views that mount before auth resolves and would otherwise
       // sit on their signed-out state forever. A deep link is exactly that case:
       // ?view=state mounts the view during boot, its first read finds no token,
@@ -2007,7 +2058,11 @@ function app(){ return {
       this.loadConfig();
       await this.refreshConfigs();
     });
-    this.loadEstateSidebar().then(() => this.refreshConfigCache());
+    // Held rather than dropped, because ?app=<slug> resolves against what this
+    // fills in and nothing else can tell it where the page is. Everything else
+    // still routes without waiting; see appViewFromUrl.
+    this.appViewsReady = this.loadEstateSidebar();
+    this.appViewsReady.then(() => this.refreshConfigCache());
     this.processMailbox();
     this.loadProposalCount();
 
@@ -2035,6 +2090,20 @@ function app(){ return {
     // estate: the all-repo view is the page's front door.
     else if (!url) this.goDashboard();
 
+    // A PASTE TAKEN SOMEWHERE ELSE, arriving. The fab's paste row runs on every
+    // page carrying the launcher, and off this app there is no Stage to put
+    // anything in and no way to keep a store array across the navigation that
+    // reaches one, so it parks the clipboard's flavors and comes here. This is
+    // the far end of that trip: kits/stage-handoff.js hands back what was
+    // parked and the intake decides what it becomes, once, here, exactly as it
+    // would have for a paste taken on this page.
+    //
+    // It runs after the route rather than as part of it, because a handoff is
+    // an arrival rather than an address: the fab navigates with ?view=stage, so
+    // the route has already opened the Stage, and goStage() below is for the
+    // case where it did not (a hand-typed URL, a restored tab).
+    await this.drainStageHandoff();
+
     this.wireAppDrop();
     this.wireAppPaste();
     // PRELOAD THE CLIPBOARD KIT, because the header's Paste button cannot
@@ -2053,6 +2122,7 @@ function app(){ return {
     // Browser Back/Forward restores state from the URL (syncUrl pushes an entry
     // per distinct URL, so the history has real steps to walk).
     window.addEventListener('popstate', () => this.restoreFromUrl());
+    this.wireRevisit();
   },
 
   async loadRecent(){
@@ -2243,6 +2313,12 @@ function app(){ return {
                 label: pg.viewLabel || pg.title || t.path.split('/').pop(),
                 icon: pg.icon || 'ph-app-window',
                 order: Number.isFinite(pg.order) ? pg.order : 0,
+                // The short address, when the promoting repo declares one. It
+                // is the page's name rather than its location, which is what
+                // makes ?app=<slug> short: a path is most of an address and
+                // none of the meaning. Optional, so a page that declares none
+                // is reached by its address and nothing changes for it.
+                slug: typeof pg.slug === 'string' ? pg.slug.trim() : '',
                 key: t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path,
               });
             }
@@ -2453,8 +2529,35 @@ function app(){ return {
   // repo's own file; this is breadth + history a single read can't give. A
   // per-browser throttle (localStorage) keeps the crawl occasional, and a
   // material-change check keeps commits sparse, so nav triggers cost nothing.
-  CONFIG_CACHE_INTERVAL_MS: 6 * 3600 * 1000,
+  // ── THE GATE IS MOTION, NOT THE CLOCK ──────────────────────────────────
+  //
+  // Each of these three crawls used to be gated by an interval: six hours for
+  // configs, thirty minutes for activity, fifteen for sessions. An interval is
+  // not evidence about the source. It is a guess standing in for evidence, and
+  // it is wrong in both directions at once: a repo pushed thirty seconds ago
+  // waits out the clock while a quiet estate pays a full crawl for having
+  // waited. The State view then printed the interval as "auto every 30m", which
+  // read as a schedule and was not one, since nothing here has ever run on a
+  // timer. The crawls fire when a view that reads them is opened, so the
+  // interval was only ever a floor with a promise written on it.
+  //
+  // The evidence was already in the building. Every one of these crawls can ask
+  // its source what moved for about the price of one call: the account repo
+  // listing carries `pushed_at` per repo, and the registry's own tree carries a
+  // blob sha per session record. So the gate moves inside the crawl, per unit of
+  // work, and the crawl simply runs: it looks, finds nothing, and costs a call.
+  // A repo that moved is crawled the moment anyone looks, rather than at the
+  // mercy of a stamp in one browser's localStorage.
+  //
+  // What survives of the clock is this floor, and it is a debounce rather than a
+  // policy: two views opened in the same breath must not fire the same crawl
+  // twice. Nothing renders it, because a number that only prevents a double-tap
+  // is not a reading anyone needs.
+  CRAWL_FLOOR_MS: 60 * 1000,
   _cacheCheckKey: 'wt:configCacheCheckedAt',
+  // What each repo looked like the last time this crawl read its manifest.
+  // Same store shape and same reasoning as the activity watermarks below.
+  _configMarkKey: 'wt:configWatermarks',
   // OVERLAY-BLIND BY CONSTRUCTION, and deliberately not guarded: this crawl
   // (and the activity crawl below) builds its own GH clients pinned at main,
   // so its inputs and output are identical under a branch overlay, and a
@@ -2465,24 +2568,72 @@ function app(){ return {
   // not in it. The invariant that keeps this true is held by
   // tools/test/show-repo-overlay.test.mjs: every client the crawl constructs
   // reads at main, never at the overlay branch.
+  // Returns {committed, changed} when it ran, {skipped:true} when it declined,
+  // {error} when it failed. It reported NOTHING until 2026-08-25, which is why
+  // the Repos pane could only be re-read by the manual Refresh: an announcement
+  // needs a commit to announce, and there was no way to ask whether one had
+  // happened. Every existing caller ignores the value.
   async refreshConfigCache(force){
-    if (!this.hasToken() || !window.RepoConfigCache) return;
+    if (!this.hasToken() || !window.RepoConfigCache) return { skipped: true };
     // Seed the crawl from the account's repos (the enumeration that discovers
     // estate members), so a repo opting in via its own config is picked up
     // without any registry list. If the enumeration fails, fall back to the
     // members already resolved from the cache: that re-crawls what is known
     // and cannot discover a new joiner, which is the honest degradation.
-    let repos = [];
-    try { repos = (await new window.GH({ token: window.TOKEN }).repos()).map(r => r.full_name); }
-    catch { repos = this.estateRepos.map(r => r.repo); }
-    if (!repos.length) return;
+    // The floor is read BEFORE the enumeration, which is where the throttle
+    // used to sit after it: a call this crawl is about to decline should not
+    // cost a request to decline.
     if (!force){
       try {
         const last = +localStorage.getItem(this._cacheCheckKey) || 0;
-        if (Date.now() - last < this.CONFIG_CACHE_INTERVAL_MS) return;
+        if (Date.now() - last < this.CRAWL_FLOOR_MS) return { skipped: true };
       } catch {}
     }
+    // This listing is the enumeration that discovers estate members AND, from
+    // the same response, the motion reading the gate below runs on. One call,
+    // two jobs, which is what makes gating per repo affordable.
+    let repos = [], pushedAt = new Map();
+    try {
+      const all = await new window.GH({ token: window.TOKEN }).repos();
+      repos = all.map(r => r.full_name);
+      pushedAt = new Map(all.map(r => [r.full_name, r.pushed_at || '']));
+    }
+    catch { repos = this.estateRepos.map(r => r.repo); }
+    if (!repos.length) return { skipped: true, reason: 'no repos to read' };
     const t0 = Date.now();   // for the run record, appended below if this commits
+
+    // A repo is QUIET when it has not been pushed since this crawl last read
+    // it. Everything this crawl stores about a repo comes out of files in that
+    // repo (its .web-tools.json, and the two files PortableAlign grades), and
+    // no file changes without a push, so the reading is exact in the direction
+    // that matters: a quiet repo cannot be hiding a manifest change.
+    //
+    // It is NOT exact in the other direction, and does not need to be. A push
+    // that never touched a manifest re-reads the repo for nothing, which costs
+    // three calls and produces no commit. Gating tighter would mean reading the
+    // files to find out whether the files changed.
+    //
+    // The four ways to be wrong are the same four the activity gate closes
+    // below, for the same reasons: a forced pass is never quiet, a repo with
+    // nothing stored is never quiet, a repo with no recorded mark is never
+    // quiet, and an unreadable pushed_at is never quiet. The fallback
+    // enumeration above supplies no pushed_at at all, so a crawl that lost the
+    // listing reads every repo rather than trusting a map it never filled.
+    // Read up front, because a skip is only safe when there is a stored entry
+    // to serve instead. The fold below re-reads this file after the fan-out,
+    // for the same reason the activity crawl does: a crawl that runs for a
+    // while must not fold onto the copy it read before it started.
+    const creg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
+    const cprev = (await this.readForFold(creg, window.RepoConfigCache.CACHE_PATH))?.doc || null;
+    const cmarks = this._marks(this._configMarkKey);
+    const cachedRepos = new Set(Object.keys(cprev?.repos || {}));
+    const cquiet = (repo) => {
+      if (force) return false;
+      if (!cachedRepos.has(repo)) return false;
+      const pushed = pushedAt.get(repo);
+      if (!pushed) return false;
+      return cmarks[repo] === pushed;
+    };
     try {
       // One GH per repo (the shared store.gh is bound to the open repo). Read
       // the current manifest for each participant.
@@ -2492,7 +2643,16 @@ function app(){ return {
       const fetched = {};
       let cdone = 0;
       this.tickCrawl('configs', { total: repos.length, done: 0, active: [] });
+      const cskipped = [];
       await Promise.all(repos.map(async (repo) => {
+        // The gate, and it is the whole saving: a quiet repo makes no request
+        // at all. Its stored entry rides forward through `carry` below, which
+        // is the same path a repo the enumeration could not see already took.
+        if (cquiet(repo)){
+          cskipped.push(repo);
+          this.tickCrawl('configs', { done: ++cdone, total: repos.length });
+          return;
+        }
         const g = new window.GH({ token: window.TOKEN, repo, ref: 'main' });
         let entry = { config: null, configName: null };
         try {
@@ -2517,11 +2677,25 @@ function app(){ return {
           try {
             entry.align = window.PortableAlign.assess({ repo, role, settings, claudeMd, config: entry.config });
             entry.align.scope = (entry.config && typeof entry.config.scope === 'string') ? entry.config.scope : '';
+            // The repo's own committed skills ride the same free read. The
+            // plugin's set is never here: a pulled skill lives in the plugin
+            // cache, so a committed .claude/skills/ is by construction what
+            // the hub did not ship this repo.
+            entry.align.skills = Array.isArray(entry.config?.skills) ? entry.config.skills : [];
           } catch {}
         }
         fetched[repo] = entry;
+        // Stamped only for a repo this pass read, and only after it came back.
+        // A repo whose pushed_at the listing did not carry records nothing, so
+        // it stays un-gated rather than being marked with an empty string that
+        // would match the next empty read.
+        if (pushedAt.get(repo)) cmarks[repo] = pushedAt.get(repo);
         this.tickCrawl('configs', { done: ++cdone, total: repos.length });
       }));
+      // Pruned to the current enumeration, so a repo that left the account
+      // stops carrying a mark nothing will ask about again.
+      this._setMarks(this._configMarkKey,
+        Object.fromEntries(repos.filter(r => cmarks[r]).map(r => [r, cmarks[r]])));
       const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
       // FRESH against the browser's 60-second cache, and reconciled against what
       // this page last wrote, against the API's own read-after-write lag. Both
@@ -2554,11 +2728,18 @@ function app(){ return {
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
           checked: repos.length, changed: moved.length,
+          // What the gate saved, recorded where the cost is. A run whose
+          // `skipped` equals its `checked` made one request in total.
+          skipped: cskipped.length,
         }) ?? prev?.runs;
         await this.saveFold(reg, window.RepoConfigCache.CACHE_PATH, next,
                             'Update config cache (state/configs.json) via show-repo', base);
       }
-    } catch(e){ console.warn('config cache refresh:', e?.message || e); }
+      return { committed: moved.length > 0, changed: moved.length, checked: repos.length };
+    } catch(e){
+      console.warn('config cache refresh:', e?.message || e);
+      return { error: e?.message || String(e) };
+    }
   },
 
   // Force the activity crawl and tell the estate to re-read (the Activity view's
@@ -2576,9 +2757,9 @@ function app(){ return {
   // real and the price was not worth them, and the reader watching the bar was
   // also being told a run had finished when it had not.
   //
-  // The quick pass keeps its caller: `goGuides` warms this cache for a pane that
-  // needs the repo list and the open PRs and no branch verdicts at all, so
-  // `deep: false` stays a supported shape rather than dead weight.
+  // The quick pass keeps its caller: the State view's arrival kick warms this
+  // cache for rows that need the repo list and the open PRs and no branch
+  // verdicts at all, so `deep: false` stays a supported shape.
   async refreshActivity(){
     if (this.activityRefreshing || !this.hasToken()) return;
     this.activityRefreshing = true;
@@ -2624,9 +2805,14 @@ function app(){ return {
     if (r.changed.length)
       toast('arrows-clockwise', 'Activity refreshed' + label + ' · ' + plural(r.changed.length, 'repo') + ' changed' + tail,
             fail ? 'alert-warning' : 'alert-success', 4000);
-    else
-      toast('check', 'No activity changes' + label + ' · ' + plural(r.total, 'repo') + ' checked' + tail,
+    else {
+      const skipped = r.skipped?.length || 0;
+      const how = skipped && skipped === r.total ? ' unmoved'
+                : skipped ? ' checked, ' + skipped + ' unmoved'
+                : ' checked';
+      toast('check', 'No activity changes' + label + ' · ' + plural(r.total, 'repo') + how + tail,
             fail ? 'alert-warning' : 'alert-info', 3000);
+    }
   },
 
   // ── Activity aggregate: crawl each ESTATE repo (estate:true, read from the
@@ -2636,9 +2822,21 @@ function app(){ return {
   // recent commits, open PRs, counts) it runs the capped landed/stranded branch
   // scan (lib/kits/branch-status.js) once and stores it, so the branches view and
   // the cross-repo Activity view render from the cache instead of a per-visit
-  // fanout. A longer per-browser throttle and the same material-change gate keep
-  // it occasional and commits sparse. See web-tools-private/DESIGN.md.
-  ACTIVITY_CACHE_INTERVAL_MS: 12 * 3600 * 1000,
+  // fanout. The material-change gate keeps commits sparse; the watermark gate
+  // below keeps the calls sparse. See web-tools-private/DESIGN.md.
+  //
+  // 30 MINUTES, down from 12 hours. The old number was set when every pass paid
+  // for the whole estate whether or not anything had moved, and half a day was
+  // the honest price of that. The watermark gate changed the thing the throttle
+  // is rationing: a pass over a quiet estate is now about a dozen cheap reads
+  // (one account listing, one PR watermark per repo) and no per-repo work at
+  // all, so spacing it out by half a day buys nothing and costs a reader
+  // looking at branch rows from this morning.
+  //
+  // What a busy pass costs has NOT changed, and that is the number to watch: a
+  // repo that moved still pays its summary, and one that was pushed still pays
+  // its branch scan. The throttle is short because the FLOOR fell, not because
+  // the ceiling did.
   ACTIVITY_SCAN_CAP: 30,       // older branches scanned per repo (view's SCAN_CAP)
   // Errored scan rows retried per repo per crawl. A branch whose scan
   // failed usually fails again for the same reason (a rewritten history, a ref
@@ -2664,7 +2862,38 @@ function app(){ return {
   // than as "no PR", which is what `prReach` below is for.
   ACTIVITY_PR_REACH: 100,
   ACTIVITY_REPO_POOL: 2,         // repos crawled at once (each runs its own scan pool)
+  ACTIVITY_WATERMARK_POOL: 6,    // PR watermarks read at once (one cheap call each)
   _activityCheckKey: 'wt:activityCacheCheckedAt',
+
+  // ── The per-repo watermark store ───────────────────────────────────────
+  // What each repo looked like the last time a crawl successfully read it:
+  // its pushed_at, and its PR watermark (gh.prWatermark). The next crawl
+  // compares against these to decide which repos it can skip entirely.
+  //
+  // IN LOCALSTORAGE, NOT IN THE CACHE, and the reason is that the committed
+  // file has no safe place to put them. Ride the material hash and a comment on
+  // any pull request restamps and recommits a 700 KB cache for a field nothing
+  // renders. Stay out of the hash and a crawl that learns a new watermark never
+  // persists it, so the next pass sees the same movement, crawls again, and
+  // never converges. Neither is a trade worth making for a number only this
+  // browser's next crawl consults, and the throttle stamp beside it is already
+  // per browser for exactly the same reason.
+  //
+  // The cost of it being per browser is one full crawl on a new browser, which
+  // is the correct behaviour anyway: a browser that has never looked has
+  // nothing to carry forward.
+  _watermarkKey: 'wt:activityWatermarks',
+  // One store shape, three crawls. Each keeps its own key; the reading and the
+  // writing are the same two lines, so they are written once here.
+  _marks(key){
+    try { const m = JSON.parse(localStorage.getItem(key) || '{}'); return m && typeof m === 'object' ? m : {}; }
+    catch { return {}; }
+  },
+  _setMarks(key, marks){
+    try { localStorage.setItem(key, JSON.stringify(marks)); } catch {}
+  },
+  readWatermarks(){ return this._marks(this._watermarkKey); },
+  writeWatermarks(marks){ this._setMarks(this._watermarkKey, marks); },
   // Returns a summary of the run for the caller to report: {total, changed,
   // failed, committed}, or {skipped, reason} when there was nothing to do. The
   // background (unforced) caller ignores it; refreshActivity turns it into the
@@ -2680,16 +2909,21 @@ function app(){ return {
     // pre-commit read. A call that finds a crawl in flight joins it and gets
     // that crawl's result.
     if (this._activityCrawl) return this._activityCrawl;
+    // The floor, not a schedule: this crawl's real gate is the per-repo quiet
+    // check inside it, which already reduces an unmoved estate to one listing
+    // plus one watermark per repo. Holding it behind half an hour on top of
+    // that only meant a repo pushed a minute ago waited out a clock that knew
+    // nothing about it.
     if (!force){
       try {
         const last = +localStorage.getItem(this._activityCheckKey) || 0;
-        if (Date.now() - last < this.ACTIVITY_CACHE_INTERVAL_MS) return { skipped: true };
+        if (Date.now() - last < this.CRAWL_FLOOR_MS) return { skipped: true };
       } catch {}
     }
-    this._activityCrawl = this._crawlActivity(deep);
+    this._activityCrawl = this._crawlActivity(deep, force);
     try { return await this._activityCrawl; } finally { this._activityCrawl = null; }
   },
-  async _crawlActivity(deep){
+  async _crawlActivity(deep, force = false){
     const A = window.RepoActivityCache, B = window.BranchStatus;
     const t0 = Date.now();   // for the run record, appended below if this commits
     // Estate membership from the config cache (estate:true). The activity crawl
@@ -2734,6 +2968,56 @@ function app(){ return {
     // calls each, nearly all of them re-verifying repos that had not moved.
     // The margin absorbs clock skew between GitHub's pushed-at and the client
     // clock that stamped scannedAt; anything unmeasurable scans.
+    // ── The cheap half of the crawl, and now the first thing it does ─────
+    // One PR watermark per repo, read before anything expensive. Together with
+    // the pushed_at already in `metaByName` (one account listing, above) this
+    // is the whole "did anything move" question, answered for the estate in
+    // about a dozen calls against the 231 a full pass logged on 2026-08-21.
+    //
+    // A read that fails records null rather than '', and null never gates: a
+    // repo whose watermark could not be read is crawled, because skipping work
+    // on a guess is worse than the calls it saves.
+    const marks = this.readWatermarks();
+    const prAt = {};
+    {
+      let wi = 0;
+      const readMark = async () => {
+        while (wi < members.length){
+          const repo = members[wi++];
+          try { prAt[repo] = (await new window.GH({ token: window.TOKEN, repo }).prWatermark()).updatedAt; }
+          catch { prAt[repo] = null; }
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(this.ACTIVITY_WATERMARK_POOL, members.length) }, readMark));
+    }
+
+    // A repo is QUIET when nothing this cache stores can have moved: no push
+    // since the last successful crawl, and no pull request touched since it
+    // either. BOTH halves are required, and the second is the one that is easy
+    // to leave out: openPRs, branchPRs and prReach all change with no push at
+    // all, so a gate on pushed_at alone would freeze every branch row's PR
+    // verdict until something happened to push. That is the bug this gate is
+    // most likely to be reintroduced without.
+    //
+    // Four ways to be wrong, each closed explicitly:
+    //   * a FORCED pass is never quiet, because the Refresh button has to mean
+    //     "go and look" or it means nothing
+    //   * a repo with no stored entry is never quiet, whatever the marks say,
+    //     since there is nothing to carry forward
+    //   * a repo with no recorded watermark is never quiet (a new repo, a new
+    //     browser, or a repo whose last crawl failed)
+    //   * an unreadable watermark or a missing pushed_at is never quiet
+    const quiet = (repo) => {
+      if (force) return false;
+      if (!prev?.repos?.[repo]) return false;
+      const m = marks[repo];
+      if (!m) return false;
+      const pushed = metaByName.get(repo)?.pushed_at || '';
+      if (!pushed || pushed !== m.pushedAt) return false;
+      if (prAt[repo] == null) return false;
+      return prAt[repo] === m.prAt;
+    };
+
     const SCAN_SKEW_MS = 10 * 60 * 1000;
     const needsScan = (repo) => {
       const stored = prev?.repos?.[repo]?.scan;
@@ -2750,7 +3034,7 @@ function app(){ return {
       return pushed >= seen - SCAN_SKEW_MS;
     };
 
-    const failed = [];
+    const failed = [], skipped = [];
     try {
       const now = Date.now(), nowISO = new Date().toISOString();
       const fetched = {};
@@ -2760,14 +3044,29 @@ function app(){ return {
       // done/total a count of finished repos rather than an estimate.
       let mi = 0, done = 0;
       const active = [];
+      // Watermarks are recorded ONLY for a repo this pass actually read, and
+      // only after it came back. Stamping one for a repo whose crawl threw
+      // would make the failure permanent: the next pass would read the mark,
+      // call the repo quiet, and carry forward the entry the failed pass never
+      // refreshed. A skipped repo keeps the mark it already had, which is by
+      // definition still current, since that is why it was skipped.
+      const nextMarks = {};
       const crawlOne = async () => {
         while (mi < members.length){
           const repo = members[mi++];
+          if (quiet(repo)) {
+            skipped.push(repo);
+            nextMarks[repo] = marks[repo];
+            this.tickCrawl('activity', { done: ++done, total: members.length, active });
+            continue;
+          }
           active.push(repo);
           this.tickCrawl('activity', { done, total: members.length, active });
           try {
             const f = await this.crawlRepoActivity(repo, metaByName.get(repo), now, A, B, cfgByName.get(repo), deep && needsScan(repo), prev);
             fetched[repo] = f;
+            const pushed = metaByName.get(repo)?.pushed_at || '';
+            if (pushed && prAt[repo] != null) nextMarks[repo] = { pushedAt: pushed, prAt: prAt[repo] };
             // A deep pass that came back partial could not read the repo's
             // branches. It keeps what is stored (see the guard in
             // crawlRepoActivity) and says so, rather than reporting a clean run
@@ -2790,18 +3089,31 @@ function app(){ return {
       // `members` is the scope, so a repo whose crawl threw (it is in `failed`,
       // not in `fetched`) keeps its previous entry instead of being deleted by
       // a pass that never reached it.
+      // `members` is the carry scope, so a repo this pass SKIPPED keeps its
+      // stored entry untouched, with its own hash and its own crawl stamps.
+      // That is the same path a failed repo takes, and it is why the skip is
+      // safe: buildCache already had to answer "what about a repo I did not
+      // fetch", and the answer was never "drop it".
       const next = A.buildCache(prev, fetched, nowISO, A.COMMIT_CAP, members);
       try { localStorage.setItem(this._activityCheckKey, String(Date.now())); } catch {}
+      // Pruned to the current membership by construction: nextMarks is built
+      // from `members` alone, so a repo that left the estate stops carrying a
+      // mark nothing will ask about again.
+      this.writeWatermarks(nextMarks);
       const changed = A.changedRepos(prev, next);
       if (changed.length){
         // The run record rides this commit (lib/kits/crawl-runs.js). `pass` says
         // whether the scan ran, which is an order-of-magnitude difference in
-        // cost: the Refresh button always scans, and `goGuides` warms this
-        // cache without one, so two entries with the same shape would otherwise
+        // cost: the Refresh button always scans, and the State view's arrival
+        // kick warms this cache without one, so two entries with the same shape would otherwise
         // average into a meaningless duration.
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
           checked: members.length, changed: changed.length, failed: failed.length,
+          // What the gate saved, recorded where the cost is recorded. A run
+          // whose `skipped` equals its `checked` did the cheap pass and nothing
+          // else, which is the shape a quiet estate should have.
+          skipped: skipped.length,
           pass: deep ? 'scan' : 'quick',
         }) ?? prev?.runs;
         await this.saveFold(reg, A.CACHE_PATH, next,
@@ -2811,10 +3123,10 @@ function app(){ return {
       // event does not have to: it is 370 KB and the crawl is holding it
       // already. Measured 2026-08-17, one refresh read state/activity.json
       // eleven times for 7.2 MB, and two of those reads were exactly this.
-      return { total: members.length, changed, failed, committed: changed.length > 0, doc: next };
+      return { total: members.length, changed, failed, skipped, committed: changed.length > 0, doc: next };
     } catch(e){
       console.warn('activity cache refresh:', e?.message || e);
-      return { total: members.length, changed: [], failed, error: e?.message || String(e) };
+      return { total: members.length, changed: [], failed, skipped, error: e?.message || String(e) };
     }
   },
 
@@ -2829,11 +3141,17 @@ function app(){ return {
   // handful plus the live session's own record, which is republished on every
   // Stop and so is always stale by design.
   //
-  // Throttled shorter than the activity crawl (that one runs a per-repo branch
-  // scan; this one is a tree read and a few blobs) and longer than nothing,
-  // since sessions accrue while you are not looking. See
-  // web-tools-private/DESIGN.md and its sessions/README.md.
-  SESSIONS_CACHE_INTERVAL_MS: 3 * 3600 * 1000,
+  // Throttled shorter than the activity crawl and longer than nothing, since
+  // sessions accrue while you are not looking. See web-tools-private/DESIGN.md
+  // and its sessions/README.md.
+  //
+  // 15 MINUTES, down from 3 hours. This crawl never had the activity crawl's
+  // problem: it is incremental by blob sha, so a pass over a store where
+  // nothing moved is ONE tree read and no blob reads at all. The old 3 hours
+  // was set to sit beneath a 12-hour sibling rather than to ration anything
+  // here, and with the sibling at 30 minutes it had no reason left to be long.
+  // Records land continuously (the live session's own record rewrites on every
+  // Stop), so this is the cache that most rewards being asked often.
   SESSIONS_FETCH_POOL: 6,        // record blobs read at once
   SESSIONS_MAX_FETCH: 120,       // records read per crawl; the rest wait for the next
   _sessionsCheckKey: 'wt:sessionsCacheCheckedAt',
@@ -2870,13 +3188,18 @@ function app(){ return {
     if (!force){
       try {
         const last = +localStorage.getItem(this._sessionsCheckKey) || 0;
-        if (Date.now() - last < this.SESSIONS_CACHE_INTERVAL_MS) return { skipped: true };
+        if (Date.now() - last < this.CRAWL_FLOOR_MS) return { skipped: true };
       } catch {}
     }
-    this._sessionsCrawl = this._crawlSessions();
+    this._sessionsCrawl = this._crawlSessions(force);
     try { return await this._sessionsCrawl; } finally { this._sessionsCrawl = null; }
   },
-  async _crawlSessions(){
+  // What the record listing looked like the last time this crawl folded it in.
+  // A single string, not a per-record map: the question here is "did the store
+  // move at all", and the per-record answer is already the blob shas the fold
+  // itself compares.
+  _sessionsMarkKey: 'wt:sessionsListing',
+  async _crawlSessions(force = false){
     const S = window.RepoSessionsCache;
     const reg = new window.GH({ token: window.TOKEN, repo: this.REGISTRY_REPO, ref: 'main' });
     const t0 = Date.now();   // for the run record, appended below if this commits
@@ -2890,6 +3213,30 @@ function app(){ return {
         .filter(e => e.type === 'blob' && S.isRecordPath(e.path))
         .map(e => ({ path: e.path, sha: e.sha }));
       if (!listing.length) return { skipped: true, reason: 'no session records in the registry' };
+
+      // THE GATE, and its whole value is that it sits above the read below.
+      // The listing above already carries a blob sha per record, so a store
+      // with the same paths at the same shas cannot hold a record this cache
+      // has not folded in. Reading the cache to discover that costs 371 KB to
+      // learn nothing, on every arrival, which is the price this crawl paid
+      // for the fifteen-minute clock to be worth having.
+      //
+      // A forced pass never gates, for the same reason a forced activity pass
+      // is never quiet: Refresh has to mean go and look.
+      //
+      // The fingerprint is the paths and shas in tree order, joined. It moves
+      // when a record is added, rewritten, or removed, which is the full set of
+      // things that can make this cache wrong.
+      const fingerprint = listing.map(e => e.path + ':' + e.sha).join('\n');
+      const smarks = this._marks(this._sessionsMarkKey);
+      if (!force && smarks.listing === fingerprint){
+        // Stamped, because this pass DID check: the floor above is a debounce
+        // and this is the reading it debounces. Leaving it unstamped would make
+        // "checked" mean "last committed", which is the conflation the State
+        // view's two ages exist to keep apart.
+        try { localStorage.setItem(this._sessionsCheckKey, String(Date.now())); } catch {}
+        return { skipped: true, reason: 'no session record has changed since the last crawl' };
+      }
 
       // This read decides which records are stale AND supplies the sha the save
       // rides on, so a copy that is behind both under-reads the store and writes
@@ -2934,8 +3281,19 @@ function app(){ return {
       // The scope is the FULL listing, never `take`: a record the cap deferred
       // must keep its row, and only a record genuinely gone from the store
       // loses one.
+      const deferred = Math.max(0, stale.length - take.length);
       const next = S.buildCache(prev, fetched, listing.map(e => e.path), nowISO, titles);
       try { localStorage.setItem(this._sessionsCheckKey, String(Date.now())); } catch {}
+      // ONLY WHEN THIS PASS LEFT NOTHING BEHIND, and this is the clause the
+      // gate is wrong without. `stale` can exceed the cap, and a record whose
+      // blob read threw is not in `fetched` either; both stay stale for the
+      // next pass. Stamping the fingerprint anyway would tell that next pass
+      // the store had not moved, and the deferred records would never be read
+      // again: the cache would sit permanently short with every reading on
+      // screen saying it was current. So the mark records a COMPLETE fold, and
+      // an incomplete one leaves the store looking moved, which it is.
+      const complete = !deferred && Object.keys(fetched).length === take.length;
+      if (complete) this._setMarks(this._sessionsMarkKey, { listing: fingerprint });
       const changed = S.cacheChanged(prev, next);
       if (changed){
         // The run record rides this commit (lib/kits/crawl-runs.js). `checked`
@@ -2944,15 +3302,13 @@ function app(){ return {
         // the other two crawls: the cap defers the rest to the next pass.
         next.runs = window.CrawlRuns?.push(prev?.runs, {
           at: new Date().toISOString(), ms: Date.now() - t0,
-          checked: listing.length, read: Object.keys(fetched).length,
-          deferred: Math.max(0, stale.length - take.length),
+          checked: listing.length, read: Object.keys(fetched).length, deferred,
         }) ?? prev?.runs;
         await this.saveFold(reg, S.CACHE_PATH, next,
                             'Update sessions cache (state/sessions.json) via show-repo', base);
       }
       return { total: listing.length, read: Object.keys(fetched).length,
-               deferred: Math.max(0, stale.length - take.length), committed: changed,
-               titlesAt: next.titlesAt || '' };
+               deferred, committed: changed, titlesAt: next.titlesAt || '' };
     } catch(e){
       console.warn('sessions cache refresh:', e?.message || e);
       return { error: e?.message || String(e) };
@@ -2981,6 +3337,94 @@ function app(){ return {
       else if (r.committed) toast('arrows-clockwise', 'Sessions refreshed · ' + plural(r.read, 'record') + ' read' + tail, 'alert-success', 4000);
       else toast('check', 'No new sessions · ' + plural(r.total, 'record') + ' on file' + tail, 'alert-info', 3000);
     } finally { this.sessionsRefreshing = false; this.closeCrawl('sessions'); }
+  },
+
+  // ── The Activity group's one Refresh ───────────────────────────────────
+  // Branches and Sessions are two crawls over two sources into two files, and
+  // the State view gave them a button each. That split is real underneath and
+  // was wrong on screen: a session ending is ONE event that moves both
+  // readings, since its record lands in the registry and its commits land on a
+  // branch, so wanting one without the other is the rare case rather than the
+  // common one. One press runs both.
+  //
+  // The measured gap (231 calls and ~28s for branches against 4 and ~1s for
+  // sessions, 2026-08-21) is what made two buttons look right, and it is a
+  // reason to keep two FILES on two throttles with two histories, not two
+  // controls. The throttled background passes stay independent for exactly
+  // that reason; only the deliberate press merges.
+  //
+  // SEQUENTIAL, sessions first. Both crawls commit to the registry's main, and
+  // two contents PUTs racing on one branch is the 409 that the single-flight
+  // guard inside each crawl already exists to avoid. Sessions first costs about
+  // 4% of the gesture and lets the cheap row settle while the long bar runs.
+  //
+  // Each half keeps its own busy flag and its own progress slot, so both rows
+  // still draw their own bar and their own wire line. What merges is the
+  // gesture and the report: pressed once, told once.
+  activityGroupRefreshing: false,
+  async refreshActivityGroup(){
+    if (this.activityGroupRefreshing || !this.hasToken()) return;
+    this.activityGroupRefreshing = true;
+    let s = null, a = null;
+    try {
+      this.sessionsRefreshing = true;
+      this.openCrawl('sessions', 'Listing records', 'records');
+      try { s = await this.refreshSessionsCache(true); }
+      finally { this.sessionsRefreshing = false; this.closeCrawl('sessions'); }
+      document.dispatchEvent(new CustomEvent('web-tools:sessions-refreshed'));
+
+      this.activityRefreshing = true;
+      this.openCrawl('activity', 'Refreshing activity', 'repos');
+      try { a = await this.refreshActivityCache(true, { deep: true }); }
+      finally { this.activityRefreshing = false; this.closeCrawl('activity'); }
+      this.announceActivity(a);
+    } finally {
+      this.activityGroupRefreshing = false;
+      this.reportActivityGroup(s, a);
+    }
+  },
+
+  // One line for two crawls. The units genuinely differ and both are worth
+  // saying (repos changed, records read), so the report names each half rather
+  // than inventing a shared unit that would describe neither. A half that
+  // failed says so by name and does not hide behind the other's success, which
+  // is the one thing a merged report can get wrong that two reports could not.
+  reportActivityGroup(s, a){
+    const toast = Alpine.store('toast');
+    if (!toast) return;
+    const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+    const errs = [];
+    if (a?.error) errs.push('branches: ' + a.error);
+    if (s?.error) errs.push('sessions: ' + s.error);
+    if (errs.length) return toast('warning', 'Activity refresh failed · ' + errs.join(' · '), 'alert-error', 6000);
+
+    const did = [];
+    if (a?.changed?.length) did.push(plural(a.changed.length, 'repo') + ' changed');
+    if (s?.committed) did.push(plural(s.read || 0, 'record') + ' read');
+    const failed = a?.failed?.length || 0;
+    const tail = failed ? ' · ' + plural(failed, 'repo') + ' failed, see console' : '';
+
+    // A skip is not a no-op and must not be reported as one: "nothing changed"
+    // over a crawl that never ran is the one reading this view exists to stop.
+    if (!did.length) {
+      const skips = [];
+      if (a?.skipped) skips.push('branches' + (a.reason ? ': ' + a.reason : ''));
+      if (s?.skipped) skips.push('sessions' + (s.reason ? ': ' + s.reason : ''));
+      if (skips.length) return toast('warning', 'Activity refresh skipped · ' + skips.join(' · '), 'alert-warning', 4000);
+      // A pass that skipped every repo is not the same event as one that
+      // crawled them all and found nothing, and reporting both as "checked"
+      // hid the whole point of the gate: the first cost a dozen calls, the
+      // second cost a couple of hundred. The word says which happened.
+      const skipped = a?.skipped?.length || 0;
+      const how = skipped && skipped === (a?.total || 0) ? ' unmoved'
+                : skipped ? ' checked, ' + skipped + ' unmoved'
+                : ' checked';
+      return toast('check', 'No activity changes · ' + plural(a?.total || 0, 'repo') + how + ', '
+                   + plural(s?.total || 0, 'record') + ' checked' + tail,
+                   failed ? 'alert-warning' : 'alert-info', 3000);
+    }
+    toast('arrows-clockwise', 'Activity refreshed · ' + did.join(' · ') + tail,
+          failed ? 'alert-warning' : 'alert-success', 4000);
   },
 
   // ── The progress channel's two writers ─────────────────────────────────
@@ -3678,7 +4122,7 @@ function app(){ return {
     try { res = await s.gh.get(file); } catch {}
     if (key !== this._projectBoardKey) return;
     if (res){
-      try { await loadMarked(); this.projectBoardHtml = window.marked.parse(res.text); }
+      try { await loadMarked(); this.projectBoardHtml = mdHtml(res.text); }
       catch { this.projectBoardHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
     }
     this.projectBoardLoading = false;
@@ -3789,7 +4233,7 @@ function app(){ return {
         const res = await s.gh.get(this.projectPath + '/DOCS.md');
         if (key !== this._projectDocsKey) return;
         await loadMarked();
-        this.projectDocsIndexHtml = window.marked.parse(res.text);
+        this.projectDocsIndexHtml = mdHtml(res.text);
       } catch {}
     }
   },
@@ -3845,7 +4289,7 @@ function app(){ return {
     // the current one.
     if (key !== this._projectKey) return;
     if (res){
-      try { await loadMarked(); this.projectHtml = window.marked.parse(res.text); }
+      try { await loadMarked(); this.projectHtml = mdHtml(res.text); }
       catch { this.projectHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
     }
     this.projectLoading = false;
@@ -4412,7 +4856,6 @@ function app(){ return {
         if (w && w !== this.BRANCH_WINDOW_DEFAULT) p.set('window', this.windowParam(w));
       } },
     { key: 'sessions', open(){ this.goSessions(); } },
-    { key: 'guides',   open(){ this.goGuides(); } },
     { key: 'chats',    open(){ this.goChats(); } },
     { key: 'routes',   open(){ this.goRoutes(); } },
     { key: 'map', alias: 'portable',
@@ -4452,10 +4895,38 @@ function app(){ return {
       } },
     // App views are estate-level, so the link stands alone (like the Stage):
     // the promoted page's repo and path ride it, independent of the open repo.
-    { key: 'app', when: u => !!(u.appRepo && u.appPath),
-      open(u){ this.goAppView(this.appViewFromUrl(u)); },
+    // Three spellings, one destination. `?app=` is the short form and takes
+    // either a slug a repo declared or the estate's `owner/repo[@ref]:path`
+    // address; the five-key form is what this route was born with and still
+    // resolves, so no minted link ever stops working.
+    { key: 'app', when: u => !!(u.app || (u.appRepo && u.appPath)),
+      async open(u){
+        const v = await this.appViewFromUrl(u);
+        // Captured HERE, not read at render time, and the ordering is the whole
+        // reason: goAppView stamps, the stamp deletes `on` (it is in VIEW_KEYS),
+        // and a render-time read would then find the fallback already gone. So
+        // the ?on= form worked in theory and delivered nothing, which a source
+        // assertion could not have seen. Measured in a browser, 2026-08-25.
+        if (v && !v.query) v.query = this.subjectParamsFor(u);
+        // A slug naming nothing lands on the estate, the page's front door,
+        // rather than on an app view with no page in it. Silent, because a
+        // stale bookmark is not an error worth a dialog, and the estate shows
+        // what the reader can reach instead.
+        if (v) this.goAppView(v); else this.goDashboard();
+      },
       ready(){ return !!this.appView; },
       stamp(p){
+        // The short form is what gets WRITTEN, whenever the open view has a
+        // slug to write. The alternative was to read it and stamp the long one
+        // back, which turns every short link into a long one the moment the
+        // reader touches anything, and an address nobody can keep is not worth
+        // having minted. Precedented: ?view=branches rewrites to ?view=sessions.
+        //
+        // The slug also makes appLabel/appIcon unnecessary. They exist so a
+        // cold deep link is self-describing before the config cache resolves,
+        // and a slug cannot resolve without that cache at all, so by the time
+        // this view is on screen its label and icon are already known.
+        if (this.appView.slug) { p.set('app', this.appView.slug); return; }
         p.set('appRepo', this.appView.repo);
         p.set('appPath', this.appView.path);
         if (this.appView.ref) p.set('appRef', this.appView.ref);
@@ -4473,9 +4944,13 @@ function app(){ return {
   // list so a stale one is cleared rather than carried into a screen that does
   // not mean it; nothing stamps them now. `ref` is deleted here and re-stamped
   // above, being repo-scoped rather than any view's.
+  // `on` is here to be DELETED and never written: it is the query fallback for
+  // the subject's own params (appViewUrl), and the fragment is where they
+  // belong, so an address arriving with ?on= leaves with '#'. That is the
+  // self-heal, and it is why the key is in this list rather than a stamp.
   VIEW_KEYS: ['file', 'view', 'path', 'ref', 'project', 'tab', 'detail', 'item', 'window',
               'sq', 'smode', 'srepo', 'sref', 'spath', 'sfile',
-              'appRepo', 'appPath', 'appRef', 'appLabel', 'appIcon'],
+              'app', 'on', 'appRepo', 'appPath', 'appRef', 'appLabel', 'appIcon'],
 
   routeFor(view){ return this.VIEWS.find(r => r.key === view || r.alias === view); },
 
@@ -4494,9 +4969,18 @@ function app(){ return {
 
   parseUrl(){
     const p = new URLSearchParams(location.search);
-    if (!p.has('repo') && !p.has('file') && !p.has('view')) return null;
+    // `app` joins the gate because it is a route key that names no repo and no
+    // view: `?app=budget-drs` is a complete address and would otherwise parse
+    // to null and land on the estate.
+    if (!p.has('repo') && !p.has('file') && !p.has('view') && !p.has('app')) return null;
     return { repo: p.get('repo') || this.DEFAULT_REPO, ref: p.get('ref') || '',
-             file: p.get('file'), view: p.get('view'), path: p.get('path') || '',
+             file: p.get('file'),
+             // `?app=` names its own route, so it implies view=app: the dispatch
+             // in routeFromUrl keys on url.view, and a short address that named
+             // no view would find no row to open and fall through to the estate.
+             view: p.get('view') || (p.has('app') ? 'app' : null),
+             path: p.get('path') || '',
+             app: p.get('app') || '', on: p.get('on') || '',
              project: p.get('project') || '', tab: p.get('tab') || '',
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '',
@@ -4560,7 +5044,13 @@ function app(){ return {
   syncUrl(){
     this.dropDecksOnNav();
     const qs = this.deepLinkParams(new URLSearchParams(location.search)).toString();
-    const next = location.pathname + (qs ? '?' + qs : '') + location.hash;
+    // The fragment is carried through untouched unless a caller has just asked
+    // for a different one (goAppView, whose view owns its fragment). One shot:
+    // cleared on read, so every other caller keeps the carry-through that has
+    // always been the rule here.
+    const hash = this._nextHash === undefined ? location.hash : this._nextHash;
+    this._nextHash = undefined;
+    const next = location.pathname + (qs ? '?' + qs : '') + hash;
     const cur = location.pathname + location.search + location.hash;
     // Push a new history entry per distinct URL so the browser Back button walks
     // the navigation (repo, view, file, folder). A no-op change, or a change made
@@ -4651,7 +5141,7 @@ function app(){ return {
   // the grid and the Stage, switching on this.view, sharing the one lazy
   // mount); estateCtx is the wider context test the sidebar switches on.
   // 'surfaces' is in this list as the Stage's alias, not as a second pane.
-  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'guides', 'chats', 'routes'].includes(this.view); },
+  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'chats', 'routes', 'state'].includes(this.view); },
   // The Lists view is the one estate pane that FILLS rather than flows: its two
   // halves scroll inside themselves, so the page must not scroll and the chain
   // from the pane down to the component root has to carry a definite height.
@@ -4696,11 +5186,11 @@ function app(){ return {
   // published view reachable only after opening a drawer. Each item maps to the
   // same go* method and `view` string the router already uses.
   //
-  // Activity is one nav stop over the two readings of the estate's own motion:
-  // Open (internal key 'activity', kept so existing ?view=activity links
-  // resolve), the branches in flight, and Sessions, the work that made them.
-  // The estate component's segmented pill switches between them and the URL
-  // stamps the specific key, so each deep-links on its own.
+  // Activity is one nav stop over the estate's own motion, read several ways:
+  // Sessions, the work; Branches (internal key 'activity'), the artifacts it
+  // left; then Guides, State, Chats and Routes. The estate component's
+  // segmented pill switches between them and the URL stamps the specific key,
+  // so each deep-links on its own.
   //
   // To-do and Jot used to be Activity's other two pills and are now their own
   // stop, Lists. They were never activity: a personal checklist and an idea
@@ -4710,7 +5200,7 @@ function app(){ return {
   // Both old keys still route (?view=todo and ?view=jots land on Lists).
   get estateNav(){
     return [
-      { view: 'activity', views: ['activity', 'sessions', 'guides', 'chats', 'routes'],
+      { view: 'activity', views: ['activity', 'sessions', 'chats', 'routes', 'state'],
         icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
       { view: 'todo', views: ['todo', 'jots'],
         icon: 'ph-list-checks', label: 'Lists',  go: () => this.goTodo() },
@@ -4738,7 +5228,6 @@ function app(){ return {
       // conditional): the answer to "is what I am looking at current" has to be
       // reachable before you know you need it, which is the failure the four
       // scattered Refresh buttons had.
-      { view: 'state',    icon: 'ph-stack-simple', label: 'State',    go: () => this.goState() },
       // Proposals is the one conditional entry: an empty channel should cost no
       // attention, so it appears only while something is pending (or while the
       // view is open, so the nav does not vanish under the user on the apply
@@ -4780,7 +5269,11 @@ function app(){ return {
   // just changed (a repo's views for the estate's, say). It now closes only
   // when you say so, by the scrim or the X. The pinned desktop sidebar never
   // closed, so the two behave alike now.
-  goEstate(){ this.estateSeen = true; this.view = 'estate'; this.syncUrl(); },
+  // Repos kicks its own throttled crawl on arrival, the way Open and Sessions
+  // do. It was the one estate pane that did not, warmed only at boot and by its
+  // own Refresh, so a session that opened elsewhere and walked over to Repos an
+  // hour later read whatever the boot had left.
+  goEstate(){ this.estateSeen = true; this.view = 'estate'; this.warmConfigCache(); this.syncUrl(); },
   // The Stage's other sub-view: the shelf of saved surfaces. Its own ?view key,
   // the way each of Activity's three has one, so a pill tap deep-links.
   goSurfaces(){ this.estateSeen = true; this.view = 'surfaces'; this.syncUrl(); },
@@ -4830,12 +5323,59 @@ function app(){ return {
   },
   // The Proposals view: pending cross-repo edits awaiting the user's confirm.
   goProposals(){ this.proposalsSeen = true; this.view = 'proposals'; this.syncUrl(); },
-  // State kicks nothing. Every other view warms the cache it reads on arrival;
-  // this one reports ages, and a view that ran a crawl to show you how old
-  // things were would answer its own question before you read it.
+  // State kicks ALL THREE, which is the reverse of what it used to do, and the
+  // reverse is the point. It kicked nothing on the argument that a view whose
+  // subject is age must not answer its own question before you read it. That
+  // argument held while a crawl cost a full pass over the estate; it stopped
+  // holding when the gate moved inside the crawls, since a look that finds
+  // nothing now costs about one call per crawl.
+  //
+  // And the old behaviour had a worse property than the one it avoided: this
+  // is the view someone opens BECAUSE they suspect something is behind, and it
+  // was the one view that would show them the lag and then decline to fix it.
+  // Reporting a fault you are able to repair, to someone who came to you about
+  // it, is not neutrality.
+  //
+  // Un-awaited, so the rows render on the stored ages and re-read as each crawl
+  // lands. Each one re-stamps `checked`, so the reading the view leads with is
+  // about this visit rather than about whenever a pane was last opened.
+  // ?view=state still resolves, and lands where State now lives: Activity's
+  // last pill. An address a reader has bookmarked is a contract, which is the
+  // same reason ?view=activity kept resolving through the four days the
+  // Branches pill spent demoted to a lens of Sessions.
   goState(item){
     this.stateItem = item || '';
-    this.stateSeen = true; this.view = 'state';
+    this.stateSeen = true; this.estateSeen = true; this.view = 'state';
+    // EACH KICK ANNOUNCES ITSELF, and leaving this out made the whole change
+    // invisible. The crawls ran correctly and stamped their `checked` keys; the
+    // view had read those stamps once at mount and had no reason to read them
+    // again, so a row sat there saying "checked 1d ago" over a crawl that had
+    // finished seconds earlier. The three `*-refreshed` events the view already
+    // listens for are dispatched by the manual Refresh wrappers alone, so an
+    // arrival crawl landed in silence. Caught on a phone, 2026-08-22, by the
+    // reading being obviously wrong.
+    //
+    // Two passes, because they cost different amounts. Each kick fires the
+    // cheap one as it lands: the `checked` stamps are localStorage and re-read
+    // for nothing. When all three have settled, one more pass says so, and the
+    // view re-reads everything once, since a crawl that committed also moved
+    // the `updated` date, which is a commit read per file.
+    const checked = (settled) => document.dispatchEvent(
+      new CustomEvent('web-tools:cache-checked', { detail: { settled } }));
+    const mark = (key, on) => { this.crawlChecking = { ...this.crawlChecking, [key]: on }; };
+    const kick = (key, run) => {
+      mark(key, true);
+      // `finally` rather than `then`: a crawl that threw has still stopped
+      // running, and a row left saying "checking…" forever over a failed crawl
+      // is a worse reading than the stale age it replaced.
+      return Promise.resolve(run()).catch(() => {})
+        .finally(() => { mark(key, false); checked(false); });
+    };
+    Promise.all([
+      kick('configs', () => this.refreshConfigCache?.()),
+      kick('activity', () => this.refreshActivityCache?.(false, { deep: false })),
+      kick('sessions', () => this.refreshSessionsCache?.()),
+    ]).then(() => checked(true));
     // Announced even when the view is already mounted: arriving from a second
     // age pill has to move the highlight, and re-setting `view` to the value it
     // already holds is not something Alpine reacts to.
@@ -4870,15 +5410,83 @@ function app(){ return {
       if (r?.committed) this.announceActivity(r);
     } catch(e){ console.warn('arrival activity refresh:', e?.message || e); }
   },
+  // The Repos pane's half of the same contract. Its cards reload on
+  // web-tools:configs-refreshed, which until now only the manual Refresh
+  // dispatched, so the config crawl had the identical silence the sessions
+  // crawl did: a background pass could commit a new cache and leave the cards
+  // and the age pill drawn from the one before it.
+  async warmConfigCache(){
+    try {
+      const r = await this.refreshConfigCache(false);
+      if (r?.committed) document.dispatchEvent(new CustomEvent('web-tools:configs-refreshed'));
+    } catch(e){ console.warn('arrival config refresh:', e?.message || e); }
+  },
+
+  // ── Coming back to a page that never left ─────────────────────────────
+  // Every cache-backed pane warms itself on ARRIVAL, and arrival means a
+  // navigation inside a running app: goActivity, goSessions, goState. On a
+  // phone there is no such navigation. Safari keeps the page and restores it,
+  // so the boot ran once, whenever the tab was first opened, and each pane has
+  // been rendering the copy it read then for as long as the tab has existed.
+  //
+  // That is what an age pill stuck at "as of 1d" is reporting, and it is the
+  // worst reading the estate can show: it is precise, it is correct, and the
+  // one control it offers re-crawls a cache the mounted view will not re-read.
+  // A reader who can see the lag and cannot clear it is being told the app
+  // knows and has decided not to act.
+  //
+  // So the return itself is treated as the arrival. Hidden for less than
+  // REVISIT_MS is a tab flick and warms nothing; longer runs exactly the
+  // throttled crawls a fresh arrival would run, and each announces on commit
+  // so the pane re-reads rather than sitting on what it mounted with.
+  //
+  // A bfcache restore always warms, whatever the clock says: `pageshow` with
+  // `persisted` means the page came back with no boot at all, which is the
+  // case this whole handler exists for and the one where a missed
+  // visibilitychange would leave the reading frozen for good.
+  REVISIT_MS: 5 * 60 * 1000,
+  _hiddenAt: 0,
+  wireRevisit(){
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { this._hiddenAt = Date.now(); return; }
+      // No recorded hide means the page was restored or resumed without one,
+      // so the away time is unknown rather than zero, and unknown warms.
+      if (!this._hiddenAt || Date.now() - this._hiddenAt >= this.REVISIT_MS) this.warmEstateCaches();
+      this._hiddenAt = 0;
+    });
+    window.addEventListener('pageshow', (e) => { if (e.persisted) this.warmEstateCaches(); });
+  },
+  // Only what the pane on screen actually reads. The branch crawl is the
+  // expensive one (tens of seconds when the estate has moved), so it runs for
+  // the view that renders it and not for a reader sitting on Chats. State
+  // reads both, so it warms both.
+  warmEstateCaches(){
+    if (!this.hasToken()) return;
+    const v = this.view;
+    if (v === 'sessions' || v === 'state') this.warmSessionsCache();
+    if (v === 'activity' || v === 'state') this.arrivalActivityRefresh();
+    if (v === 'estate' || v === 'state') this.warmConfigCache();
+  },
+
   // Activity's other pill: the sessions that made the branches. Kicks its own
   // throttled crawl on visit, the way Open kicks the activity crawl, so the
   // cache warms itself and a cold one is one tap from being warm.
-  goSessions(){ this.estateSeen = true; this.view = 'sessions'; this.refreshSessionsCache?.(); this.syncUrl(); },
-  // Guides does its own directory reads, but the repo list and the open PRs it
-  // scans come off the ACTIVITY cache, so this warms the same one goActivity
-  // does. Landing straight on ?view=guides without it is how the pane came up
-  // empty: nothing to scan, and nothing to say so.
-  goGuides(){ this.estateSeen = true; this.view = 'guides'; this.refreshActivityCache?.(false, { deep: false }); this.syncUrl(); },
+  goSessions(){ this.estateSeen = true; this.view = 'sessions'; this.warmSessionsCache(); this.syncUrl(); },
+  // The sessions half of the arrival kick, and it exists because the plain
+  // refreshSessionsCache call it replaces was SILENT. A crawl that commits a
+  // new cache has changed nothing the reader can see until the pane re-reads
+  // the file, and the pane re-reads on web-tools:sessions-refreshed, which
+  // only the manual Refresh dispatched. So a background pass could do all its
+  // work, save a current cache, and leave the pill still saying "as of 1d"
+  // over it, with the one control it offers being the crawl that had just run.
+  // Announcing on commit is what closes that: same shape as
+  // arrivalActivityRefresh, which had it from the start.
+  async warmSessionsCache(){
+    try {
+      const r = await this.refreshSessionsCache(false);
+      if (r?.committed) document.dispatchEvent(new CustomEvent('web-tools:sessions-refreshed'));
+    } catch(e){ console.warn('arrival sessions refresh:', e?.message || e); }
+  },
   // Chats warms nothing, and the absence is the design. The other three panes
   // read a crawl cache this shell keeps fresh; the archive's month shards are
   // immutable once committed, so there is no staleness for a crawl to chase.
@@ -4923,6 +5531,31 @@ function app(){ return {
   //
   // Nothing is awaited before takeClipboard: see the preload in init() for why.
   pasteBusy: false,
+  // Fold in whatever the fab parked on another page, and open the Stage on it.
+  // Quiet when nothing is parked, which is every ordinary boot; a stale or
+  // unreadable payload is dropped by the kit rather than reported, since the
+  // paste it describes belongs to a session nobody is in any more.
+  //
+  // The kit is loaded here rather than in the boot chain: nothing else on this
+  // page reads it, and a boot that fetched it every time would be paying on
+  // every load for the rare one that has something to collect.
+  async drainStageHandoff(){
+    try {
+      if (!window.StageHandoff && window.gh?.load) await window.gh.load('kits/stage-handoff.js');
+      const flavors = window.StageHandoff?.drain?.() || [];
+      if (!flavors.length) return;
+      const { added } = await window.StageIntake.takeFlavors(flavors);
+      if (!added.length) return;
+      if (this.view !== 'stage') this.goStage();
+      if (added.length === 1) window.StageIntake.focus(added[0]);
+      Alpine.store('toast')?.('clipboard-text', added.length > 1
+        ? 'Staged ' + added.length + ' pasted refs' : 'Staged ' + (added[0]?.name || 'the paste'), '', 3000);
+    } catch (e) {
+      Alpine.store('toast')?.('warning', 'The parked paste did not arrive: ' +
+        (e?.message || e), 'alert-error', 5000);
+    }
+  },
+
   async pasteAnywhere(){
     if (this.pasteBusy) return;
     const toast = Alpine.store('toast');
@@ -4993,6 +5626,13 @@ function app(){ return {
     // docking and the sidebar were one decision.
     const sidebar = this.showSidebar && this.sidebarOpen;
     root.dataset.deckPane = this.deckDock ? 'dock' : sidebar ? 'inset' : 'full';
+    // The remembered seam, applied only while docked. Undocked it must go, or
+    // the property sits on the root describing a split that is not on screen.
+    if (this.deckDock) {
+      let pct = 0;
+      try { pct = Number(localStorage.getItem('deckDockPct')); } catch {}
+      if (pct >= 20 && pct <= 80) root.style.setProperty('--deck-dock-left', `calc(100vw - ${pct}vw)`);
+    } else root.style.removeProperty('--deck-dock-left');
     // MEASURED, not stated. The header is h-14 plus a border, but it is also
     // conditional (shellMode) and a second copy of its height here would be a
     // number to keep in step with a class nobody would think to look at. A
@@ -5024,6 +5664,39 @@ function app(){ return {
       this.deckDock = intent === 'dock';
       try { localStorage.setItem('deckDock', this.deckDock ? '1' : '0'); } catch {}
       this.syncDeckFrame();
+    };
+    // `when` qualifies the claim the hook makes, and it closes a gap this shell
+    // had: the CSS maps --deck-left in only at lg, so below it the shell CANNOT
+    // dock, but the hook was installed unconditionally and the kit offered the
+    // toggle anyway. Tapping it on a phone set data-deck-pane="dock", which
+    // changed no layout (the rules are lg-gated) and did change one thing that
+    // is not layout: the kit leaves page scroll UNLOCKED under 'dock', so the
+    // background scrolled behind a full-window takeover. The same breakpoint the
+    // CSS uses, stated once here, so the toggle appears exactly where docking
+    // means something.
+    window.__deckPane.when = '(min-width: 1024px)';
+    // HOW WIDE, which is a separate claim from whether it can dock at all. The
+    // kit asks for it as a percentage OF THE WINDOW given to the deck, because
+    // that is the only quantity both sides can agree on: the shell's own
+    // formula is sidebar-relative and the kit knows nothing about a sidebar.
+    //
+    // Read by MEASURING the deck rather than by parsing the property, since the
+    // property is a calc with a clamp in it and its computed value is a length
+    // the shell would then have to turn back into a percentage. The overlay is
+    // on screen and its left edge is the answer.
+    //
+    // Stored per reader like the dock preference itself, and kept off the
+    // address for the reason stated there: a pane width in a shared link is a
+    // claim about the recipient's window that the sender could not have known.
+    window.__deckWidth = (pct, commit) => {
+      if (pct == null) {
+        const el = document.querySelector('.sd-overlay');
+        const left = el ? el.getBoundingClientRect().left : 0;
+        return Math.round((window.innerWidth - left) / (window.innerWidth || 1) * 100);
+      }
+      document.documentElement.style.setProperty('--deck-dock-left', `calc(100vw - ${pct}vw)`);
+      if (commit) { try { localStorage.setItem('deckDockPct', String(pct)); } catch {} }
+      return pct;
     };
   },
 
@@ -5211,12 +5884,57 @@ function app(){ return {
   openRepoDialog(repo){ document.getElementById('repo')?.__repo?.openDialog(repo, { tab: 'settings' }); },
   // Select an estate-level app view; the main area renders it live via
   // toss-render #gh= (appViewUrl).
-  goAppView(v){ this.appView = v; this.view = 'app'; this.syncUrl(); },
-  // Reconstruct an app view from a deep link (?view=app&appRepo&appPath). Prefer
-  // the loaded entry (its viewLabel/icon), since the collection may not have
-  // resolved yet on a cold open; fall back to a minimal object that still
-  // renders (label from the filename, a default icon).
-  appViewFromUrl(url){
+  goAppView(v){
+    this.appView = v;
+    this.view = 'app';
+    // The fragment is THIS view's address, not the shell's, so it moves with the
+    // view. Two things fall out, and both are bugs without it: a ?on= arrival
+    // self-heals into the fragment form the reader can keep, and switching app
+    // views drops the previous one's params instead of handing News the deep
+    // link that belonged to budget-drs. The shell's own fragment keys are the
+    // exception and survive, since a stage link is not any view's.
+    const kept = String(location.hash || '').replace(/^#/, '').split('&')
+      .filter(seg => seg && this.SHELL_FRAGMENT_KEYS.includes(seg.split('=')[0]));
+    const body = kept.concat(v && v.query ? [v.query] : []).join('&');
+    this._nextHash = body ? '#' + body : '';
+    this.syncUrl();
+  },
+  // Reconstruct an app view from a deep link. Three spellings arrive here and
+  // they resolve differently, which is the whole of this method:
+  //
+  //   ?app=<slug>              a name a repo declared on a promoted page. It
+  //                            carries no repo and no path, so it can ONLY be
+  //                            resolved against the collected list, and that
+  //                            list is a crawl. Hence the await below.
+  //   ?app=owner/repo[@ref]:p  the estate's one address grammar, self-contained.
+  //   ?view=app&appRepo=&…     the five-key form this route was born with.
+  //
+  // The slug and the address are told apart by RepoAddress.parse, which returns
+  // null for anything that is not an address. That is the discriminator rather
+  // than a slug regex of my own, so the grammar keeps one implementation and a
+  // slug is simply "not an address".
+  async appViewFromUrl(url){
+    if (url.app) {
+      const addr = window.RepoAddress && window.RepoAddress.parse(url.app);
+      if (!addr) {
+        // A slug is a lookup, and the table is loaded asynchronously, so this
+        // is the one address form that must wait. It waits HERE rather than at
+        // boot, so every other address still routes at first paint: the cost is
+        // paid only by the form that cannot be resolved without paying it.
+        // A slug that resolves to nothing falls through to null, and the caller
+        // (routeFromUrl) then lands on the estate rather than an empty frame.
+        await this.appViewsReady;
+        return this.appViews.find(v => v.slug === url.app) || null;
+      }
+      const key = addr.repo + (addr.ref ? '@' + addr.ref : '') + ':' + addr.path;
+      return this.appViews.find(v => v.key === key) || {
+        repo: addr.repo, ref: addr.ref, path: addr.path,
+        label: addr.path.split('/').pop(), icon: 'ph-app-window', key,
+      };
+    }
+    // Prefer the loaded entry (its viewLabel/icon/slug), since the collection
+    // may not have resolved yet on a cold open; fall back to a minimal object
+    // that still renders (label from the filename, a default icon).
     const key = url.appRepo + (url.appRef ? '@' + url.appRef : '') + ':' + url.appPath;
     return this.appViews.find(v => v.key === key) || {
       repo: url.appRepo, ref: url.appRef, path: url.appPath,
@@ -5224,17 +5942,76 @@ function app(){ return {
       icon: url.appIcon || 'ph-app-window', key,
     };
   },
-  // An app view's toss address. `query` is optional and rides the address the
-  // way the toss grammar allows (?query on the addressed path), which the
-  // renderer's params shim answers inside the frame; the Links pencil uses it
-  // to open the board straight into edit mode. It is deliberately NOT stamped
-  // into the shell's URL: opening an editor is an action, not a place, so a
-  // reload lands on the board's reading view.
+
+  // ── What the framed page is handed, and whose namespace is whose ──────────
+  //
+  // THE SHELL OWNS THE QUERY. THE FRAGMENT IS THE SUBJECT'S.
+  //
+  // That is the whole rule, and it needs no list of reserved names on either
+  // side, which is the point: the shell's key set grows (VIEW_KEYS carries two
+  // retired keys already) and a framed page's grows too, in another repo, with
+  // nothing comparing them. Under a shared namespace the next addition on
+  // either side is a silent collision that presents as "the deep link opened
+  // the wrong screen". `?view=`, `?tab=` and `?q=` collide today.
+  //
+  // It is also not a new rule. docs/routes.json states it for every parameter
+  // in the estate ("read fragment first, query as fallback"), lib/kits/url-params.js
+  // implements it, StageLink.read already applies it to stage/prompts/mode, and
+  // this shell's own syncUrl has always rebuilt the query while carrying
+  // location.hash through byte for byte. The fragment was a namespace the shell
+  // preserved and did not use; this is the half that was missing.
+  //
+  // Precedence, highest first:
+  //   1. v.query      set programmatically. An action, not an address: the
+  //                   Links pencil opens the board in edit mode this way.
+  //   2. the fragment the reader's address carries, minus the three keys the
+  //      shell claims there (stage, prompts, mode; see StageLink.read).
+  //   3. ?on=<encoded>  the query fallback, for a context that eats the '#'
+  //      (a link-preview crawler, a rewriter). Inbound only: `on` is in
+  //      VIEW_KEYS, so the next stamp drops it and the address self-heals into
+  //      the fragment form.
+  //
+  // The delivery is a ?query on the addressed path, which the toss grammar
+  // allows and the renderer's params shim answers inside the frame. So a framed
+  // page reads its params exactly as it always has and needs no change to be
+  // deep-linkable: budget-drs still reads ?view= and ?data= off its own search.
+  //
+  // One honest limit: this is the address going IN. Navigating inside the frame
+  // does not write back out, so the shell's fragment names where the reader
+  // arrived rather than where they are now. The toss address has always had the
+  // same property, so it is parity rather than a regression, and closing it
+  // would need the framed page to postMessage its address to the shell.
+  // The three keys the shell claims in the fragment, and the only exception to
+  // "the fragment is the subject's". They are the stage link's, and they travel
+  // as one unit; see StageLink.read.
+  SHELL_FRAGMENT_KEYS: ['stage', 'prompts', 'mode'],
+  //
+  // Takes the PARSED url rather than reading `location`, and that is not a
+  // style choice. parseUrl() snapshots the address at boot; by the time this
+  // route opens, two unrelated syncUrl writes have already run (ensureBrowser
+  // moves the browsed ref, and the ref watcher stamps), and each of them
+  // deletes every VIEW_KEY it does not stamp, `on` included. So a live read
+  // finds the fallback gone and the ?on= form delivers nothing, silently.
+  // Measured in a browser on 2026-08-25, after the source assertions passed.
+  // The fragment has no such problem, since syncUrl carries it through, so it
+  // is still read live and only the fallback is threaded.
+  subjectParamsFor(u){
+    if (!window.UrlParams) return '';
+    return window.UrlParams.subject(this.SHELL_FRAGMENT_KEYS, {
+      hash: location.hash,
+      search: u && u.on ? '?on=' + encodeURIComponent(u.on) : '',
+    });
+  },
+  // An app view's toss address, with whatever the subject's namespace holds
+  // riding it as a ?query on the addressed path.
   get appViewUrl(){
     const v = this.appView;
     if (!v || !v.repo || !v.path) return '';
     const ref = v.ref ? '@' + v.ref : '';
-    return '../pages/toss-render.html#gh=' + v.repo + ref + ':' + v.path + (v.query ? '?' + v.query : '');
+    // v.query only. A live subjectParams read here would hand the NEXT app view
+    // the fragment belonging to the one before it.
+    const q = v.query || '';
+    return '../pages/toss-render.html#gh=' + v.repo + ref + ':' + v.path + (q ? '?' + q : '');
   },
   // The sidebar app-view list: the collected app views (from the config cache,
   // main-only), plus the app view currently open if it is not already among
@@ -5752,7 +6529,7 @@ function overview(){ return {
       try { res = await gh.get(p); break; } catch {}
     }
     if (res){
-      try { await loadMarked(); this.html = window.marked.parse(res.text); }
+      try { await loadMarked(); this.html = mdHtml(res.text); }
       catch { this.html = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
     }
     this.loading = false;

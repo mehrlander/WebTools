@@ -239,12 +239,13 @@ test('selection is state: one note is current, and update edits it in place', ()
   A.clear();
 });
 
-test('the set announces its changes, and Review is a request rather than a surface', () => {
+test('the set announces its changes, for anyone outside the card who wants to know', () => {
   A.enable({ doc, subject: { title: 'sample', url: 'https://example.test/s' } });
   A.clear();
 
-  // The kit owns the data and announces that it moved; the reading surface is
-  // the FAB drawer's Notes tab. There is deliberately no sheet here to find.
+  // The kit owns the data and announces that it moved. The card is the reading
+  // surface now; the announcement survives it as a public signal, and is what
+  // the drawer's Notes tab used to live on before that tab was retired.
   const seen = [];
   const onChange = () => seen.push(A.items.length);
   window.addEventListener('annotate:change', onChange);
@@ -255,29 +256,16 @@ test('the set announces its changes, and Review is a request rather than a surfa
   A.remove(it.id);
   assert.deepEqual(seen, [1, 1, 1, 0], 'add, update, select and remove each announce');
   window.removeEventListener('annotate:change', onChange);
-
-  // Review asks; a listener claims it by preventing the default. Unclaimed, it
-  // says so on the status line rather than appearing to do nothing.
-  let asked = 0;
-  const claim = (e) => { asked++; e.preventDefault(); };
-  window.addEventListener('annotate:review', claim);
-  A.review();
-  assert.equal(asked, 1);
-  assert.equal(A._state.status.textContent, '', 'a claimed request is silent');
-  window.removeEventListener('annotate:review', claim);
-
-  A.review();
-  assert.match(A._state.status.textContent, /No drawer/,
-    'unclaimed, it names the gap instead of failing quietly');
+  assert.equal(typeof A.review, 'undefined', 'and Review is gone with the tab it asked for');
   A.clear();
 });
 
-test('announcements climb to the top window, since the drawer is usually up there', () => {
-  // A toss runs the annotated page in an iframe whose own drawer declines to
-  // mount, so the listener is in the TOP window while the kit is in the frame.
-  // An announcement that only reached its own window was shouted into the frame
-  // nobody watches: measured 2026-08-09, Review reporting "no drawer" with the
-  // launcher visible in the same screenshot.
+test('announcements climb to the top window, since a listener is usually up there', () => {
+  // A toss runs the annotated page in an iframe, so a listener is in the TOP
+  // window while the kit is in the frame. An announcement that only reached its
+  // own window was shouted into the frame nobody watches: measured 2026-08-09,
+  // when Review reported "no drawer" with the launcher visible in the same
+  // screenshot. Review is retired; the climb is what outlived it.
   //
   // jsdom's window.top is non-configurable, so the framed kit gets its own
   // stub window. That is honest to the case anyway: a second kit instance in a
@@ -295,8 +283,8 @@ test('announcements climb to the top window, since the drawer is usually up ther
   assert.deepEqual(seen.top, ['annotate:change'], 'and it reached the shell one frame up');
 
   topWin.claim = true;
-  assert.equal(F._announce('annotate:review', true), true,
-    'a drawer one frame up counts as a drawer');
+  assert.equal(F._announce('annotate:change', true), true,
+    'and a listener one frame up can claim it');
 
   // Unframed, top IS the window, and one dispatch must not become two: a
   // doubled change event is a doubled re-read of the whole set.
@@ -1239,36 +1227,31 @@ test('the Page chip opens a draft outright: no gesture to make first', () => {
   A.disable();
 });
 
-test('the review button says what a tap will do before it is tapped', () => {
-  // It was a yellow pill reading "Review" that looked the same whether it would
-  // open the drawer, close it, or reach nothing at all. The drawer broadcasts
-  // its state; the button reads it.
-  let asked = 0;
-  const query = () => asked++;
-  window.addEventListener('annotate:drawer-query', query);
+test('the title, the count and the way in are one control', () => {
+  // Three were two too many, and the first was the leftover of a fourth: a
+  // title button whose only errand was opening the drawer's Notes tab, a count
+  // that said how many and offered nothing, and a chevron. With the tab
+  // retired the title had nothing left to do, and a card that names itself,
+  // counts itself and opens itself was saying one thing three times.
   A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
   const S = A._state;
-  assert.equal(asked, 1, 'the card asks once on mount rather than waiting to be told');
-  window.removeEventListener('annotate:drawer-query', query);
 
-  const say = (detail) => window.dispatchEvent(new window.CustomEvent('annotate:drawer', { detail }));
+  assert.equal(S.expandBtn.textContent.trim(), 'Notes', 'untouched, it is the card\u2019s name and its way in');
+  assert.equal(S.countEl.textContent, '', 'and carries no number until there is one');
+  A.add({ type: 'page' }, 'one');
+  A.add({ type: 'page' }, 'two');
+  assert.equal(S.countEl.textContent, '2');
+  assert.match(S.expandBtn.textContent, /^Notes\s*2/);
 
-  say({ open: false, tab: 'render' });
-  assert.match(S.reviewBtn.title, /^Open/);
-  assert.equal(S.reviewBtn.disabled, false);
+  assert.match(S.expandBtn.title, /^Open the set/);
+  S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.expanded, true);
+  assert.match(S.expandBtn.title, /^Put the set away/, 'and it says which way it is going');
+  assert.equal(S.expandBtn.style.background, 'rgb(250, 204, 21)', 'lit while open, the way a live mode chip is');
 
-  say({ open: true, tab: 'render' });
-  assert.match(S.reviewBtn.title, /^Open/, 'open on another tab is still an open');
-
-  say({ open: true, tab: 'notes' });
-  assert.match(S.reviewBtn.title, /^Close/, 'and in front of you, the only honest offer is to put it away');
-  assert.equal(S.reviewBtn.style.background, 'rgb(250, 204, 21)', 'lit, the way a live mode chip is');
-
-  // No drawer at all: the click that proves it is the click that disables the
-  // button, so it stops offering something it cannot do.
-  A.review();
-  assert.equal(S.reviewBtn.disabled, true);
-  assert.match(S.reviewBtn.title, /No drawer/);
+  assert.match(S.expandBtn.getAttribute('style'), /min-height:\s*30px/, 'sized to the controls under it');
+  A.clear();
   A.disable();
 });
 
@@ -1317,7 +1300,6 @@ test('the card spends its whitespace evenly: an empty list is not a band', () =>
   A.add({ target: { type: 'page' }, note: 'one' });
   assert.equal(S.listEl.style.paddingBottom, '8px', 'and it returns with the first note');
 
-  assert.match(S.reviewBtn.getAttribute('style'), /min-height:\s*30px/, 'the title matches the action row');
   assert.match(S.pageChip.getAttribute('style'), /min-height:\s*28px/, 'and a chip plus its group border makes 30');
   A.disable();
 });
@@ -1640,6 +1622,299 @@ test('the set has a second reading: on the page, where a screenshot can hold it'
   assert.equal(A.inPlace, false);
   assert.equal(S.listEl.style.display, 'flex');
   assert.equal(painted(), '', 'and the page is clean again');
+  A.clear();
+  A.disable();
+});
+
+test('the expander opens the set, and the card grows upward whatever it is anchored by', () => {
+  // Reading the set used to mean leaving for the drawer's Notes tab, on a page
+  // that has a drawer at all. The card is anchored bottom-left, so a taller
+  // panel grows up and the header stays under the thumb that just tapped it.
+  // A header drag re-anchors the card to the TOP, though, and a taller panel
+  // then grows down and off the screen: expanding re-pins the bottom edge so
+  // the direction is the same either way.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+
+  // OFFERED ON ARRIVAL, with nothing filed. It hid behind a non-empty set at
+  // first, which is defensible and was still wrong: the first thing a reader
+  // does with a fresh page is arrive at it holding no notes, so the control
+  // was invisible in exactly the state where it had to teach itself.
+  assert.equal(S.expandBtn.style.display, 'flex', 'the way in is visible before there is anything in it');
+  assert.equal(S.countEl.textContent, '', 'carrying no number, so it is narrower empty than full');
+  A.add({ type: 'page' }, 'about the page');
+  assert.equal(S.countEl.textContent, '1');
+  assert.equal(A.expanded, false);
+  assert.equal(S.readBar.style.display, 'none');
+  assert.equal(S.setActs.style.display, 'none');
+
+  // What a drag leaves behind: bottom released, top pinned.
+  S.ui.style.bottom = 'auto';
+  S.ui.style.top = '40px';
+
+  S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.expanded, true);
+  assert.equal(S.ui.style.top, 'auto', 'the top anchor is released');
+  assert.match(S.ui.style.bottom, /px$/, 'and the bottom edge is pinned, so the growth goes up');
+  assert.match(S.panel.style.maxHeight, /px$/, 'the ceiling is computed from the room above that edge');
+  assert.equal(S.readBar.style.display, 'flex', 'the three readings arrive');
+  assert.equal(S.setActs.style.display, 'flex', 'and the actions on the set');
+  assert.equal(S.listEl.style.display, 'flex', 'opening on the list, which is where a reader already was');
+
+  S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.expanded, false);
+  assert.equal(S.panel.style.maxHeight, 'min(480px,70vh)', 'and collapsing puts the card back to its own cap');
+  assert.equal(S.readBar.style.display, 'none');
+  A.clear();
+  A.disable();
+});
+
+test('three readings of one set, and a serialization is shown rather than described', () => {
+  // A button labelled by its format that copies without saying so is the thing
+  // this replaced: what will land on the clipboard is on screen first.
+  A.enable({ doc, subject: { title: 'Sample doc', url: 'https://e.test/p' } });
+  A.clear();
+  A.add({ type: 'element', selector: '#p1', excerpt: 'the quick brown fox' }, 'about the paragraph');
+  A.add({ type: 'page' }, 'about the page');
+  const S = A._state;
+  A.expand(true);
+
+  S.readChips.md.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(A.reading, 'md');
+  assert.equal(S.listEl.style.display, 'none', 'the list gives up the strip of card it shares');
+  assert.equal(S.serial.style.display, 'flex');
+  assert.equal(S.serialPre.textContent, A.toMarkdown(), 'exactly what Copy hands over, not a paraphrase');
+  assert.equal(S.readChips.md.style.background, 'rgb(250, 204, 21)', 'lit, the way a live mode chip is');
+
+  S.readChips.json.dispatchEvent(new window.Event('click', { bubbles: true }));
+  // Everything but `at`, which is stamped at the moment of serializing and so
+  // differs by a millisecond between the pane's copy and this one.
+  const shape = (o) => { const { at, ...rest } = o; return rest; };
+  assert.deepEqual(shape(JSON.parse(S.serialPre.textContent)), shape(A.toJSON()));
+
+  // The set stays live under the reading: a note filed while the JSON is up
+  // repaints the JSON rather than leaving a stale copy on screen.
+  A.add({ type: 'page' }, 'a third');
+  assert.match(S.serialPre.textContent, /a third/);
+
+  S.readChips.notes.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.listEl.style.display, 'flex');
+  assert.equal(S.serial.style.display, 'none');
+  A.clear();
+  A.disable();
+});
+
+test('a serialization narrows to one note, and says which of how many it is', () => {
+  // The reading no other surface offers. A single note still carries the
+  // preamble, since a note pasted somewhere has to say which page it came
+  // from, and the lead line reads "Note 2 of 3" rather than "1 note", which
+  // would be a claim about the set instead of an excerpt from one.
+  A.enable({ doc, subject: { title: 'Sample doc', url: 'https://e.test/p' } });
+  A.clear();
+  A.add({ type: 'page' }, 'first');
+  const two = A.add({ type: 'element', selector: '#p1', excerpt: 'the quick brown fox' }, 'second');
+  A.add({ type: 'page' }, 'third');
+  const S = A._state;
+  A.expand(true);
+  A.setReading('md');
+
+  assert.equal(S.scopeBtn.style.display, 'none', 'nothing selected, so nothing to narrow to');
+  A.select(two.id, { scroll: false });
+  assert.equal(S.scopeBtn.style.display, 'flex');
+  assert.equal(S.scopeBtn.textContent, 'Set', 'one chip, carrying the scope it is currently showing');
+
+  S.scopeBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.scopeBtn.textContent, 'Note 2', 'and it swaps, labelled by the selection rather than by the word');
+  assert.equal(S.serialPre.textContent, A.noteMarkdown(two.id));
+  assert.match(S.serialPre.textContent, /Note 2 of 3/);
+  assert.match(S.serialPre.textContent, /https:\/\/e\.test\/p/, 'the page it came from rides along');
+  assert.match(S.serialPre.textContent, /second/);
+  assert.doesNotMatch(S.serialPre.textContent, /third/, 'and nothing else in the set does');
+
+  A.setReading('json');
+  const one = JSON.parse(S.serialPre.textContent);
+  assert.equal(one.format, 'annotate/1', 'still the declared format, with one note in it');
+  assert.equal(one.notes.length, 1);
+  assert.equal(one.notes[0].note, 'second');
+
+  // The scope names the SELECTED note, so it cannot outlive the selection.
+  A.select(null);
+  assert.equal(S.scopeBtn.style.display, 'none');
+  assert.equal(JSON.parse(S.serialPre.textContent).notes.length, 3, 'and it falls back to the set');
+  A.clear();
+  A.disable();
+});
+
+test('the set band goes when the notes go, and when the page takes them', () => {
+  // Copy, Save and Clear over an empty set are three offers that cannot be
+  // taken up. And the in-place reading exists to leave one 30px strip for a
+  // screenshot, which an expanded card would be the loudest thing to break.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'one');
+  const S = A._state;
+  A.expand(true);
+  assert.equal(S.setActs.style.display, 'flex');
+
+  A.showInPlace(true);
+  assert.equal(S.readBar.style.display, 'none', 'the readings fold away with the list');
+  assert.equal(S.setActs.style.display, 'none');
+  assert.equal(S.expandBtn.style.display, 'none', 'and so does the way back into them');
+
+  A.showInPlace(false);
+  assert.equal(S.readBar.style.display, 'flex', 'the card comes back the way it was left');
+  assert.equal(S.setActs.style.display, 'flex');
+
+  A.clear();
+  assert.equal(S.setActs.style.display, 'none', 'an empty set has no actions to offer');
+  assert.equal(S.expandBtn.style.display, 'flex', 'but the way in stays, which is how it is ever found');
+  A.disable();
+});
+
+test('an expanded empty set says where notes come from, rather than showing an empty one', () => {
+  // Opening the expander with nothing filed is the state that has to teach the
+  // gesture, so it cannot be a blank pane: an empty markdown document under a
+  // lit Markdown chip reads as something broken. The readings strip stays,
+  // since seeing the three on offer is most of what opening an empty set is
+  // for; the list, the serialization and the actions all wait for a note.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+  A.expand(true);
+
+  assert.equal(S.empty.style.display, 'flex');
+  assert.match(S.empty.textContent, /Select text on the page/, 'and it names the gesture with no chip of its own');
+  assert.equal(S.readBar.style.display, 'flex', 'the three readings are still on offer');
+  assert.equal(S.listEl.style.display, 'none');
+  assert.equal(S.serial.style.display, 'none');
+  assert.equal(S.setActs.style.display, 'none');
+
+  // Picking a reading over nothing does not conjure an empty document.
+  A.setReading('md');
+  assert.equal(S.empty.style.display, 'flex');
+  assert.equal(S.serial.style.display, 'none');
+
+  // The first note spends the line and the pane takes over, still on Markdown.
+  A.add({ type: 'page' }, 'the first one');
+  assert.equal(S.empty.style.display, 'none');
+  assert.equal(S.serial.style.display, 'flex');
+  assert.match(S.serialPre.textContent, /the first one/);
+  A.clear();
+  assert.equal(S.empty.style.display, 'flex', 'and removing the last note brings it back');
+  A.disable();
+});
+
+test('the three readings are one window, and what does not fit scrolls inside it', () => {
+  // Sized to content, the card jumped on every tap of the strip: three short
+  // notes made a short card and their markdown a tall one, so the reader's own
+  // tap moved the thing they were reading. One height, and the body takes the
+  // leftover rather than the card taking the content.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'one');
+  A.add({ type: 'page' }, 'two');
+  const S = A._state;
+  A.expand(true);
+
+  const h = S.panel.style.height;
+  assert.match(h, /px$/, 'an open set is a window of a fixed size');
+  assert.equal(S.panel.style.maxHeight, h, 'and the composer opens inside it rather than growing it');
+  assert.equal(S.listEl.style.flexGrow, '1', 'the list takes the leftover height');
+  assert.equal(S.listEl.style.flexBasis, '0px', 'from zero, so a short list does not set the window');
+  assert.equal(S.listEl.style.minHeight, '0px', 'and may shrink below its content, which is what lets it scroll');
+  assert.match(S.listEl.getAttribute('style'), /overflow-y:\s*auto/);
+
+  A.setReading('md');
+  assert.equal(S.panel.style.height, h, 'markdown is the same window');
+  A.setReading('json');
+  assert.equal(S.panel.style.height, h, 'so is the JSON');
+  assert.match(S.serialPre.getAttribute('style'), /overflow:\s*auto/, 'the pane scrolls rather than the card growing');
+
+  // Collapsed, the card goes back to being sized by what is in it: a stretched
+  // list under a composer holding two notes is a band of white.
+  A.expand(false);
+  assert.equal(S.panel.style.height, '');
+  assert.equal(S.panel.style.maxHeight, 'min(480px,70vh)');
+  assert.equal(S.listEl.style.flexGrow, '');
+
+  // AN EMPTY SET TAKES THE WINDOW TOO, which is a reversal. It used to stay
+  // small, on the reading that one italic line does not need a window: true of
+  // the line, false of the reader, who then watched the card jump to a new size
+  // the moment they filed anything. One gesture, one size.
+  A.expand(true);
+  const full = S.panel.style.height;
+  A.clear();
+  assert.equal(S.panel.style.height, full, 'nothing filed, and the card is the same window');
+  assert.equal(S.empty.style.display, 'flex');
+  A.disable();
+});
+
+test('copy rides the format row, so it needs no word at all', () => {
+  // "Copy markdown" and "Copy JSON" sat in the footer naming a format the strip
+  // a row above had already named, and the reader had to check which of the two
+  // they were about to press. Beside the chips, the chips are the qualifier,
+  // which left the word doing nothing the glyph was not already doing.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'one');
+  const S = A._state;
+  A.expand(true);
+  A.setReading('md');
+
+  assert.equal(S.serialCopy.textContent.trim(), '', 'the glyph alone: the chips beside it are the qualifier');
+  assert.match(S.serialCopy.title, /markdown/, 'the title still says which, for a pointer that hovers');
+  assert.ok(S.readBar.contains(S.serialCopy), 'and it rides the format row, not a footer under it');
+  assert.equal(S.serialCopy.style.display, 'flex');
+
+  A.setReading('json');
+  assert.match(S.serialCopy.title, /JSON/, 'and it follows the chip it sits beside');
+
+  // Both leave the row where they mean nothing. A Copy beside the Notes chip
+  // has no bytes on screen to take.
+  A.setReading('notes');
+  assert.equal(S.serialCopy.style.display, 'none');
+  assert.equal(S.scopeBtn.style.display, 'none');
+
+  // The footer keeps only what is neither a reading nor a format.
+  const acts = [...S.setActs.querySelectorAll('button')].map(b => b.textContent);
+  assert.deepEqual(acts, ['Save jot', 'Clear']);
+  assert.ok(!acts.some(t => /markdown|JSON/i.test(t)), 'no format is named twice over');
+  A.clear();
+  A.disable();
+});
+
+test('a note being edited is not also a row underneath it', () => {
+  // The pencil put one note on screen twice: in the composer with a caret in
+  // it, and as a static row below still showing the text being replaced.
+  // Which of the two WAS the note was left to the reader, and the row was the
+  // one that looked settled.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const one = A.add({ type: 'page' }, 'first');
+  const two = A.add({ type: 'page' }, 'second');
+  const S = A._state;
+  const rows = () => [...S.listEl.children].length;
+
+  assert.equal(rows(), 2);
+  A.editNote(two.id);
+  assert.equal(S.draft.editId, two.id);
+  assert.equal(rows(), 1, 'the edited note leaves the list while it is in the composer');
+  assert.equal(S.countEl.textContent, '2', 'but the count does not move: nothing was deleted');
+
+  // Saving brings it back, carrying the new words.
+  S.compSave.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(rows(), 2);
+  assert.equal(A.items.find(i => i.id === two.id).note, 'second', 'unchanged text survives the round trip');
+
+  // And so does leaving the edit any other way: every exit runs through
+  // cancelDraft, which is why the row is put back there rather than at each
+  // call site.
+  A.editNote(one.id);
+  assert.equal(rows(), 1);
+  A.notePage({ listen: false });
+  assert.equal(rows(), 2, 'aiming a fresh draft ends the edit, and the row returns with it');
+
   A.clear();
   A.disable();
 });

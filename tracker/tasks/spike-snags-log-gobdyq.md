@@ -3,7 +3,6 @@ id: spike-snags-log-gobdyq
 title: Spike the snags log (friction learned the hard way)
 status: backlog
 project: repo
-track: independent
 opened: 2026-07-15
 session: claude/pr-219-review-22csrh
 ---
@@ -107,3 +106,14 @@ both files, or a decision to drop it.
   which is the accumulation across PRs, the recurrence count, and the `→` to the
   doc carrying the fix. That is authored judgment, not a live read, and it is the
   test any design here should have to pass.
+
+- 2026-08-23: **A concrete defect in the recurrence mechanism this spike is
+  deciding.** Seven entries in the tail still carry the retired `## Title (date)`
+  heading, which `tools/build/snags-index.mjs` does not parse, so their
+  *(seen: ...)* dates are silently credited to whichever slugged entry precedes
+  them. Measured on PR #480: `status-audit-skipped-index` read x9 against a true
+  x8, and a newly added entry read as a repeat of it. The log's own header
+  claims every entry leads with a slug; seven do not, which makes the count the
+  header calls meaningful the one number that is wrong. Converting them is
+  mechanical and belongs with whatever shape this spike settles, since the
+  recurrence marker is exactly what the spike is deciding.

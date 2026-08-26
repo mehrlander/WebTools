@@ -3,7 +3,6 @@ id: lib-load-race-on-slow-connections-9kx2mv
 title: Guard every lib-booting page against the Alpine load race
 status: done
 closed: 2026-08-02
-track: independent
 opened: 2026-07-26
 session: claude/web-tools-project-tracker-reo5qo
 ---

@@ -2,7 +2,6 @@
 id: surface-schema-commentary-on-stage-hqz0uu
 title: Carry commentary on a stage (prompts= link field, seed of a surface schema)
 status: done
-track: independent
 opened: 2026-07-20
 closed: 2026-07-20
 session: claude/web-tools-diff-review-s0nrq7

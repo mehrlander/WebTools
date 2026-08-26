@@ -4,7 +4,6 @@ title: Repo-level GitHub links in show-repo's shield dialog
 status: done
 closed: 2026-08-02
 resolution: superseded
-track: independent
 opened: 2026-07-14
 priority: low
 ---

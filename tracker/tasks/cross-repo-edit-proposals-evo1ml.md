@@ -2,7 +2,6 @@
 id: cross-repo-edit-proposals-evo1ml
 title: Confirm-gated cross-repo edit proposals via a web-tools-private channel
 status: done
-track: independent
 opened: 2026-07-23
 closed: 2026-07-28
 session: claude/tracker-status-cjogjn

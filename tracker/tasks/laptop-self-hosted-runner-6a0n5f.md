@@ -3,7 +3,6 @@ id: laptop-self-hosted-runner-6a0n5f
 title: Connect the laptop as an unattended venue for repo work
 status: done
 project: repo
-track: independent
 opened: 2026-08-09
 closed: 2026-08-10
 size: M

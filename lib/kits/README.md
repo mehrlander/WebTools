@@ -66,6 +66,7 @@ folder deliberately no longer encodes.
 |---|---|---|
 | `branch-status.js` | `BranchStatus` | branch-estate scan math: the content-level landed/stranded signal |
 | `chat-render.js` | `chatRender` | chat transcript renderer; fenced code promoted to live artifacts |
+| `claude-mark.js` | `claudeMark` | the Claude logomark, as markup or a node, from one path |
 | `content-registry.js` | `ContentRegistry` | the epistemic content registry (`data/design/content.csv`), read in the browser |
 | `data-payload.js` | `DataPayload` | reading a data toss: one rule for what a payload is |
 | `estate-search.js` | `EstateSearch` | the estate's search calls (tree, names, code, sessions), one cache |
@@ -535,6 +536,68 @@ specializes in choosing among them. It mints the single-group case of
 `StageLink`'s grammar directly, since `stage.js` is a full Alpine component
 and is not loaded on an ordinary page.
 
+### md-doc.js
+
+A markdown document rendered as something you can read and take pieces **out
+of**. Two jobs over one render, and they are the same complaint from two sides:
+a rendered document has thrown away its source, so the table has lost the pipes
+that would have let it wrap and the section has lost the `##` that would have
+let it travel.
+
+```js
+window.mdDoc.split(src)            // [{ index, depth, title, slug, raw, start, end, startLine, endLine }]
+window.mdDoc.reference(sec, addr)  // the provenance line(s), as an array
+window.mdDoc.payload(sec, addr)    // reference + blank line + sec.raw
+window.mdDoc.html(src, o)          // a prose HTML string, tables contained
+window.mdDoc.render(host, src, o)  // mounts into host -> { box, sections }
+window.mdDoc.enhance(box, src, o)  // the same over markup another renderer made
+window.mdDoc.contain(el)           // el, nothing left that can widen a column
+window.mdDoc.locate(node)          // { addr, sections, section } for any node in a render
+window.mdDoc.sourceRef(node)       // "docs/APP.md § Mechanism (lines 16-28)"
+```
+
+**Contain.** A table's intrinsic min-content width is a floor no ancestor can
+shrink below, so a wide one widens whatever it is in until something scrolls. In
+a swipe-deck slide that something is the slide, which drags the headings and the
+prose sideways along with the table. The wrapper does not force `max-content`:
+typography's `width: 100%` still wraps cells, so only a table that genuinely
+cannot fit starts scrolling.
+
+**Cut.** Every top-level heading gets a control over **that section's source**:
+copy it, copy it with a revision ask on top, or open a note pinned to it. One
+menu rather than three glyphs, since a heading has room for one mark. Sections
+nest the way Wikipedia's do: a section runs to the next heading of equal or
+higher rank, so `##` carries its `###`s and each of those still has its own
+control. Headings are found through `marked.lexer`, not a line regex, so a `#`
+inside a fence is not one; the rendered box's direct-child headings pair against
+the same list by order.
+
+**Declare.** The rendered box says which source and which address it is a
+rendering of, so `locate()` can answer for any node inside it in the source's
+terms. `annotate.js` reads that: on a declared render every note's `Path:` line
+is `docs/APP.md § Mechanism (lines 16-28)` rather than a css path, and its
+`section` targeting mode is raised from this menu, since the heading is the one
+thing that knows which section it opens.
+
+**Enhance** is render's second half, for markup another renderer produced.
+`guide-render.js` renders a doc with the link re-aiming a guide body needs, and
+the Files pane reads markdown through it; that reader wants the containment and
+the controls without giving up the re-aiming. The `src` handed to it must be the
+source that produced that markup, and nothing can check it: get it wrong and
+every control copies the wrong lines.
+
+Copying the **source** rather than the selection is the whole point. A rendered
+section copies as prose with the structure flattened out, and a model asked to
+revise that returns a revision of the flattening. The source slice is the thing
+that can be revised and put back, which the reference's `lines 43-91` is there
+to make possible.
+
+`window.marked` must already be loaded; `window.io.copy` is read when present
+for the iOS clipboard path. The copy control carries `data-annotate-ui`, which
+is how `annotate.js` knows to keep it out of the text a note is anchored in.
+`chat-render.js` keeps its own copy of the table wrap, deliberately: it is a
+standalone script a page can drop in from jsDelivr with nothing else.
+
 ### annotate.js
 
 Notes pinned to pieces of a page: select text (or pick an element, or drag a
@@ -560,10 +623,47 @@ window.Annotate.enable({ doc?, subject? })  // mount on a target document
                                             // = {title, url} for serialization
 window.Annotate.add(target, note)           // programmatic add
 window.Annotate.toMarkdown() / .toJSON()    // the set, serialized
+window.Annotate.noteMarkdown(id)            // one note, same shape and preamble
+window.Annotate.noteJSON(id)                //   (still annotate/1, one note in it)
 await window.Annotate.copy('md' | 'json')   // serialize + clipboard
 await window.Annotate.saveJot()             // one jot (fresh-read → mutate → save)
+window.Annotate.expand(true)                // open the card onto the set
+window.Annotate.setReading('notes'|'md'|'json')
+window.Annotate.setScope('set' | 'note')    // which subject a serialization has
 window.Annotate.disable()
 ```
+
+Reopening a note through its pencil folds that note's ROW out of the list: the
+composer is the note while it is open, and the row comes back when the edit is
+saved. It used to be on screen twice, once with a caret in it and once as a
+static row still showing the text being replaced.
+
+The card reads its own set behind an **expander**, which is its header's
+`Notes` button: the card's name, its count and its way in are one control. It
+grows upward from the card's bottom edge, pinning that edge first so a card
+that has been dragged (which re-anchors it to the top) grows the same
+direction as one that has not.
+
+What opens is one window of a fixed height, the same for all three readings and
+the same empty as full, with the body scrolling inside it: the list, or either
+serialization exactly as Copy hands it over, of the whole set or of the one
+selected note, which is the reading no other surface offers. The window is 55%
+of the viewport and never past 440px, so the card stays a window over the
+document rather than a takeover of it. One row carries both choices, which
+reading and what it is a reading of: the three format chips, then a scope chip
+labelled by the selection (`Note 2`) that swaps on a tap, then a copy key,
+which is a glyph and no word because the chips beside it are the qualifier. The
+footer is Save jot and Clear, and there is no status line: Save jot reports on
+its own label, and every other message it used to carry announced something
+the reader had just watched happen and then stayed.
+
+**The FAB drawer's Notes tab is retired** (2026-08-25). It was the only place a
+set could be READ until the expander existed, which made it a second
+implementation of one view, on a page that might not have a drawer, kept in
+step by three window events (`annotate:review`, `annotate:drawer`,
+`annotate:drawer-query`). All of that is gone, along with the card's own title
+button that opened it. What the FAB still does is START the annotator: the take
+grid's Annotate entry and the launcher's long-press "Take a note".
 
 The FAB's take grid carries it as **Annotate** (the one take that operates on
 the view rather than carrying it away), aiming at the subject frame's

@@ -1,9 +1,13 @@
 ---
 id: document-structure-harness-4mz7wk
 title: A multi-method harness for extracting structure from scanned documents
-status: backlog
+status: done
 opened: 2026-07-25
+closed: 2026-08-25
 ---
+
+> [!NOTE]
+> **Frozen 2026-08-25 → the private estate's `projects/local-models/instruments/docstruct/`:** the harness was built and validated, and it lives there rather than here. Everything below is the filing and the spike that shaped it, kept as the record. See the closing entry in the progress log for what changed and why.
 # A multi-method harness for extracting structure from scanned documents
 
 Build the general, reusable front end that turns a scanned document into a
@@ -174,6 +178,49 @@ budget on prep and geometry rather than on a recognizer bake-off, and it says
 nothing yet about how competing extractions compose.
 
 ## Progress log
+- 2026-08-25: **Done, and closed here rather than delivered here.** The harness
+  was built, run against the full corpus, and now lives in the private estate at
+  `projects/local-models/instruments/docstruct/`, beside `concept-lab/`, which
+  left this repo in PR #504. PR #293 built it here and was closed unmerged.
+
+  The move is a boundary correction, not a change of mind about the design. A
+  repo boundary exists where a **visibility** boundary exists, and public-safety
+  is a property of an area rather than of individual items. The section above
+  argues the harness is portable, and it is; that argument was taken as settling
+  where the code should sit, which it never did. The private estate already ran
+  the text-instrument shelf, so splitting one instrument out to sit alone in the
+  public hub drew a line nothing needed. The shelf is now in one place and
+  registered together in that project's `INSTRUMENTS.md`.
+
+  What the "Deliberately not decided" section left open is now answered, and the
+  answers are worth keeping here even though the code is not:
+
+  - **Composition is arithmetic adjudication, not a vote.** Where methods
+    disagree, the reading that satisfies the row's arithmetic wins. Majority vote
+    was rejected on the grounds this task already names: recognizers trained on
+    similar data share failure modes, so agreement between them is weaker
+    evidence than it looks. Measured over 259 flagged pages: 420 disagreements,
+    125 resolved. On one page `psm 6` read `98,684` as `684` and `psm 4` read it
+    correctly, which arithmetic settles and a vote cannot.
+  - **Relations are discovered, not assumed.** The spike's `GF-S + OTHER = TOTAL`
+    is one shape among several, and "the last column is the total" is false for
+    the 1979 comparison reports (`SEN-R2 - HOUSE = DIFF`). The harness derives
+    `c_a op c_b = c_c` from the data instead. Corpus-wide: 17,158 row relations
+    tested, 96.8% holding.
+  - **The arithmetic control validated at scale**, which the spike could only
+    suggest from one page. Five independent visual checks against page images,
+    including a `564` misread as `504` at 91.2% reported confidence: exactly the
+    failure this task was filed to catch, and exactly the one character-level
+    confidence does not see.
+
+  One correction to the spike findings above, since it cost a full re-run:
+  passing `tsv` as a **config-file name** rather than `-c
+  tessedit_create_tsv=1` makes `--psm` a silent no-op and truncates tokens. It
+  cost 14.5% of tokens on dense 1979 pages and 0% on 1990s pages, so it read as
+  a property of the scans rather than as a bug. A regression test now holds it.
+
+  `scripts/ocr-pdf.py` stays here, still the smallest portable piece;
+  `docs/code-layers.md` records the move and keeps the exit-condition warning.
 - 2026-07-25: Filed from spend-wa PR #25 wrap-up. The consuming corpus is
   ready (sources committed, per page, 300 DPI); this is the general half,
   filed here rather than in spend-wa so it does not grow inside one corpus.

@@ -259,9 +259,29 @@ changes touch:
 | `lib/` | `npm run build:lib` | `dist/web-tools.js` |
 | `console/` | `npm run build:console` | `console/suite.js` |
 | `pages/**/*.html` | `npm run pages-index` | `pages/README.md`, `pages/index.html`, `pages/pages.csv` |
-| skills, `lib/`, `pages/`, `docs/` | `npm run docs-reach` | `reach` and `words` in `docs/docs.json` |
-| `docs/docs.json` | `npm run docs-readme` | `docs/README.md` |
+| skills, `lib/`, `pages/`, `docs/` | `npm run docs-reach` | `reach` and `words` in `docs/docs.csv` |
+| `docs/docs.csv` | `npm run docs-readme` | `docs/README.md` |
 | `tracker/tasks/` | `npm run tracker-board` | `tracker/board.md`, `tracker/board.csv`, `tracker/board-tags.csv` |
+
+**Order is part of the contract, and it runs one way: a leg that WRITES into a
+folder precedes the leg that MEASURES it.** `docs-reach` stamps every `docs/`
+file's length into the registry's `words`, so `tests-index`, `tools-index`,
+`registries-reach` and `snags-index` all run above it: each writes a file under
+`docs/`, and a stamp taken before that write is stale by exactly that file's own
+delta. Nothing local reports it either, because the hook does not verify what it
+stamps; `docs-registry.test.mjs` catches it in CI, after the push. Three legs
+learned this separately and each left the finding as a comment on its own leg,
+which is how the fourth was free to repeat it in 2026-08-23. So it is stated
+here once: a new generator that writes under `docs/` goes above leg 3a, and one
+that only reads goes wherever it likes.
+
+**And a leg has to stage the file it actually writes.** Every `git add` in the
+hook goes through a `stage()` helper that reports a path that is not there,
+because the bare form swallowed two renames for a month: `docs/docs.json` and
+`tracker/board.json` both became CSVs in PR #441 and their adds silently
+addressed nothing, so two registries were regenerated on every commit and
+committed on none. `git add X 2>/dev/null || true` cannot tell "nothing to
+stage" from "renamed," and the second is the one worth hearing about.
 
 Every generator is byte-deterministic, so the hook can fire on every commit and
 no-op invisibly when nothing real changed. It's non-blocking: a generator failure

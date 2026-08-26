@@ -76,6 +76,51 @@ test('sessions come off the compare, deduped', () => {
   const b = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: compare() });
   assert.deepEqual(b.sessions, [SESS('S1')]);
   assert.equal(b.sessionsExact, true);
+  assert.equal(b.sessionsFrom, 'compare');
+});
+
+// The session has three sources and the mark is one unlabeled glyph, so the
+// brief says which source answered rather than leaving the tooltip to guess.
+// The body is the rung that was missing: a page holding an open PR whose
+// footer names its session could still render no session at all.
+
+test('the PR body names the session where the commits cannot', () => {
+  const body = `summary\n\n${SESS('PRBODY')}`;
+
+  // The deferred compare, which is the app's usual case: a host that lends
+  // ahead/behind buys the head without the megabyte, and lends no session.
+  const deferred = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: null,
+                                 pull: { number: 7, state: 'open', body } });
+  assert.deepEqual(deferred.sessions, [SESS('PRBODY')]);
+  assert.equal(deferred.sessionsFrom, 'pr');
+  assert.equal(deferred.sessionsExact, false, 'a body names whichever session last synced it');
+
+  // And a compare that was read and carries no trailer: a branch past the
+  // 250-commit cap, or one whose commits are merges GitHub wrote.
+  const merges = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main',
+                               pull: { number: 7, state: 'open', body },
+                               compare: compare({ commits: [
+                                 commit('ccc3333', 'Merge pull request #7', '2026-07-25T00:00:00Z')] }) });
+  assert.deepEqual(merges.sessions, [SESS('PRBODY')]);
+  assert.equal(merges.sessionsFrom, 'pr');
+
+  // A caller that hands the whole list and names no one PR reads the newest.
+  const listed = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: null,
+                               pulls: [{ number: 9, state: 'closed', body }] });
+  assert.deepEqual(listed.sessions, [SESS('PRBODY')]);
+});
+
+test('the compare outranks the body, and no session claims nothing', () => {
+  const pull = { number: 7, state: 'open', body: `x\n\n${SESS('PRBODY')}` };
+  const read = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: compare(), pull });
+  assert.deepEqual(read.sessions, [SESS('S1')], 'the branch\'s own commits, not the body');
+  assert.equal(read.sessionsFrom, 'compare');
+
+  const none = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: compare({ commits: [] }),
+                             pull: { number: 7, body: 'no session anywhere' } });
+  assert.deepEqual(none.sessions, []);
+  assert.equal(none.sessionsFrom, '', 'nothing to render, so nothing is claimed about it');
+  assert.equal(none.sessionsExact, false);
 });
 
 test('past the commit cap the counts are a floor and say so', () => {
@@ -118,7 +163,14 @@ test('a host lends what it knows, and only until the compare answers', () => {
   assert.equal(lent.behind, 1);
   assert.equal(lent.state, 'live', 'derived from the lent ahead through the same three-way call');
   assert.equal(lent.sessions.length, 1);
-  assert.equal(lent.sessionsExact, false, 'a row reads sessions from the tip, so it cannot claim exact');
+  assert.equal(lent.sessionsFrom, 'facts');
+  assert.equal(lent.sessionsExact, false, 'a host that claims nothing is not taken to claim exact');
+
+  // A host that ran the compare itself says so, and is believed: show-repo's
+  // crawl reads each open PR through the same compareFields this page uses.
+  const exact = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: null,
+                              facts: { ...facts, sessionsExact: true } });
+  assert.equal(exact.sessionsExact, true);
 
   // Read, and the lent numbers are gone rather than merged: compare() is 2/1.
   const read = BB.assemble({ repo: 'acme/w', branch: 'f', base: 'main', compare: compare(), facts });

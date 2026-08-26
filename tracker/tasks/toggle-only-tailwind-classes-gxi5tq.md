@@ -2,7 +2,6 @@
 id: toggle-only-tailwind-classes-gxi5tq
 title: Toggle-only Tailwind classes do generate, and the spinners do spin
 status: done
-track: show-repo
 opened: 2026-07-26
 closed: 2026-07-26
 session: claude/web-tools-tracker-review-m49yxc

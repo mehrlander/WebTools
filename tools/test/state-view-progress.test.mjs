@@ -1,7 +1,8 @@
 // alpineComponents/state-view.js — the bar a row draws while its own crawl runs.
 //
-// The State view holds the Refresh controls for all three registry caches, and
-// a crawl started here runs for the same tens of seconds it always did. It reads
+// The State view holds the Refresh controls for the three registry caches (two
+// buttons since the Activity group: see state-view-groups.test.mjs), and a
+// crawl started here runs for the same tens of seconds it always did. It reads
 // the shell's one progress channel, a slot per cache key, and knows nothing
 // about which crawl it is watching: the verb, the unit and the names in flight
 // all ride in the slot. So the assertions here are about the projection, and

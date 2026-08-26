@@ -20,10 +20,12 @@ the link-dense text twin of the visual index above.
 | `compression-helper` | Compression Helper (v5) | [view](https://mehrlander.github.io/web-tools/pages/compression-helper.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/compression-helper.html) |
 | `console-playground` | Console Suite Guide | [view](https://mehrlander.github.io/web-tools/pages/console-playground.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/console-playground.html) |
 | `data-view` | Data View | [view](https://mehrlander.github.io/web-tools/pages/data-view.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/data-view.html) |
+| `dictate` | Dictate | [view](https://mehrlander.github.io/web-tools/pages/dictate.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/dictate.html) |
 | `diff-tool` | Diff | [view](https://mehrlander.github.io/web-tools/pages/diff-tool.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/diff-tool.html) |
 | `entities` | Entities | [view](https://mehrlander.github.io/web-tools/pages/entities.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/entities.html) |
 | `gist-editor` | Gist Editor | [view](https://mehrlander.github.io/web-tools/pages/gist-editor.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/gist-editor.html) |
 | `index` | web-tools | [view](https://mehrlander.github.io/web-tools/pages/index.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/index.html) |
+| `inquiry` | Inquiry | [view](https://mehrlander.github.io/web-tools/pages/inquiry.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/inquiry.html) |
 | `launcher` | Popup Launcher · setup | [view](https://mehrlander.github.io/web-tools/pages/launcher.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/launcher.html) |
 | `links` | Links | [view](https://mehrlander.github.io/web-tools/pages/links.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/links.html) |
 | `pdf-inspect` | PDF Inspect | [view](https://mehrlander.github.io/web-tools/pages/pdf-inspect.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/pdf-inspect.html) |
@@ -122,6 +124,7 @@ the link-dense text twin of the visual index above.
 | `define-test` | x-define — isolated test | [view](https://mehrlander.github.io/web-tools/pages/scratch/define-test.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/define-test.html) |
 | `demo-spacex` | SpaceX Viewer Demo | [view](https://mehrlander.github.io/web-tools/pages/scratch/demo-spacex.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/demo-spacex.html) |
 | `fab-sidebar-test` | FAB sidebar test | [view](https://mehrlander.github.io/web-tools/pages/scratch/fab-sidebar-test.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/fab-sidebar-test.html) |
+| `haptics-probe` | Haptics probe | [view](https://mehrlander.github.io/web-tools/pages/scratch/haptics-probe.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/haptics-probe.html) |
 | `review-proto` | Review · styling prototype | [view](https://mehrlander.github.io/web-tools/pages/scratch/review-proto.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/review-proto.html) |
 | `sidebar-drawer-mwe` | Sidebar Drawer MWE | [view](https://mehrlander.github.io/web-tools/pages/scratch/sidebar-drawer-mwe.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/sidebar-drawer-mwe.html) |
 

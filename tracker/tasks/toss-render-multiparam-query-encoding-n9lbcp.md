@@ -2,7 +2,6 @@
 id: toss-render-multiparam-query-encoding-n9lbcp
 title: toss-render ?query forwarding drops multi-param page queries
 status: done
-track: independent
 opened: 2026-07-19
 closed: 2026-07-30
 session: claude/web-tools-tracker-review-bw48ga
