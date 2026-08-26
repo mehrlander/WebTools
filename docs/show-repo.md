@@ -880,8 +880,8 @@ across browsers and devices, not a per-browser `localStorage` list. Token-gated
 like Surfaces: no token, no list.
 
 **Jot** is the capture sibling: quick ideas, one flat item list in the
-registry's `lists/jots.json` (`{items: [{id, text, created_at}]}`), same
-whole-file write mechanics. Singular, because you jot one thing; the file keeps
+registry's `lists/jots.json` (`{items: [{id, text, created_at, kind}]}`, `kind`
+optional), same whole-file write mechanics. Singular, because you jot one thing; the file keeps
 its plural name, since renaming a data file to match a label is a migration that
 buys nothing. The lifecycles differ: a to-do tracks work and completes; a jot has
 no done state. It sits in the pile, newest first with its age showing, until it
@@ -891,6 +891,30 @@ without building it yet: the add commit carries the jot's text, so the file's gi
 history is itself a capture log, and the registry sits in agent-session scope, so
 an agent session can read the pile and drain it (promote, then delete) the way
 `chron/dump/` is drained.
+
+**A jot's `kind` is the drain's routing hint, and it is open.** The estate had
+already answered this question twice in opposite directions, and which answer
+applies turns on one thing: `links/board.json`'s `kind` is a closed set of four
+because the **renderer switches on it**, so the code has to exhaust the cases,
+while `lists/pins.json`'s `group` is free text because it only groups, and
+`pinGroups` derives the set from the items. A jot is the second sort. Every jot
+renders identically and the only thing that acts on a kind is the drain, which
+reads the text anyway, so nothing declares the set: it grows from use, and a
+kind nobody uses again leaves with its last jot. The one discipline an open
+vocabulary needs is a normal form (lowercase, hyphenated, 24 characters), or
+`Snag`, `snag ` and `Doc Failure` become three kinds and the chips stop
+converging.
+
+The chips are what keep it converging rather than sprawling: the add form
+offers the kinds already in the pile, commonest first, so tapping is always
+cheaper than typing and nobody writes `snag` twice; a trailing `+` is how a kind
+that does not exist yet gets made. They appear only once there is a draft,
+because capture is the reason the pane exists and most jots want no kind. A kind
+earns a chip by naming a **destination the text cannot imply**: `snag` names the
+owning repo's [`SNAGS.md`](SNAGS.md), where a topic is in the text already and
+grep finds it. Seeded with `snag` alone, 2026-08-26, because every jot in the
+pile that day was the same thing, an idea for this app, which is the pile's
+default and so needs no name.
 
 **Pins** render above the two lists rather than beside them, and have no
 `?view` key of their own. They are internal links kept at hand, one flat item

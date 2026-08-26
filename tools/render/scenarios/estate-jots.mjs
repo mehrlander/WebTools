@@ -10,6 +10,13 @@
 // lists/jots.json. What the pixels prove: the capture box on top, the pile
 // below it newest first, each row with the lightbulb mark, wrapping text,
 // and its age at the right edge.
+//
+// It also drives the kind chips, which is the only way to see them: they are
+// hidden until there is a draft, so that capture costs nothing for the four
+// jots in five that want no kind. The scenario types into the capture box, so
+// the shot carries the row of derived chips (`snag` seeded, plus whatever the
+// pile uses) with `+` at the end for a kind nobody has used yet. j2 carries a
+// kind so the row badge is in the same frame.
 export default async function (page) {
   const ok = await page.evaluate(() => {
     if (!window.Alpine || !window.__shell || !window.GH) return 'no shell';
@@ -26,9 +33,9 @@ export default async function (page) {
     const JOTS = {
       items: [
         { id: 'j1', text: 'A jots pile beside the to-do list: capture has no done state, only promotion or deletion', created_at: h(90) },
-        { id: 'j2', text: 'Could the stage preview reuse the file viewer footer?', created_at: h(26) },
+        { id: 'j2', text: 'A page that skips the loader ignores ?use= and the wrong link looks right', kind: 'snag', created_at: h(26) },
         { id: 'j3', text: 'Drain pass: an agent reads lists/jots.json and promotes each jot to chron, a task, or a to-do', created_at: h(3) },
-        { id: 'j4', text: 'Jot commit messages carry the text, so the file history is a capture log', created_at: h(0) },
+        { id: 'j4', text: 'Jot commit messages carry the text, so the file history is a capture log', kind: 'idea', created_at: h(0) },
       ],
     };
 
@@ -69,5 +76,14 @@ export default async function (page) {
     const d = window.Alpine.$data(host);
     return !d.jotLoading && d.jotItems.length === 4;
   }, { timeout: 20000 });
+
+  // Type a draft, which is what reveals the chip row, and take one.
+  await page.evaluate(() => {
+    const host = [...document.querySelectorAll('[x-data]')]
+      .find(el => (el.getAttribute('x-data') || '').includes('estate('));
+    const d = window.Alpine.$data(host);
+    d.jotDraft = 'model renamed a file without saying so, check the docs on that';
+    d.jotKindDraft = 'snag';
+  });
   await page.waitForTimeout(400);
 }
