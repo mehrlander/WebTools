@@ -1705,11 +1705,12 @@ test('three readings of one set, and a serialization is shown rather than descri
   A.disable();
 });
 
-test('a serialization narrows to one note, and says which of how many it is', () => {
-  // The reading no other surface offers. A single note still carries the
-  // preamble, since a note pasted somewhere has to say which page it came
-  // from, and the lead line reads "Note 2 of 3" rather than "1 note", which
-  // would be a claim about the set instead of an excerpt from one.
+test('a serialization is of the whole set, whatever row is selected', () => {
+  // The pane used to narrow to one selected note behind a scope chip, and the
+  // markdown, the JSON and Copy all followed it. Selecting a row is how a
+  // reader scrolls to a note or edits it, so the narrowing arrived unasked for,
+  // and a set is what the two serializations are for. Copying ONE note's words
+  // is still offered, from that note's own row.
   A.enable({ doc, subject: { title: 'Sample doc', url: 'https://e.test/p' } });
   A.clear();
   A.add({ type: 'page' }, 'first');
@@ -1719,29 +1720,65 @@ test('a serialization narrows to one note, and says which of how many it is', ()
   A.expand(true);
   A.setReading('md');
 
-  assert.equal(S.scopeBtn.style.display, 'none', 'nothing selected, so nothing to narrow to');
+  assert.equal(S.serialPre.textContent, A.toMarkdown());
   A.select(two.id, { scroll: false });
-  assert.equal(S.scopeBtn.style.display, 'flex');
-  assert.equal(S.scopeBtn.textContent, 'Set', 'one chip, carrying the scope it is currently showing');
-
-  S.scopeBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.scopeBtn.textContent, 'Note 2', 'and it swaps, labelled by the selection rather than by the word');
-  assert.equal(S.serialPre.textContent, A.noteMarkdown(two.id));
-  assert.match(S.serialPre.textContent, /Note 2 of 3/);
-  assert.match(S.serialPre.textContent, /https:\/\/e\.test\/p/, 'the page it came from rides along');
-  assert.match(S.serialPre.textContent, /second/);
-  assert.doesNotMatch(S.serialPre.textContent, /third/, 'and nothing else in the set does');
+  assert.equal(S.serialPre.textContent, A.toMarkdown(), 'a selected row does not narrow the pane');
+  assert.match(S.serialPre.textContent, /3 notes/, 'and it still says how many it is of');
+  for (const word of ['first', 'second', 'third']) assert.match(S.serialPre.textContent, new RegExp(word));
 
   A.setReading('json');
-  const one = JSON.parse(S.serialPre.textContent);
-  assert.equal(one.format, 'annotate/1', 'still the declared format, with one note in it');
-  assert.equal(one.notes.length, 1);
-  assert.equal(one.notes[0].note, 'second');
+  const all = JSON.parse(S.serialPre.textContent);
+  assert.equal(all.format, 'annotate/1');
+  assert.equal(all.notes.length, 3, 'the JSON is the set too, selection or none');
 
-  // The scope names the SELECTED note, so it cannot outlive the selection.
-  A.select(null);
-  assert.equal(S.scopeBtn.style.display, 'none');
-  assert.equal(JSON.parse(S.serialPre.textContent).notes.length, 3, 'and it falls back to the set');
+  // Nothing on the row offers to narrow it, and nothing in the API does.
+  assert.equal(S.scopeBtn, undefined, 'the scope chip is gone, not merely hidden');
+  for (const gone of ['setScope', 'noteMarkdown', 'noteJSON']) {
+    assert.equal(A[gone], undefined, gone + ' went with it');
+  }
+  A.clear();
+  A.disable();
+});
+
+test('the copy key reports on itself, since the card has no status line', async () => {
+  // The card's status line was removed deliberately (a confirmation with no
+  // expiry, still claiming a note was added ten notes later), which left the
+  // one action whose success a reader cannot otherwise see saying nothing at
+  // all: a copy that failed and a copy that took looked identical until the
+  // paste. So the key wears the answer and puts it back, the same swap
+  // kits/chat-render.js and kits/session-export.js make.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'one');
+  const S = A._state;
+  A.expand(true);
+  A.setReading('md');
+
+  let copied = null;
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true, value: { clipboard: { writeText: async (t) => { copied = t; } } },
+  });
+
+  assert.equal(S.serialCopy._icon.className, 'ph ph-copy', 'at rest it offers the errand');
+  S.serialCopy.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(copied, A.toMarkdown(), 'and it hands over the whole set');
+  assert.equal(S.serialCopy._icon.className, 'ph ph-check', 'then says so');
+  assert.equal(S.serialCopy.style.color, 'rgb(21, 128, 61)');
+
+  // A failure is not a confirmation, and must not read as one.
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { clipboard: { writeText: async () => { throw new Error('denied'); } } },
+  });
+  S.serialCopy.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(S.serialCopy._icon.className, 'ph ph-warning', 'the other answer, not silence');
+
+  // And no border to carry: a box beside the segmented group read as a fourth
+  // chip in it, which is the one thing this control is not.
+  assert.equal(S.serialCopy.style.border, '0px');
+  assert.equal(S.serialCopy.style.backgroundColor, 'transparent');
   A.clear();
   A.disable();
 });
@@ -1874,7 +1911,6 @@ test('copy rides the format row, so it needs no word at all', () => {
   // has no bytes on screen to take.
   A.setReading('notes');
   assert.equal(S.serialCopy.style.display, 'none');
-  assert.equal(S.scopeBtn.style.display, 'none');
 
   // The footer keeps only what is neither a reading nor a format.
   const acts = [...S.setActs.querySelectorAll('button')].map(b => b.textContent);
