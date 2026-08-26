@@ -101,3 +101,32 @@ you believe you just made the change.
 runs have consumed their annotation rather than storing it, so nothing has
 needed it. It is for an annotation that must outlive edits to its source, and
 the Files section says so rather than listing it as though a step used it.
+
+## 2026-08-26, run on docs/TRACKER.md (web-tools #516)
+
+**229 units, the largest pass so far.** 73% `KEEP`, floor 21%, achieved 19%.
+Contract clean: 182/182 `KEEP` honoured, 0 breaches, 0 references lost.
+
+**A sample drawn from the worst section over-predicts the document.** The first
+experiment sampled this file's board section and measured 28% cleanly
+recoverable. The whole file is 15%. The board section was the densest patch of
+provenance in it, and reading a document's yield off its worst region is
+optimistic by roughly half. Sample from more than one region, or say the figure
+is a ceiling.
+
+**Removal by character span, deleting from the end backwards, scales.** 34 units
+came out with no offset drift. Earlier runs used string substitution, which fails
+on line-wrap differences and had already cost two rounds of re-matching. Spans are
+the better tool once a pass is past about fifty removals.
+
+**Removing a unit can orphan its neighbour, and no check sees it.** Deleting the
+retired-`next`-tag provenance left "Where a task's next step belongs is the
+Progress log" answering a question nothing had asked. The neighbour survived, so
+the contract counted it honoured. This is a real gap: the checks verify that
+units are present, never that the prose around a removal still reads. Only a
+human pass over the seams catches it, and this run needed one fix out of 34
+removals.
+
+**The density signal holds on a fourth document.** Only the 53%-`KEEP` document
+beat its floor (+12). The three at 72% or above all missed it (−7, −7, −2).
+Predicted-minus-achieved is tracking how much slack the prose carries, not noise.
