@@ -4,3 +4,4 @@ date,target,units,words_before,words_after,floor_pct,achieved_pct,real_losses,ca
 2026-08-26,web-tools docs/SURFACING.md primitives (rebased on #505/#507),155,3342,2087,33,38,0,-
 2026-08-26,web-tools skills/state-the-rule/SKILL.md (itself),64,1041,1015,9,2,0,-
 2026-08-26,web-tools docs/TRACKER.md,229,4717,3841,21,19,0,-
+2026-08-26,web-tools docs/SURFACING.md course (the rest of the file),124,1978,1520,19,23,0,-

@@ -120,3 +120,35 @@ test('segmentation is deterministic', () => {
   assert.equal(a, b, 'the same bytes segmented twice must give byte-identical units');
   assert.equal(a.trim().split('\n').length, 3, 'three paragraphs, three units');
 });
+
+// A run covering part of a file has to slice both sides the same way, or the
+// size figure compares a section against a whole document. The section that was
+// annotated and the section that was not are the same kind of range, so the
+// checker names one rather than carrying a hardcoded heading. They are not a
+// partition: the heading and the `---` that ends it fall outside both.
+test('--section and --not-section slice to opposite halves of a file', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'str-'));
+  const body = ['# Doc', '', 'Head sentence.', '', '## Part', '',
+                'Inside the part.', '', '---', '', '## Tail', '',
+                'After the part.'].join('\n');
+  const f = join(dir, 'doc.md');
+  writeFileSync(f, body);
+  // Annotate the one unit inside `## Part`, so the slice decides what is compared.
+  const units = execFileSync('python3', [join(SKILL, 'segment.py'), f, '7', '7'],
+                             { encoding: 'utf8' });
+  writeFileSync(join(dir, 'u.jsonl'), units);
+  const uid = JSON.parse(units.trim().split('\n')[0]).uid;
+  writeFileSync(join(dir, 'a.tsv'), `uid\tlabel\tstruct\tverdict\n${uid}\tWHAT\t0\tKEEP\n`);
+  const size = extra => Number(execFileSync('python3',
+    [join(SKILL, 'check.py'), join(dir, 'u.jsonl'), join(dir, 'a.tsv'), f, f, ...extra],
+    { encoding: 'utf8' }).match(/SIZE\s+(\d+)w/)[1]);
+  const whole = size([]);
+  const part = size(['--section', '## Part']);
+  const rest = size(['--not-section', '## Part']);
+  rmSync(dir, { recursive: true, force: true });
+  assert.equal(whole, 15, 'unsliced, the checker measures the whole file');
+  assert.equal(part, 3, '`## Part` holds "Inside the part." and stops at the rule');
+  assert.equal(rest, 9, 'the complement holds the head and the tail, and not the part');
+  assert.ok(part < whole && rest < whole,
+    'a slice that returned the whole file would compare a section against a document');
+});

@@ -12,16 +12,32 @@ from segment import units as seg
 from reanchor import resolve
 
 norm = lambda s: re.sub(r'\s+', ' ', s).strip()
-uf, af, origf, newf = sys.argv[1:5]
+argv = sys.argv[1:]
+# When the annotation covers part of a file, slice BOTH sides the same way.
+# Comparing a section against a whole file inverts the size figure and hides
+# losses. Name the section rather than hardcoding one: the complement of a
+# section is as ordinary a range as the section itself.
+def take(flag):
+    if flag not in argv:
+        return None
+    i = argv.index(flag)
+    val = argv[i + 1]
+    del argv[i:i + 2]
+    return val
+sect, excl = take('--section'), take('--not-section')
+uf, af, origf, newf = argv[:4]
 units = {json.loads(l)['uid']: json.loads(l) for l in open(uf)}
 ann = {r['uid']: r for r in csv.DictReader(open(af), delimiter='\t')}
 orig = open(origf).read(); new = open(newf).read()
-# When the annotation covers one section, slice BOTH sides to it. Comparing a
-# section against a whole file inverts the size figure and hides losses.
-SEC = '## Surfacing primitives'
-if SEC in orig and 'CONVENTIONS' not in origf:
-    orig = orig.split(SEC)[1].split('\n---')[0]
-    if SEC in new: new = new.split(SEC)[1].split('\n---')[0]
+
+def slice_to(t):
+    if sect and sect in t:
+        return t.split(sect)[1].split('\n---')[0]
+    if excl and excl in t:
+        head, tail = t.split(excl, 1)
+        return head + tail.split('\n---', 1)[-1]
+    return t
+orig, new = slice_to(orig), slice_to(new)
 nn = norm(new); nu = [(a, b, k, norm(t)) for a, b, k, t in seg(new, 0)]
 
 breach, ghost, honoured = [], [], 0

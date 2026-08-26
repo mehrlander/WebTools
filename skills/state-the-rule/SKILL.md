@@ -90,11 +90,18 @@ most likely to be edited next.
 ### 6. Check
 
 ```bash
-python3 check.py units.jsonl annotations.tsv <original> <rewrite>
+python3 check.py units.jsonl annotations.tsv <original> <rewrite> \
+  [--section <heading> | --not-section <heading>]
 ```
 
 Reports `KEEP` units that vanished, `DROP`/`MOVE` units that survived, lost
 references, and the size delta.
+
+**Slice both sides when the pass covered part of a file.** Name the annotated
+section with `--section`, or the one it left alone with `--not-section`. Without
+it a section is measured against the whole document and the size figure inverts.
+The two are not a partition: the heading and the rule that ends it fall outside
+both.
 
 **Stage one over-reports.** Roughly 70% of candidate breaches on loose prose are
 reworded survivors. Probe each candidate for its distinctive content before
@@ -108,7 +115,8 @@ has twice passed `check.py` and been caught by the repo's own derivation.
 Append one row to `runs.csv` and any surprise to `LOG.md`, then **run the repo's
 generators after that last edit, not before it**. A record that names a governed
 file changes that file's derived state, so recording the run is itself an edit
-the generators have to see.
+the generators have to see. The same holds among the generators: one that writes
+a governed file runs before one that measures it.
 
 **A lesson that recurs a third time earns a change to this skill or its
 tooling.**
@@ -132,4 +140,4 @@ tooling.**
 
 `reanchor.py` is for the case this pass does not have: an annotation that must
 outlive edits to its source rather than being consumed by one run. Offsets are a
-hint; the quote selector is the anchor. Four runs have not needed it.
+hint; the quote selector is the anchor. Six runs have not needed it.

@@ -130,3 +130,42 @@ removals.
 **The density signal holds on a fourth document.** Only the 53%-`KEEP` document
 beat its floor (+12). The three at 72% or above all missed it (−7, −7, −2).
 Predicted-minus-achieved is tracking how much slack the prose carries, not noise.
+
+## 2026-08-26, run on the rest of docs/SURFACING.md (web-tools #516)
+
+**A unit's span begins at the whitespace before it, so a rewrite must carry that
+whitespace back.** Replacing eleven spans with text that started at the first
+letter glued each rewrite onto the sentence before it: `where no Files tab
+exists.Bodies written before 2026-08-08`. Six of eleven were damaged. The
+contract check passed all of it, because every `KEEP` was still present and
+every `DROP` still gone, which is exactly what it was asked. `grep -n
+'[a-z]\.[A-Z]'` found all six in one pass and is now the cheap post-edit sweep.
+The applier takes the leading whitespace from the original span.
+
+**The section slice was a hardcoded heading, and the second shape broke it.**
+`check.py` sliced to `## Surfacing primitives` by name, so a pass over
+everything *but* that section had no way to say so. It now takes `--section` or
+`--not-section`. Two things fell out of writing the test: the two are not a
+partition, since the heading and the `---` that ends the section belong to
+neither; and the slice reproduced the annotated range to the word (1,978 either
+way), which is a free check that the range being measured is the range that was
+read.
+
+**The seam defect from TRACKER.md recurred, and reading for it worked.** Removing
+the four bullets that argued against a merge guide orphaned the sentence after
+them: "The general rule this is a case of" pointed at an argument no longer
+there. Caught by hand, not by a check, on the second run of deliberately reading
+every seam. Restored as "**The general rule:** do not commit what a live read
+already answers." That is twice; a third earns a check, if one can be built at
+all, since the surviving neighbour is by definition honoured.
+
+**A fifth document, and the density signal holds.** 76% `KEEP`, floor 19%,
+achieved 23% (+4). It is the second document to beat its floor and it sits
+between the two groups on `KEEP` share, which is where the signal predicted it.
+
+**The ordering rule applies to the generators themselves.** Step 7 was followed
+and the suite still failed by nine words: `tests-index` writes `docs/tests.csv`,
+which is a row the docs legs measure, so running it last left the registry a
+restamp behind. Fourth time this family has bitten, and the fix is one clause,
+not a new step: a generator that writes a governed file runs before one that
+measures it.
