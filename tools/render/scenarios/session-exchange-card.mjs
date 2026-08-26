@@ -14,7 +14,7 @@
 //
 // Set CARD past the first to land mid-conversation, which is where a reader
 // arrives from the outline.
-const CARD = 1;
+const CARD = Number(process.env.CARD || 1);
 const OPEN_FOLD = process.env.OPEN_FOLD === '1';
 
 export default async function (page) {

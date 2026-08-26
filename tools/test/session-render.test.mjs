@@ -14,12 +14,14 @@
 //   them. It looks fine on any fixture whose seconds happen not to collide.
 //
 //   The GROUPING is one card per exchange, and what makes that readable is the
-//   FOLD: a run of consecutive tool calls is one collapsed line. The first
-//   version split a card at each prose turn as well, because without the fold
-//   a slide carried a hundred expanded tool entries. Both halves are pinned
-//   here, since dropping either one alone is what breaks it: a card per
-//   exchange with no folding is a slab, and a fold with the split still in
-//   place condenses cards that were already small.
+//   FOLD: a run of consecutive tool calls collapses to one line, and so does
+//   the short sentence that introduced it ("Now let me render it"), which
+//   becomes that line's label. The first version split a card at each prose
+//   turn as well, because without the fold a slide carried a hundred expanded
+//   tool entries. All of it is pinned here, since dropping any one piece is
+//   what breaks it: a card per exchange with no folding is a slab, folding the
+//   calls alone still leaves the narration between the question and its
+//   answer, and folding prose by length alone would swallow the answer.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -87,17 +89,34 @@ test('a card is one exchange: the ask and everything before the next ask', () =>
   ]);
 });
 
-test('consecutive tool calls fold into one run, and prose keeps its own place', () => {
+test('a short turn that introduces work folds with the work it introduced', () => {
+  // REC's two replies are both step narration: short, and immediately
+  // followed by the calls they announce. Expanded, they sit between the
+  // question and the reply that answers it.
   const b = blocks(groups(turns(REC))[0]);
-  assert.deepEqual(b.map(x => x.tools ? 'run:' + x.tools.length : x.turn.role),
-    ['user', 'assistant', 'run:2', 'assistant', 'run:1'],
+  assert.deepEqual(b.map(x => x.tools ? 'step:' + x.tools.length : x.turn.role),
+    ['user', 'step:2', 'step:1'],
     'a fold per call would condense nothing; a fold across the prose would lose the sequence');
+  assert.equal(b[1].lead, 'Let me look at the plugin.',
+    'the sentence is the label: it places a run that the tool names only describe');
+});
+
+test('a turn long enough to be saying something stays expanded', () => {
+  // The guard on the fold above, and the reason it is length rather than
+  // position: an assistant turn can report a finding AND keep working, and
+  // hiding that one loses the answer. Measured over the store, narration runs
+  // a median of 97 characters and an answer 3,499, so the two barely overlap.
+  const long = 'Verified. Blue means merged, and the tint comes from one function. '.repeat(6);
+  const rec = { ...REC, replies: [{ at: at(5), text: long }] };
+  const b = blocks(groups(turns(rec))[0]);
+  assert.deepEqual(b.map(x => x.tools ? 'run' : x.turn.role), ['user', 'assistant', 'run']);
+  assert.ok(!b[2].lead, 'an expanded turn must not also be repeated as a fold label');
 });
 
 test('a run says what it holds, since a closed fold is all a reader sees', () => {
   const b = blocks(groups(turns(REC))[0]);
-  assert.equal(b[2].label, '2 calls  ·  Bash, Read');
-  assert.equal(b[4].label, '1 call  ·  Bash  ·  1 failed',
+  assert.equal(b[1].label, '2 calls  ·  Bash, Read');
+  assert.equal(b[2].label, '1 call  ·  Bash  ·  1 failed',
     'a failure inside a closed fold is invisible unless the summary names it');
 });
 
@@ -113,10 +132,12 @@ test('a real session shape stays readable: three asks, three cards, the work fol
   const g = groups(turns({ schema: 4, prompts, replies, calls, exchanges: 3, prompts_stored: 3 }));
   assert.equal(g.length, 3, 'a question and its answer must land on one slide');
   const b = g.map(blocks);
-  assert.deepEqual(b.map(x => x.length), [9, 9, 9],
-    'a card is the ask plus four prose turns and four folds, not sixty entries');
+  assert.deepEqual(b.map(x => x.length), [5, 5, 5],
+    'a card is the ask plus four folded steps, not sixty entries');
   assert.ok(b.every(card => card.filter(x => x.tools).every(x => x.tools.length === 5)),
     'each run of five calls must fold as one');
+  assert.ok(b.every(card => card.filter(x => x.tools).every(x => x.lead)),
+    'each step keeps the sentence that introduced it as its label');
 });
 
 test('a complete schema-4 record gets no capture note', () => {
@@ -249,6 +270,22 @@ test('an ask that says nothing hands the title to the reply under it', () => {
   const c = outline(answered('The registry now names every page, which is what it was missing.',
     { calls: [] }))[0];
   assert.equal(c.title, 'The registry now names every page, which is what it was missing.');
+  assert.equal(c.source, 'reply-sentence');
+});
+
+test('the title prefers a reply the reader can still see over a folded step', () => {
+  // "Let me check the Sessions tab" is narration and folds; titling the card
+  // with it names something no longer on screen. The answer under it is what
+  // the card is about.
+  const answer = 'Verified. Blue means merged, and the tint comes from one function. '.repeat(6);
+  const rec = { ...REC,
+    prompts: [{ at: at(0), text: 'go' }],
+    replies: [{ at: at(2), text: 'Let me check what the Sessions tab does.' },
+              { at: at(9), text: answer }],
+    calls: [{ at: at(3), name: 'Bash', arg: 'ls' }] };
+  const c = outline(rec)[0];
+  assert.match(c.title, /^Blue means merged/,
+    '"Verified." is under the minimum, so the titler falls through to the sentence after it');
   assert.equal(c.source, 'reply-sentence');
 });
 
