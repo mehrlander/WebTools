@@ -1685,7 +1685,8 @@ test('three readings of one set, and a serialization is shown rather than descri
   assert.equal(S.listEl.style.display, 'none', 'the list gives up the strip of card it shares');
   assert.equal(S.serial.style.display, 'flex');
   assert.equal(S.serialPre.textContent, A.toMarkdown(), 'exactly what Copy hands over, not a paraphrase');
-  assert.equal(S.readChips.md.style.background, 'rgb(250, 204, 21)', 'lit, the way a live mode chip is');
+  assert.equal(S.readChips.md.style.backgroundColor, 'rgb(250, 204, 21)', 'lit, the way a live mode chip is');
+  assert.equal(S.readChips.md._icon.className, 'ph ph-markdown-logo', 'and the cell is a glyph, not the word');
 
   S.readChips.json.dispatchEvent(new window.Event('click', { bubbles: true }));
   // Everything but `at`, which is stamped at the moment of serializing and so
@@ -1902,7 +1903,7 @@ test('copy rides the format row, so it needs no word at all', () => {
   assert.equal(S.serialCopy.textContent.trim(), '', 'the glyph alone: the chips beside it are the qualifier');
   assert.match(S.serialCopy.title, /markdown/, 'the title still says which, for a pointer that hovers');
   assert.ok(S.readBar.contains(S.serialCopy), 'and it rides the format row, not a footer under it');
-  assert.equal(S.serialCopy.style.display, 'flex');
+  assert.equal(S.serialCopy.style.visibility, 'visible');
 
   A.setReading('json');
   assert.match(S.serialCopy.title, /JSON/, 'and it follows the chip it sits beside');
@@ -1910,7 +1911,8 @@ test('copy rides the format row, so it needs no word at all', () => {
   // Both leave the row where they mean nothing. A Copy beside the Notes chip
   // has no bytes on screen to take.
   A.setReading('notes');
-  assert.equal(S.serialCopy.style.display, 'none');
+  assert.equal(S.serialCopy.style.visibility, 'hidden', 'gone, but still holding its place');
+  assert.equal(S.serialCopy.style.display, 'flex', 'so the stretched group beside it does not resize');
 
   // The footer keeps only what is neither a reading nor a format.
   const acts = [...S.setActs.querySelectorAll('button')].map(b => b.textContent);
