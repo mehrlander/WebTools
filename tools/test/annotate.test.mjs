@@ -1943,10 +1943,11 @@ test('copy rides the header beside the readings, so it needs no word at all', ()
 
   assert.equal(S.serialCopy.textContent.trim(), '', 'the glyph alone: the chips beside it are the qualifier');
   assert.match(S.serialCopy.title, /markdown/, 'the title still says which, for a pointer that hovers');
-  assert.ok(S.readBar.contains(S.serialCopy), 'it sits with the readings it acts on');
-  assert.equal(S.readBar.parentElement, S.aimBtn.parentElement,
-    'and the readings live in the HEADER: one row of controls, none under the composer');
-  assert.equal(S.serialCopy.style.display, 'flex');
+  assert.equal(S.serialCopy.parentElement, S.aimBtn.parentElement,
+    'the header holds it: one row of controls, none under the composer');
+  assert.ok(!S.readBar.contains(S.serialCopy),
+    'and NOT inside the centred group, whose three keys would slide as this came and went');
+  assert.equal(S.serialCopy.style.visibility, 'visible');
 
   A.setReading('json');
   assert.match(S.serialCopy.title, /JSON/, 'and it follows the chip it sits beside');
@@ -1954,7 +1955,8 @@ test('copy rides the header beside the readings, so it needs no word at all', ()
   // Both leave the row where they mean nothing. A Copy beside the Notes chip
   // has no bytes on screen to take.
   A.setReading('notes');
-  assert.equal(S.serialCopy.style.display, 'none');
+  assert.equal(S.serialCopy.style.visibility, 'hidden', 'no bytes to take, but the space is held');
+  assert.equal(S.serialCopy.style.display, 'flex', 'so the centred keys beside it do not move');
 
   // The footer keeps only what is neither a reading nor a format.
   const acts = [...S.setActs.querySelectorAll('button')].map(b => b.textContent);
