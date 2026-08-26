@@ -70,6 +70,20 @@ write never returns. A repo small enough to fit both sides in 64K runs clean and
 hides it, which is exactly what happened here, and the failure looks like a hang
 rather than an error. The request list is fed from a thread.
 
+## Verifying it against the real CDN
+
+`npm run shot` mirrors CDN requests from `node_modules` through
+`tools/render/cdn.mjs`, and that mirror rewrites a bare `npm/alpinejs` spec to
+the browser build. jsDelivr's `/combine/` route does not: it resolves through
+package.json `main`, which is CommonJS for both Alpine and fflate. So this page
+loaded perfectly in every headless shot while being inert in an actual browser,
+and the combine URL names explicit file paths now for exactly that reason.
+
+A page whose dependencies come from a CDN is only verified when the bytes came
+from the CDN. Fetch the combine URL with `curl`, serve those bytes to a real
+browser, and assert a global exists. See the `combine-serves-cjs` entry in
+[SNAGS.md](SNAGS.md).
+
 ## Colors
 
 A bubble chart is scored on the dataviz all-pairs pairlist, where only three

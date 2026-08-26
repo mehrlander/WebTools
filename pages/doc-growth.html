@@ -16,7 +16,7 @@
      table view and the always-on tooltip are it. -->
 
 <meta name="shot-query" content="src=self">
-<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/alpinejs@3,npm/@phosphor-icons/web,npm/fflate" defer></script>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/alpinejs@3/dist/cdn.min.js,npm/@phosphor-icons/web,npm/fflate/umd/index.js" defer></script>
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
 </head>
 <body class="min-h-screen bg-base-200" x-data="growth()" x-init="boot()">
@@ -35,7 +35,7 @@
     </button>
   </div>
 
-  <div x-show="err" class="alert alert-warning text-sm" x-text="err"></div>
+  <div x-show="err" x-cloak class="alert alert-warning text-sm" x-text="err"></div>
   <div x-show="!data && !err" class="card bg-base-100 shadow-sm">
     <div class="card-body items-center py-16 gap-3">
       <span class="loading loading-dots loading-lg text-primary"></span>
@@ -432,6 +432,19 @@ async function loadPayload(q) {
   if (!r.ok) throw new Error(`${src} (HTTP ${r.status}${r.status === 404 && !token ? ', no stored token' : ''})`);
   return r.json();
 }
+</script>
+
+<script>
+// A dead Alpine is otherwise silent: x-show leaves everything visible, x-text
+// leaves everything empty, and the result looks like a page mid-load forever.
+addEventListener('load', () => setTimeout(() => {
+  if (window.Alpine) return;
+  document.body.innerHTML =
+    '<div class="max-w-xl mx-auto p-6 text-sm">' +
+    '<h1 class="text-lg font-semibold mb-2">Doc Growth could not start</h1>' +
+    '<p class="opacity-70">Alpine.js did not load, so nothing on this page is wired up. ' +
+    'Usually the CDN bundle was blocked or served the wrong build.</p></div>';
+}, 3000));
 </script>
 </body>
 </html>
