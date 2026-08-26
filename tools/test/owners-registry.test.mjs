@@ -14,7 +14,7 @@
 // written scope (the `scope` field), and whether some fourth document has begun
 // repeating a statement nobody has filed is not decidable from the carrier. The
 // detectors answer that question (home's tools/duplicated-claims.py,
-// tools/concept-lab/termlab.py); a registry gate here would only assert that the
+// local-models/instruments/concept-lab/termlab.py); a registry gate here would only assert that the
 // file agrees with itself.
 
 import test from 'node:test';

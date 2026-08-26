@@ -83,14 +83,34 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
 
   🥏 [pages/index.html](…)
   ```
-  In an MCP-written body, **150 characters or more inside a markdown link is wrapped in backticks and renders as literal text; 149 or fewer survives.** Length only, on both write paths. Chat replies are untouched. Count the URL and get under 150, in this order: drop `?use=` from a toss carrying `#gh=`; use the commit SHA instead of a `claude/…` branch; drop a `#diff-<hex>` anchor; use the branch page instead of a deep `:path`; failing all of it, leave the render link out of the body and put it in the chat caption.
-  **Boundary:** apply the ⭐ honesty gate. The render line belongs to every size, turn-size closers included; where there is no render link, say why rather than omitting it. A bare reply implies nothing is viewable yet. `[main](…)/[diff](…)` pairs are not a length matter: separate them with `, `; measured in the 2026-07-29 probe and not re-tested against the length rule. The 150-character measurement, with every probe and control: [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
+  In an MCP-written body, **150 characters or more inside a markdown link is wrapped in backticks and renders as literal text; 149 or fewer survives.** Length only: the label does not contribute, however long it runs. The count applies to a URL **anywhere in the text**, not only inside a link, since a plain code span at 150 or more is stored double-backticked with quotes added around the address. Both write paths, a PR body and an issue comment alike. Chat replies are untouched and keep the full forms.
 
+  Count the URL and get under 150, in this order:
+
+  | Too long | Shorten it to |
+  | --- | --- |
+  | a toss carrying `?use=` and `#gh=` together | `#gh=` only |
+  | a `#gh=` address on a `claude/…` branch | the commit SHA |
+  | a compare URL with a `#diff-<hex>` anchor | the plain compare URL |
+  | a deep `:path` in a toss | the branch page, or a `#gz=` in chat |
+  | anything still over | drop the render link from the body; put it in the chat caption |
+
+  **Boundary:** apply the ⭐ honesty gate. The render line belongs to every size, turn-size closers included; where there is no render link, say why rather than omitting it. A bare reply implies nothing is viewable yet. `[main](…)/[diff](…)` slash-joined pairs are the same arithmetic over a longer span, not an exception: `)/[` does not end the URL, so the count runs from the first URL's first character through the second URL's last, joining punctuation and the second label included. Separate them with `, `, which ends the run and puts each URL back on its own count. The 150-character measurement, with every probe and control: [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
 * **Session diff.** Summarize substantial work with `Session diff: [main...branch](url)`.
 
-* **Closing state.** Every reply that finishes work or proposes more ends with exactly one of six labeled states: 🟢 ready to continue, 🟡 decision needed, ⚪ natural stopping point, 🟠 attention, 🟣 merged, 🔴 closed.
-  **Boundary:** "go" authorizes only what the 🟢 list names, and "go 1, 3" takes a subset. Work the session conceives belongs in 🟢 as a proposal, never done unprompted. 🟠 is for an actual problem or risk, not routine uncertainty. 🟣 and 🔴 mark the branch, not a task. ⚫ is retired; a reply written before the change keeps it. 🟢, 🟡 and 🟠 each put something to the reader to act on, so write each to be understood on its own: one or two lines, plain terms rather than ones established above, and any file linked.
+* **Closing state.** End a reply that finishes work, proposes work, or leaves something open with exactly one state. It says what posture the session is in, so the next move is cheap to recognize.
 
+  - 🟢 **Ready to continue:** work is ready to do now. Name the work available on "go"; "go 1, 3" takes a subset. Work the session conceives is proposed here, never done unprompted (Keep focus).
+  - ❇️ **Ready to assess:** a question is ready to investigate. "Go" means assess it and report back, not implement whatever the assessment suggests.
+  - 🟡 **Pending:** keep this visible, but not ready yet. Use it for work waiting on another action, an answer, or a dependency.
+  - 🆚 **Choice needed:** a genuine choice remains. Give the assessment and the recommendation, then state what the user needs to choose.
+  - 🟠 **Attention:** a concrete problem or risk to address before going further, not routine uncertainty. Amber is the alarm here, and red is not a louder version of it.
+  - ⚪ **Clean exit:** work here is done. Recommend wrapping up or merging.
+  - 🟣 **Merged:** this workstream's branch merged. Say what shipped in one line.
+  - 🔴 **Closed:** this workstream's branch closed unmerged. Say why in one line.
+  - 🔵 **Short answer:** answered, with no work proposed. The marker carries "Short answer," so the bold lead is a short, recognizable version of the question with the answer right behind it: 🔵 **Did we get to the double back tap?** No. Shorten toward the sharper question, never the safer one.
+
+  **Boundary:** keep the states literal. **Uncertainty alone is not a choice:** where the session could reasonably investigate the question itself, that is ❇️. Write each state to be understood without the message it closes: name the concrete thing rather than leaning on terms established above, and link the file where one is relevant. Where a reply ends on the state it ended on last time and nothing has moved, say so in one line instead of restating the case. 🟣 and 🔴 mark the branch, not a task; a task dropped or deferred inside a live branch does not make the branch 🔴. Older replies keep the markers they were written with, ⚫ among them.
 * **External proxies: prohibited.** Never `htmlpreview.github.io`, `raw.githack.com`, `gitcdn.link` or their kin: they fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
 
 * **Subscribe the workstream PR 📬.** On creating a workstream's pull request, call `subscribe_pr_activity` for it.

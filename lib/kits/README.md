@@ -561,10 +561,47 @@ window.Annotate.enable({ doc?, subject? })  // mount on a target document
                                             // = {title, url} for serialization
 window.Annotate.add(target, note)           // programmatic add
 window.Annotate.toMarkdown() / .toJSON()    // the set, serialized
+window.Annotate.noteMarkdown(id)            // one note, same shape and preamble
+window.Annotate.noteJSON(id)                //   (still annotate/1, one note in it)
 await window.Annotate.copy('md' | 'json')   // serialize + clipboard
 await window.Annotate.saveJot()             // one jot (fresh-read → mutate → save)
+window.Annotate.expand(true)                // open the card onto the set
+window.Annotate.setReading('notes'|'md'|'json')
+window.Annotate.setScope('set' | 'note')    // which subject a serialization has
 window.Annotate.disable()
 ```
+
+Reopening a note through its pencil folds that note's ROW out of the list: the
+composer is the note while it is open, and the row comes back when the edit is
+saved. It used to be on screen twice, once with a caret in it and once as a
+static row still showing the text being replaced.
+
+The card reads its own set behind an **expander**, which is its header's
+`Notes` button: the card's name, its count and its way in are one control. It
+grows upward from the card's bottom edge, pinning that edge first so a card
+that has been dragged (which re-anchors it to the top) grows the same
+direction as one that has not.
+
+What opens is one window of a fixed height, the same for all three readings and
+the same empty as full, with the body scrolling inside it: the list, or either
+serialization exactly as Copy hands it over, of the whole set or of the one
+selected note, which is the reading no other surface offers. The window is 55%
+of the viewport and never past 440px, so the card stays a window over the
+document rather than a takeover of it. One row carries both choices, which
+reading and what it is a reading of: the three format chips, then a scope chip
+labelled by the selection (`Note 2`) that swaps on a tap, then a copy key,
+which is a glyph and no word because the chips beside it are the qualifier. The
+footer is Save jot and Clear, and there is no status line: Save jot reports on
+its own label, and every other message it used to carry announced something
+the reader had just watched happen and then stayed.
+
+**The FAB drawer's Notes tab is retired** (2026-08-25). It was the only place a
+set could be READ until the expander existed, which made it a second
+implementation of one view, on a page that might not have a drawer, kept in
+step by three window events (`annotate:review`, `annotate:drawer`,
+`annotate:drawer-query`). All of that is gone, along with the card's own title
+button that opened it. What the FAB still does is START the annotator: the take
+grid's Annotate entry and the launcher's long-press "Take a note".
 
 The FAB's take grid carries it as **Annotate** (the one take that operates on
 the view rather than carrying it away), aiming at the subject frame's
