@@ -1719,15 +1719,32 @@ const RAIL_KIND = { link: 'ph-arrow-up-right', action: 'ph-lightning', repo: 'ph
 // mounts; map() renders whichever of these is set.
 const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'claims', 'tests', 'harness', 'skills', 'registries'];
 
-// marked, loaded once on demand for the overview README render.
+// marked, loaded once on demand for the overview README render. kits/md-doc.js
+// rides with it, because every one of these renders lands in a fixed-width
+// column and a wide table in a README would widen that column until the page
+// itself scrolled sideways. The kit is what puts the table in its own box, and
+// mdHtml() is the one call every README-ish render here goes through, so a
+// fifth one cannot be added without it. Best effort on the kit: if the load
+// fails the prose still renders, and only the containment is missing.
 let _markedP = null;
 function loadMarked(){
-  return _markedP ??= new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
-    s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
+  return _markedP ??= Promise.all([
+    new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    }),
+    window.mdDoc ? Promise.resolve()
+      : (window.gh?.load ? window.gh.load('kits/md-doc.js').catch(() => {}) : Promise.resolve()),
+  ]);
+}
+// One markdown string → the prose markup these views hang on x-html. The
+// container class lives on the <article> in the template, so what comes back
+// here is the body: mdDoc.html() would wrap it in a second prose box, and its
+// `proseClass: ''` says the caller already has one.
+function mdHtml(src){
+  return window.mdDoc ? window.mdDoc.html(src, { proseClass: '' }) : window.marked.parse(src);
 }
 
 // ── Shell: repo context + view state. The header carries the app-level nav,
@@ -4076,7 +4093,7 @@ function app(){ return {
     try { res = await s.gh.get(file); } catch {}
     if (key !== this._projectBoardKey) return;
     if (res){
-      try { await loadMarked(); this.projectBoardHtml = window.marked.parse(res.text); }
+      try { await loadMarked(); this.projectBoardHtml = mdHtml(res.text); }
       catch { this.projectBoardHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
     }
     this.projectBoardLoading = false;
@@ -4187,7 +4204,7 @@ function app(){ return {
         const res = await s.gh.get(this.projectPath + '/DOCS.md');
         if (key !== this._projectDocsKey) return;
         await loadMarked();
-        this.projectDocsIndexHtml = window.marked.parse(res.text);
+        this.projectDocsIndexHtml = mdHtml(res.text);
       } catch {}
     }
   },
@@ -4243,7 +4260,7 @@ function app(){ return {
     // the current one.
     if (key !== this._projectKey) return;
     if (res){
-      try { await loadMarked(); this.projectHtml = window.marked.parse(res.text); }
+      try { await loadMarked(); this.projectHtml = mdHtml(res.text); }
       catch { this.projectHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
     }
     this.projectLoading = false;
@@ -6483,7 +6500,7 @@ function overview(){ return {
       try { res = await gh.get(p); break; } catch {}
     }
     if (res){
-      try { await loadMarked(); this.html = window.marked.parse(res.text); }
+      try { await loadMarked(); this.html = mdHtml(res.text); }
       catch { this.html = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
     }
     this.loading = false;
