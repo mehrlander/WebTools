@@ -135,7 +135,17 @@
        rules, so the outer box was decoration that cost width on a phone. -->
   <template x-if="record && !busy">
     <div class="max-w-2xl mx-auto w-full min-h-0 grow flex flex-col gap-2.5 px-4 pt-3">
-      <div class="shrink-0 text-lg font-medium leading-snug" x-text="head.title"></div>
+      <!-- The id rides the blurb rather than the strip. It is not a measure of
+           anything, it is this record's name, so it belongs beside the line
+           that says which session this is; on the strip it sat between two
+           counts and read as a third. Mono and dimmed, in parens, so it reads
+           as an identifier appended to a sentence and not as part of it. -->
+      <div class="shrink-0 text-lg font-medium leading-snug">
+        <span x-text="head.title"></span>
+        <span class="ml-1.5 font-mono text-sm font-normal opacity-45"
+              title="The record's filename stem, and how every other surface names this session"
+              x-text="'(' + (record.short || '') + ')'"></span>
+      </div>
 
       <!-- The facts strip, labelled rather than run together. It was one mono
            line of values separated by dots, which reads as an identifier and
@@ -241,14 +251,13 @@
         })();
         return [
           ['day', r.day, 'The day the session started'],
-          ['id', r.short, "The record's filename stem, and how every other surface names this session"],
           ['repos', (r.repos || []).map(x => x.name).join(', '), "The checkouts that were the session's working directory"],
           ['ran', mins, 'Wall clock from the first prompt to the last write, idle time included'],
           ['asks', r.exchanges, 'Back-and-forths: one per thing the user actually said'],
           ['calls', r.calls_total, 'Tool calls the session made'],
           ['failures', r.failures, 'Tool calls that came back an error'],
           ['files', r.files_total, 'Distinct paths opened by Read, Edit, Write or NotebookEdit. Not "read": a file opened through a shell command, or injected at session start, is not counted'],
-          ['output tokens', r.tokens?.output?.toLocaleString(), "The assistant's own output, not the context it read"],
+          ['out tokens', r.tokens?.output?.toLocaleString(), "The assistant's own output tokens, not the context it read"],
           ['schema', r.schema || 1, 'Which version of the record format wrote this, which decides what the other fields can hold'],
         ].filter(([, v]) => v || v === 0).map(([k, v, t]) => ({ k, v, t }));
       },
