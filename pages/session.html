@@ -82,8 +82,15 @@
 <body class="h-[100dvh] flex flex-col overflow-hidden bg-base-100 text-base-content" x-data="sessionPage()" x-cloak>
 
   <!-- Stands down inside a frame, the courtesy branch.html and links.html pay
-       their embedder: show-repo supplies its own chrome. -->
-  <div x-show="!framed" class="shrink-0 border-b border-base-300 bg-base-100">
+       their embedder: show-repo supplies its own chrome.
+
+       Except with nothing loaded, which was a dead end and shipped as one: a
+       toss carrying no session address rendered the empty state under a hidden
+       address bar, so the page said "name a session above" with nothing above
+       it and no way in. The courtesy is to an embedder that has already
+       supplied an address; where none arrived, the way to supply one has to be
+       on the page. Found 2026-08-26 by opening the tossed page itself. -->
+  <div x-show="!framed || !record" class="shrink-0 border-b border-base-300 bg-base-100">
     <div class="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
       <span class="text-lg">💬</span>
       <input x-model="input" @keydown.enter="go()" placeholder="short id, or owner/repo:path"
@@ -102,6 +109,7 @@
   <div x-show="!record && !busy && !err" class="max-w-4xl mx-auto p-8 text-center opacity-60 text-sm">
     Name a session above, or link straight to one:
     <code class="text-xs">#id=abc12345</code>
+    <div class="mt-2 text-xs opacity-70">Ids are the record's filename stem, eight hex characters.</div>
   </div>
 
   <div x-show="busy" class="flex justify-center py-16">
