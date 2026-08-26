@@ -132,3 +132,27 @@ is not read as "the estate has no titles."
   `laptop-self-hosted-runner-6a0n5f`. Also unjoined: the Sessions pane's
   branch-trailer stubs, which have a session id and no record, and which the
   export could name.
+
+- 2026-08-26: The code reached `main` today, six days after this was closed, as
+  web-tools PR #494 (squashed to `3aee4d3c`). It had been sitting open with a
+  merge conflict against a `main` that moved 147 commits: both sides had added a
+  block after `nameOf` in `repo-sessions-cache.js` (this join, and `pointerOf`
+  from PR #471), and both were kept. `text-base-content/45` became `/40`, which
+  main's dead-opacity gate now rejects. The web-tools-private half needed
+  nothing: its `main` is ahead of that branch, since the schema 5 work
+  superseded it, and it already carried the reading side, so PR #38 was
+  correctly closed unmerged.
+
+  **The coverage above is superseded, in the good direction.** Those figures are
+  30 of 143 rows, measured 2026-08-19 against the only export then on file. A
+  second Dispatch capture has since landed,
+  `claude-code-web/2026-08-23-sessions.csv`, with **949** rows against the
+  first's 380. Re-measured 2026-08-26 by running the shipped kit against the
+  live cache: **149 of 212 rows joined**, and 100% of every day from 2026-08-06
+  through 2026-08-23. The 63 misses split cleanly: 44 rows carry no
+  `agent_session` and can never be titled by any export, and 19 are simply newer
+  than the export. 800 of the 949 export rows still name sessions with no record
+  in the store.
+
+  Nothing here reopens the task. The two threads under "Still open" are
+  unchanged, and the manual cadence is why the 19-row tail exists at all.
