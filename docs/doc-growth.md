@@ -30,6 +30,15 @@ The page takes its data three ways, cheapest first: `#gz=<payload>` inline,
 `?url=<address>`, or `?src=owner/repo[@ref]:path` read through the viewer's
 stored `ghToken`, which is the only route that reaches a private repo.
 
+**Empty frames are trimmed, and that is load-bearing.** The extractor drops
+leading and trailing samples holding none of the kept files. web-tools spent its
+first eleven months as a scratch repo whose whole tree was one `TestNew.txt`, so
+48 of its 67 weekly frames held no markdown at all. A player that opens on one of
+those shows an empty plot, which is indistinguishable from a player that never
+finished loading, and that is exactly how it was first reported. The page also
+opens paused on the last frame rather than autoplaying from the first, for the
+same reason: the opening view should be the fullest one, not the sparsest.
+
 **A shallow clone will quietly lie.** Claude Code web checks out shallow, so the
 history looks like a week no matter how old the repo is. `git fetch --unshallow`
 first, and without `--filter=blob:none`: the partial-clone filter turns every

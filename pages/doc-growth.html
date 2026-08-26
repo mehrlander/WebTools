@@ -36,7 +36,12 @@
   </div>
 
   <div x-show="err" class="alert alert-warning text-sm" x-text="err"></div>
-  <div x-show="!data && !err" class="skeleton h-96 w-full"></div>
+  <div x-show="!data && !err" class="card bg-base-100 shadow-sm">
+    <div class="card-body items-center py-16 gap-3">
+      <span class="loading loading-dots loading-lg text-primary"></span>
+      <p class="text-sm opacity-60">Reading the history…</p>
+    </div>
+  </div>
 
   <!-- chart -->
   <div x-show="data && !showTable" class="card bg-base-100 shadow-sm">
@@ -47,6 +52,10 @@
                 style="height:clamp(360px,58vh,620px)"
                 @pointermove="hover($event)" @pointerleave="hovered = null"
                 @pointerdown="pick($event)"></canvas>
+        <div x-show="visible === 0" x-cloak
+             class="pointer-events-none absolute inset-0 grid place-content-center">
+          <p class="text-sm opacity-50">No file this size existed yet.</p>
+        </div>
         <div x-show="hovered" x-cloak
              class="pointer-events-none absolute z-10 rounded-md bg-neutral text-neutral-content
                     text-xs px-2 py-1.5 shadow-lg max-w-[16rem]"
@@ -154,6 +163,7 @@ function growth() {
     data: null, err: '', t: 0, playing: false, raf: 0,
     yMode: 'churn', unit: 'w', minEdits: 5, trails: true,
     picked: null, hovered: null, tipX: 0, tipY: 0, showTable: false, bounds: null,
+    visible: 0,
     groups: [],
 
     async boot() {
@@ -182,8 +192,9 @@ function growth() {
         net: Math.max(50, ...all.flatMap(f => f.n.map(Math.abs))),
         churn: Math.max(4, ...all.flatMap((f) => f.e.map((_, k) => this.churn(f, k)))),
       };
+      this.t = this.data.frames.length - 1;
       addEventListener('resize', () => this.draw());
-      this.$nextTick(() => { this.draw(); this.toggle(); });
+      this.$nextTick(() => this.draw());
     },
 
     slot(g) { return this.groups.indexOf(g); },
@@ -196,10 +207,10 @@ function growth() {
 
     get frameLabel() { return this.data?.frames[Math.round(this.t)] ?? ''; },
     get caption() {
-      const n = this.shown().length;
+      const n = this.visible, tot = this.shown().length;
       return this.yMode === 'churn'
-        ? `${n} files edited in ${this.minEdits}+ commits. Up means actively worked; right means long.`
-        : `${n} files. Above the line gained words that week, below it gave some back.`;
+        ? `${n} of ${tot} files on screen (edited in ${this.minEdits}+ commits). Up means actively worked; right means long.`
+        : `${n} of ${tot} files on screen. Above the line gained words that week, below it gave some back.`;
     },
     get tipMeta() {
       const f = this.hovered; if (!f) return '';
@@ -334,6 +345,7 @@ function growth() {
       }
       c.globalAlpha = 1;
       this._pts = pts;
+      this.visible = pts.length;
 
       // direct label for the pinned file
       if (this.picked) {
@@ -412,7 +424,8 @@ async function loadPayload(q) {
   }
   const [repoRef, path] = src.split(':');
   const [repo, ref = 'main'] = repoRef.split('@');
-  const token = localStorage.getItem('ghToken') || '';
+  let token = '';
+  try { token = localStorage.getItem('ghToken') || ''; } catch {}
   const r = await fetch(`https://api.github.com/repos/${repo}/contents/${path}?ref=${ref}`, {
     headers: { Accept: 'application/vnd.github.raw', ...(token && { Authorization: `Bearer ${token}` }) },
   });

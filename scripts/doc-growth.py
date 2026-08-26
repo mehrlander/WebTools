@@ -131,6 +131,17 @@ def main():
     # --- assemble -------------------------------------------------------------
     paths = sorted({p for snap in trees for p in snap
                     if len(touched.get(p, [])) >= a.min_edits})
+
+    # Drop leading and trailing samples that hold none of the kept files. A repo
+    # that spent its first year as a scratch pad (web-tools was one file named
+    # TestNew.txt until April 2026) otherwise ships dozens of empty frames, and
+    # a player that opens on one is indistinguishable from a player still
+    # loading. Trimming here rather than in the page keeps every consumer honest.
+    keep = [k for k, snap in enumerate(trees) if any(p in snap for p in paths)]
+    if keep:
+        lo, hi = keep[0], keep[-1] + 1
+        trees, frames = trees[lo:hi], frames[lo:hi]
+        first += lo * step
     groups = sorted({group_of(p, containers) for p in paths})
     gi = {g: i for i, g in enumerate(groups)}
     files = []
