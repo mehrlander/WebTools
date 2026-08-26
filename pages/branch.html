@@ -201,22 +201,28 @@
         // into the address grammar because it is not part of an address: it
         // names a thing that RESOLVES to one, and the resolution is a call.
         const pr = q.get('pr') || hash.get('pr') || '';
+        // Which pane, and which file. Both are read from either carrier for the
+        // reason `pr` is: they name what to SHOW of an address rather than
+        // being part of one, so the grammar in reviewTarget never sees them.
+        const pane = q.get('pane') || hash.get('pane') || '';
+        const file = q.get('file') || hash.get('file') || '';
+        const view = { pane: pane === 'files' || pane === 'guide' ? pane : '', file };
         const sources = [];
         if (gh) sources.push('gh=' + gh + (base ? '&base=' + base : ''));
         sources.push(location.hash, location.search);
         for (const s of sources) {
           const t = window.reviewTarget.parse(s);
-          if (t && t.kind === 'ref' && t.repo && t.ref) return { ...t, pr };
+          if (t && t.kind === 'ref' && t.repo && t.ref) return { ...t, pr, ...view };
         }
         // A pasted github.com/owner/repo/pull/<n> URL: the grammar already
         // recognises it and hands back the number for the caller to resolve.
         for (const s of sources) {
           const t = window.reviewTarget.parse(s);
-          if (t && t.kind === 'pull' && t.repo) return { ...t, pr: String(t.number) };
+          if (t && t.kind === 'pull' && t.repo) return { ...t, pr: String(t.number), ...view };
         }
         for (const s of sources) {          // repo only: prefill the form
           const t = window.reviewTarget.parse(s);
-          if (t && t.repo) return { ...t, pr };
+          if (t && t.repo) return { ...t, pr, ...view };
         }
         return null;
       },
@@ -245,7 +251,10 @@
         this.input = repo + '@' + ref;
         // `framed` rides through: an embedder supplies its own header, and the
         // view drops the identity it would otherwise repeat.
-        this.target = { repo, branch: ref, base, authored, pr: t.pr || '', framed: this.framed };
+        this.target = { repo, branch: ref, base, authored, pr: t.pr || '', framed: this.framed,
+                        // `&pane=` picks the pane and `&file=` opens the file
+                        // deck on one path; the component owns what each means.
+                        pane: t.pane || '', file: t.file || '' };
         window.__branchTarget = this.target;
         this.$nextTick(() => {
           // A fresh element each time: Alpine cannot re-initialise a tree it
