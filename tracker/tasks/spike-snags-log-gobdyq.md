@@ -136,7 +136,9 @@ both files, or a decision to drop it.
   the same generator and gated by `artifacts-lockstep`; the prose stays in the
   markdown, because the paragraph explaining why a trip was invisible is most
   of an entry's value and is what CONVENTIONS.md calls the residue a document
-  is for. That also makes the log renderable: a Map tab is one registry's
+  is for. (**Stale 2026-08-27 → docs/CONVENTIONS.md:** the "residue" rule was
+  removed. The split this entry decided still holds; what carries an entry is
+  the criterion in its paragraph, not that it is a reason.) That also makes the log renderable: a Map tab is one registry's
   detail view, and snag rows read as a filterable list. The tab is not built,
   so `renders_in` is empty, which is the warning state that field exists for.
 

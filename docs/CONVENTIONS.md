@@ -11,7 +11,7 @@ This hub holds behavior that applies whether or not anything is being surfaced. 
 
 ## Scope and precedence
 
-**Local `CLAUDE.md` wins wherever it conflicts with these defaults.** Beyond that, name the units, since "session," "repository," and "branch" otherwise collapse into each other:
+**Local `CLAUDE.md` wins wherever it conflicts with these defaults.** Beyond that, name the units:
 
 - A **session** can span several repositories. A repository's conventions apply to work done in that repository.
 - A **workstream** is one repository plus its branch and the PR that tracks it. A single session may run several at once (three repos on one branch name, say).
@@ -19,7 +19,7 @@ This hub holds behavior that applies whether or not anything is being surfaced. 
 
 ## Standing decisions: write the answer down, not just the question
 
-**A consistency ask is not a fork.** When a treatment is approved in one place and the instruction is to apply it elsewhere ("do the same on X so it's consistent"), apply it to every surface it plausibly covers, show the pixels, and name what was assumed. Do not ask which surface was meant: doing one place too many costs a revert, while asking costs a round trip on work already decided.
+**A consistency ask is not a fork.** When a treatment is approved in one place and the instruction is to apply it elsewhere ("do the same on X so it's consistent"), apply it to every surface it plausibly covers, show the pixels, and name what was assumed. Do not ask which surface was meant.
 
 A recurring fork becomes a standing decision the moment a doc states it as a default. Name it in `CLAUDE.md` or the relevant portable doc (this file, [SURFACING.md](SURFACING.md), [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)), and a session that hits it takes the default and notes the assumption rather than raising it fresh.
 
@@ -44,7 +44,7 @@ Two carriers, split by subject:
 **Stale 2026-07-20 → ../timeline.md:** the dates here predate the reschedule.
 ```
 
-Shape: `**Flavor YYYY[-MM[-DD]] [(note)] [→ target]:**`. Flavor, date, and target hold fixed positions, so the set is auditable rather than merely greppable. The target is optional and may be a path, a markdown link, or prose; only path-shaped targets are existence-checked. A `status: frozen 2026-07-06; note` frontmatter line is the optional metadata layer.
+Shape: `**Flavor YYYY[-MM[-DD]] [(note)] [→ target]:**`. The target is optional and may be a path, a markdown link, or prose; only path-shaped targets are existence-checked. A `status: frozen 2026-07-06; note` frontmatter line is the optional metadata layer.
 
 **Annotate, do not rewrite:** a dated file stays put as a record, so when one of its claims ages, mark the claim rather than editing the record into agreement with the present. **Only a record gets a marker**; fix a living document instead. The tell: a banner describing text no longer in the file.
 
@@ -60,7 +60,7 @@ Shape: `**Flavor YYYY[-MM[-DD]] [(note)] [→ target]:**`. Flavor, date, and tar
 }
 ```
 
-A bare string is shorthand for `{ "path": ... }`; a trailing `/` covers a directory; `except` is `fnmatch` against the path below the entry. `except` is required in practice: frozen folders routinely contain live inputs, and a whole-directory rule without it fires on exactly the files the estate depends on.
+A bare string is shorthand for `{ "path": ... }`; a trailing `/` covers a directory; `except` is `fnmatch` against the path below the entry. `except` is required in practice: a frozen folder routinely contains live inputs.
 
 **A marker cannot do the declaration's job.** A GFM alert renders in markdown and nowhere else, so `.html`, `.js`, and `.csv` artifacts can never carry one.
 
@@ -78,16 +78,15 @@ Adding to a doc is a pass over it, not just an append. New material has to match
 
 ## Prose that describes state is unimplemented
 
-A document that restates what an app derives, or what a check enforces, is carrying a copy, and the copy is the half that ages with nothing to report it. Before adding to a doc, and whenever one has outgrown its subject, ask four questions in order:
+A document that restates what an app derives, or what a check enforces, is carrying a copy, and the copy is the half that ages with nothing to report it. Before adding to a doc, and whenever one has outgrown its subject, ask three questions in order:
 
 1. **Is this a fact the app derives?** Delete it and link the view.
 2. **Is this a rule the suite enforces?** Delete the description, keep a pointer to the gate. The test is the statement.
 3. **Does another document already own it?** Delete it and link there.
-4. **Is this a reason somebody chose something?** Keep it. This is the residue, and it is what a document is for.
 
-**The fourth question is the guard, not an afterthought.** A pass that reads reasons as a backlog will either delete them or try to encode them, which is how a repo gets a `why` column that runs nought for five.
+**There is no fourth question that saves a passage, and a reason is not exempt because it is a reason.** Nearly every sentence in a bloated document is a reason somebody chose something, which is how it got bloated. What earns its place is the **criterion** inside a reason: the condition, threshold, or named exception that changes how the rule applies at an edge. Lift that into the rule and the rest goes to the PR body or the dated record that owns the decision. Operated by [`state-the-rule`](https://github.com/mehrlander/web-tools/blob/main/skills/state-the-rule/SKILL.md), which carries the labels and the checks.
 
-Two habits separate a chop that holds from one that loses something. **Render before you cut**, since the honest test of "the app already says this" is looking at the app, and a definition that exists only in a tooltip is not rendered. And **look inside the file**: a paragraph repeated verbatim within one document is invisible to a cross-file duplicate scanner by construction, and to a word cap because it fits inside the budget.
+Two habits: **Render before you cut**, since a definition that exists only in a tooltip is not rendered. And **look inside the file**: a paragraph repeated verbatim within one document is invisible to a cross-file duplicate scanner by construction, and to a word cap because it fits inside the budget.
 
 The cut is only safe when something will notice it being undone, so leave a gate behind: a pointer the doc must keep, and a ceiling it must stay under.
 
