@@ -207,7 +207,12 @@ let CATS = {}; // key → { label, color }, filled once the kit lands
 // ── Formatting ───────────────────────────────────────────────────────────────
 let fmtBytes = n => n + ' B'; // rebound to treemap.fmtBytes at boot
 const fmtPct = (n, d) => d ? (100 * n / d).toFixed(n / d < 0.01 ? 2 : 1) + '%' : '—';
-const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// Escaping is window.esc from vanilla-bundle.js, first in the boot chain, read
+// at call time. Every esc() below runs from a render or an error overlay raised
+// after loadRepo or a local drop, both of which are gated on the kit having
+// landed, so the chain is in by then; the page's one pre-chain overlay (the
+// boot-timeout message) carries no interpolation at all.
+const esc = s => window.esc(s);
 // GitHub URL for a repo path: per-segment encoding (keeps the slashes) so '#',
 // '%', '?' in filenames can't derail the URL — then esc() when it rides in an
 // href attribute, so a quote in a filename can't break out of it (XSS).

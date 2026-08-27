@@ -217,9 +217,9 @@
        carried nothing and made a long changeset harder to scan, not easier. -->
   <div x-show="files.length > 1" class="flex justify-end pb-1.5">
     <button @click="openFileDeck(files[0] && files[0].path)"
-            class="btn btn-sm btn-ghost gap-1.5 normal-case"
+            class="btn btn-sm btn-square btn-soft btn-primary max-sm:h-11 max-sm:w-11"
             :title="'Read ' + files.length + ' files one at a time'">
-      <i class="ph ph-cards-three text-base"></i>Read one at a time</button>
+      <i class="ph ph-cards-three text-lg max-sm:text-xl"></i></button>
   </div>
   <div x-show="files.length" class="border border-base-300 rounded-lg overflow-hidden">
     <template x-for="f in files" :key="f.path">

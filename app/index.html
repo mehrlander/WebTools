@@ -113,6 +113,9 @@
   await gh.load('kits/branch-status.js');
   // Activity-aggregate builders for the private cache (state/activity.json).
   await gh.load('kits/repo-activity-cache.js');
+  // Comma-separated parsing, shared. Loaded before the sessions cache, whose
+  // title join reads the Dispatch export's CSV through it.
+  await gh.load('kits/csv.js');
   // Sessions-aggregate builders for the private cache (state/sessions.json).
   await gh.load('kits/repo-sessions-cache.js');
   // The pure fold behind Activity's Routes pane: the app's own destinations
@@ -1084,7 +1087,15 @@ html.dk-dragging main{transition:none !important}
          pages index; the Stage constrains its own column. -->
     <div x-show="isEstate" data-pane="estate" class="h-full"
          :class="listsFill ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'">
-      <div class="mx-auto px-4 lg:px-6 pt-4 !max-w-none"
+      <!-- w-full is load-bearing under listsFill and inert without it. An auto
+           inline margin on a flex ITEM sizes it to its content instead of
+           stretching it, so the moment listsFill turned the pane into a flex
+           column, mx-auto quietly capped this div at the width of its widest
+           row: the Lists pane came out 548px wide inside a 1280px window,
+           whatever !max-w-none said, and the Pin grid split that into two
+           266px columns and truncated a 26-character title for want of 5px.
+           In the ordinary block case width:100% is what the div already had. -->
+      <div class="mx-auto w-full px-4 lg:px-6 pt-4 !max-w-none"
            :class="listsFill ? 'flex-1 min-h-0 flex flex-col pb-4 lg:pt-6' : 'pb-8 lg:pt-6'">
         <template x-if="estateSeen">
           <div x-data="estate()" :class="listsFill && 'flex-1 min-h-0 flex flex-col'"></div>
@@ -1717,7 +1728,7 @@ const RAIL_KIND = { link: 'ph-arrow-up-right', action: 'ph-lightning', repo: 'ph
 // The Map view's tabs, in render order, first = default. Named HERE rather than
 // in map() because the shell validates the ?tab= param before the component
 // mounts; map() renders whichever of these is set.
-const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'claims', 'tests', 'harness', 'skills', 'registries'];
+const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'growth', 'claims', 'tests', 'harness', 'skills', 'registries'];
 
 // marked, loaded once on demand for the overview README render. kits/md-doc.js
 // rides with it, because every one of these renders lands in a fixed-width
@@ -1753,7 +1764,7 @@ function mdHtml(src){
 // repo's views (landing, atlas) and its files. Which
 // landing a repo gets is one decision — landingKind(). ────────────────────────
 function app(){ return {
-  description: 'show-repo shell: per-repo views (landing, files, atlas, branches, config) over the estate dashboard',
+  description: 'Web Tools shell: per-repo views (landing, files, atlas, branches, config) over the estate dashboard',
   // FAB opt-in contract (the `actions` the FAB surfaces as page buttons).
   // When the main area is an iframe embed — a custom landing, an app view, or
   // the atlas — the one action is the way out of the embed: open the framed
@@ -2316,7 +2327,18 @@ function app(){ return {
                 // none of the meaning. Optional, so a page that declares none
                 // is reached by its address and nothing changes for it.
                 slug: typeof pg.slug === 'string' ? pg.slug.trim() : '',
-                key: t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path,
+                // A page a repo promotes may need arguments to be the view that
+                // repo means: home and web-tools promote the same doc-growth
+                // page and differ only in which payload it reads. appViewUrl
+                // already carries a query; without this it could only ever come
+                // from the address bar, so a manifest could name the page but
+                // not what it should show.
+                query: typeof pg.query === 'string' ? pg.query.replace(/^\?/, '') : '',
+                // Query is part of the identity: two repos may promote the same
+                // page and differ only in what they point it at, and a key that
+                // ignored the query would make them one entry.
+                key: t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path +
+                     (typeof pg.query === 'string' && pg.query ? '?' + pg.query.replace(/^\?/, '') : ''),
               });
             }
           }
@@ -2563,7 +2585,7 @@ function app(){ return {
   // which mis-filed these writes: the hazardous class is writes whose INPUTS
   // or TARGETS the overlay touches, and a main-read, main-derived crawl is
   // not in it. The invariant that keeps this true is held by
-  // tools/test/show-repo-overlay.test.mjs: every client the crawl constructs
+  // tools/test/shell-overlay.test.mjs: every client the crawl constructs
   // reads at main, never at the overlay branch.
   // Returns {committed, changed} when it ran, {skipped:true} when it declined,
   // {error} when it failed. It reported NOTHING until 2026-08-25, which is why
@@ -3152,6 +3174,29 @@ function app(){ return {
   SESSIONS_FETCH_POOL: 6,        // record blobs read at once
   SESSIONS_MAX_FETCH: 120,       // records read per crawl; the rest wait for the next
   _sessionsCheckKey: 'wt:sessionsCacheCheckedAt',
+  // ── The title join's second input ────────────────────────────────────────
+  // A session's real title reaches no container, so the recorder cannot capture
+  // one (web-tools-private sessions/README.md, "The third name"). A Dispatch
+  // session on the desktop scrapes the claude.ai/code sidebar instead and
+  // commits one dated CSV per capture to mehrlander/chat-histories. Two calls a
+  // crawl: list the folder, read the newest file.
+  //
+  // Every failure here returns null, which the fold reads as "carry the titles
+  // you already have." A repo the token cannot see, a folder that does not
+  // exist, and a malformed CSV are all the same answer, and none of them may
+  // cost the crawl its records.
+  async _readSessionTitles(){
+    const S = window.RepoSessionsCache;
+    try {
+      const gh = new window.GH({ token: window.TOKEN, repo: S.TITLES_REPO, ref: 'main' });
+      const pick = S.newestExport(await gh.req('contents/' + S.TITLES_DIR));
+      if (!pick) return null;
+      const byId = S.parseTitles((await gh.get(pick.path)).text);
+      // An export that parsed to nothing is a broken export, not an empty one:
+      // treating it as empty would blank every title on the next fold.
+      return Object.keys(byId).length ? { at: pick.at, path: pick.path, byId } : null;
+    } catch(e){ console.warn('session titles export:', e?.message || e); return null; }
+  },
   async refreshSessionsCache(force){
     if (!this.hasToken() || !window.RepoSessionsCache) return { skipped: true };
     // Single-flight: opening the Sessions tab kicks the throttled crawl, and a
@@ -3249,11 +3294,14 @@ function app(){ return {
       };
       await Promise.all(Array.from({ length: Math.min(this.SESSIONS_FETCH_POOL, take.length) }, readOne));
 
+      // The titles export, read after the records so a slow or missing
+      // chat-histories cannot delay the part of the crawl that matters.
+      const titles = await this._readSessionTitles();
       // The scope is the FULL listing, never `take`: a record the cap deferred
       // must keep its row, and only a record genuinely gone from the store
       // loses one.
       const deferred = Math.max(0, stale.length - take.length);
-      const next = S.buildCache(prev, fetched, listing.map(e => e.path), nowISO);
+      const next = S.buildCache(prev, fetched, listing.map(e => e.path), nowISO, titles);
       try { localStorage.setItem(this._sessionsCheckKey, String(Date.now())); } catch {}
       // ONLY WHEN THIS PASS LEFT NOTHING BEHIND, and this is the clause the
       // gate is wrong without. `stale` can exceed the cap, and a record whose
@@ -3279,7 +3327,7 @@ function app(){ return {
                             'Update sessions cache (state/sessions.json) via show-repo', base);
       }
       return { total: listing.length, read: Object.keys(fetched).length,
-               deferred, committed: changed };
+               deferred, committed: changed, titlesAt: next.titlesAt || '' };
     } catch(e){
       console.warn('sessions cache refresh:', e?.message || e);
       return { error: e?.message || String(e) };
@@ -6105,7 +6153,7 @@ function app(){ return {
   // and no-op'd, so the carousel was a one-way trip and paging out again took
   // the header. Nothing reported it: a pager whose pane lookup returns null
   // looks exactly like a pager on a repo view, where declining is correct.
-  // tools/test/show-repo-panes.test.mjs holds the two lists in step.
+  // tools/test/shell-panes.test.mjs holds the two lists in step.
   get _paneKey(){ return this.isEstate ? 'estate' : this.view; },
   _activePane(){
     return document.querySelector('main [data-pane="' + this._paneKey + '"]');

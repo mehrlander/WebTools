@@ -4,7 +4,7 @@
 // helper upgrades that from regex to execution, evaluating the block against
 // stubbed globals; the block's top level only defines (nothing mounts until
 // Alpine starts), so a factory call is clean. Used by
-// show-repo-projects.test.mjs and show-repo-overlay.test.mjs.
+// shell-projects.test.mjs and shell-overlay.test.mjs.
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

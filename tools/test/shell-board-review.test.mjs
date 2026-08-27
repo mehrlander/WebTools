@@ -12,11 +12,11 @@
 // more than a renderer.
 //
 // The shell's app() lives inline in app/index.html, so this drives it through
-// the shared show-repo-shell.mjs harness.
+// the shared shell.mjs harness.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { page, makeShell } from './show-repo-shell.mjs';
+import { page, makeShell } from './shell.mjs';
 
 // A fixed clock, so age assertions are not a function of when the suite runs.
 const NOW = Date.parse('2026-08-04T00:00:00Z');
