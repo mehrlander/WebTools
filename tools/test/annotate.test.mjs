@@ -1284,6 +1284,32 @@ test('the launcher-staged page draft opens idle: an offer, not a recorder', () =
   A.disable();
 });
 
+test('the aim menu is placed inside the card, not against the viewport', () => {
+  // It hung off the body at fixed coordinates read from the button, which a
+  // pinch-zoomed phone put most of a screen away from it: the card's position
+  // is declarative and the browser keeps it consistent as the visual viewport
+  // moves, while the menu's was a number computed once and frozen. Reported
+  // from a device 2026-08-27.
+  //
+  // What this holds is the SHAPE of the fix, which is all jsdom can see: the
+  // menu is a child of the card and positioned absolutely, so the browser does
+  // the arithmetic and zoom moves both together. The pixel result needs a real
+  // viewport and is not gated anywhere.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+
+  assert.equal(S.aimMenu.style.position, 'absolute',
+    'absolute, so it resolves against the card rather than the viewport');
+  assert.ok(S.ui.contains(S.aimMenu),
+    'and it hangs off the card, so a dragged or zoomed card carries it');
+  assert.ok(!S.panel.contains(S.aimMenu),
+    'but outside the panel, which clips for its corners');
+  assert.notEqual(S.aimMenu.parentElement, doc.body,
+    'never the body: that is what made its coordinates independent of the card');
+  A.disable();
+});
+
 test('an unaimed note is a page note, and the menu names the aim in force', async () => {
   // The page was a chip on the header, which read as though page association
   // were something a control supplied. It never was: mdHead and jsonFor put the
