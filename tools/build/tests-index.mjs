@@ -58,7 +58,7 @@
 // `protects` and `assertion_names` answer different questions, and the split is
 // why deriving the names does not make the authored field redundant. The names
 // say WHAT the file asserts; `protects` says what BREAKS if it goes, which for
-// a gate or a lockstep is not recoverable from any test name. What the names do
+// a gate is not recoverable from any test name. What the names do
 // retire is the inventory: `protects` had been absorbing coverage lists because
 // coverage was invisible in the view, and twelve rows had grown past 300
 // characters restating what the file already said better. One sentence here,
@@ -74,7 +74,7 @@ import { parseCsv, writeCsv, splitList } from './registries-load.mjs';
 const TEST_COLS = ['path', 'kind', 'protects', 'assertions', 'method', 'runner', 'boot_smoke', 'assertion_names'];
 import { fileURLToPath } from 'node:url';
 
-export const KINDS = ['behavior', 'component', 'kit', 'tool', 'gate', 'lockstep', 'guard'];
+export const KINDS = ['behavior', 'component', 'kit', 'tool', 'gate', 'guard'];
 export const METHODS = ['kit', 'alpine', 'spawn', 'read', 'pure'];
 
 const TEST_DIR = 'tools/test';

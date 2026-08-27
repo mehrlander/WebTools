@@ -4,7 +4,7 @@ docs,status,recorded,,none,column,yes,living;record;measured,"whether the docume
 docs,reach,computed,tools/build/docs-reach.mjs,value,column,yes,injected;project;skill;app;orphan,"who can get to the document: injected at session start, reachable from project instructions, a skill, the app, or nothing"
 docs,words,computed,tools/build/docs-reach.mjs,value,column,yes,,"the document's size, and its share of the folder"
 docs,maintenance,recorded,,counted,column,yes,,who keeps the document true; a bare row is counted by the registry rather than hidden
-tests,kind,recorded,,value,column,yes,behavior;component;kit;tool;gate;lockstep;guard,the genre of check; the vocabulary is closed and the gate holds rows to it
+tests,kind,recorded,,value,column,yes,behavior;component;kit;tool;gate;guard,the genre of check; the vocabulary is closed and the gate holds rows to it
 tests,protects,recorded,,counted,column,yes,,the one thing that breaks if the test is deleted; blanks are counted
 tests,assertions,computed,tools/build/tests-index.mjs,counted,column,yes,,"how many assertions the file makes. Blank, never zero, on the 10 browser-driven checks that are not node:test files, because test() is not their unit; the blank is the honest reading and the count is the ledger figure"
 tests,assertion_names,computed,tools/build/tests-index.mjs,counted,column,no,,"what each top-level test() call is named, in source order; the file's own account of its coverage, so protects need not restate it. A parameterized name is carried as its template text. Blank on the same 10 browser-driven checks as its count, for the same reason: test() is not their unit"

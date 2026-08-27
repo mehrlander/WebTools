@@ -32,7 +32,7 @@
 // repo's other scans.
 //
 // --check compares instead of writing, the idiom every generator here shares,
-// so tools/test/artifacts-lockstep.test.mjs can hold the file to its source.
+// so tools/test/derived-artifacts.test.mjs can hold the file to its source.
 //
 // SECOND ARTIFACT, added 2026-08-26: docs/snags.csv, the derived registry.
 // This generator was already reading the log as data; the records simply did
@@ -48,7 +48,7 @@
 // `×N` multiplier the log already writes, and anything else is reported rather
 // than counted. An unslugged `##` heading below the index is reported too.
 // Neither fails the run, for the reason the repeat warning does not, except
-// through the lockstep test, which fails when the CSV is behind the log.
+// through the derived-artifacts gate, which fails when the CSV is behind the log.
 //
 // What stays in the markdown is what a CSV cell is a bad home for: the
 // paragraph of reasoning under each entry, which is most of an entry's value

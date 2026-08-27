@@ -735,7 +735,7 @@ routes belong to one page in one repo, so the read is about two dozen requests
 and is taken live, which is also why this pane has no age pill.
 
 **Every read is at the ref the code came from, not at main.** The manifest and
-the `VIEWS` table are held in lockstep at a ref, so reading the code from one
+the `VIEWS` table are held to each other at a ref, so reading the code from one
 and the manifest from another breaks the invariant the gate protects. Pinning
 the manifest to main did exactly that on the first preview of the branch that
 added it: the pane reported `GitHub Error 404` for a file that did not exist on
@@ -1790,7 +1790,7 @@ estate and are precisely the two no file tool can see, so a bare count would ran
 them last.
 
 *Tests* is the same shape one axis over, from [`docs/tests.csv`](tests.csv):
-every file in the suite with its kind (gate, lockstep, tool, kit, behavior,
+every file in the suite with its kind (gate, tool, kit, behavior,
 component, guard) and what breaks if it is deleted, its assertions, method,
 runner and boot-smoke count all derived from the files and gated against the
 registry. The strip cuts the total by kind rather than reporting it, since a
