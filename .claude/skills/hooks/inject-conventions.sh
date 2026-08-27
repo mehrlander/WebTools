@@ -90,6 +90,12 @@ done
 # other half of that: an over-budget payload is caught below, while a payload
 # missing its primitives would be invisible.
 COURSE_HEADING='## The surfacing course'
+# The primitives section alone, from its heading to the course's.
+primitives_only() {
+  sed -n "/^## Surfacing primitives\$/,/^${COURSE_HEADING}\$/p" "$DOCS/SURFACING.md" \
+    | sed "/^${COURSE_HEADING}\$/d"
+}
+
 surfacing_head() {
   if grep -qF "$COURSE_HEADING" "$DOCS/SURFACING.md"; then
     sed "/^${COURSE_HEADING}\$/,\$d" "$DOCS/SURFACING.md"
@@ -98,6 +104,15 @@ surfacing_head() {
   fi
 }
 
+# Three rungs, not two, because the drop from "everything" to "CONVENTIONS.md
+# alone" is a cliff: 127 bytes over the budget cost every surfacing primitive
+# when this first fired for real on 2026-08-27. What goes first is what a
+# session can most afford to lose.
+#
+# SURFACING.md's front matter is two short sections of pointers (the render
+# path, the one per-repo setting), about 1 KB, and both are restated where they
+# are used. The primitives are the rules themselves. So the head goes before
+# they do, and CONVENTIONS.md, the hub, goes last of all.
 emit() {
   # Say where this came from before saying it. Injected text arrives with no
   # provenance otherwise, and "which copy of the conventions is this" is a
@@ -108,14 +123,25 @@ emit() {
   echo "NOT INCLUDED: SURFACING.md's \"The surfacing course\" (the guide-PR lifecycle,"
   echo "wrap-up, and post-merge handoff). It is delivered when you create a pull"
   echo "request; read it sooner with /web-tools, or at docs/SURFACING.md."
+  if [ "${1:-}" = "skip_head" ]; then
+    echo "ALSO NOT INCLUDED, to fit the channel: SURFACING.md's opening sections"
+    echo "(the render path, the per-repo setting). Every primitive is below."
+  fi
   echo
   cat "$DOCS/CONVENTIONS.md"
   echo
-  surfacing_head
+  if [ "${1:-}" = "skip_head" ]; then primitives_only; else surfacing_head; fi
   echo
 }
 
+# Rung 1: everything but the course.
 BODY="$(emit)"
+
+# Rung 2: drop SURFACING.md's front matter, keeping every rule.
+if [ "${#BODY}" -gt "$BUDGET" ]; then
+  BODY="$(emit skip_head)"
+  DROPPED_HEAD=1
+fi
 
 # Over budget is reported, never silently truncated, and never simply dropped.
 # The harness would cut this mid-sentence with nothing to say so; a session that

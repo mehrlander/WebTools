@@ -65,9 +65,27 @@ test('it carries every primitive and none of the course', () => {
   assert.match(out, /NOT INCLUDED/, 'and the payload names what it withheld');
 });
 
-// The half that matters more than the happy path. A budget nobody can exceed is
+// The middle rung, added 2026-08-27 the first time the budget fired for real.
+// Main added a closing state, the primitives section grew 158 words, and the
+// payload went 127 bytes over: under a two-rung design that cost every
+// primitive. What a session can most afford to lose goes first, and the rules
+// themselves are not it.
+test('over budget it drops the front matter before it drops a single rule', () => {
+  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '26500' });
+  assert.match(out, /ALSO NOT INCLUDED, to fit the channel/,
+    'the second rung says what it withheld, as the first one does');
+  assert.doesNotMatch(out, /PARTIAL LOAD/, 'and it is not the last rung');
+  const doc = readFileSync(join(HOOKS, '..', 'web-tools', 'SURFACING.md'), 'utf8');
+  const section = doc.split('## Surfacing primitives')[1].split('## The surfacing course')[0];
+  assert.equal((out.match(/^\* \*\*/gm) || []).length,
+    (section.match(/^\* \*\*/gm) || []).length,
+    'every rule still arrives; only the pointers around them are gone');
+  assert.ok(!out.includes('\n## One render path'), 'the front matter is what went');
+});
+
+// The last rung, and the half that matters more than the happy path. A budget nobody can exceed is
 // untested; what has to hold is what happens when someone does.
-test('over budget it says so and degrades to a known half, never to a silent cut', () => {
+test('past every rung it says so and degrades to a known half, never to a silent cut', () => {
   const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '4000' });
   assert.match(out, /^===== Portable conventions: PARTIAL LOAD =====/,
     'the banner leads, so it survives a 2,000-byte preview');
