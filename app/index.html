@@ -1081,7 +1081,7 @@ html.dk-dragging main{transition:none !important}
         @touchend.passive="onSwipeEnd($event)" @touchcancel.passive="onSwipeCancel()">
 
     <!-- Estate: the all-repo context, with two views of its own — the repo grid
-         (Repos) and the Stage (the surface shelf, bench on top). One component
+         (Repos) and the Stage (the cross-repo working set). One component
          renders both and switches on the shell view, so both share this lazy
          mount. Full width, so the repo grid runs three cards wide like the
          pages index; the Stage constrains its own column. -->
@@ -1583,10 +1583,10 @@ html.dk-dragging main{transition:none !important}
       </div>
     </div>
 
-    <!-- No separate Stage pane: the Stage IS the estate pane's own view, two
-         pill-switched sub-views (Stage, the bench; Saved, the shelf) in
-         lib/alpineComponents/estate.js. ?view=stage and ?view=surfaces are
-         those two, so every old link and every #stage= transport lands. -->
+    <!-- No separate Stage pane: the Stage IS the estate pane's own view, in
+         lib/alpineComponents/estate.js. It had a second sub-view, Saved,
+         addressed as ?view=surfaces; that pane went on 2026-08-27 and the key
+         is a retired alias onto the bench, so an old link still lands. -->
 
     <!-- The Map view: the coordination layer made inspectable — the portable
          to-go bag (docs/portable.csv), and a per-repo card carrying the
@@ -1814,7 +1814,7 @@ function app(){ return {
   // The `menu` contract itself stays. It has no user now, which is a fact
   // worth stating rather than a reason to delete: the row it carried earned
   // promotion by being built through it.
-  view: 'landing',        // 'estate' | 'surfaces' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
+  view: 'landing',        // 'estate' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
   // Window-level drag counter for the app-wide drop (init wires the listeners;
   // nested enter/leave is why it counts rather than flips), and what the cue
   // says about the drag in flight (dragNote). The app-wide PASTE beside it
@@ -4634,7 +4634,7 @@ function app(){ return {
     });
   },
   // A repo's declared outbox, from the config cache the estate already holds:
-  // the shelf it stages material on for others to pull. Menu-only, so a repo
+  // the folder it stages material in for others to pull. Menu-only, so a repo
   // that declares none simply has no row, and no read is spent asking.
   get menuRepoOutbox(){
     const cfg = this.estateConfigs?.[this.menuRepo];
@@ -4875,8 +4875,10 @@ function app(){ return {
         if (this.projectTab && this.projectTab !== 'overview') p.set('tab', this.projectTab);
       } },
     { key: 'estate',   open(){ this.goEstate(); } },
-    { key: 'stage',    open(){ this.goStage(); } },
-    { key: 'surfaces', open(){ this.goSurfaces(); } },
+    // `surfaces` is the retired Saved pane, which listed the registry's
+    // .surface files and could load one onto the bench. It went on 2026-08-27,
+    // and the key aliases onto the Stage so an old link lands on the bench.
+    { key: 'stage', alias: 'surfaces', open(){ this.goStage(); } },
     { key: 'public',   open(){ this.goPublicBrowse(); } },
     { key: 'todo',     open(){ this.goTodo(); } },
     { key: 'jots',     open(){ this.goJots(); } },
@@ -5194,14 +5196,13 @@ function app(){ return {
                     ref: s.ref && s.ref !== s.defaultRef ? s.ref : '', path });
   },
 
-  // The estate is a context above any repo, with three views of its own — the
-  // repo grid ('estate') and the Stage ('stage', the shelf of surfaces with the
-  // cross-repo working set on top, belonging to no repo) — mirroring how a repo
-  // has landing/atlas/files/… isEstate gates the estate component (it renders
-  // the grid and the Stage, switching on this.view, sharing the one lazy
-  // mount); estateCtx is the wider context test the sidebar switches on.
-  // 'surfaces' is in this list as the Stage's alias, not as a second pane.
-  get isEstate(){ return ['estate', 'surfaces', 'stage', 'todo', 'jots', 'activity', 'sessions', 'chats', 'routes', 'state'].includes(this.view); },
+  // The estate is a context above any repo, with views of its own: the repo
+  // grid ('estate') and the Stage ('stage', the cross-repo working set,
+  // belonging to no repo), mirroring how a repo has landing/atlas/files/…
+  // isEstate gates the estate component (it renders the grid and the Stage,
+  // switching on this.view, sharing the one lazy mount); estateCtx is the
+  // wider context test the sidebar switches on.
+  get isEstate(){ return ['estate', 'stage', 'todo', 'jots', 'activity', 'sessions', 'chats', 'routes', 'state'].includes(this.view); },
   // The Lists view is the one estate pane that FILLS rather than flows: its two
   // halves scroll inside themselves, so the page must not scroll and the chain
   // from the pane down to the component root has to carry a definite height.
@@ -5266,13 +5267,7 @@ function app(){ return {
         icon: 'ph-list-checks', label: 'Lists',  go: () => this.goTodo() },
       { view: 'estate',   icon: 'ph-squares-four', label: 'Repos',    go: () => this.goEstate() },
       // One stop, named Stage, over the two things a surface is for, switched
-      // by a segmented pill inside the view the way Activity switches its
-      // three and Map its two. A staged fileset IS a surface
-      // (docs/envelopes/surface.md, the stage/1 profile), so the bench works
-      // one and the shelf displays the saved ones. Each sub-view keeps its own
-      // ?view key: 'stage' is the bench, 'surfaces' the shelf, which is what
-      // that key always meant, so old links land where they used to.
-      { view: 'stage', views: ['stage', 'surfaces'],
+      { view: 'stage',
         icon: 'ph-stack',        label: 'Stage',    go: () => this.goStage() },
       { view: 'tools',    icon: 'ph-wrench',       label: 'Tools',    go: () => this.goTools() },
       // Named for the thing, not the verb, so it sits with Repos and Stage
@@ -5334,9 +5329,6 @@ function app(){ return {
   // own Refresh, so a session that opened elsewhere and walked over to Repos an
   // hour later read whatever the boot had left.
   goEstate(){ this.estateSeen = true; this.view = 'estate'; this.warmConfigCache(); this.syncUrl(); },
-  // The Stage's other sub-view: the shelf of saved surfaces. Its own ?view key,
-  // the way each of Activity's three has one, so a pill tap deep-links.
-  goSurfaces(){ this.estateSeen = true; this.view = 'surfaces'; this.syncUrl(); },
   // Lists: To-do over Jot, one pane. Both keys route here and each still
   // stamps its own, so an old ?view=jots link lands on the pane rather than
   // 404ing into Repos; the pane no longer switches on which one arrived.

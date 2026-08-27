@@ -4,8 +4,7 @@ The stage is where a cross-repo fileset is assembled, read, compared, saved,
 and sent. This is its reference, split out of [show-repo.md](show-repo.md) on
 2026-08-16, where it was the buried middle of the corpus's largest document;
 the `#stage=` link is also a surfacing primitive in
-[SURFACING.md](SURFACING.md) ("Stage a fileset"), and a saved stage is a
-surface ([envelopes/surface.md](envelopes/surface.md), the `stage/1` profile).
+[SURFACING.md](SURFACING.md) ("Stage a fileset").
 The shell that renders it stays documented in show-repo.md; the honesty caveat
 there (a `#stage=` link is token-gated) applies to every handoff.
 
@@ -13,43 +12,23 @@ The stage is `store.stage`, a list of `{repo, ref, path}` refs (plus local items
 from drops). One stage sits above any repo, since every item carries its own
 origin.
 
-A staged fileset *is* a surface
-([`docs/envelopes/surface.md`](envelopes/surface.md), the `stage/1` profile), so
-the **Stage view holds both sides of that coin**, as two pill-switched
-sub-views: the **bench**, which works a surface, and **Saved**, the shelf that
-displays the saved ones. Same segmented pill as Activity's three and Map's two,
-at every width, each pill carrying a live count (staged items; saved surfaces),
-which is what keeps a staged set visible while you read the shelf and the saved
-pile visible while you work the bench. Naming the whole view for the display
-half alone (it was called Surfaces from 2026-08-03 until 2026-08-04) left the
-working half with no word in the UI at all, reachable only by knowing that a
-low-contrast pencil opened it.
+**The stage does not save.** From 2026-08-03 to 2026-08-27 the view carried a
+second sub-view, **Saved**, which listed the registry's `.surface` files, and
+the bench could promote its working set into one. Both went. What remains is
+the bench alone, at `?view=stage`; `?view=surfaces` is a retired alias that
+lands on it, so old links resolve.
 
-- The **bench** (`?view=stage`) is the working set. It is not a card on the
-  shelf and no card becomes it: **the bench does not move.** With nothing staged
-  it is the drop target and the adder, so a set can be built from a cold start.
-  When it holds a loaded surface the pill row's right side reads `from <name>`
-  and carries **Detach**, where Activity's row puts as-of and Refresh.
-- A **saved card** offers **Load onto the stage**, which reads its addressable
-  items onto the bench, switches to the bench pill so the load is visible, and
-  remembers where they came from, so saving **writes back** to that file rather
-  than leaving a near-duplicate beside it. The card is badged `on the stage`.
-  Prose items have no file behind them and are reported, not dropped.
-- **Detach** keeps the items and drops the write-back, which is how "start from
-  this one and make a different one" is said. Clearing the stage detaches too,
-  since an origin without its items would aim the next save at a surface the
-  bench no longer holds.
-- While a surface is on the bench, its card renders what the bench holds, so
-  display never disagrees with the set you are holding.
-- **Saving a working set appends:** a new v2 `stage/1` file in the registry's
-  `surfaces/`, named from its contents, touching nothing already saved. A saved
-  set goes away by deleting its own file. Either way the dialog previews the
-  exact JSON and names the file, because the serialized form is not guessable
-  from the list on screen.
+Why it went is not that a stage and a surface are unrelated. It is that the
+association ran one way and stunted the other end: two `.surface` files exist
+and neither was ever saved from a bench, while the surface format sat behind a
+workbench pill where nobody browsing would look for curated content. The
+envelope is unharmed and keeps its reader
+([`lib/kits/surface.js`](../lib/kits/surface.js)) and its contract
+([envelopes/surface.md](envelopes/surface.md)), where `stage/1` is one profile
+of three and `branch-review/1` is the one with a live reader.
 
-`?view=stage` is still an address: it opens the shelf with the working card's
-bench open, so every old link and every `#stage=` transport lands. It is no
-longer a pane.
+The bench is the working set. With nothing staged it is the drop target and the
+adder, so a set can be built from a cold start.
 
 What the envelope will not carry is as deliberate as what it will: a proposed
 `destination` is a claim about the set and rides along, while a transfer in
@@ -176,7 +155,7 @@ the content.
 **The stage is also the transform workbench's door.** The workbench
 (`lib/alpineComponents/transform-workbench.js`) has shipped inside show-repo
 since the pre-build began globbing `lib/alpineComponents`, booting on every load
-with nothing ever mounting it: reachable only as a Tools-shelf card opening the
+with nothing ever mounting it: reachable only as a Tools gallery card opening the
 standalone page in another tab. `StageIntake.transformKindOf(item)` names what
 the tool could do with a staged item, and the bench offers it as a chip.
 

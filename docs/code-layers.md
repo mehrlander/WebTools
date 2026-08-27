@@ -31,7 +31,7 @@ column of them is a category nobody has stated.
 
 ### `lib/` root or `lib/kits/`: settled 2026-08-07
 
-**One logic shelf.** Every file that registers a `window` namespace is a kit.
+**One place for logic.** Every file that registers a `window` namespace is a kit.
 `lib/` root holds the loader, the files extending its prototype, and the boot
 bundles, and nothing else. Decided by the user on 2026-08-07 against three
 alternatives, all of which are recorded in
@@ -53,13 +53,13 @@ file fails the suite instead of accumulating.
 before it and both were retracted within a day, because both sorted on a
 property nothing could check:
 
-- *A kit is a capability portable to any repo.* False on the shelf. Counting a
+- *A kit is a capability portable to any repo.* False in the folder. Counting a
   runtime dependency on the hub's own chain (`window.gh`, `gh.load`, `gh.get`,
   `__loadedScripts`), 7 of 21 kits had one while 6 root files had none, so a
-  third of the kit shelf was less portable than files that were not on it.
+  third of `lib/kits/` was less portable than files that were not in it.
 - *A kit is general cross-app logic.* Also false, and worse as a target.
   Counting the distinct non-test files that reference each namespace, the two
-  shelves had medians of 5.5 and 4.0 over ranges of 1 to 29 and 2 to 31: the
+  folders had medians of 5.5 and 4.0 over ranges of 1 to 29 and 2 to 31: the
   most-referenced logic module was in root and the two least-referenced were
   kits. Reach is also a number that moves when an unrelated page is added, so a
   file would change folders without changing.

@@ -84,7 +84,7 @@ That is what lets an inheriting registry declare a property it fills only where
 no computed set owns it.
 
 **Comparison needs an identity space**, since the same page is `annotate.html` to
-the page gallery and `pages/annotate.html` to the tools shelf. That is what
+the page gallery and `pages/annotate.html` to the Tools gallery. That is what
 `identity` is for. An opaque key is comparable to nothing, which is honest rather
 than lax: a route key and a docs path are not the same kind of name, so no
 comparison of them means anything. Matching is exact, so `content.csv`'s

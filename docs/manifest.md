@@ -302,7 +302,7 @@ refusal wastes its time as surely as silence.
 
 Two optional manifest fields naming where material lands and where it is
 staged. `inbox` is the **receiver's** declared landing spot for a deposit that
-names no directory; `outbox` is a **sender's** shelf of material it is making
+names no directory; `outbox` is a **sender's** folder of material it is making
 available to be pulled. Both are read by `lib/kits/repo-address.js`
 (`RepoAddress.box(config, 'inbox'|'outbox', repo)`).
 
@@ -313,7 +313,7 @@ one, with the discoverable option as the default:
 | Declaration | Means |
 | --- | --- |
 | `"inbox": "inbox"` | the folder `inbox/` on the repo's default branch |
-| `"outbox": "@shelf:out"` | the folder `out/` on the branch `shelf` |
+| `"outbox": "@share:out"` | the folder `out/` on the branch `share` |
 | `"inbox": "owner/repo@ref:dir"` | a box that lives in another repo |
 | absent | nothing declared (deposits land at the root) |
 

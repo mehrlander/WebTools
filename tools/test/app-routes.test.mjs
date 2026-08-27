@@ -120,8 +120,10 @@ test('the two sub-tab encodings, counted', () => {
   // 6 to 7 on 2026-08-23: State stopped being a nav stop of its own and became
   // Activity's last pill, which is the promotion this figure exists to make
   // somebody restate. Back to 6 the same day: the Guides pill was retired, so
-  // its key is gone rather than re-encoded.
-  assert.equal(flattened, 6, 'sub-tabs addressed as their own ?view= key');
+  // its key is gone rather than re-encoded. 6 to 5 on 2026-08-27, when the
+  // Stage's Saved pill went and `surfaces` became an alias rather than a key
+  // of its own: an alias is not a sub-tab, since nothing addresses it.
+  assert.equal(flattened, 5, 'sub-tabs addressed as their own ?view= key');
   assert.equal(params, 13, 'sub-tabs addressed as ?view=<parent>&tab=');
 });
 
