@@ -128,3 +128,8 @@ vocabularies,gloss,recorded,,value,column,yes,,"what this one value means, in th
 vocabularies,label,recorded,,counted,column,yes,,"the display name for this value, where it differs from the value itself"
 tracker-tags,tag,computed,.claude/skills/tasks/build-board.py,value,column,yes,,"the frontmatter key. Deliberately undeclared as a domain: the layer is open by design, so a closed set here would be the promotion TRACKER.md says to make in the generator instead"
 tracker-tags,value,computed,.claude/skills/tasks/build-board.py,value,column,yes,,the scalar the task file gave that key
+snags,title,computed,tools/build/snags-index.mjs,value,column,yes,,"the snag's one-line symptom, read off its heading"
+snags,seen,computed,tools/build/snags-index.mjs,none,list,no,,"every date the snag was hit, oldest first; an undated entry is empty, not absent"
+snags,count,computed,tools/build/snags-index.mjs,value,column,yes,,"how many times it bit, the field the recurrence rule turns on"
+snags,last_seen,computed,tools/build/snags-index.mjs,none,column,yes,,"the most recent sighting, the log's own sort key"
+snags,targets,computed,tools/build/snags-index.mjs,none,list,no,,"the docs the entry points at with →, which carry the fix"

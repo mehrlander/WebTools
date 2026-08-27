@@ -33,6 +33,28 @@
 //
 // --check compares instead of writing, the idiom every generator here shares,
 // so tools/test/artifacts-lockstep.test.mjs can hold the file to its source.
+//
+// SECOND ARTIFACT, added 2026-08-26: docs/snags.csv, the derived registry.
+// This generator was already reading the log as data; the records simply did
+// not survive the run, so nothing could hold the extraction to a schema and
+// nothing else could read it. Measured that day: the file held 53 entries and
+// the parse saw 46, because seven in the tail still carried the retired
+// unslugged heading and were absorbed by the entry above them, and one entry's
+// sighting list read `2026-08-19 ×3, one text, one fill, one straggler`, whose
+// last three commas the split turned into sightings. The headline count the
+// log's own header calls meaningful was the number that was wrong.
+//
+// So the parse is strict now: a sighting is a DATE, optionally carrying the
+// `×N` multiplier the log already writes, and anything else is reported rather
+// than counted. An unslugged `##` heading below the index is reported too.
+// Neither fails the run, for the reason the repeat warning does not, except
+// through the lockstep test, which fails when the CSV is behind the log.
+//
+// What stays in the markdown is what a CSV cell is a bad home for: the
+// paragraph of reasoning under each entry, which is most of an entry's value
+// and is exactly the residue CONVENTIONS.md says a document is for. The
+// registry carries only what is mechanical (slug, one-line title, sightings,
+// count, the → targets), the same split docs/docs.csv runs.
 
 import path from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -40,6 +62,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FILE = path.join(root, 'docs/SNAGS.md');
+const REGISTRY = path.join(root, 'docs/snags.csv');
 const OPEN = '[//]: # (snags-index)';
 const CLOSE = '[//]: # (/snags-index)';
 
@@ -70,21 +93,66 @@ export const tokens = (slug) => slug.split('-').filter(t => t.length > 2 && !STO
 // orphaned and reported. A block appended with no slug lower down would be
 // absorbed by the entry above it, which this cannot see; the header's rule
 // that every entry leads with a slug is what keeps that from happening.
+// A sighting is a date, optionally carrying the `×N` the log already writes for
+// several trips on one day. Nothing else is one: the `, one text, one fill, one
+// straggler` that used to sit in a seen list is prose about the sightings, and
+// counting it inflated an entry from 1 to 8. Returns the dates it expands to,
+// or null for a token that is not a sighting at all.
+export function sighting(token) {
+  const m = /^(\d{4}-\d{2}-\d{2})(?:\s*[×x]\s*(\d+))?$/.exec(token.trim());
+  if (!m) return null;
+  return Array(Math.max(1, Math.min(99, +(m[2] || 1)))).fill(m[1]);
+}
+
+// The `→` line's link targets, in order, as repo-relative-ish paths exactly as
+// written. An entry may carry more than one arrow (a folded sighting brings its
+// own), so this collects them all rather than taking the first.
+export const targetsIn = (text) =>
+  [...text.matchAll(/^→ .*$/gm)]
+    .flatMap(l => [...l[0].matchAll(/\]\(([^)]+)\)/g)].map(m => m[1]))
+    .filter((t, i, a) => !t.startsWith('http') && a.indexOf(t) === i);
+
 export function parse(md) {
   const body = md.slice(md.indexOf(CLOSE) === -1 ? 0 : md.indexOf(CLOSE));
   const heads = [...body.matchAll(/^### ([a-z0-9-]+): (.+)$/gm)]
     .map(m => ({ slug: m[1], title: m[2], at: m.index }));
   const seenAt = [...body.matchAll(/\*\(seen: ([^)]+)\)\*/g)].map(m => ({ at: m.index, raw: m[1] }));
   const first = heads.length ? heads[0].at : body.length;
+  const malformed = [];
   const out = heads.map((h, i) => {
     const nextHead = i + 1 < heads.length ? heads[i + 1].at : body.length;
     const rule = body.indexOf('\n---\n', h.at);
     const end = Math.min(nextHead, rule === -1 ? body.length : rule);
     const seen = seenAt.filter(sa => sa.at > h.at && sa.at < end)
-      .flatMap(sa => sa.raw.split(',').map(d => d.trim()).filter(Boolean));
-    return { ...h, seen };
+      .flatMap(sa => sa.raw.split(',').map(d => d.trim()).filter(Boolean))
+      .flatMap(tok => {
+        const dates = sighting(tok);
+        if (!dates) { malformed.push({ slug: h.slug, token: tok }); return []; }
+        return dates;
+      });
+    return { ...h, seen: seen.sort(), targets: targetsIn(body.slice(h.at, end)) };
   });
-  return { entries: out, orphanSightings: seenAt.filter(sa => sa.at < first).length };
+  // An entry that kept the retired unslugged heading is invisible to the rule
+  // above and its sightings are credited to whichever slugged entry precedes
+  // it. Seven of these sat in the tail for twelve days; report them.
+  const unslugged = [...body.matchAll(/^## (?!#)(.+)$/gm)].map(m => m[1]);
+  return { entries: out, orphanSightings: seenAt.filter(sa => sa.at < first).length,
+           malformed, unslugged };
+}
+
+// The derived registry: one row per snag, the mechanical half of an entry.
+// `count` is len(seen) and is a column rather than a thing every reader
+// recomputes, because it is the field the recurrence rule turns on.
+export function csv(entries) {
+  const q = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  const rows = [...entries].sort((a, b) =>
+    (b.seen.length - a.seen.length) ||
+    (b.seen[b.seen.length - 1] || '').localeCompare(a.seen[a.seen.length - 1] || '') ||
+    a.slug.localeCompare(b.slug));
+  return ['slug,title,count,last_seen,seen,targets',
+    ...rows.map(e => [e.slug, e.title, String(e.seen.length),
+                      e.seen[e.seen.length - 1] || '', e.seen.join(';'),
+                      e.targets.join(';')].map(q).join(','))].join('\n') + '\n';
 }
 
 export function render(entries) {
@@ -133,8 +201,10 @@ export function suspects(entries) {
 // a log with no repeats in it.
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const md = await readFile(FILE, 'utf8');
-  const { entries, orphanSightings } = parse(md);
+  const { entries, orphanSightings, malformed, unslugged } = parse(md);
   const block = render(entries);
+  const table = csv(entries);
+  const wasTable = await readFile(REGISTRY, 'utf8').catch(() => null);
 
   let next;
   if (md.includes(OPEN) && md.includes(CLOSE)) {
@@ -148,17 +218,30 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   }
 
   if (process.argv.includes('--check')) {
-    if (next !== md) {
-      console.error('snags-index: docs/SNAGS.md is stale — run `npm run snags-index`.');
+    const stale = [next !== md && 'docs/SNAGS.md', table !== wasTable && 'docs/snags.csv'].filter(Boolean);
+    if (stale.length) {
+      console.error(`snags-index: ${stale.join(' and ')} stale — run \`npm run snags-index\`.`);
       process.exit(1);
     }
-  } else if (next !== md) {
-    await writeFile(FILE, next);
+  } else {
+    if (next !== md) await writeFile(FILE, next);
+    if (table !== wasTable) await writeFile(REGISTRY, table);
   }
 
   const repeats = entries.filter(e => e.seen.length > 1).length;
-  console.log(`snags-index: ${entries.length} snags, ${repeats} seen more than once` +
+  const sightings = entries.reduce((n, e) => n + e.seen.length, 0);
+  console.log(`snags-index: ${entries.length} snags, ${sightings} sightings, ${repeats} seen more than once` +
     (orphanSightings ? `; ${orphanSightings} sighting(s) above the first entry, in no slugged entry` : ''));
+
+  // The two ways an entry goes uncounted, both silent before 2026-08-26.
+  if (unslugged.length) {
+    console.log(`  ${unslugged.length} unslugged entr(y|ies) — their sightings credit the entry above:`);
+    for (const u of unslugged) console.log(`    ## ${u}`);
+  }
+  if (malformed.length) {
+    console.log(`  ${malformed.length} seen-token(s) that are not a date, so not counted:`);
+    for (const m of malformed) console.log(`    ${m.slug}: "${m.token}"`);
+  }
 
   const pairs = suspects(entries);
   if (pairs.length) {

@@ -53,7 +53,7 @@ test('the harness registry is in lockstep with tools/ and scripts/', () => {
 // the generator's own closing comment claims. It went unnoticed because the
 // projection is read by machines and diffed by nobody, and because the estate
 // had only one board carrying it. It now has ten.
-test('the snags index is in lockstep with docs/SNAGS.md', () => {
+test('the snags index and registry are in lockstep with docs/SNAGS.md', () => {
   const r = check(['tools/build/snags-index.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'snags-index --check failed');
 });
