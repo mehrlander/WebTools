@@ -212,3 +212,25 @@ derives, wrong at the moment it was read.
 `CLAUDE.md` at 316 words in March and 6,776 in August, across 109 edits, with not
 one negative weekly delta in 23 weeks. That is the phenomenon this skill exists
 for, and it is the first time the estate has had a number for it.
+
+## 2026-08-27, re-running CONVENTIONS.md without the fourth question
+
+**The rule that protected reasons was not what was holding this document back.**
+`docs/CONVENTIONS.md` carried "Is this a reason somebody chose something? Keep
+it," and it was the worst of the six runs: 13% achieved against a 20% floor. The
+obvious hypothesis was that the rule was protecting the surplus in its own file.
+Re-run with the rule gone, it annotates at **93% `KEEP`, floor 1%, achieved 6%**,
+the tightest document the method has measured, tighter than its own `SKILL.md`.
+Six trims, all of them a reason fused to a rule the rule did not need: a cost
+comparison after "do not ask," a "so the set is auditable" after a shape that
+already showed it, a lead-in that restated its own paragraph.
+
+So the 13% was honest, and the density signal was right about it: a 72%-`KEEP`
+document misses its floor because there is little to take, not because a rule
+forbade taking it. The fourth question was doing its damage in the documents
+that cited it, not in the one that stated it.
+
+**A near-100% `KEEP` is the signal to stop, and this is what it looks like from
+just inside.** The boundary in the skill says so; this run is the first to test
+it rather than assert it. The right reading is that `CONVENTIONS.md` is finished
+as a compression target, and the next thing it needs is a reader, not a pass.
