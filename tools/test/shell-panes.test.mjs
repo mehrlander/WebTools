@@ -28,7 +28,7 @@ const estateSrc = readFileSync(
 
 // The estate's sub-views share one container, so they all name it; every other
 // stop names itself.
-const ESTATE_VIEWS = ['activity', 'todo', 'jots', 'estate', 'surfaces'];
+const ESTATE_VIEWS = ['activity', 'todo', 'jots', 'estate', 'stage'];
 
 // Literal attributes only: the pager's own lookup builds the selector from a
 // template, and matching that string back would be circular.

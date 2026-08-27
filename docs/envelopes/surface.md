@@ -1,6 +1,8 @@
 # The surface format
 
-A **surface** is a JSON file: a curated, annotated set of items presented for a reason at a moment. Files stay where they live (a repo, a URL, a local disk); the surface layers selection, arrangement, and commentary over them, and is archivable as a unit when its moment passes. The format originated in the Surfacer desktop app (the home repo, `projects/surfacer/`) and is also read and written by show-repo's estate view; this document is the written contract between every implementation.
+A **surface** is a JSON file: a curated, annotated set of items presented for a reason at a moment. Files stay where they live (a repo, a URL, a local disk); the surface layers selection, arrangement, and commentary over them, and is archivable as a unit when its moment passes. The format originated in the Surfacer desktop app (the home repo, `projects/surfacer/`); this document is the written contract between every implementation.
+
+**A surface is not a saved stage.** It was addressed that way in show-repo until 2026-08-27: the Stage carried a Saved pane listing `.surface` files, and the bench could promote its working set into one. Both went, along with the kit's `fromStage`/`toStage` bridges. The format's profiles were never stage-shaped, and the one page reading a surface today, [`pages/branch.html`](../../pages/branch.html) through [`lib/kits/branch-brief.js`](../../lib/kits/branch-brief.js), reads `branch-review/1`.
 
 **Authoritative artifacts:** the JSON Schemas beside this doc are the validation source of truth; this document carries the concepts, conventions, and worked examples.
 
@@ -16,8 +18,9 @@ A **surface** is a JSON file: a curated, annotated set of items presented for a 
 
 - [`schemas/surface-v2.schema.json`](schemas/surface-v2.schema.json): the core schema.
 - [`schemas/profiles/branch-review-v1.schema.json`](schemas/profiles/branch-review-v1.schema.json): the first profile.
+- [`schemas/profiles/inquiry-v1.schema.json`](schemas/profiles/inquiry-v1.schema.json) and [`schemas/profiles/stage-v1.schema.json`](schemas/profiles/stage-v1.schema.json): the other two.
 
-**Status (2026-08-03):** this contract defines **v2**, and a v2 reader now exists. [`lib/kits/surface.js`](../../lib/kits/surface.js) dual-reads v1 and v2, normalizing to v2 in memory; show-repo's Surfaces shelf and its Stage both read through it, and new surfaces are authored as v2 under the [`stage/1`](#stage1) profile. The Surfacer C# app still reads v1 and its migration target stands at the end of this file. **v1 files are never rewritten in place:** reading normalizes for display only, so a v1 file stays v1 until someone deliberately saves it as v2.
+**Status (2026-08-27):** this contract defines **v2**, and a v2 reader exists. [`lib/kits/surface.js`](../../lib/kits/surface.js) dual-reads v1 and v2, normalizing to v2 in memory, and answers where each item lives. It has no producer in the app: nothing in show-repo writes a surface any more, and every `.surface` file that exists is v1. The Surfacer C# app still reads v1 and its migration target stands at the end of this file. **v1 files are never rewritten in place:** reading normalizes for display only, so a v1 file stays v1 until someone deliberately saves it as v2.
 
 ## Shape
 
@@ -212,7 +215,7 @@ A `source` says where the targeted resource lives. Three forms, by which fields 
 
 ## Profiles
 
-The core schema is deliberately light: `role`, `view`, and `context` are optional and open, so a casual shelf surface (bookmarks, a curated reading list) carries no ceremony. A **profile** is a named, versioned constraint layer for a specific use, declared in the manifest beside the schema identity:
+The core schema is deliberately light: `role`, `view`, and `context` are optional and open, so a casual surface (bookmarks, a curated reading list) carries no ceremony. A **profile** is a named, versioned constraint layer for a specific use, declared in the manifest beside the schema identity:
 
 ```json
 "schema":  { "name": "surface", "version": 2 },
@@ -303,6 +306,8 @@ Worked example:
 
 ### `stage/1`
 
+**No producer since 2026-08-27**, when show-repo's Stage stopped writing one. The profile stands because it is a defined shape and [`pages/inquiry.html`](../../pages/inquiry.html) defines its own `reply_to` by contrast with the `destination` below.
+
 Serializes a **staged fileset**: a working set of files gathered for an operation, saved so it survives the session. The insight it encodes is the inverse of branch-review's. There, a surface is the manifest layer over a diff that is the real record; here, the set itself is the record, and the operations that motivated it (bundle, send, download) are the tool's business and stay out.
 
 The profile requires exactly one thing: **every item carries a `target`**. A stage is a set of things, not a piece of writing about them, and that single constraint is what the profile is for. `context` may carry a `destination` (`owner/repo[:dir]`, where the set is proposed to go) and `prompts` (authored review asks, `{label, ask}`). Documented relation: `compares-to`, naming the other side of a diff pair.
@@ -375,4 +380,5 @@ v1 is the shape the Surfacer app shipped with (`schema_version: 1` in the manife
 Deliberately out of scope for the pass that lands this contract; change the implementations only after the contract has been reviewed.
 
 - **Surfacer C# app + `surfacer.html`** (home `projects/surfacer/app/`): reads v1. Target: dispatch on `manifest.schema`; keep reading v1 files indefinitely (personal surfaces are not migrated in place), author new surfaces as v2.
-- **`lib/alpineComponents/estate.js`** (show-repo's Surfaces shelf): **migrated 2026-08-03.** It reads every surface through `lib/kits/surface.js`, which dual-reads and normalizes to v2, and the editor seeds v2. The stage convergence it was waiting on landed in the same pass: the Stage is now the working surface, saving mints a v2 `stage/1` file, and the two views share one nav stop.
+- **`lib/alpineComponents/estate.js`** (show-repo's Saved pane): **retired 2026-08-27.** It had migrated on 2026-08-03, reading every surface through `lib/kits/surface.js` and seeding v2 in its editor. The pane, the editor and the bench's Save-as-surface all went together, so show-repo is no longer a reader or a writer of this format.
+- **`pages/branch.html`** (through `lib/kits/branch-brief.js`): reads `branch-review/1`, and is the only reader in this repo.

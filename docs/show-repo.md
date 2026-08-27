@@ -463,9 +463,9 @@ open). It is a context with **views of its own**, switched from
 the header nav the way a repo shows landing/atlas/files/…:
 
 - **Repos** (`?view=estate`) — the repo cards.
-- **Stage** — one nav stop with two pill-switched sub-views, each keeping its
-  own deep link: the **bench** (`?view=stage`) and **Saved** (`?view=surfaces`)
-  (below).
+- **Stage** (`?view=stage`) — the cross-repo working set (below). It carried a
+  second sub-view, Saved, until 2026-08-27; `?view=surfaces` is now a retired
+  alias onto the bench.
 - **Activity** — the estate's own motion: one nav stop with five pill-switched
   sub-tabs, each keeping its own deep link: **Sessions** (`?view=sessions`),
   **Branches** (`?view=activity`), **State** (`?view=state`), **Chats**
@@ -597,8 +597,8 @@ better space in front of the decision than a dialog here would be. So the page
 names the destination, GitHub performs the act, and the next load tells the truth
 on its own: because `archived` arrives in the list call, a repo archived on GitHub
 moves itself into Retired with nothing stored here. An archived row is muted, keeps
-its browse jump (the point of archiving rather than deleting is that it stays a
-reference shelf), and drops both write actions rather than offering what the API
+its browse jump (the point of archiving rather than deleting is that it stays
+readable), and drops both write actions rather than offering what the API
 will refuse. The foot of the section carries the other end of the same errand, a
 link to `github.com/new`: create there, adopt on the row, it gets a card.
 
@@ -612,38 +612,16 @@ The same population is what the tracker's *session-start nudge for unconfigured
 repos* addresses from the agent side. Both read `conventions: 'optout'`, so keep
 them on that one field rather than growing a second vocabulary.
 
-**Saved surfaces** (the Stage's Saved pane) come from two places,
-stacked in one scroll: the surface format
-either way (a `manifest` block and an `items` array). The contract is
-[`docs/envelopes/surface.md`](envelopes/surface.md); `lib/kits/surface.js` dual-reads
-v1 and v2 and normalizes to v2, so an existing v1 file keeps working untouched
-and is never rewritten by having been read. Each surface offers **Load onto the
-stage**, the bridge onto the bench described under
-[The stage](#the-stage-the-working-surface), and a registry one can be edited
-in place or deleted (two-tap).
-
-- **General** (top): `surfaces/*.surface` files in the **registry**. These are
-  cross-repo estate content, not a repo describing itself, so they stay there.
-  Sorted `default` → `standing` → `showcase` (`archive` excluded), each editable
-  in place through a JSON dialog (gear on the surface header; "New" seeds a fresh
-  one). An agent session with registry access can write or extend one; the estate
-  shows it on next load.
-- **Per-repo** (below General): a repo that names a `surface` in its **own**
-  `.web-tools.json` (a path, or a list of paths, to `.surface` files in that
-  repo) contributes them under a section headed by the repo. The config cache
-  already carries the declaration, so the estate fetches only the repos that
-  declared one, on their default branch: a bounded read over opt-in repos, not a
-  scan of every member. These are **read-only** in the estate (the estate holds
-  the registry token, not each repo's); the section links each file to its blob,
-  edit it where it lives. A repo owns the surface that tells its own story; the
-  registry keeps the curated, cross-repo ones. (Follow-up: gate the re-fetch on
-  the repo's `pushed_at` so an unchanged file isn't re-read every load.)
-
-A repo that declares a surface also gets a **surface chip** on its Repos-grid
-card, deep-linking straight to its section. Rendered item kinds (both sources):
-`github_blob` / `github_dir` (open-in-shell + GitHub link; target as `{repo, ref,
-path}` or a github.com URL), `url` (external link), `note` / `story` (inline
-body), `embed` (a renderer page in an iframe via a toss-render route).
+**Saved surfaces are gone, and so is the repo surface chip** (2026-08-27). The
+Stage's Saved pane listed `.surface` files from two places, the registry's
+`surfaces/` and any repo declaring a `surface` in its own `.web-tools.json`,
+and offered Load onto the stage; the bench could save its set back as one. All
+of it went, because a surface is not a saved stage: two files ever existed,
+neither came from a bench, and the curated content they hold was filed behind a
+workbench pill. The format keeps its reader
+([`lib/kits/surface.js`](../lib/kits/surface.js)) and its contract
+([`docs/envelopes/surface.md`](envelopes/surface.md)); the one page reading a
+surface today is `pages/branch.html`, through `branch-review/1`.
 
 **Activity** gathers the estate's own motion under one header-nav stop. Five
 panes on a segmented pill (the shared internal-tab style), switching at every
@@ -667,7 +645,7 @@ passes is the one the others pass, that it reports where work actually
 happens; it is the only one that can say so about thinking done outside a
 checkout. To-do and Jot failed exactly that test and left (below).
 
-**Guides was a third reading and left 2026-08-23:** the shelf held one file
+**Guides was a third reading and left 2026-08-23:** the view held one file
 estate-wide, and its "in flight" was the open PRs Branches and Sessions already
 carry. `pages/guides/` stays, indexed by Pages; so does `kits/guide-render.js`,
 which renders a guide PR body and is a different thing wearing a similar name.
@@ -2074,7 +2052,7 @@ and the as-of reading that says whether to press was the part hidden below `sm`,
 so a phone kept the control and dropped the fact. Three sections carry the
 split: **Derived** (the registry's `state/`) and **This browser** (the search
 caches and the page itself, both gone on reload, neither estate state). A third,
-**Read live**, held the guides shelf alone and went with it.
+**Read live**, held the guides list alone and went with it.
 
 **Built and checked are two different ages, and one alone misreads.** `built` is
 the last commit touching the file; `checked` is this browser's throttle stamp
@@ -2333,14 +2311,12 @@ tracker follow-up.
 ## The stage: the working surface
 
 The stage's contract lives in its own reference now, [stage.md](stage.md):
-the bench and Saved, intake (the paste offer bar, the Add panes, manifest
-seeds), the walkable preview and its diff, the Out surface, save-as-surface,
-and the `#stage=` link grammar with `&prompts=` and `&mode=`. What stays here
-is the boundary: the stage is `store.stage`, one list of `{repo, ref, path}`
-refs (plus local items) sitting above any repo, and a staged fileset *is* a
-surface ([envelopes/surface.md](envelopes/surface.md), the `stage/1`
-profile), which is why the Stage view holds the bench and the shelf as one
-nav stop.
+the bench, intake (the paste offer bar, the Add panes, manifest seeds), the
+walkable preview and its diff, the Out surface, and the `#stage=` link grammar
+with `&prompts=` and `&mode=`. What stays here is the boundary: the stage is
+`store.stage`, one list of `{repo, ref, path}` refs (plus local items) sitting
+above any repo, which is why it is a nav stop of the estate rather than
+anything a repo owns.
 
 The other things that stay here are the **app-wide drop and paste**, because
 they are the shell's gestures rather than the stage's: a file dropped, or
