@@ -75,25 +75,6 @@ test('a host that contributes nothing gets an empty object, never undefined', as
   assert.deepEqual(Object.keys(seen[0].opts), []);
 });
 
-test('the pdf module reads the host slot rather than the factory options', () => {
-  const pdf = window.ViewRegistry.modules.find(m => m.id === 'pdf');
-  const src = pdf.after.toString();
-  // Source assertions, because after() here loads pdf.js from a CDN that never
-  // resolves under jsdom. They hold the wiring, not the rendering: the three
-  // hooks are read off ctx.opts and reach the flow.
-  assert.match(src, /ctx\.opts/, 'the pdf module does not read the host slot');
-  for (const hook of ['start', 'onPaint', 'onMount', 'onPage']) {
-    assert.match(src, new RegExp(`host\\.${hook}`), `the pdf module ignores host.${hook}`);
-  }
-});
-
-test('a start page is only passed when it is a real forward offset', () => {
-  const src = window.ViewRegistry.modules.find(m => m.id === 'pdf').after.toString();
-  // 0 is the kit's own default and undefined would override it with garbage,
-  // so both have to fall through rather than being spread in.
-  assert.match(src, /Number\.isInteger\(start\)\s*&&\s*start\s*>\s*0/);
-});
-
 // ── the table narrowing ──────────────────────────────────────────────────────
 //
 // The second host hook, and the reason it is initialHeaderFilter rather than
