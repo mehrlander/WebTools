@@ -5,9 +5,9 @@ _Generated from tasks/. Do not hand-edit._
 ## On deck
 - 🎫 [Give an app view one address key and an identity of its own](tasks/app-view-address-and-icon-tc1a91.md) · M
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
-- 🎫 [Consolidate the HTML-escape helpers and move entity-decoding to ingestion](tasks/consolidate-escape-helpers-gxverk.md) · S
 - 🎫 [Read estate.js's commentary the way show-repo.html's was read](tasks/estate-js-commentary-read-mymt4u.md) · M
 - 🎫 [Persist FAB captures, the write path to state/captures/](tasks/fab-capture-button-f6q38m.md) · S
+- 🎫 [Let the Files pane find and the deck read, and stop it doing both](tasks/files-pane-finds-deck-reads-ubu13s.md) · M
 - 🎫 [Find a way to focus attention on one piece of a page's UI](tasks/focus-a-ui-component-f0awt7.md)
 - 🎫 [Live-confirm the BranchSessions query](tasks/live-confirm-graphql-queries-7maacy.md) · XS
 - 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md)
@@ -49,6 +49,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Fold chat-results into the surface schema, or keep it a sibling](tasks/chat-results-surface-profile-q4m8ra.md) (`claude/web-tools-project-tracker-reo5qo`)
 - 🎫 [Name the code layers and account for tools/](tasks/code-layer-taxonomy-q15jp2.md) (`claude/web-tools-tracker-review-ij4pjj`)
 - 🎫 [Collapse quickLinks into a projection of the repos manifest](tasks/collapse-quicklinks-projection-80oprp.md) (`claude/tracker-status-cjogjn`)
+- 🎫 [One HTML-escape helper, and decoding left to the source that knows](tasks/consolidate-escape-helpers-gxverk.md) (`claude/web-tools-tracker-review-2vumr8`)
 - 🎫 [Confirm-gated cross-repo edit proposals via a web-tools-private channel](tasks/cross-repo-edit-proposals-evo1ml.md) (`claude/tracker-status-cjogjn`)
 - 🎫 [Have data-view open at an addressed item via the fragment](tasks/data-view-consume-fragment-nxlpbs.md) (`claude/web-tools-tracker-review-ij4pjj`)
 - 🎫 [Reclaim the phone viewport in data-view](tasks/data-view-mobile-chrome-x5plcv.md) (`claude/web-tools-project-tracker-reo5qo`)

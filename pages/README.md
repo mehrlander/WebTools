@@ -22,6 +22,7 @@ the link-dense text twin of the visual index above.
 | `data-view` | Data View | [view](https://mehrlander.github.io/web-tools/pages/data-view.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/data-view.html) |
 | `dictate` | Dictate | [view](https://mehrlander.github.io/web-tools/pages/dictate.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/dictate.html) |
 | `diff-tool` | Diff | [view](https://mehrlander.github.io/web-tools/pages/diff-tool.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/diff-tool.html) |
+| `doc-growth` | Doc Growth | [view](https://mehrlander.github.io/web-tools/pages/doc-growth.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/doc-growth.html) |
 | `entities` | Entities | [view](https://mehrlander.github.io/web-tools/pages/entities.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/entities.html) |
 | `gist-editor` | Gist Editor | [view](https://mehrlander.github.io/web-tools/pages/gist-editor.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/gist-editor.html) |
 | `index` | web-tools | [view](https://mehrlander.github.io/web-tools/pages/index.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/index.html) |
