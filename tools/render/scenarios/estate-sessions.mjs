@@ -13,6 +13,8 @@
 // CARD=turns|tools|files|tokens opens that pair's card on the first row. Those
 // four numbers said what they counted only in a title, so the card is the only
 // way a phone reader learns that 206 is tool calls and which tools they were.
+// CARD=reply opens the ask line's card, which renders its markdown through
+// kits/guide-render.js and so needs the network the other four do not.
 
 const SESSIONS = [
   {
@@ -26,7 +28,22 @@ const SESSIONS = [
     tools: [['Bash', 132], ['Edit', 34], ['Read', 17]],
     tokens: { input: 624, output: 337631, cache_read: 92466018, cache_write: 3979906 },
     filesTotal: 14, files: [['web-tools/lib/alpineComponents/estate.js', 11], ['web-tools/docs/showing.md', 4]],
-    reply: 'The docs surfacing now runs through the Map view rather than through prose in CLAUDE.md: showing-mechanisms.csv is the data, the Showing tab renders it, and npm run showing prints the render line so the choice is executable rather than remembered.',
+    // MARKDOWN, because a Claude reply is markdown and the store keeps it
+    // verbatim: code spans, a bold run, a list, a fence. The fixture was plain
+    // prose, so the card could print its source and look right.
+    reply: [
+      'The docs surfacing now runs through the **Map view** rather than through prose in `CLAUDE.md`:',
+      '',
+      '- `docs/showing-mechanisms.csv` is the data',
+      '- the Showing tab renders it',
+      '- `npm run showing` prints the line to paste',
+      '',
+      '```bash',
+      'npm run showing',
+      '```',
+      '',
+      'So the choice is executable rather than remembered.',
+    ].join('\n'),
     replyCut: 'cut',
     schema: 4, sha: 'a',
   },

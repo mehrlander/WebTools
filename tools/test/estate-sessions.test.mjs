@@ -376,6 +376,28 @@ test('both controls draw on a record row, and a stub gets neither', async () => 
   assert.equal(doc.querySelectorAll('i.ph-copy').length, 1, 'one copy control, likewise');
 });
 
+test("the rail's legend hangs on the day, not on the whole card", async () => {
+  // It hung on the card, so a native tooltip fired over every line inside it.
+  // The ask line opens a styled card on the same hover, and the two raced:
+  // two tooltips for one gesture, saying different things. The day is one
+  // token right of the coloured edge it explains, and already had a title.
+  shell.view = 'sessions';
+  data.sessionLens = 'list';
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.activity = {};
+  data.sessionRows_ = [window.RepoSessionsCache.summarize(rec(), 'sha1')];
+  await Alpine.nextTick();
+  const doc = window.document;
+  const card = [...doc.querySelectorAll('div.border-l-4')].find(d => d.querySelector('.tabular-nums'));
+  assert.ok(card, 'the row drew');
+  assert.equal(card.getAttribute('title'), null, 'no title on the card');
+  const day = card.querySelector('span.tabular-nums');
+  const t = day.getAttribute('title') || '';
+  assert.ok(t.startsWith('2026-08-05'), 'the whole date is still there for the phone truncation: ' + t);
+  assert.match(t, /branch/i, 'and the legend rides with it');
+});
+
 
 // ── The ask line's card: how the session CLOSED ─────────────────────────────
 // The line is the opening ask, so opening it is the other end of the same
@@ -446,6 +468,67 @@ test('a reply present means the card is about the reply, not the ask', () => {
   assert.equal(c.pending, false);
   assert.equal(c.label, 'closing reply');
   assert.equal(c.ask, 'do the thing', 'the ask rides along as context either way');
+});
+
+
+// ── And it is markdown ──────────────────────────────────────────────────────
+// A Claude reply arrives as markdown, so printed as text it showed its own
+// syntax: a fence as three backticks, a bold run as four asterisks. What these
+// pin is the plumbing, not the parser; kits/guide-render.js has its own test
+// and this is its fourth reader rather than a fourth copy of it.
+
+const fakeRender = () => {
+  const seen = [];
+  window.GuideRender = {
+    render: (src, o) => { seen.push({ src, o }); return { html: '<p>' + src + '</p>' }; },
+    needMarked: async () => {},
+    bodyClass: (size) => 'guide-body guide-body-' + size,
+  };
+  return seen;
+};
+
+test('the reply renders as markdown, and the raw text covers the wait', async () => {
+  const seen = fakeRender();
+  const row = window.RepoSessionsCache.summarize(
+    rec({ schema: 4, replies: [{ at: 'z', text: 'see **a.js**' }] }), 'x');
+  const c = replyCard(row);
+  // Cold, the parser has not answered. The card is readable anyway, which is
+  // why the plain line stayed: it is the floor, not a failure branch.
+  assert.equal(c.html, '', 'nothing rendered yet');
+  assert.equal(c.text, 'see **a.js**', 'and the raw text is what shows meanwhile');
+  await Alpine.nextTick();
+  await Alpine.nextTick();
+  assert.equal(data.rowCard.html, '<p>see **a.js**</p>', 'then it swaps to the render');
+  assert.equal(data.rowCard.htmlClass, 'guide-body guide-body-drawer',
+    'at the small scale, which is what a card this narrow wants');
+  assert.equal(seen[0].o.preferRef, 'claude/a-1',
+    "a blob link in a reply belongs to the session's branch, and claude/<slug> cannot be split by counting slashes");
+});
+
+test('a reply already rendered opens rendered, so a re-hover does not flash', async () => {
+  fakeRender();
+  const row = window.RepoSessionsCache.summarize(
+    rec({ schema: 4, replies: [{ at: 'z', text: 'rendered once' }] }), 'x');
+  replyCard(row);
+  await Alpine.nextTick();
+  await Alpine.nextTick();
+  // The memo is what makes the second open synchronous. Without it every
+  // re-hover shows the source for a frame while the parser answers again,
+  // which reads as a flicker rather than as a load.
+  const again = replyCard(row);
+  assert.equal(again.html, '<p>rendered once</p>', 'straight out of the memo');
+  assert.equal(again.htmlClass, 'guide-body guide-body-drawer');
+});
+
+test('no renderer means the plain text, not an empty card', async () => {
+  delete window.GuideRender;
+  const row = window.RepoSessionsCache.summarize(
+    rec({ schema: 4, replies: [{ at: 'z', text: 'unrendered' }] }), 'x');
+  const c = replyCard(row);
+  await Alpine.nextTick();
+  await Alpine.nextTick();
+  assert.equal(data.rowCard.html, '', 'nothing rendered');
+  assert.equal(c.text, 'unrendered', 'and the body draws the plain line off this');
 });
 
 test('the row version moved, so one pass re-reads the store and heals it', () => {
