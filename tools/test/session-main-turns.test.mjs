@@ -163,7 +163,8 @@ test('the opening ask is not repeated, since it IS the first prompt', () => {
   };
   const got = S.priorTurns(rec);
   assert.ok(!got.some(([k, t]) => k === 'u' && t === 'the opening ask'), 'not twice');
-  assert.deepEqual(got, [['a', 'first answer'], ['u', 'a follow-up']]);
+  assert.deepEqual(got, [['a', 'first answer', '10:01:00'], ['u', 'a follow-up', '10:03:00']],
+    'and each entry carries the clock the card prints beside it');
 });
 
 test('the asks are what makes a run of replies read as a conversation', () => {

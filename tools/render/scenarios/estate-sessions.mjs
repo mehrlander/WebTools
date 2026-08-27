@@ -13,8 +13,9 @@
 // CARD=turns|tools|files|tokens opens that pair's card on the first row. Those
 // four numbers said what they counted only in a title, so the card is the only
 // way a phone reader learns that 206 is tool calls and which tools they were.
-// CARD=reply opens the ask line's card, which renders its markdown through
-// kits/guide-render.js and so needs the network the other four do not.
+// CARD=reply opens the ask line's card, which renders the session as a
+// transcript through kits/chat-render.js and so needs the network the other
+// four do not.
 // CARDTOP=1 scrolls that card back to its first entry (it opens at the last).
 
 const SESSIONS = [
@@ -50,14 +51,16 @@ const SESSIONS = [
     // [role, head] pairs, chronological, asks at PROMPT_HEAD and turns at
     // TURN_HEAD, the closing reply excluded because `reply` above carries it.
     turns: [
-      ['a', 'Here is where it stands. The mechanisms live as data in `docs/showing-mechanisms.csv`'],
-      ['u', 'Can we get the render line printed rather than remembered?'],
-      ['a', '`npm run showing` reads the branch\'s changed files and prints the line to paste, or'],
-      ['a', 'One caveat: only a **page** renders this way. For a kit or a doc the honest answer'],
-      ['u', 'Good. Please proceed with the Map view tab.'],
-      ['a', 'The Showing tab is up. It reads the CSV directly, so a new mechanism is a row and'],
+      ['a', 'Here is where it stands. The mechanisms live as data in `docs/showing-mechanisms.csv`', '14:02:11'],
+      ['u', 'Can we get the render line printed rather than remembered?', '14:19:40'],
+      ['a', '`npm run showing` reads the branch\'s changed files and prints the line to paste, or', '14:31:07'],
+      ['a', 'One caveat: only a **page** renders this way. For a kit or a doc the honest answer', '14:48:52'],
+      ['u', 'Good. Please proceed with the Map view tab.', '15:20:03'],
+      ['a', 'The Showing tab is up. It reads the CSV directly, so a new mechanism is a row and', '15:44:29'],
     ],
     turnsCut: 'cut',
+    askAt: '13:51:08',
+    replyAt: '16:49:16',
     schema: 4, sha: 'a',
   },
   {
@@ -249,7 +252,7 @@ export default async function (page) {
     await page.evaluate(() => {
       const st = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
       st.sessionRows_ = st.sessionRows_.map((r, i) =>
-        (i ? r : { ...r, reply: '', replyCut: '', turns: [], turnsCut: '' }));
+        (i ? r : { ...r, reply: '', replyCut: '', turns: [], turnsCut: '', replyAt: '' }));
     });
     await page.waitForTimeout(200);
   }

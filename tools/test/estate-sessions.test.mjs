@@ -399,137 +399,127 @@ test("the rail's legend hangs on the day, not on the whole card", async () => {
 });
 
 
-// ── The ask line's card: how the session CLOSED ─────────────────────────────
-// The line is the opening ask, so opening it is the other end of the same
-// session. It was a native `title` first and that is what this replaced: no
-// type, no paragraphs, a second of delay, and no way onto a phone. It is now
-// the same panel every count on this row opens, and it stays a card rather than
-// a destination, which is why the line could stop being a button.
+// ── The ask line's card: the session as a transcript ────────────────────────
+// The line is the opening ask, so opening it is the rest of the session. It was
+// a native `title` first, then a hand-built body that approximated the swipe
+// deck and got it awkwardly wrong. It now renders through chatRender.message,
+// the deck's own turn renderer, so the two cannot drift in appearance: what is
+// pinned here is the LIST handed to it, since the rendering is that kit's test.
 
 const replyCard = (row) => { data.openSessionCard(row, 'reply', null); return data.rowCard; };
+const roles = (c) => c.turns.map(t => t.role[0]).join('');
 
-test('the reply card carries the reply, with the ask as its context', () => {
+test('the card is the ask, the scroll back, and the reply, in that order', () => {
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, opening_ask: 'do the thing',
+          prompts: [{ at: '2026-08-05T13:00:00Z', text: 'do the thing' },
+                    { at: '2026-08-05T15:00:00Z', text: 'and now this' }],
           replies: [{ at: '2026-08-05T14:00:00Z', text: 'partway' },
                     { at: '2026-08-05T16:00:00Z', text: 'and here is what came of it' }] }), 'x');
   const c = replyCard(row);
   assert.equal(c.kind, 'prose', 'prose, not a list: it has no count to show');
-  assert.equal(c.label, 'closing reply');
-  assert.equal(c.text, 'and here is what came of it', 'the CLOSING reply, not the first or the longest');
-  assert.equal(c.ask, 'do the thing');
-  assert.equal(c.cut, false);
+  assert.equal(roles(c), 'uauа'.replace('а', 'a'), 'ask, answer, ask, closing reply');
+  assert.equal(c.turns[0].md, 'do the thing', 'the WHOLE ask; the row truncates it');
+  assert.equal(c.turns.at(-1).md, 'and here is what came of it',
+    'the CLOSING reply, not the first or the longest');
+});
+
+test('every turn carries the clock the deck prints beside it', () => {
+  // Carried per entry rather than inferred from the row's started/ended, which
+  // agree with the first prompt on 194 of 225 records and the last reply on 168
+  // of 172: inferring would print a wrong time on one row in seven.
+  const row = window.RepoSessionsCache.summarize(
+    rec({ schema: 4, opening_ask: 'ask',
+          prompts: [{ at: '2026-08-05T13:51:08Z', text: 'ask' }],
+          replies: [{ at: '2026-08-05T16:49:16Z', text: 'answer' }] }), 'x');
+  const c = replyCard(row);
+  assert.equal(c.turns[0].ts, '13:51:08');
+  assert.equal(c.turns.at(-1).ts, '16:49:16');
 });
 
 test('a record with no replies says its text is a tail, rather than passing it off', () => {
   // 52 of the 224 records on file are schema 1 to 3, which never held the
   // assistant's prose: last_message is the recorder's 500-character tail of the
-  // final turn. Same field, lower fidelity, and the label is what says so.
+  // final turn. Same field, lower fidelity, and the LABEL is what says so,
+  // since the prose itself cannot.
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 2, last_message: 'the tail of the last turn' }), 'x');
   assert.equal(row.replyCut, 'tail');
-  assert.equal(data.replyLabel(row), 'final turn, tail only');
-  assert.equal(replyCard(row).text, 'the tail of the last turn');
+  const c = replyCard(row);
+  assert.equal(c.turns.at(-1).md, 'the tail of the last turn');
+  assert.equal(c.turns.at(-1).label, 'Assistant · final turn, tail only');
+  assert.equal(c.turns.at(-1).ts, '', 'and no clock, because a schema-3 record kept none');
 });
 
-test('a reply the cache cut says so in the label and in the body', () => {
+test('a reply the cache cut says so in the label and in the card', () => {
   // The store's own schema-5 lesson: a bound is fine and a silent bound is the
-  // damage. Median closing reply is 1,554 characters against a 600 cap, so this
-  // fires on most rows and has to be visible twice over.
+  // damage. Median closing reply is 1,554 characters against a 600 cap.
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, replies: [{ at: 'z', text: 'x'.repeat(2000) }] }), 'x');
-  assert.equal(row.replyCut, 'cut');
   assert.equal(row.reply.length, window.RepoSessionsCache.REPLY_CHARS);
   const c = replyCard(row);
   assert.equal(c.label, 'closing reply, trimmed');
-  assert.equal(c.cut, true, 'the body draws its own trimmed note off this');
+  assert.equal(c.turns.at(-1).label, 'Assistant · closing reply, trimmed');
+  assert.equal(c.cut, true, 'and the mount draws its own trimmed note off this');
 });
 
 test('a row with no reply yet still opens, on the ask, and says why', () => {
   // How this first shipped: gated on `row.reply`, so a hover on an unhealed row
-  // did NOTHING. The field arrived with ROW_V 5 and one crawl pass reads 120
-  // records, so most of a 225-row store is unhealed until the second pass, and
-  // a reader could not tell a missing feature from a missing field. Every ask
-  // opens now; the absence is stated rather than performed.
+  // did NOTHING and a reader could not tell a missing feature from a missing
+  // field. Every ask opens now; the absence is stated rather than performed.
   const row = window.RepoSessionsCache.summarize(rec({ schema: 3 }), 'x');
   assert.equal(row.reply, '', 'no reply on the row');
   const c = replyCard(row);
   assert.equal(c.label, 'opening ask', 'the header names what it actually has');
-  assert.equal(c.text, '');
-  assert.equal(c.ask, 'do the thing', 'the full ask is the floor; the row truncates it');
+  assert.equal(roles(c), 'u', 'the ask alone');
   assert.equal(c.pending, true, 'and the body draws the why off this');
   assert.equal(c.cut, false, 'nothing was trimmed, because there is nothing to trim');
 });
 
-test('a reply present means the card is about the reply, not the ask', () => {
+test('the truncated scroll back is reported on the card, not silently dropped', () => {
+  const prompts = [], replies = [];
+  for (let i = 0; i < 40; i++) {
+    prompts.push({ at: '2026-08-05T13:00:' + String(i).padStart(2, '0') + 'Z', text: 'ask ' + i });
+    replies.push({ at: '2026-08-05T13:30:' + String(i).padStart(2, '0') + 'Z', text: 'answer ' + i });
+  }
   const row = window.RepoSessionsCache.summarize(
-    rec({ schema: 4, replies: [{ at: 'z', text: 'and here is what came of it' }] }), 'x');
+    rec({ schema: 4, opening_ask: 'ask 0', prompts, replies }), 'x');
   const c = replyCard(row);
-  assert.equal(c.pending, false);
-  assert.equal(c.label, 'closing reply');
-  assert.equal(c.ask, 'do the thing', 'the ask rides along as context either way');
+  assert.equal(c.priorCut, true);
+  assert.equal(c.turns.length, window.RepoSessionsCache.TURNS_KEPT + 2,
+    'the cap, plus the two ends the row carries itself');
 });
 
-
-// ── And it is markdown ──────────────────────────────────────────────────────
-// A Claude reply arrives as markdown, so printed as text it showed its own
-// syntax: a fence as three backticks, a bold run as four asterisks. What these
-// pin is the plumbing, not the parser; kits/guide-render.js has its own test
-// and this is its fourth reader rather than a fourth copy of it.
-
-const fakeRender = () => {
-  const seen = [];
-  window.GuideRender = {
-    render: (src, o) => { seen.push({ src, o }); return { html: '<p>' + src + '</p>' }; },
-    needMarked: async () => {},
-    bodyClass: (size) => 'guide-body guide-body-' + size,
+test('the card mounts through the deck\'s own renderer, once per card', async () => {
+  // Not a lookalike: chatRender.message is the function every deck slide draws
+  // a turn with. What this pins is that the card calls it, and calls it once —
+  // the mount is driven by x-effect, and rebuilding on every reactive read
+  // would throw away the reader's scroll position mid-scroll.
+  const calls = [];
+  window.chatRender = {
+    ready: async () => {},
+    message: (m) => { calls.push(m); return window.document.createElement('div'); },
   };
-  return seen;
-};
-
-test('the reply renders as markdown, and the raw text covers the wait', async () => {
-  const seen = fakeRender();
   const row = window.RepoSessionsCache.summarize(
-    rec({ schema: 4, replies: [{ at: 'z', text: 'see **a.js**' }] }), 'x');
+    rec({ schema: 4, replies: [{ at: 'z', text: 'the answer' }] }), 'x');
   const c = replyCard(row);
-  // Cold, the parser has not answered. The card is readable anyway, which is
-  // why the plain line stayed: it is the floor, not a failure branch.
-  assert.equal(c.html, '', 'nothing rendered yet');
-  assert.equal(c.text, 'see **a.js**', 'and the raw text is what shows meanwhile');
-  await Alpine.nextTick();
-  await Alpine.nextTick();
-  assert.equal(data.rowCard.html, '<p>see **a.js**</p>', 'then it swaps to the render');
-  assert.equal(data.rowCard.htmlClass, 'guide-body guide-body-drawer',
-    'at the small scale, which is what a card this narrow wants');
-  assert.equal(seen[0].o.preferRef, 'claude/a-1',
-    "a blob link in a reply belongs to the session's branch, and claude/<slug> cannot be split by counting slashes");
+  await data.mountReplyCard(c);
+  assert.equal(calls.length, c.turns.length, 'one message() per turn');
+  assert.equal(calls.at(-1).md, 'the answer');
+  const n = calls.length;
+  await data.mountReplyCard(c);
+  assert.equal(calls.length, n, 'the same card does not rebuild');
 });
 
-test('a reply already rendered opens rendered, so a re-hover does not flash', async () => {
-  fakeRender();
-  const row = window.RepoSessionsCache.summarize(
-    rec({ schema: 4, replies: [{ at: 'z', text: 'rendered once' }] }), 'x');
-  replyCard(row);
-  await Alpine.nextTick();
-  await Alpine.nextTick();
-  // The memo is what makes the second open synchronous. Without it every
-  // re-hover shows the source for a frame while the parser answers again,
-  // which reads as a flicker rather than as a load.
-  const again = replyCard(row);
-  assert.equal(again.html, '<p>rendered once</p>', 'straight out of the memo');
-  assert.equal(again.htmlClass, 'guide-body guide-body-drawer');
-});
-
-test('no renderer means the plain text, not an empty card', async () => {
-  delete window.GuideRender;
+test('no renderer means an empty host, not a thrown card', async () => {
+  delete window.chatRender;
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, replies: [{ at: 'z', text: 'unrendered' }] }), 'x');
   const c = replyCard(row);
-  await Alpine.nextTick();
-  await Alpine.nextTick();
-  assert.equal(data.rowCard.html, '', 'nothing rendered');
-  assert.equal(c.text, 'unrendered', 'and the body draws the plain line off this');
+  await data.mountReplyCard(c);          // must not throw
+  assert.equal(c.turns.at(-1).md, 'unrendered', 'and the card still holds the text');
 });
+
 
 test('the row version moved, so one pass re-reads the store and heals it', () => {
   // A row built by an older summarizer is stale against a NEW FIELD and its
