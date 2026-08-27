@@ -19,6 +19,15 @@ registry ([app-routes.csv](app-routes.csv)), the reference doc, the component
 and harness filenames, and the tracker project tag. The old name records the
 app's origin as a repo viewer; the scope outgrew it.
 
+**A chat reply, a caption, and a PR body address a reader,** so they take the
+product name. That is where the split fails, not in the tree: a session used
+the internal name in a reply on 2026-08-27 and the reader had to ask what it
+meant. Measured the same day, the tree holds 1,022 occurrences across 238
+files and all but two are identifiers or records. The two were the README's
+`pages/` list, which re-filed the product among the workshop's outputs the
+address move had just taken it out of, and the shell component's
+`description`, which the Map view renders verbatim.
+
 **The address moved on 2026-08-16, the identifiers did not,** and the
 distinction is the whole of the decision. This doc first ruled that renaming
 "would break every saved deep link and buy nothing the prose split does not."

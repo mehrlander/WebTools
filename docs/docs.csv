@@ -1,5 +1,5 @@
 path,subject,status,reach,words,maintenance
-docs/APP.md,"the Web Tools app: mission, durable goals, and the name split",living,project,621,"authored; revised on deliberate reframing, not per feature"
+docs/APP.md,"the Web Tools app: mission, durable goals, and the name split",living,project,724,"authored; revised on deliberate reframing, not per feature"
 docs/CONSTELLATION.md,the portable kernel of the what-goes-where doctrine,living,app,835,"authored; the argument is the content, so no data carrier applies"
 docs/CONVENTIONS.md,the portable working conventions: the general-behavior hub,living,injected,1389,"authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
 docs/HTML-STYLE.md,"the house style for pages: what to build, as against how",living,skill,942,"authored, edited in place; paired with the daisy-alpine skill, which carries the mechanics and points here for composition; the split is convention, unchecked"
