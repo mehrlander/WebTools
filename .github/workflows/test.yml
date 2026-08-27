@@ -10,7 +10,7 @@ name: Tests
 # Why it exists: .claude/hooks/build-on-commit.sh regenerates dist/web-tools.js
 # and the page catalogs before a commit, but a hook only fires where the harness
 # registers it, and where it does not, it fails silently (cause and tells in
-# docs/environment/extending.md). tools/test/artifacts-lockstep.test.mjs is the
+# docs/environment/extending.md). tools/test/derived-artifacts.test.mjs is the
 # backstop for that, and until now it only ran when someone remembered to run the
 # suite. Here it runs on every PR, so a stale artifact is caught by the platform
 # rather than by memory.

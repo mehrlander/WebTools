@@ -50,7 +50,7 @@ heading is named at the terminal.
 
 **The mechanical half is a registry**, [`snags.csv`](snags.csv): a row per snag
 carrying its slug, one-line title, sightings, count and `→` targets, written by
-the same run and held to this file by `tools/test/artifacts-lockstep.test.mjs`.
+the same run and held to this file by `tools/test/derived-artifacts.test.mjs`.
 The generator was already reading the log as data; the records just did not
 survive the run, so nothing could hold the extraction to a schema and no other
 surface could read it. The prose stays here, because the paragraph explaining
