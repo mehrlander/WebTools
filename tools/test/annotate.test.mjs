@@ -1947,7 +1947,7 @@ test('copy rides the header beside the readings, so it needs no word at all', ()
     'the header holds it: one row of controls, none under the composer');
   assert.ok(!S.readBar.contains(S.serialCopy),
     'and NOT inside the centred group, whose three keys would slide as this came and went');
-  assert.equal(S.serialCopy.style.visibility, 'visible');
+  assert.equal(S.serialCopy.style.display, 'flex');
 
   A.setReading('json');
   assert.match(S.serialCopy.title, /JSON/, 'and it follows the chip it sits beside');
@@ -1955,8 +1955,8 @@ test('copy rides the header beside the readings, so it needs no word at all', ()
   // Both leave the row where they mean nothing. A Copy beside the Notes chip
   // has no bytes on screen to take.
   A.setReading('notes');
-  assert.equal(S.serialCopy.style.visibility, 'hidden', 'no bytes to take, but the space is held');
-  assert.equal(S.serialCopy.style.display, 'flex', 'so the centred keys beside it do not move');
+  assert.equal(S.serialCopy.style.display, 'none',
+    'it leaves the row rather than holding a place, so the keys stay centred on what a reader sees');
 
   // The footer keeps only what is neither a reading nor a format.
   const acts = [...S.setActs.querySelectorAll('button')].map(b => b.textContent);
