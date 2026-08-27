@@ -217,12 +217,16 @@ export default async function (page) {
     // Anchored off the real trigger, so the panel lands where a reader's tap
     // would put it rather than at an invented coordinate.
     const sel = { turns: 'ph-chats-circle', tools: 'ph-wrench',
-                  files: 'ph-files', tokens: null }[card];
+                  files: 'ph-files', tokens: null, reply: null }[card];
     await page.evaluate(({ card, sel }) => {
       const host = document.querySelector('[x-data^="estate"]');
       const st = window.Alpine.$data(host);
       const row = st.sessionRows[0];
-      const btn = sel
+      // The reply card opens off the ask LINE, which is a <p> and not a
+      // button: that is the whole point of it staying prose.
+      const btn = card === 'reply'
+        ? document.querySelector('p.truncate.mt-0\\.5')
+        : sel
         ? document.querySelector(`.ph.${sel}`)?.closest('button')
         : [...document.querySelectorAll('button')].find(b => /^\s*\d+k?\s*$/.test(b.textContent));
       st.openSessionCard(row, card, btn || null);

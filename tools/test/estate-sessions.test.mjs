@@ -377,52 +377,59 @@ test('both controls draw on a record row, and a stub gets neither', async () => 
 });
 
 
-// ── The ask line's tooltip: how the session CLOSED ──────────────────────────
-// The line is the opening ask, so the hover is the other end of the same
-// session. It replaced a click (the line used to open the conversation), which
-// the cards button in the row's cluster now carries on a control built for the
-// purpose rather than on a line of prose.
+// ── The ask line's card: how the session CLOSED ─────────────────────────────
+// The line is the opening ask, so opening it is the other end of the same
+// session. It was a native `title` first and that is what this replaced: no
+// type, no paragraphs, a second of delay, and no way onto a phone. It is now
+// the same panel every count on this row opens, and it stays a card rather than
+// a destination, which is why the line could stop being a button.
 
-test('the ask tooltip carries the closing reply under the ask', () => {
+const replyCard = (row) => { data.openSessionCard(row, 'reply', null); return data.rowCard; };
+
+test('the reply card carries the reply, with the ask as its context', () => {
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, opening_ask: 'do the thing',
           replies: [{ at: '2026-08-05T14:00:00Z', text: 'partway' },
                     { at: '2026-08-05T16:00:00Z', text: 'and here is what came of it' }] }), 'x');
-  const t = data.sessionAskTitle(row);
-  assert.match(t, /^do the thing/, 'the ask leads, since that is the line being hovered');
-  assert.match(t, /Closing reply/);
-  assert.match(t, /and here is what came of it/);
-  assert.ok(!t.includes('partway'), 'the CLOSING reply, not every reply');
+  const c = replyCard(row);
+  assert.equal(c.kind, 'prose', 'prose, not a list: it has no count to show');
+  assert.equal(c.label, 'closing reply');
+  assert.equal(c.text, 'and here is what came of it', 'the CLOSING reply, not the first or the longest');
+  assert.equal(c.ask, 'do the thing');
+  assert.equal(c.cut, false);
 });
 
-test('a record with no replies says the tail is a tail, rather than passing it off', () => {
+test('a record with no replies says its text is a tail, rather than passing it off', () => {
   // 52 of the 224 records on file are schema 1 to 3, which never held the
   // assistant's prose: last_message is the recorder's 500-character tail of the
   // final turn. Same field, lower fidelity, and the label is what says so.
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 2, last_message: 'the tail of the last turn' }), 'x');
   assert.equal(row.replyCut, 'tail');
-  assert.match(data.sessionAskTitle(row), /Final turn \(tail only\)/);
+  assert.equal(data.replyLabel(row), 'final turn, tail only');
+  assert.equal(replyCard(row).text, 'the tail of the last turn');
 });
 
-test('a reply the cache cut says it was cut', () => {
+test('a reply the cache cut says so in the label and in the body', () => {
   // The store's own schema-5 lesson: a bound is fine and a silent bound is the
   // damage. Median closing reply is 1,554 characters against a 600 cap, so this
-  // fires on most rows and has to be visible.
+  // fires on most rows and has to be visible twice over.
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, replies: [{ at: 'z', text: 'x'.repeat(2000) }] }), 'x');
   assert.equal(row.replyCut, 'cut');
   assert.equal(row.reply.length, window.RepoSessionsCache.REPLY_CHARS);
-  const t = data.sessionAskTitle(row);
-  assert.match(t, /Closing reply \(trimmed\)/);
-  assert.match(t, /…$/, 'the cut is marked where it happened, not only in the label');
+  const c = replyCard(row);
+  assert.equal(c.label, 'closing reply, trimmed');
+  assert.equal(c.cut, true, 'the body draws its own trimmed note off this');
 });
 
-test('a row from a cache built before the field falls back to the ask alone', () => {
-  // The field arrived with ROW_V 4 and heals on the next crawl. Until it does,
-  // a row carries no reply and the tooltip is what the line showed before this
-  // existed rather than an empty label.
-  assert.equal(data.sessionAskTitle({ ask: 'do the thing' }), 'do the thing');
+test('a row from a cache built before the field opens no card at all', () => {
+  // The field arrived with ROW_V 4 and heals on the next crawl. Until it does a
+  // row carries no reply, so the ask line gets no handler and no help cursor:
+  // an empty panel would be worse than a line that simply does not open.
+  const row = window.RepoSessionsCache.summarize(rec({ schema: 3 }), 'x');
+  assert.equal(row.reply, '', 'no reply on the row');
+  assert.equal(data.replyLabel(row), 'closing reply', 'the label still answers, for callers that ask');
 });
 
 test('the row version moved, so one pass re-reads the store and heals it', () => {
