@@ -6,12 +6,14 @@
 // kits/dictate.js has its own suite under node --test, and it covers the
 // composition rules with a stub. What it cannot cover is the PAGE: whether the
 // draft really survives a reload, whether the correction list reaches the
-// buffer, whether a filed note really stops coming back, and whether the Save
-// button is where a thumb can reach it. The last one is not a style question.
-// The first headless shot of this page showed Save sitting under the FAB
-// launcher, which is fixed at bottom-6 right-6 on every page that boots the
+// buffer, whether a filed note really stops coming back, and whether the
+// controls are where a thumb can reach them. The last one is not a style
+// question. The first headless shot of this page showed Save sitting under the
+// FAB launcher, which is fixed at bottom-6 right-6 on every page that boots the
 // lib chain: a primary action covered by standing equipment, invisible in the
-// source and invisible to jsdom, which has no layout.
+// source and invisible to jsdom, which has no layout. Save is four buttons now
+// (Copy, Share, Jot, Drop, flattened out of the sheet on 2026-08-27), so the
+// geometry checks read the row rather than the button.
 //
 // Exits nonzero on any failure. Not part of `npm test` (needs a browser).
 
@@ -123,7 +125,7 @@ const buffer = () => page.evaluate(() => document.querySelector('[x-ref="body"]'
 try {
   // ── 1. The corner belongs to the cursor pad ──────────────────────────
   // The FAB launcher is fixed at bottom-6 right-6 on every page that boots
-  // the lib chain, and it sat on this page's Save button until the layout
+  // the lib chain, and it sat on this page's send button until the layout
   // reserved the corner. Once the composer's grid came across, the corner
   // became the CURSOR PAD's, which is the one control here that is held and
   // dragged rather than tapped, so the page opts out of the FAB entirely
@@ -135,7 +137,8 @@ try {
     const byTitle = (t) => document.querySelector(`button[title^="${t}"]`);
     const r = (el) => el ? el.getBoundingClientRect().toJSON() : null;
     return {
-      save: r([...document.querySelectorAll('button')].find(b => /Save/.test(b.textContent))),
+      copy: r([...document.querySelectorAll('button')].find(b => /Copy/.test(b.textContent))),
+      drop: r([...document.querySelectorAll('button')].find(b => /Drop/.test(b.textContent))),
       pad: r(document.querySelector('button:has(i.ph-crosshair)')),
       mic: r(document.querySelector('button[title*="listening"], button[title*="Recording"]')),
       back: r(document.querySelector('button:has(i.ph-backspace)')),
@@ -158,17 +161,47 @@ try {
     `centre=${boxes.pad && (boxes.pad.left + boxes.pad.right) / 2} of ${boxes.w}`);
   // Backspace is the exception to the paragraph above and went back down on
   // 2026-08-25: undo and redo are reached for a handful of times, but a
-  // misheard word is deleted mid-sentence, over and over, which is the test
-  // the rest of the bottom passes.
-  ok('backspace is on the bottom row', !!boxes.back && boxes.back.bottom > boxes.h - 24,
-    JSON.stringify(boxes.back));
-  ok('Save is a thumb-sized target', !!boxes.save && boxes.save.height >= 44 && boxes.save.width >= 100,
-    JSON.stringify(boxes.save));
-  ok('and Save still takes most of that row', !!boxes.save && boxes.save.bottom > boxes.h - 24
-    && boxes.save.width > boxes.w * 0.75, JSON.stringify(boxes.save));
-  ok('with backspace beside it rather than under it',
-    !!boxes.back && !!boxes.save && boxes.back.right <= boxes.save.left,
-    `back.right=${boxes.back?.right} save.left=${boxes.save?.left}`);
+  // misheard word is deleted mid-sentence, over and over. It is a KEY now
+  // rather than a lodger in the send row, so it is checked against the keys.
+  ok('backspace is in the key row, above the destinations',
+    !!boxes.back && !!boxes.copy && boxes.back.bottom <= boxes.copy.top + 1,
+    `back.bottom=${boxes.back?.bottom} copy.top=${boxes.copy?.top}`);
+  ok('and it is the last key, at the right edge',
+    !!boxes.back && boxes.back.right > boxes.w - 12, JSON.stringify(boxes.back));
+  ok('the destinations are on the bottom row',
+    !!boxes.copy && !!boxes.drop && boxes.copy.bottom > boxes.h - 24
+    && boxes.drop.bottom > boxes.h - 24, JSON.stringify([boxes.copy, boxes.drop]));
+  // 92px at 390 with all four showing, 44 tall. A name that no longer fits
+  // beside its icon wraps and the height goes with it, so height is the check
+  // that catches a label growing past the room the row has.
+  ok('each destination is a thumb-sized target',
+    !!boxes.copy && boxes.copy.height >= 44 && boxes.copy.width >= 80
+    && !!boxes.drop && boxes.drop.height >= 44 && boxes.drop.width >= 80,
+    JSON.stringify([boxes.copy, boxes.drop]));
+  ok('and they fill the row between them',
+    !!boxes.copy && !!boxes.drop && boxes.drop.right - boxes.copy.left > boxes.w * 0.9,
+    `left=${boxes.copy?.left} right=${boxes.drop?.right} of ${boxes.w}`);
+  ok('no Save button survives',
+    !(await page.evaluate(() =>
+      [...document.querySelectorAll('button')].some(b => /^\s*Save\s*$/.test(b.textContent)))));
+  // FOUR ACROSS is the phone's case and never this browser's: Share is bound
+  // to navigator.share, which headless Chromium does not have, so the row
+  // above was measured three wide. The tightest column, 92px at 390, is the
+  // one that decides whether a name still fits beside its icon.
+  const four = await page.evaluate(() => {
+    const c = document.querySelector('[x-data="dictate"]')._x_dataStack[0];
+    c.canShare = true;
+    return new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const b = [...document.querySelectorAll('button')]
+        .filter(x => /^(Copy|Share|Jot|Drop)$/.test(x.textContent.trim()))
+        .map(x => ({ name: x.textContent.trim(), ...x.getBoundingClientRect().toJSON() }));
+      c.canShare = !!navigator.share;
+      done(b);
+    })));
+  });
+  ok('all four fit the row at phone width', four.length === 4
+    && four.every(b => b.width >= 80 && b.height >= 44 && b.height < 60),
+    JSON.stringify(four.map(b => [b.name, Math.round(b.width), Math.round(b.height)])));
   ok('the shell does not scroll the document', boxes.docH <= boxes.h + 1,
     `body=${boxes.docH} viewport=${boxes.h}`);
   ok('the painter is asked for no arrow cluster',
@@ -813,8 +846,6 @@ try {
 
   await stub();
   writes.length = 0;
-  await page.locator('button:has-text("Save")').click();
-  await page.waitForTimeout(200);
   // A NAMED CHECK because the failure has no error in it. `:disabled` was
   // bound to `!token || saving`, and `saving` is a string: with a token in
   // hand the expression is '', which Alpine's bind() writes rather than
@@ -954,15 +985,16 @@ try {
       return v.scrollWidth - v.clientWidth === 0;
     }));
 
-  // THE DELETE KEY IS IN THE BOTTOM ROW, beside Save rather than in the
-  // header: it is tapped over and over mid-sentence, which is what the rows
-  // down here are for.
-  ok('backspace sits in the bottom row, not the header',
+  // THE DELETE KEY IS A KEY: same row as the marks and the shift, not the
+  // header and not the send row. It is tapped over and over mid-sentence,
+  // which is what that row is tall for.
+  ok('backspace sits in the key row, beside the shift',
     await page.evaluate(() => {
       const b = document.querySelector('button:has(i.ph-backspace)');
       if (!b) return false;
-      const save = document.querySelector('button:has(i.ph-paper-plane-tilt)');
-      return b.parentElement === save.parentElement;
+      const shift = [...document.querySelectorAll('button')].find(x => /^(·!¶|abc)$/.test(x.textContent.trim()));
+      return !!shift && b.parentElement === shift.parentElement
+        && b.previousElementSibling === shift;
     }));
 
   // ── 4b. The two modifier taps ────────────────────────────────────────
