@@ -1782,6 +1782,47 @@ test('a serialization is of the whole set, whatever row is selected', () => {
   A.disable();
 });
 
+test('a note row\'s copy key reports too, and on itself', async () => {
+  // The report was written for the header's key and hardwired to it, which left
+  // the key on each row silent: the row calls copyNote, copyNote reported
+  // through setStatus, and setStatus became a no-op when the status line went.
+  // A copy is the one action here whose success is invisible until the paste.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'the words on this note');
+  A.add({ type: 'page' }, '');
+  const S = A._state;
+
+  let copied = null;
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true, value: { clipboard: { writeText: async (t) => { copied = t; } } },
+  });
+
+  const keyOf = (row) => [...row.querySelectorAll('button')][1];
+  const first = keyOf(S.listEl.children[0]);
+  assert.equal(first._icon.className, 'ph ph-copy');
+  first.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(copied, 'the words on this note', 'the row copies its own words');
+  assert.equal(first._icon.className, 'ph ph-check', 'and says so on the key that was tapped');
+
+  // Its own grey, not the header key's: the idle colour is captured per button.
+  assert.equal(first._idleColor, 'rgb(161, 161, 170)');
+
+  // An empty note is a failure to report, not a silence: nothing reaches the
+  // clipboard, and unmarked the reader pastes whatever they copied last.
+  const second = keyOf(S.listEl.children[1]);
+  second.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(second._icon.className, 'ph ph-warning');
+  assert.equal(copied, 'the words on this note', 'and nothing was written');
+
+  // Two keys mid-flash at once, which one shared timer could not have done.
+  assert.equal(first._icon.className, 'ph ph-check', 'the first is still reporting');
+  A.clear();
+  A.disable();
+});
+
 test('the copy key reports on itself, since the card has no status line', async () => {
   // The card's status line was removed deliberately (a confirmation with no
   // expiry, still claiming a note was added ten notes later), which left the
