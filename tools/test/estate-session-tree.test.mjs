@@ -190,3 +190,122 @@ test('the join note states what it could not place', () => {
   assert.match(data.sessionJoinNote, /1 branches reach a session record through the record's own session URL/);
   assert.match(data.sessionJoinNote, /1 reach no session at all/);
 });
+
+
+// ── The rail: what came of a session ────────────────────────────────────────
+// The card's 4px stripe carried the failure count until 2026-08-27, which is a
+// fact about how the run went while the question a list is scanned with is what
+// came of the work. It now takes the ROLLUP of the branches nested under it, in
+// the same five-state palette every branch row and branch tile already uses, and
+// the failure signal moved to the fill so both survive.
+
+// A PR index beside the branch list, which is where branchState() reads from:
+// `openPRs` is the open one and `branchPRs` is whatever became of it. Same two
+// maps allBranchRows builds, so a fixture here is a fixture of the real shape.
+const withPRs = (branches, records, { openPRs = [], branchPRs = [] } = {}) => {
+  data.activity = { 'acme/widget': { defaultBranch: 'main', scan: { branches },
+                                     openPRs, branchPRs, prReach: '' } };
+  data.sessionRows_ = records;
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+};
+const on = (name) => [{ name: 'widget', branch: name }];
+
+test('the rail rolls its branches up, live work first', () => {
+  // A session that left something open is a session with work in flight, and
+  // that is what a list is scanned for. Merged only after that: most sessions
+  // here are finished, and a list whose common case is loudest says nothing.
+  withPRs([branch('a'), branch('b')],
+          [record('r', { repos: [...on('a'), ...on('b')] })],
+          { openPRs: [{ number: 9, head: 'b', draft: false }],
+            branchPRs: [{ number: 1, head: 'a', state: 'merged' },
+                        { number: 9, head: 'b', state: 'open' }] });
+  assert.equal(data.sessionOutcome(nodeFor('r')), 'ready',
+    'one open PR outranks any number of merged branches');
+  assert.match(data.sessionAccent(nodeFor('r')), /border-success/);
+});
+
+test('a session whose branches all merged reads as shipped, not as live', () => {
+  withPRs([branch('a'), branch('b')],
+          [record('r', { repos: [...on('a'), ...on('b')] })],
+          { branchPRs: [{ number: 1, head: 'a', state: 'merged' },
+                        { number: 2, head: 'b', state: 'merged' }] });
+  assert.equal(data.sessionOutcome(nodeFor('r')), 'merged');
+  // Violet, the one hue three vocabularies already agree on for merged: Claude
+  // Code's own session list, GitHub, and the conventions' closing state.
+  assert.match(data.sessionAccent(nodeFor('r')), /border-secondary/);
+});
+
+test('closed-unmerged is its own state, and does not read as shipped', () => {
+  withPRs([branch('a')], [record('r', { repos: on('a') })],
+          { branchPRs: [{ number: 1, head: 'a', state: 'closed' }] });
+  assert.equal(data.sessionOutcome(nodeFor('r')), 'closed');
+  assert.match(data.sessionAccent(nodeFor('r')), /border-error/);
+});
+
+test('a draft is in flight, but yields to a PR that is ready', () => {
+  withPRs([branch('a'), branch('b')],
+          [record('r', { repos: [...on('a'), ...on('b')] })],
+          { openPRs: [{ number: 1, head: 'a', draft: true },
+                      { number: 2, head: 'b', draft: false }] });
+  assert.equal(data.sessionOutcome(nodeFor('r')), 'ready');
+  withPRs([branch('a')], [record('r', { repos: on('a') })],
+          { openPRs: [{ number: 1, head: 'a', draft: true }] });
+  assert.equal(data.sessionOutcome(nodeFor('r')), 'draft');
+  assert.match(data.sessionAccent(nodeFor('r')), /border-warning/);
+});
+
+test('a session that left no branch with a PR behind it takes no hue', () => {
+  withPRs([branch('a')], [record('r', { repos: on('a') })]);
+  assert.equal(data.sessionOutcome(nodeFor('r')), 'none');
+  assert.match(data.sessionAccent(nodeFor('r')), /border-base-300/);
+});
+
+test('a stub is dashed: an absence of knowledge, not an outcome', () => {
+  // The same treatment branchAccent gives `unknown`, for the same reason. A
+  // stub is a session named by a commit trailer with no record behind it, so
+  // there is nothing to say about how it went.
+  withPRs([branch('a', { sessions: [SESS('GHOST')] })], []);
+  const stub = data.sessionTree.nodes.find(n => n.kind === 'stub');
+  assert.equal(data.sessionOutcome(stub), 'stub');
+  assert.match(data.sessionAccent(stub), /border-dashed/);
+});
+
+test('failures ride the fill, so a snagged session that shipped reads as both', () => {
+  // Two axes, two carriers. Collapsing them was the old behaviour and it meant
+  // a session that hit one failing tool call could not also say its work landed.
+  withPRs([branch('a')],
+          [{ ...record('r', { repos: on('a') }), failures: 3 }],
+          { branchPRs: [{ number: 1, head: 'a', state: 'merged' }] });
+  const cls = data.sessionAccent(nodeFor('r'));
+  assert.match(cls, /border-secondary/, 'the outcome keeps the rail');
+  assert.match(cls, /bg-warning\/10/, 'the failures take the fill');
+  // ONLY MULTIPLES OF TEN: /5, /15, /25 and /45 compute to transparent against
+  // this app's stylesheet, so a step the build does not generate renders the
+  // opposite of the intent rather than nothing.
+  assert.ok(!/bg-warning\/(5|15|25|45)\b/.test(cls), cls);
+  assert.match(data.sessionOutcomeNote(nodeFor('r')), /3 tool calls failed/);
+});
+
+test('the outcome is named in words, not left to the colour alone', () => {
+  withPRs([branch('a')], [record('r', { repos: on('a') })],
+          { branchPRs: [{ number: 1, head: 'a', state: 'merged' }] });
+  assert.match(data.sessionOutcomeNote(nodeFor('r')), /shipped/);
+  // Every state the rollup can return has a sentence; a hue with no legend is
+  // the failure this note exists to avoid.
+  for (const k of ['ready', 'draft', 'merged', 'closed', 'none', 'stub'])
+    assert.ok(data.SESSION_OUTCOME_NOTE[k], `${k} has no note`);
+});
+
+// ── The deck's sequence ─────────────────────────────────────────────────────
+
+test('the session deck swipes the records the list is showing, stubs excluded', () => {
+  // A stub has no record, so there is nothing for a brief to read and an empty
+  // slide would be worse than a shorter sequence.
+  withPRs([branch('a', { sessions: [SESS('GHOST')] })],
+          [record('r1', { agent: SESS('AAA') }), record('r2', { agent: SESS('BBB') })]);
+  // Joined rather than deep-compared: Alpine hands back reactive proxies, which
+  // are structurally equal to a plain array and never reference-equal.
+  assert.equal(data.sessionDeckRows.map(r => r.id).sort().join(','), 'r1,r2');
+  assert.ok(data.sessionTree.nodes.some(n => n.kind === 'stub'), 'the fixture does hold a stub');
+});

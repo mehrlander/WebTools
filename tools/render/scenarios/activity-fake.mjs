@@ -87,7 +87,17 @@ export default async (page) => {
   // branch touching nothing any route declares.
   await page.evaluate(async () => {
     const d = window.Alpine.$data(document.querySelector('[x-data="estate()"]'));
-    d.routeManifest = await (await fetch('/docs/app-routes.csv')).json();
+    // The manifest is CSV and the app parses it with window.Csv; this line read
+    // it with .json() and threw, which killed the whole evaluate and with it the
+    // fixture seeding above. A scratch harness whose failure is a blank pane is
+    // not a harness, so it is tolerant now: no chips beats no shot.
+    try {
+      const rows = window.Csv.rows(await (await fetch('/docs/app-routes.csv')).text());
+      const vocab = window.Csv.rows(await (await fetch('/docs/vocabularies.csv')).text());
+      const split = (v) => String(v || '').split(';').map(x => x.trim()).filter(Boolean);
+      d.routeManifest = window.routeActivity.manifest(
+        rows.map(r => ({ ...r, files: split(r.files), tabs: split(r.tabs) })), vocab);
+    } catch (e) { console.warn('route chips unavailable:', e.message); }
     d.routeJoinTried = true;
     d.routeBranchFiles = [
       { repo: 'mehrlander/web-tools', name: 'claude/open-view-live-branches-yk24d9', pr: 271,
