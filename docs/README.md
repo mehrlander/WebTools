@@ -66,7 +66,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`text-content.md`](text-content.md) *(measured, orphan)* — the estate's authored text: whether the carriers holding it are organized, and how much never reached one
 - [`text-fields.csv`](text-fields.csv) — the names a prose-bearing CSV column or JSON key may take
 - [`text-tools.md`](text-tools.md) *(orphan)* — the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not
-- [`tools.csv`](tools.csv) — which pages the Tools view shelves, and the icon each is given
+- [`tools.csv`](tools.csv) — which pages the Tools view shows, and the icon each is given
 - [`venues.md`](venues.md) *(measured)* — the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split
 - [`vocabularies.csv`](vocabularies.csv) — what each value of a closed domain means, one row per value
 

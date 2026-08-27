@@ -1,23 +1,19 @@
-// lib/kits/surface.js — the surface envelope, and the two bridges the stage and the
-// shelf collapse across.
+// lib/kits/surface.js — the surface envelope.
 //
 // What is under test is the set of decisions, not the field copying:
 //
 //   1. DUAL-READ IS ONE-WAY. v1 normalizes to v2 for display and is never
-//      rewritten by having been read. The whole migration rests on that: the
-//      Surfaces editor round-trips raw text, so a v1 file survives a reader
-//      that only speaks v2.
+//      rewritten by having been read. The whole migration rests on that, and
+//      it is not a legacy path: every .surface file that exists is v1.
 //   2. v1's `kind` SPLITS into `type` and `target.source`. It fused genre with
 //      transport, which is why the migration is not a rename.
-//   3. THE STAGE ROUND-TRIPS. A working set promoted to a surface and pulled
-//      back is the same set. This is the claim the convergence is built on, and
-//      the reason the contract calls a repository source "the stage's item
-//      shape" in the first place.
-//   4. WHAT IS LEFT OUT IS REPORTED. Bytes that cannot ride a JSON string, and
-//      prose items with no file behind them, are named rather than dropped in
-//      silence. The old save dropped local files with no warning at all.
-//   5. SAVING APPENDS. Two saves of the same set produce two filenames, because
-//      a history that overwrites is not one.
+//   3. WHAT AN ITEM ADDRESSES is asked here and nowhere else, so a consumer
+//      cannot invent its own reading of where an item lives.
+//   4. CONTEXT HOLDS ONLY WHAT OUTLIVES A TOOL. A proposed destination is a
+//      claim about the set; a send in flight is the state of a process.
+//
+// The stage bridges (fromStage/toStage/autoName/fileName) went on 2026-08-27
+// with the Stage's Saved pane; their tests went with them.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -106,91 +102,32 @@ test('a path-only source is local, and travels only with its content', () => {
   assert.equal(S.ref(packed), null, 'a local source is not a repository source');
 });
 
-test('a working set round-trips through a surface', () => {
-  const staged = [
-    { repo: 'me/proj', ref: '', path: 'a.md' },
-    { repo: 'you/other', ref: 'dev', path: 'lib/b.js' },
-    { local: true, name: 'notes.md', text: '# notes', size: 7 },
-  ];
-  const { surface, skipped } = S.fromStage(staged);
-  assert.equal(skipped.length, 0);
-  assert.deepEqual({ ...surface.manifest.profile }, { name: 'stage', version: 1 });
-  const back = S.toStage(surface);
-  assert.equal(back.items.length, 3);
-  assert.deepEqual({ ...back.items[0] }, { repo: 'me/proj', ref: '', path: 'a.md' });
-  assert.deepEqual({ ...back.items[1] }, { repo: 'you/other', ref: 'dev', path: 'lib/b.js' });
-  assert.equal(back.items[2].local, true);
-  assert.equal(back.items[2].text, '# notes', 'a local file keeps its bytes across the round trip');
-});
-
-test('what cannot be carried is named, not dropped', () => {
-  // The old save wrote a ref list into a repo manifest and lost every local
-  // file without saying so. Binary bytes still cannot ride a JSON string, but
-  // the caller now learns which ones.
-  const { surface, skipped } = S.fromStage([
-    { repo: 'me/proj', ref: '', path: 'a.md' },
-    { local: true, name: 'shot.png', bytes: new Uint8Array([1, 2]), size: 2 },
-  ]);
-  assert.deepEqual([...skipped], ['shot.png']);
-  assert.equal(surface.items.length, 1);
-
-  // And in the other direction, a surface's prose has no file behind it.
-  const mixed = { manifest: { name: 'm' }, items: [
-    { id: 'n', title: 'A note', type: 'note', content: 'prose' },
-    { id: 'f', title: 'a.md', type: 'file', target: { source: { repository: 'me/proj', path: 'a.md' } } },
-  ] };
-  const { items, skipped: left } = S.toStage(S.read(mixed));
-  assert.equal(items.length, 1);
-  assert.deepEqual([...left], ['A note']);
-});
-
-test('a diff pair records which two items, not just that there is a diff', () => {
-  const { surface } = S.fromStage(
-    [{ repo: 'me/proj', ref: '', path: 'a.md' }, { repo: 'me/proj', ref: 'dev', path: 'a.md' }],
-    { compare: { a: 0, b: 1 } });
-  assert.equal(surface.items[0].view.mode, 'diff');
-  assert.equal(surface.items[1].view.mode, 'diff');
-  assert.deepEqual([...surface.items[0].related].map(r => ({ ...r })),
-    [{ item: 'me/proj@dev:a.md', relation: 'compares-to' }]);
-});
-
 test('context carries only what stays true with no tool running', () => {
-  const { surface } = S.fromStage([{ repo: 'me/proj', ref: '', path: 'a.md' }], {
-    destination: 'me/other:docs',
-    prompts: [{ label: 'Clarity', ask: 'Where does it lose you?' }],
-  });
-  assert.equal(surface.context.destination, 'me/other:docs', 'a proposed destination is a claim about the set');
-  assert.equal(surface.context.prompts.length, 1);
-  // No send state, no bundle options, no lens overrides.
-  assert.deepEqual([...Object.keys(surface.context)].sort(), ['destination', 'prompts']);
-  const { surface: bare } = S.fromStage([{ repo: 'me/proj', ref: '', path: 'a.md' }]);
+  // A proposed destination is a claim about the set and survives the round
+  // trip; nothing about a send in flight belongs here. The rule outlived the
+  // stage bridge that first wrote these two keys.
+  const doc = { manifest: { name: 'm', schema: { name: 'surface', version: 2 } },
+    context: { destination: 'me/other:docs', prompts: [{ label: 'Clarity', ask: 'Where does it lose you?' }] },
+    items: [{ id: 'f', title: 'a.md', type: 'file', target: { source: { repository: 'me/proj', path: 'a.md' } } }] };
+  const s = S.read(doc);
+  assert.equal(s.context.destination, 'me/other:docs');
+  assert.equal(s.context.prompts.length, 1);
+  assert.deepEqual([...Object.keys(S.write(s).context)].sort(), ['destination', 'prompts']);
+  const bare = S.read({ manifest: { name: 'm' }, items: [] });
   assert.deepEqual({ ...bare.context }, {}, 'nothing said, nothing written');
 });
 
-test('a name is earned from the contents', () => {
-  const one = S.fromStage([{ repo: 'me/proj', ref: '', path: 'lib/a.md' }]).surface;
-  assert.equal(one.manifest.name, 'a.md');
-  const many = S.fromStage([
-    { repo: 'me/proj', ref: '', path: 'lib/a.md' },
-    { repo: 'me/proj', ref: '', path: 'lib/b.md' },
-  ]).surface;
-  assert.equal(many.manifest.name, 'a.md +1');
-});
-
-test('saving appends: two saves of one set are two files', () => {
-  const { surface } = S.fromStage([{ repo: 'me/proj', ref: '', path: 'a.md' }]);
-  const first = S.fileName(surface, '2026-08-03T17:20:00Z');
-  const second = S.fileName(surface, '2026-08-03T18:05:00Z');
-  assert.notEqual(first, second, 'a second save never lands on the first file');
-  assert.match(first, /^20260803-172000-a-md\.surface$/);
-  assert.match(S.fileName(surface, '2026-08-03T17:20:00Z'), /^\d{8}-\d{6}-/, 'dated first, so the directory sorts as history');
-});
-
 test('write drops the empties and stamps v2', () => {
-  const { surface } = S.fromStage([{ repo: 'me/proj', ref: '', path: 'a.md' }]);
+  // Read a v1 file, which is what every .surface file on disk is, and write
+  // it back: the manifest is stamped v2, and a key that says nothing is
+  // absent rather than present-and-empty.
+  const surface = S.read({ manifest: { name: 'a.md', description: '' }, items: [
+    { id: 'x', title: 'a.md', kind: 'github_blob', repo: 'me/proj', path: 'a.md', snippet: '' },
+  ] });
   const out = S.write(surface);
   assert.deepEqual({ ...out.manifest.schema }, { name: 'surface', version: 2 });
   assert.equal('description' in out.manifest, false, 'nothing said, nothing written');
   assert.equal('context' in out, false, 'an empty context is absent, not {}');
-  assert.equal('ref' in out.items[0].target.source, false, 'an unspecified ref is not written as empty');
+  assert.equal('snippet' in out.items[0], false, 'an empty item field is dropped, not written blank');
+  assert.equal('ref' in out.items[0].target.source, false, 'an unspecified ref never enters the item');
 });
