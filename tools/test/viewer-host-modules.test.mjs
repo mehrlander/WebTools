@@ -104,3 +104,55 @@ test('both table-drawing modes read the narrowing', () => {
     assert.match(src, /ViewRegistry\.headerFilter\(/, `the ${id} mode ignores the host narrowing`);
   }
 });
+
+// ── and the input, which the initial filter does not fill ────────────────────
+//
+// initialHeaderFilter filters the DATA and leaves the header box empty, so a
+// reader arriving on a narrowed reference saw 22 rows out of a 568 KB file
+// with nothing saying why. Choosing that option over setFilter was meant to
+// avoid exactly that, so choosing it was not enough on its own. Measured in a
+// real browser against home's submittal page, 2026-08-27.
+
+test('the narrowing is written into the header box, not only applied', () => {
+  const seen = [];
+  const table = { on: (ev, fn) => seen.push([ev, fn]), setHeaderFilterValue: () => {} };
+  window.ViewRegistry.showHeaderFilter(table, { filter: { col: 'Vendor', find: 'VOYA' } });
+  assert.equal(seen.length, 1, 'nothing was scheduled to fill the box');
+  assert.equal(seen[0][0], 'tableBuilt', 'the header does not exist before tableBuilt');
+});
+
+test('it writes the same column and value the data was filtered on', () => {
+  const wrote = [];
+  const table = {
+    on: (ev, fn) => { if (ev === 'tableBuilt') fn(); },
+    setHeaderFilterValue: (f, v) => wrote.push([f, v]),
+  };
+  window.ViewRegistry.showHeaderFilter(table, { filter: { col: 'Vendor', find: 'VOYA' } });
+  assert.deepEqual(wrote, [['Vendor', 'VOYA']]);
+});
+
+test('a column the sheet does not have is silent, not fatal', () => {
+  // Same reason the filter config is safe to apply to every sheet: a workbook
+  // switches sheets under one narrowing and most sheets will not carry it.
+  const table = {
+    on: (ev, fn) => { if (ev === 'tableBuilt') fn(); },
+    setHeaderFilterValue: () => { throw new Error('no such column'); },
+  };
+  assert.doesNotThrow(() =>
+    window.ViewRegistry.showHeaderFilter(table, { filter: { col: 'Nope', find: 'x' } }));
+});
+
+test('a half-specified narrowing schedules nothing', () => {
+  for (const bad of [undefined, {}, { filter: {} }, { filter: { col: 'a' } }]) {
+    const seen = [];
+    window.ViewRegistry.showHeaderFilter({ on: (e, f) => seen.push(e) }, bad);
+    assert.deepEqual(seen, [], JSON.stringify(bad));
+  }
+});
+
+test('both table-drawing modes fill the box, not just one', () => {
+  for (const id of ['table', 'xlsx']) {
+    const src = window.ViewRegistry.modules.find(m => m.id === id).after.toString();
+    assert.match(src, /showHeaderFilter\(/, `the ${id} mode narrows invisibly`);
+  }
+});

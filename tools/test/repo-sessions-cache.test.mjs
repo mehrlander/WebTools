@@ -542,3 +542,68 @@ test('pointerOf keeps the ask to one line, and omits it rather than showing an e
   const none = S.pointerOf(S.summarize(record({ opening_ask: '' }), 'x'));
   assert.ok(!/^Ask:/m.test(none));
 });
+
+// ── The shell channel ────────────────────────────────────────────────────────
+// The readership column's founding caveat was that a doc read with `cat` or
+// `sed` leaves no trace, because `files` is built from file-tool inputs. It is
+// recoverable from `calls`, which every record already carries. These pin the
+// conservative half: what it refuses to count matters more than what it counts,
+// since an overstated readership argues for keeping a document nobody reads.
+
+test('a shell read of a doc counts, keyed to the checkout the command names', () => {
+  const rec = { repos: [{ name: 'web-tools' }, { name: 'home' }], calls: [
+    { name: 'Bash', arg: 'cat /home/user/web-tools/docs/SURFACING.md' },
+    { name: 'Bash', arg: 'cd /home/user/home && sed -n 1,40p docs/TRACKER.md' },
+  ] };
+  const out = S.shellDocsOf(rec);
+  assert.equal(out['web-tools/docs/SURFACING.md'], 1, 'an absolute path names its own checkout');
+  assert.equal(out['home/docs/TRACKER.md'], 1, 'a cd in the same command governs the relative path after it');
+});
+
+test('a bare path in a multi-checkout session is dropped rather than guessed', () => {
+  const many = { repos: [{ name: 'web-tools' }, { name: 'home' }], calls: [
+    { name: 'Bash', arg: 'grep -n toss docs/SURFACING.md' },
+  ] };
+  assert.deepEqual(S.shellDocsOf(many), {},
+    'two candidate checkouts and nothing to choose between them');
+
+  const one = { repos: [{ name: 'web-tools' }], calls: [
+    { name: 'Bash', arg: 'grep -n toss docs/SURFACING.md' },
+  ] };
+  assert.equal(S.shellDocsOf(one)['web-tools/docs/SURFACING.md'], 1,
+    'one checkout in the session makes the attribution unambiguous');
+});
+
+test('writing a doc is not reading it', () => {
+  const rec = { repos: [{ name: 'web-tools' }], calls: [
+    { name: 'Bash', arg: 'cat build.md > docs/SURFACING.md' },
+    { name: 'Bash', arg: "sed -i 's/a/b/' docs/CONVENTIONS.md" },
+    { name: 'Bash', arg: 'ls docs/' },
+    { name: 'Read', arg: '/home/user/web-tools/docs/loader.md' },
+  ] };
+  assert.deepEqual(S.shellDocsOf(rec), {},
+    'a redirect, an in-place edit, a listing with no path, and a non-Bash call');
+});
+
+test('the docs slice folds both channels and keeps the shell half legible', () => {
+  const rec = {
+    repos: [{ name: 'web-tools' }],
+    files: { 'web-tools/docs/loader.md': { read: 2 }, 'web-tools/lib/x.js': { edit: 9 } },
+    calls: [{ name: 'Bash', arg: 'cat /home/user/web-tools/docs/stage.md' }],
+  };
+  const row = S.summarize(rec, 'sha');
+  const by = Object.fromEntries(row.docFiles);
+  assert.equal(by['web-tools/docs/loader.md'], 2, 'the tool channel survives');
+  assert.equal(by['web-tools/docs/stage.md'], 1, 'the shell channel joins it');
+  assert.ok(!by['web-tools/lib/x.js'], 'still the docs slice only');
+  assert.deepEqual(row.docShell, [['web-tools/docs/stage.md', 1]],
+    'and the shell half is carried on its own, for the column to state the split');
+  assert.ok(!row.files.some(([p]) => p === 'web-tools/docs/stage.md'),
+    'files stays tool-only: it answers what the session was working on');
+});
+
+test('the summarizer version is bumped, so the cache heals rather than reading empty', () => {
+  assert.ok(S.ROW_V >= 4,
+    'a published record\'s sha never moves again, so a new field reaches the ' +
+    'back catalogue only through a version bump that stalePaths treats as stale');
+});

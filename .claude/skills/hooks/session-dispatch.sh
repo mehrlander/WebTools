@@ -50,6 +50,24 @@ cat >/dev/null 2>&1
 
 BUDGET="${WEB_TOOLS_SESSION_BUDGET:-120}"
 
+# The OTHER budget, and the one nothing was watching. Past a threshold the
+# harness writes a hook's whole stdout to a file and passes along a 2,000-byte
+# preview. It is indistinguishable from success from in here: every script
+# exited 0, so this reports a clean run while the session receives a fraction.
+# Measured 2026-08-26: this dispatcher had been emitting 36,135 bytes and
+# delivering about 5% of them since 2026-08-07, and nothing said so for
+# nineteen days.
+#
+# The exact ceiling is not documented anywhere readable. The bound is: the
+# smallest persisted output in the session archive is 29.4 KB, so it sits at or
+# below that. 28,000 is under the bound and above what a healthy run emits.
+#
+# This does not shrink anything. A script's payload is its own business, and
+# trimming here would cut a neighbour's output at an arbitrary byte. What it
+# does is make the failure LOUD, which is the whole difference: the warning is
+# printed FIRST, so it lands inside the 2,000 bytes that survive.
+OUTPUT_BUDGET="${WEB_TOOLS_OUTPUT_BUDGET:-28000}"
+
 # Handed to every dispatched script so a repo can call something the plugin
 # ships (inject-conventions.sh) without knowing where the cache put it, or
 # which commit it is pinned at. Resolved from this file rather than from
@@ -153,6 +171,10 @@ for o in "${owners[@]}"; do
   [ "$o" != "${owners[0]}" ] && multi=1 && break
 done
 
+# Assembled into a buffer rather than streamed, so the total can be measured
+# before any of it is emitted. That ordering is the point: a warning about
+# truncation is worthless after the truncated text.
+ASSEMBLED=""
 i=0
 for s in "${scripts[@]}"; do
   rc=$(cat "$TMP/$i.rc" 2>/dev/null || echo 0)
@@ -160,15 +182,41 @@ for s in "${scripts[@]}"; do
   if [ "$rc" = "124" ]; then
     # Worth saying out loud: a killed script produced nothing, and silence
     # would read as "nothing was due".
-    echo "[$label] exceeded ${BUDGET}s at session start and was stopped."
+    ASSEMBLED+="[$label] exceeded ${BUDGET}s at session start and was stopped."$'\n'
   elif [ -s "$TMP/$i.out" ]; then
-    [ "$multi" = "1" ] && echo "[$label]"
-    cat "$TMP/$i.out"
+    [ "$multi" = "1" ] && ASSEMBLED+="[$label]"$'\n'
+    ASSEMBLED+="$(cat "$TMP/$i.out")"$'\n'
   fi
   i=$((i+1))
 done
 
 # Last, so a misconfiguration reads as a footnote to the session's notes
 # rather than burying them.
-for note in "${notes[@]}"; do echo "$note"; done
+for note in "${notes[@]}"; do ASSEMBLED+="$note"$'\n'; done
+
+# The one thing printed before anything else, and only when it is true. Naming
+# the biggest contributor is what makes it actionable: "the output is too large"
+# sends a reader looking, while "session-load-conventions.sh is 36 KB of it"
+# does not.
+if [ "${#ASSEMBLED}" -gt "$OUTPUT_BUDGET" ]; then
+  biggest=""; biggest_n=0; i=0
+  for s in "${scripts[@]}"; do
+    n=$(wc -c <"$TMP/$i.out" 2>/dev/null || echo 0)
+    if [ "$n" -gt "$biggest_n" ]; then
+      biggest_n=$n
+      biggest="$(basename "$(dirname "$(dirname "$(dirname "$s")")")")/$(basename "$s")"
+    fi
+    i=$((i+1))
+  done
+  echo "===== SESSION START: OUTPUT TRUNCATED ====="
+  echo "These hooks produced ${#ASSEMBLED} bytes, over the ${OUTPUT_BUDGET}-byte budget."
+  echo "The harness passes along only the first ~2,000 bytes of a payload this size and"
+  echo "writes the rest to a file nothing reads, so MOST OF WHAT FOLLOWS DID NOT ARRIVE."
+  [ -n "$biggest" ] && echo "Largest contributor: $biggest at ${biggest_n} bytes."
+  echo "Whatever a session-start script was meant to tell you, assume it did not. Run"
+  echo "/web-tools for the conventions, and shrink the script named above."
+  echo
+fi
+
+printf '%s' "$ASSEMBLED"
 exit 0
