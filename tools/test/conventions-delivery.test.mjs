@@ -104,12 +104,14 @@ test('it carries every primitive and none of the course', () => {
 // payload went 127 bytes over: under a two-rung design that cost every
 // primitive. What a session can most afford to lose goes first, and the rules
 // themselves are not it.
-// The floor moved on 2026-08-27 when the receipts were reserved inside the
-// budget: a number that used to select this rung now selects the one below it,
-// because the body has 514 fewer bytes to work with. Measured on that commit,
-// this rung is chosen for a budget in [26745, 27639).
+// The rung window moves whenever the injected prose changes size, since it is
+// the body's byte count that decides which rung a budget selects. Two shifts so
+// far: the receipts reserved inside the budget on 2026-08-27 (514 bytes off the
+// body), then two surfacing primitives grew on the same day. Measured after
+// both, this rung is chosen for a budget in [26938, 27832); pick the midpoint so
+// a small future edit does not walk the test off either edge silently.
 test('over budget it drops the front matter before it drops a single rule', () => {
-  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '26900' });
+  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '27385' });
   assert.match(out, /ALSO NOT INCLUDED, to fit the channel/,
     'the second rung says what it withheld, as the first one does');
   assert.doesNotMatch(out, /PARTIAL LOAD/, 'and it is not the last rung');

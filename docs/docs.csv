@@ -8,7 +8,7 @@ docs/PORTABLE.md,"the portable set: what travels, and how to adopt it",living,pr
 docs/README.md,the docs folder's front door: the generated index of this registry,living,project,1247,"generated from docs.csv by tools/build/docs-readme.mjs (commit hook plus the derived-artifacts gate); edit the registry, never this file"
 docs/SHARE.md,the copy-paste prompt that points another session at the portable docs,living,orphan,89,"authored; the copy-paste prompt's raw.githubusercontent URL is now covered by dead-links.py's bare-URL scan, which reads fenced shell for exactly this case"
 docs/SNAGS.md,"the friction log: one line per snag, symptom then corrected move",living,project,10796,"authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
-docs/SURFACING.md,the surfacing system: primitives plus the guide-PR course,living,injected,4076,"authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
+docs/SURFACING.md,the surfacing system: primitives plus the guide-PR course,living,injected,4119,"authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
 docs/TRACKER.md,"the opt-in cross-session project tracker: schema, ids, board",living,project,3838,"authored, edited in place; the schema the tasks skill implements, held to it by review alone"
 docs/app-routes.csv,"the app's own destinations: every address, what it is for, and which files draw it",living,app,783,authored; held to the shell's VIEWS table both ways by tools/test/app-routes.test.mjs
 docs/artifacts.md,Claude Code artifacts and the link-choice matrix,living,project,1160,authored; distilled from official docs plus a dated publish trial
