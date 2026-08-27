@@ -108,7 +108,13 @@ export function deriveTools(repoRoot) {
       // closed domain so the gate holds it. Letting a JS boolean stringify
       // itself was how this column came out `true` while its one reader tested
       // for 'yes', and the Harness strip read 0 named of 147 for two days.
-      emits: /writeFileSync|open\([^)]*['"][wa]/.test(src) ? 'yes' : 'no',
+      // Both fs spellings, because the async one is the estate's default in
+      // tools/build/ and the sync-only pattern reported `no` for seven files
+      // that plainly write, docs-readme, pages-index and snags-index among
+      // them: three of the generators whose output the derived-artifacts gate
+      // exists to hold. A field claiming "writes a file" was wrong about the
+      // files most depended on being right.
+      emits: /writeFileSync|\bwriteFile\(|open\([^)]*['"][wa]/.test(src) ? 'yes' : 'no',
       named: (prose.includes(rel) || prose.includes(base)) ? 'yes' : 'no',
       tested: tests.includes(base) ? 'yes' : 'no',
     });

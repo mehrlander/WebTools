@@ -108,7 +108,7 @@ under `tools/` and `scripts/` (`tools/test/` stays with the test registry).
 `role` is authored and a blank role is counted rather than hidden;
 invocation, named, and tested are stamped by
 [`tools/build/tools-index.mjs`](../tools/build/tools-index.mjs) and held in
-lockstep by the suite. It renders in the Web Tools app's Map view, Harness tab. The
+step with its sources by the suite. It renders in the Web Tools app's Map view, Harness tab. The
 registry does not change the judgment below; it makes the gap it describes
 visible per file rather than per column.
 

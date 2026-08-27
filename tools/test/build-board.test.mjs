@@ -347,7 +347,7 @@ test('recognized keys are columns, open tags are rows in the second file', () =>
 
 // The tag file exists even when nothing is tagged. An absent file and an empty
 // one read the same to a consumer only if the empty one is guaranteed, and the
-// lockstep check compares bytes, so it has to be written either way.
+// derived-artifacts gate compares bytes, so it has to be written either way.
 test('the tag file is written with its header even when no task is tagged', () => {
   const { tagsCsv, tags } = both({ 'a-000001': { title: 'T', status: 'backlog' } });
   assert.equal(tagsCsv, 'task,tag,value\n');
@@ -398,7 +398,7 @@ test('a cell holding a comma or a quote survives the round trip', () => {
   assert.equal(rows[0].title, 'Split the registry, keep the "gate"');
 });
 
-// No timestamp anywhere in the artifact: the lockstep checks re-run the
+// No timestamp anywhere in the artifact: the derived-artifacts gate re-runs the
 // generator against a clean tree and compare, so a clock in the output would
 // fail on every run.
 test('the projection is byte-identical for the same input', () => {

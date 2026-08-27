@@ -1,4 +1,4 @@
-// artifacts-lockstep.test.mjs — every deterministic derived artifact matches
+// derived-artifacts.test.mjs — every deterministic derived artifact matches
 // the source it is generated from.
 //
 // CLAUDE.md says the commit hook owns these, and it does where it is wired. But
@@ -25,22 +25,22 @@ import { repoRoot } from './bootstrap.mjs';
 
 const check = (args) => spawnSync(process.execPath, args, { cwd: repoRoot, encoding: 'utf8' });
 
-test('dist/web-tools.js is in lockstep with lib/', () => {
+test('dist/web-tools.js matches lib/', () => {
   const r = check(['tools/build/build-lib.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'build:lib --check failed');
 });
 
-test('the page catalogs are in lockstep with pages/', () => {
+test('the page catalogs match pages/', () => {
   const r = check(['tools/build/pages-index.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'pages-index --check failed');
 });
 
-test('docs/README.md is in lockstep with the documentation registry', () => {
+test('docs/README.md matches the documentation registry', () => {
   const r = check(['tools/build/docs-readme.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'docs-readme --check failed');
 });
 
-test('the harness registry is in lockstep with tools/ and scripts/', () => {
+test('the harness registry matches tools/ and scripts/', () => {
   const r = check(['tools/build/tools-index.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'tools-index --check failed');
 });
@@ -53,12 +53,12 @@ test('the harness registry is in lockstep with tools/ and scripts/', () => {
 // the generator's own closing comment claims. It went unnoticed because the
 // projection is read by machines and diffed by nobody, and because the estate
 // had only one board carrying it. It now has ten.
-test('the snags index and registry are in lockstep with docs/SNAGS.md', () => {
+test('the snags index and registry match docs/SNAGS.md', () => {
   const r = check(['tools/build/snags-index.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'snags-index --check failed');
 });
 
-test('the tracker board is in lockstep with tracker/tasks/', () => {
+test('the tracker board matches tracker/tasks/', () => {
   const r = spawnSync('python3',
     ['.claude/skills/tasks/build-board.py', 'tracker/tasks', 'tracker/board.md', '--check'],
     { cwd: repoRoot, encoding: 'utf8' });
@@ -67,7 +67,7 @@ test('the tracker board is in lockstep with tracker/tasks/', () => {
 
 // Determinism is the property the check above depends on, so assert it directly
 // rather than inferring it from one passing run: two runs over the same input
-// must produce identical bytes. A nondeterministic generator makes the lockstep
+// must produce identical bytes. A nondeterministic generator makes this gate
 // test flaky rather than false, which is the harder failure to diagnose.
 test('the board generator is byte-deterministic', () => {
   const run = () => spawnSync('python3',
@@ -87,7 +87,7 @@ test('the board generator is byte-deterministic', () => {
 // of derived artifact to forget, because nothing about editing docs/ suggests
 // that a second file exists, and a stale copy is silent: it injects confidently
 // and governs the session with last month's rules.
-test('the plugin\'s vendored conventions are in lockstep with docs/', () => {
+test('the plugin\'s vendored conventions match docs/', () => {
   for (const name of ['CONVENTIONS.md', 'SURFACING.md']) {
     const source = readFileSync(join(repoRoot, 'docs', name), 'utf8');
     const vendored = readFileSync(join(repoRoot, '.claude/skills/web-tools', name), 'utf8');
