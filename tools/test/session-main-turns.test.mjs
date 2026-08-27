@@ -55,7 +55,7 @@ function cardKeeps(record) {
   return heads;
 }
 // The deck's answers, put through the same head, so the two are comparable.
-const asHeads = (mds) => mds.map(md => S.head(md, S.TURN_HEAD));
+const asHeads = (mds) => mds.map(md => S.head(md, S.TURN_HEAD).text);
 
 const at = (n) => `2026-08-05T10:${String(n).padStart(2, '0')}:00Z`;
 const long = (n) => 'x'.repeat(n);
@@ -214,6 +214,80 @@ test('an entry ends where a sentence does, not mid-word', () => {
   assert.ok(S.PROMPT_HEAD < S.TURN_HEAD, 'an ask is structure, so its cap is smaller');
 });
 
+// ── How much is missing ─────────────────────────────────────────────────────
+// An ellipsis says there is more and nothing about how much, which is the
+// difference between a summary and a teaser.
+
+test('a turn carried whole reports nothing missing', () => {
+  // Counted in SENTENCES, not as a difference of two string lengths. Joining
+  // sentences with one space normalises the paragraph breaks between them, so
+  // the length difference marked a whole turn as trimmed by a character or
+  // two. A false "trimmed" is worse than none.
+  assert.deepEqual(S.head('Just this.', 240), { text: 'Just this.', dropped: 0 });
+  assert.deepEqual(S.head('One here.\n\nTwo here.', 240),
+    { text: 'One here. Two here.', dropped: 0 }, 'two paragraphs, nothing lost but the break');
+});
+
+test('what is missing is counted, whether the cap or the lead filter took it', () => {
+  const cut = S.head('Short. ' + 'x'.repeat(300) + '.', 240);
+  assert.equal(cut.text, 'Short.', 'the whole sentence that fit');
+  assert.equal(cut.dropped, 301, 'and the one that did not');
+  const lead = S.head('Working branch: abc\n\nThe finding.', 240);
+  assert.equal(lead.text, 'The finding.');
+  assert.equal(lead.dropped, 19, 'a skipped lead is still text the reader is not seeing');
+});
+
+test('the closing reply is cut like every other turn, not sliced raw', () => {
+  // It was a raw slice at REPLY_CHARS, so the one turn a reader opens the card
+  // FOR was the only one still ending mid-word and unmarked: "which joins
+  // three artifacts of one source pac". Reported 2026-08-27.
+  const rec = {
+    schema: 4,
+    replies: [{ at: at(1), text: 'A complete sentence here. ' + 'z'.repeat(900) + '.' }],
+  };
+  const reply = S.closingReply(rec);
+  assert.equal(reply, 'A complete sentence here.', 'ends where a sentence does');
+  assert.equal(S.replyDropped(rec), 901);
+  assert.equal(S.replyPartial(rec), 'cut');
+});
+
+test('a reply that fits is not flagged, however close to the cap', () => {
+  const rec = { schema: 4, replies: [{ at: at(1), text: 'One.\n\nTwo.\n\nThree.' }] };
+  assert.equal(S.replyDropped(rec), 0);
+  assert.equal(S.replyPartial(rec), '', 'and so it claims nothing');
+});
+
+test('a bold or code lead is the answer, not chrome, and survives', () => {
+  // Measured over 13,921 assistant turns: the wide filter session-render uses
+  // for outline TITLES fired on 717 and 641 of those were content, among them
+  // "**95 of 95 match exactly.**" and 368 turns opening on a code span. A
+  // preview showed the second sentence of a turn whose first was the finding.
+  for (const lead of ['**95 of 95 match exactly.**', '`npm run showing` reads the branch.',
+                      '# The finding.', '> Quoted, but still the answer.']) {
+    assert.ok(S.head(lead + ' And then more.', 240).text.startsWith(lead.slice(0, 6)),
+      'lost: ' + lead);
+  }
+});
+
+test('an address IS chrome, and is still skipped', () => {
+  assert.equal(S.head('Working branch: claude/x\n\nThe finding.', 240).text, 'The finding.');
+  assert.equal(S.head('https://example.com/a\n\nThe finding.', 240).text, 'The finding.');
+});
+
+test('a turn carries its dropped count, and a whole one carries no field', () => {
+  const rec = {
+    schema: 4,
+    prompts: [{ at: at(0), text: 'opener' }, { at: at(3), text: 'ask' }],
+    replies: [{ at: at(1), text: 'Kept whole.' },
+              { at: at(2), text: 'Kept. ' + 'q'.repeat(400) + '.' },
+              { at: at(4), text: 'closing' }],
+    calls: [],
+  };
+  const got = S.priorTurns(rec);
+  assert.equal(got[0].length, 3, 'nothing dropped, so no fourth element to carry');
+  assert.equal(got[1][3], 401, 'and the count where there is one');
+});
+
 test('a first sentence longer than the cap is cut at a word, and says so', () => {
   // The one case a boundary cannot be found: there is no earlier sentence to
   // fall back to. Cut at a word and mark it, rather than mid-word and silent.
@@ -223,8 +297,9 @@ test('a first sentence longer than the cap is cut at a word, and says so', () =>
     replies: [{ at: at(1), text: 'alpha bravo '.repeat(60) }, { at: at(4), text: 'closing' }],
     calls: [],
   };
-  const [[, turn]] = S.priorTurns(rec);
+  const [[, turn, , dropped]] = S.priorTurns(rec);
   assert.ok(turn.endsWith('…'), 'marked: ' + turn);
+  assert.ok(dropped > 0, 'and the amount is stated, not only that there is one');
   assert.ok(turn.length <= S.TURN_HEAD + 1, 'within the cap, plus the ellipsis');
   // Every word kept is a WHOLE word from the source: cap() drops the trailing
   // partial before appending the mark, which is the whole difference between a

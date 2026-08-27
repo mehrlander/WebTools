@@ -459,11 +459,17 @@ test('a reply the cache cut says so in the label and in the card', () => {
   // damage. Median closing reply is 1,554 characters against a 600 cap.
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, replies: [{ at: 'z', text: 'x'.repeat(2000) }] }), 'x');
-  assert.equal(row.reply.length, window.RepoSessionsCache.REPLY_CHARS);
+  // One unbroken run with no sentence to stop at, so the cap cuts it and marks
+  // the cut: REPLY_CHARS of text plus the ellipsis that says so.
+  assert.equal(row.reply.length, window.RepoSessionsCache.REPLY_CHARS + 1);
+  assert.ok(row.reply.endsWith('…'));
+  assert.equal(row.replyDropped, 1400, 'and the row says how much is not here');
   const c = replyCard(row);
   assert.equal(c.label, 'closing reply, trimmed');
   assert.equal(c.turns.at(-1).label, 'Assistant · closing reply, trimmed');
-  assert.equal(c.cut, true, 'and the mount draws its own trimmed note off this');
+  assert.equal(c.turns.at(-1).dropped, 1400,
+    'carried on the TURN, so the note lands under the turn it is about');
+  assert.equal(c.cut, true);
 });
 
 test('a row with no reply yet still opens, on the ask, and says why', () => {
