@@ -15,6 +15,7 @@
 // way a phone reader learns that 206 is tool calls and which tools they were.
 // CARD=reply opens the ask line's card, which renders its markdown through
 // kits/guide-render.js and so needs the network the other four do not.
+// CARDTOP=1 scrolls that card back to its first entry (it opens at the last).
 
 const SESSIONS = [
   {
@@ -45,6 +46,18 @@ const SESSIONS = [
       'So the choice is executable rather than remembered.',
     ].join('\n'),
     replyCut: 'cut',
+    // The scroll back, in the shape repo-sessions-cache's priorTurns emits:
+    // [role, head] pairs, chronological, asks at PROMPT_HEAD and turns at
+    // TURN_HEAD, the closing reply excluded because `reply` above carries it.
+    turns: [
+      ['a', 'Here is where it stands. The mechanisms live as data in `docs/showing-mechanisms.csv`'],
+      ['u', 'Can we get the render line printed rather than remembered?'],
+      ['a', '`npm run showing` reads the branch\'s changed files and prints the line to paste, or'],
+      ['a', 'One caveat: only a **page** renders this way. For a kit or a doc the honest answer'],
+      ['u', 'Good. Please proceed with the Map view tab.'],
+      ['a', 'The Showing tab is up. It reads the CSV directly, so a new mechanism is a row and'],
+    ],
+    turnsCut: 'cut',
     schema: 4, sha: 'a',
   },
   {
@@ -235,7 +248,8 @@ export default async function (page) {
   if (process.env.PENDING) {
     await page.evaluate(() => {
       const st = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
-      st.sessionRows_ = st.sessionRows_.map((r, i) => (i ? r : { ...r, reply: '', replyCut: '' }));
+      st.sessionRows_ = st.sessionRows_.map((r, i) =>
+        (i ? r : { ...r, reply: '', replyCut: '', turns: [], turnsCut: '' }));
     });
     await page.waitForTimeout(200);
   }
@@ -260,5 +274,16 @@ export default async function (page) {
       st.openSessionCard(row, card, btn || null);
     }, { card, sel });
     await page.waitForTimeout(400);
+    // CARDTOP=1 scrolls the reply card back to its first entry. The card opens
+    // at the BOTTOM, on the closing reply, so the head of the scroll back and
+    // the truncation note are otherwise unshootable.
+    if (process.env.CARDTOP) {
+      await page.evaluate(() => {
+        const el = [...document.querySelectorAll('div.fixed.overflow-y-auto')]
+          .find(d => d.scrollHeight > d.clientHeight);
+        if (el) el.scrollTop = 0;
+      });
+      await page.waitForTimeout(150);
+    }
   }
 }
