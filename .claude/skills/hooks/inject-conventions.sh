@@ -134,6 +134,51 @@ emit() {
   echo
 }
 
+# ── The receipt ────────────────────────────────────────────────────────────
+#
+# This script is the only party that knows what it supplied. The payload is two
+# documents concatenated and names neither, so a later reader can only
+# pattern-match content back to a path, and the rungs below mean the answer is
+# not even fixed: what arrives depends on which one fired.
+#
+# So each document gets one `[startup-context]` line carrying its path, a
+# content hash, its byte count, and WHICH RUNG DELIVERED IT.
+# sessions/tools/record.py reads them out of the transcript's hook_success
+# entry into the record's `startup_context`, and the Map view's Docs tab shows
+# presence beside access rather than the hard-coded word "injected".
+#
+# The `delivered` field is the part that earns this. The 2026-08-26 failure was
+# a payload silently cut to 5%, invisible because the script exited 0 and the
+# hook reported success. A receipt that states the rung turns the same silence
+# into a value that changed.
+#
+# Emitted outside BODY and so outside BUDGET: two lines of fixed shape, about
+# 400 bytes against the margin documented above. Kept out of the budget on
+# purpose, since a receipt describing a dropped payload must not be the thing
+# that drops it.
+sha_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | cut -d' ' -f1
+  else
+    printf ''
+  fi
+}
+
+receipt() {
+  printf '[startup-context] {"path":"web-tools/docs/%s.md","via":"session_hook","source":"portable-plugin:docs/%s.md","sha256":"%s","bytes":%s,"delivered":"%s","basis":"receipt"}\n' \
+    "$1" "$1" "$(sha_of "$DOCS/$1.md")" \
+    "$(wc -c <"$DOCS/$1.md" | tr -d ' ')" "$2"
+}
+
+# CONVENTIONS.md rides every rung whole. SURFACING.md never does: the course is
+# withheld by design even at rung 1, so its best case is stated as what it is.
+receipts() {
+  receipt CONVENTIONS full
+  receipt SURFACING "$1"
+}
+
 # Rung 1: everything but the course.
 BODY="$(emit)"
 
@@ -155,8 +200,10 @@ if [ "${#BODY}" -gt "$BUDGET" ]; then
   echo "primitives before surfacing any work."
   echo
   cat "$DOCS/CONVENTIONS.md"
+  receipts omitted
   exit 0
 fi
 
 printf '%s\n' "$BODY"
+receipts "$([ "${DROPPED_HEAD:-}" = "1" ] && echo primitives_only || echo without_course)"
 exit 0
