@@ -139,6 +139,15 @@ const RECORD = {
   exchanges: 10, assistant_messages: 340, calls_total: 206, failures: 1,
   files_total: 14, tokens: { input: 624, output: 337631, cache_read: 92466018, cache_write: 3979906 },
   tools: { Bash: 132, Edit: 34, Read: 17 },
+  // The map the Files pane lists. Checkout-prefixed, as every key in a record's
+  // `files` is, so the shot also exercises the estate's owner resolution.
+  files: {
+    'web-tools/lib/alpineComponents/estate.js': { read: 3, edit: 11 },
+    'web-tools/docs/showing-mechanisms.csv': { read: 2, write: 1 },
+    'web-tools/CLAUDE.md': { read: 6 },
+    'web-tools/docs/showing.md': { read: 1, edit: 4 },
+    'home/CLAUDE.md': { read: 2 },
+  },
   prompts: [
     { at: '2026-08-05T13:51:08Z', text: 'We recently done some significant work on surfacing our documentation in the show repo app. Discuss where we are at with that.' },
     { at: '2026-08-05T14:40:00Z', text: 'Good. Can we get the mechanisms table rendering from the CSV rather than from prose?' },
@@ -163,6 +172,10 @@ export default async function (page) {
     st.sessionRows_ = SESSIONS;
     st.sessionAttention = ATTENTION;
     st.activity = ACTIVITY;
+    // The estate's own membership, which is the only place a checkout name
+    // ("web-tools") resolves to an owner. The session brief's Files pane takes
+    // its link from here, so a fixture without it shoots the unlinked rows.
+    st.entries = [{ repo: 'mehrlander/web-tools' }, { repo: 'mehrlander/home' }];
     st.activityGeneratedAt = new Date(Date.now() - 42 * 60000).toISOString();
     st.sessionsGeneratedAt = new Date(Date.now() - 42 * 60000).toISOString();
     st.sessionScope = 'all';
@@ -182,6 +195,7 @@ export default async function (page) {
   // swapped for one that answers with a fixture; everything else, the deck
   // chrome, the lent head, the outline, is the page's own.
   if (process.env.DECK) {
+    if (process.env.PANE) await page.evaluate((v) => { window.__PANE = v; }, process.env.PANE);
     await page.evaluate((RECORD) => {
       const Real = window.GH;
       window.GH = class extends Real {
@@ -191,6 +205,7 @@ export default async function (page) {
         }
       };
       const st = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
+      if (window.__PANE) st._openCard = { pane: window.__PANE };
       st.openSessionDetail(st.sessionRows[0]);
     }, RECORD);
     await page.waitForTimeout(2500);

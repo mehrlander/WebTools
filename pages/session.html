@@ -26,6 +26,10 @@
     #id=abc12345                     the short id, resolved against the store
     #gz=<base64url>                  a gzipped record, for a reader with no token
 
+  Any of the three takes `pane=outline|files|raw` and `card=<n>`, which say where
+  in the session to land: `card` opens the deck on one exchange, the session's
+  answer to branch.html's `file=`.
+
   The record is web-tools-private/sessions/**.json (its README is the schema).
   The store is private, so #gh= and #id= read through the viewer's stored token
   and a tokenless browser gets nothing; #gz= is the fallback that needs none.
@@ -157,12 +161,19 @@
         const q = new URLSearchParams(location.search);
         const hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
         const pick = k => hash.get(k) || q.get(k);
+        // `pane` and `card` ride every address form, the way branch.html takes
+        // `pane` and `file`: they say where in the session to land, not which
+        // session, so they are orthogonal to the three ways of naming one.
+        const pane = pick('pane');
+        const card = parseInt(pick('card'), 10);
+        const at = { ...(['outline', 'files', 'raw'].includes(pane) ? { pane } : {}),
+                     ...(Number.isInteger(card) ? { start: card } : {}) };
         const gz = pick('gz');
-        if (gz) return { kind: 'gz', gz };
+        if (gz) return { kind: 'gz', gz, at };
         const id = pick('id');
-        if (id) return { kind: 'id', id, label: id };
+        if (id) return { kind: 'id', id, label: id, at };
         const gh = pick('gh');
-        if (gh) return { kind: 'path', spec: gh, label: gh };
+        if (gh) return { kind: 'path', spec: gh, label: gh, at };
         return null;
       },
 
@@ -183,6 +194,7 @@
             const spec = window.DataPayload?.parseSpec?.(t.spec) || {};
             opts = { repo: spec.repo || STORE, path: spec.path || t.spec, framed: this.framed };
           }
+          opts = { ...opts, ...(t.at || {}) };
           this.target = opts;
           window.__sessionTarget = opts;
           this.$nextTick(() => {

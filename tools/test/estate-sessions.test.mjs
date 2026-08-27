@@ -498,3 +498,38 @@ test('a detail-less event still falls back to reading, so the contract only wide
   assert.ok(GETS.includes('state/sessions.json'));
   assert.equal(data.sessionsGeneratedAt, '2026-08-05T21:00:00Z');
 });
+
+
+// ── Linking a captured file ─────────────────────────────────────────────────
+// A record stores "<checkout>/<path>" and names that checkout's branch, and
+// nothing in the store knows the OWNER. The estate is the only place that does,
+// which is why the session brief takes its file link as a host-supplied
+// function rather than deriving one.
+
+test('a captured path resolves to the owner and the branch the session was on', () => {
+  data.entries = [{ repo: 'mehrlander/web-tools' }, { repo: 'mehrlander/home' }];
+  const row = window.RepoSessionsCache.summarize(rec(), 'x');
+  // At the BRANCH, not at main: a file opened during a session is the version
+  // that session saw.
+  assert.equal(data.sessionFileUrl(row, 'web-tools/lib/a.js'),
+    'https://github.com/mehrlander/web-tools/blob/claude%2Fa-1/lib/a.js');
+});
+
+test('a checkout the session did not name falls back to the default branch', () => {
+  // The merged case: the row lists one checkout and the path names another the
+  // estate still knows. Reading it at the default beats not linking it.
+  data.entries = [{ repo: 'mehrlander/web-tools' }, { repo: 'mehrlander/home' }];
+  data.activity = { 'mehrlander/home': { defaultBranch: 'main' } };
+  const row = window.RepoSessionsCache.summarize(rec(), 'x');
+  assert.equal(data.sessionFileUrl(row, 'home/b.md'),
+    'https://github.com/mehrlander/home/blob/main/b.md');
+});
+
+test('an unresolvable checkout yields no link rather than a guessed one', () => {
+  // The Files pane renders a plain row for an empty href. A guessed owner would
+  // render a link that 404s, which is worse than saying nothing.
+  data.entries = [{ repo: 'mehrlander/web-tools' }];
+  const row = window.RepoSessionsCache.summarize(rec(), 'x');
+  assert.equal(data.sessionFileUrl(row, 'somebody-elses-repo/x.js'), '');
+  assert.equal(data.sessionFileUrl(row, 'no-slash-at-all'), '');
+});

@@ -245,3 +245,150 @@ test('an open deck becomes the parent, so the cards drill rather than stack', as
     assert.ok(!('start' in opened[0]), 'no card named means no start, not slide 0 forced');
   } finally { window.swipeDeck.top = () => null; }
 });
+
+
+// ── The Files pane ──────────────────────────────────────────────────────────
+// The strip counted the files a session opened and nothing routed to them. The
+// record holds the whole map, so the list costs no read; what it cannot hold is
+// the OWNER of each checkout, which is why the link is the host's to supply.
+
+test('files are listed by the cache\'s own weight, and the badges carry the rest', async () => {
+  window.__files = {
+    repo: STORE,
+    record: {
+      short: 'f', schema: 3,
+      files: {
+        'web-tools/docs/read-a-lot.md': { read: 9 },
+        'web-tools/lib/edited.js': { read: 1, edit: 6 },
+        'home/untouched.md': { read: 1 },
+      },
+    },
+  };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'sessionBrief(window.__files)');
+  window.document.body.append(el);
+  Alpine.initTree(el);
+  await tick(2);
+  const rows = Alpine.$data(el).fileRows;
+  // The sessions cache's fileWeight is a PLAIN SUM: every access counts one, an
+  // edit the same as a read. So nine reads (9) outrank one read and six edits
+  // (7), which is not what "worked on" means to a reader and is exactly why the
+  // per-kind badges are on the row. Pinned as the kit's rule rather than as a
+  // rule of this pane's, since a pane that reordered would disagree with the
+  // Sessions row's hover card over the same files.
+  assert.equal(rows[0].path, 'web-tools/docs/read-a-lot.md');
+  assert.equal(rows[1].path, 'web-tools/lib/edited.js');
+  assert.equal(rows.at(-1).path, 'home/untouched.md');
+  // The path splits so a column of long paths reads by its right-hand end.
+  assert.equal(rows[1].dir, 'web-tools/lib/');
+  assert.equal(rows[1].name, 'edited.js');
+  // One badge per kind, heaviest first, and a zero is never drawn.
+  // Joined rather than deep-compared: Alpine hands back reactive proxies, which
+  // are structurally equal to a plain array and never reference-equal.
+  assert.equal(rows[1].kinds.map(k => k.label + k.n).join(','), 'edit6,read1');
+  assert.equal(rows[2].kinds.map(k => k.label + k.n).join(','), 'read1');
+  assert.equal(rows[0].href, '', 'no host resolver means no link, not a guessed one');
+});
+
+test('an empty list says which kind of empty it is', async () => {
+  const mount = (record) => {
+    window.__e = { repo: STORE, record };
+    const el = window.document.createElement('div');
+    el.setAttribute('x-data', 'sessionBrief(window.__e)');
+    window.document.body.append(el);
+    Alpine.initTree(el);
+    return Alpine.$data(el);
+  };
+  // "Opened nothing" and "never captured" are different answers and only one is
+  // about the session, the same distinction the Sessions row draws with its
+  // dimmed files glyph.
+  assert.match(mount({ short: 'a', schema: 2 }).filesNote, /predates file-attention capture/);
+  assert.match(mount({ short: 'b', schema: 4, files: {} }).filesNote, /No files were opened/);
+});
+
+test('a host resolver turns each row into a real anchor', async () => {
+  window.__linked = {
+    repo: STORE,
+    record: { short: 'g', schema: 3, files: { 'web-tools/lib/a.js': { edit: 1 } } },
+    fileHref: (path) => 'https://example.test/' + path,
+  };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'sessionBrief(window.__linked)');
+  window.document.body.append(el);
+  Alpine.initTree(el);
+  await tick(4);
+  assert.equal(Alpine.$data(el).fileRows[0].href, 'https://example.test/web-tools/lib/a.js');
+  // THE RENDER, not just the getter. The first draft picked the element with
+  // <component :is="f.href ? 'a' : 'span'">, which is Vue's idiom and not
+  // Alpine's: it renders an unknown <component> tag showing its children, so
+  // every row looked exactly right and none of them linked. A getter assertion
+  // could never have seen that.
+  const a = el.querySelector('a[href="https://example.test/web-tools/lib/a.js"]');
+  assert.ok(a, 'the row renders an <a> carrying the resolved href');
+  assert.equal(a.getAttribute('target'), '_blank');
+  assert.match(a.textContent.replace(/\s+/g, ''), /^web-tools\/lib\/a\.js$/);
+});
+
+test('an unresolved row renders an anchor with no href, so it is text', async () => {
+  window.__plain = {
+    repo: STORE,
+    record: { short: 'i', schema: 3, files: { 'x/y.js': { read: 1 } } },
+  };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'sessionBrief(window.__plain)');
+  window.document.body.append(el);
+  Alpine.initTree(el);
+  await tick(4);
+  const a = [...el.querySelectorAll('a')].find(n => n.textContent.includes('y.js'));
+  assert.ok(a, 'the row is still drawn');
+  assert.equal(a.getAttribute('href'), null, 'an href-less anchor is plain text, not a dead link');
+});
+
+test('a resolver that throws costs its link and nothing else', async () => {
+  // The host reaches into estate state to resolve an owner, so it can fail on a
+  // row the crawl has not placed. A pane that threw would take the whole brief
+  // down with it for one unresolvable path.
+  window.__bad = {
+    repo: STORE,
+    record: { short: 'h', schema: 3, files: { 'x/y.js': { read: 1 } } },
+    fileHref: () => { throw new Error('no such repo'); },
+  };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'sessionBrief(window.__bad)');
+  window.document.body.append(el);
+  Alpine.initTree(el);
+  await tick(2);
+  const rows = Alpine.$data(el).fileRows;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].href, '');
+});
+
+// ── Landing where the address said ──────────────────────────────────────────
+
+test('pane picks the tab, and an unknown one falls back rather than blanking', () => {
+  const at = (pane) => {
+    window.__p = { repo: STORE, record: { short: 'p', schema: 4 }, pane };
+    const el = window.document.createElement('div');
+    el.setAttribute('x-data', 'sessionBrief(window.__p)');
+    window.document.body.append(el);
+    Alpine.initTree(el);
+    return Alpine.$data(el).pane;
+  };
+  assert.equal(at('files'), 'files');
+  assert.equal(at('raw'), 'raw');
+  assert.equal(at('outline'), 'outline');
+  assert.equal(at('nonsense'), 'outline');
+  assert.equal(at(undefined), 'outline');
+});
+
+test('start opens the deck on one card, which is what makes an exchange addressable', async () => {
+  opened.length = 0;
+  window.__card = { repo: STORE, record, start: 3 };
+  const el = window.document.createElement('div');
+  el.setAttribute('x-data', 'sessionBrief(window.__card)');
+  window.document.body.append(el);
+  Alpine.initTree(el);
+  await tick(4);
+  assert.equal(opened.length, 1, 'the address named a card, so the deck opened on it');
+  assert.equal(opened[0].start, 3);
+});
