@@ -31,7 +31,7 @@ tools/build/pages-shots.mjs,"regenerate pages/thumbs/*.png, one screenshot per p
 tools/build/registries-load.mjs,"read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",tools/build,103,imported,no,no,yes
 tools/build/registries-reach.mjs,"stamp renders_in into docs/registries.csv: the app files that name each registry's path, empty being the Registries tab's warning state",tools/build,91,npm:registries-reach,yes,yes,yes
 tools/build/repo-pages-shots.mjs,regenerate pages-gallery thumbnails for another repo's pages catalog,tools/build,167,argv,no,yes,no
-tools/build/snags-index.mjs,generates the index at the top of docs/SNAGS.md and warns about likely repeats,tools/build,169,npm:snags-index,no,yes,yes
+tools/build/snags-index.mjs,generates the index at the top of docs/SNAGS.md and warns about likely repeats,tools/build,252,npm:snags-index,no,yes,yes
 tools/build/tests-index.mjs,"restamp the derived half of docs/tests.csv, the test registry",tools/build,235,npm:tests-index,yes,no,yes
 tools/build/tools-index.mjs,restamp the derived half of this registry,tools/build,175,npm:tools-index,yes,yes,yes
 tools/build/verify-build.mjs,prove a page's dist build renders byte-identical to its live gh.load chain,tools/build,86,npm:verify-build,no,yes,no
@@ -86,9 +86,9 @@ tools/render/scenarios/diff-tool-roots.mjs,the browse panel's root list over a s
 tools/render/scenarios/diff-tool-sources.mjs,the Sources tab with the normalization strip open and two prose drafts loaded,tools/render/scenarios,25,driver,no,no,no
 tools/render/scenarios/entities-stub.mjs,"pages/entities.html against the committed index, token-free",tools/render/scenarios,35,driver,no,no,no
 tools/render/scenarios/estate-crawl-progress.mjs,"Branches or Sessions mid-crawl: the pane seeded, then the shell's progress slot written by hand",tools/render/scenarios,61,driver,no,no,no
-tools/render/scenarios/estate-jots.mjs,the estate's Jots view with a populated pile,tools/render/scenarios,74,driver,no,no,no
+tools/render/scenarios/estate-jots.mjs,the estate's Jots view with a populated pile,tools/render/scenarios,90,driver,no,no,no
 tools/render/scenarios/estate-open.mjs,Activity's Open view seeded token-free so the list renders headlessly,tools/render/scenarios,205,driver,no,no,no
-tools/render/scenarios/estate-pins.mjs,the Lists pane with the Pin block populated above To-do and Jot,tools/render/scenarios,86,driver,no,no,no
+tools/render/scenarios/estate-pins.mjs,the Lists pane with the Pin block populated above To-do and Jot,tools/render/scenarios,96,driver,no,no,no
 tools/render/scenarios/estate-rows.mjs,the grouped-grid Repos view with a nested companion card,tools/render/scenarios,88,driver,no,no,no
 tools/render/scenarios/estate-sessions.mjs,"the Sessions and Lists panes on fixture data, token-free",tools/render/scenarios,123,driver,no,no,no
 tools/render/scenarios/estate-skills.mjs,,tools/render/scenarios,106,driver,no,no,no

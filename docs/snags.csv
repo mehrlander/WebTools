@@ -1,0 +1,56 @@
+slug,title,count,last_seen,seen,targets
+opacity-step-off-the-tens,"a class that generates nothing, so the text meant to recede advances",3,2026-08-19,2026-08-19;2026-08-19;2026-08-19,HTML-STYLE.md
+mcp-body-escaping,"the GitHub MCP mangles link shapes in a PR body, on write as well as read",3,2026-08-16,2026-08-05;2026-08-05;2026-08-16,SURFACING.md
+daisy-divide-paints-black,"hairlines come out black, not grey",2,2026-08-22,2026-07-28;2026-08-22,../skills/daisy-alpine/SKILL.md
+claude-logomark-copied,the standard session mark is six inline copies with no owner,2,2026-08-21,2026-08-09;2026-08-21,code-layers.md
+cached-read-feeds-a-write,a fresh-looking read hands back the sha it just replaced,2,2026-08-16,2026-08-13;2026-08-16,../lib/gh-api.js
+mcp-approval-is-often-routing,an approval prompt that is really a wall,2,2026-08-15,2026-07-15;2026-08-15,github/mcp-server-routing.md
+ci-watch-on-blocked-api,a curl watch loop on the GitHub API waits forever,2,2026-08-14,2026-08-10;2026-08-14,environment/capabilities.md
+headless-shot-prose-flat,typography CSS misses in screenshots,2,2026-08-14,2026-08-07;2026-08-14,environment/testing.md
+x-data-scope-shadows-component-names,"a mount's config read a component, not the host's field",2,2026-08-14,2026-08-14;2026-08-14,show-repo.md;HTML-STYLE.md
+combine-serves-cjs,"a jsDelivr /combine/ spec served the CommonJS build, and the local mirror hid it",1,2026-08-26,2026-08-26,doc-growth.md
+framed-chrome-hides-the-only-way-in,a page stands down its address bar and then asks for an address,1,2026-08-26,2026-08-26,../pages/session.html;../pages/branch.html
+registry-scope-disagrees-with-its-gate,the cell describing the rule named two extensions where the gate walks three,1,2026-08-26,2026-08-26,registries.csv;../tools/test/docs-registry.test.mjs
+template-escape-in-a-plain-method,a tooltip separator that renders as backslash-n,1,2026-08-26,2026-08-26,../lib/alpineComponents/estate.js
+ci-failure-above-the-log-tail,a red check whose reason sits 250k characters above the end,1,2026-08-23,2026-08-23,../.github/workflows/test.yml
+id-in-a-component-body,"two mounts, one id, and the second one renders into the first",1,2026-08-23,2026-08-23,../lib/alpineComponents/viewer.js;../tools/test/viewer-many.mjs
+test-supplies-the-missing-dependency,a green check over a feature nobody could reach,1,2026-08-23,2026-08-23,../tools/test/deck-dock-reflow.mjs
+showing-answers-commits-only,the render-link script called a staged branch empty,1,2026-08-22,2026-08-22,showing.md
+viewport-rule-blind-to-a-docked-pane,the pane narrowed and every breakpoint kept believing it had a desktop,1,2026-08-22,2026-08-22,branch-overlay.md
+custom-scheme-needs-a-markdown-link,the one thing meant to be tapped rendered as text,1,2026-08-19,2026-08-19,markdown-in-chat.md#a-custom-url-scheme-needs-an-explicit-markdown-link;SURFACING.md
+nul-byte-truncates-grep,"one NUL in a source file bounds every `grep -rn` over it, silently",1,2026-08-19,2026-08-19,../lib/alpineComponents/estate.js
+pages-shots-vacuous-ok,a thumbnail refresh shot nothing and exited 0,1,2026-08-19,2026-08-19,../tools/build/pages-shots.mjs
+private-blob-404s-signed-out,a live file reads as a broken link from a phone,1,2026-08-19,2026-08-19,SURFACING.md
+link-sha-not-resolved,"a commit SHA typed from memory, well-formed and pointing at nothing",1,2026-08-18,2026-08-18,SURFACING.md
+stub-in-the-carriers-old-format,eleven files changed format and every test agreed with the old one,1,2026-08-18,2026-08-18,environment/testing.md
+empty-read-overwrites-the-store,"a failed read wrote zeros over good data, and the run said it succeeded",1,2026-08-17,2026-08-17,show-repo.md
+toss-lands-on-the-landing,"a render link opened the app, nowhere near the change",1,2026-08-16,2026-08-16,show-repo.md
+live-term-wider-referent,a house word reused for something bigger than it names,1,2026-08-15,2026-08-15,registries.md
+fetched-ref-behind-remote,a merge preflight certifies a merge GitHub refuses,1,2026-08-14,2026-08-14,environment/capabilities.md
+silent-fallback-old-build,"the pixels do not change, and nothing says the file failed to load",1,2026-08-14,2026-08-14,loader.md
+stub-hides-the-wiring,a test that stubs a lazy dependency cannot see it go missing,1,2026-08-13,2026-08-13,loader.md
+page-skips-the-loader-ignores-use,a page outside the loader opts out of `?use=` with no error,1,2026-08-11,2026-08-11,loader.md
+derived-field-conflicts-per-branch,a merge conflict on a line no human wrote,1,2026-08-10,2026-08-10,../CLAUDE.md
+runner-tag-documented-unused,"a convention in the contract, used once, re-derived from memory",1,2026-08-09,2026-08-09,TRACKER.md
+status-audit-skipped-index,the status audit silently dropped every marker in a file named `index.md`,1,2026-08-09,2026-08-09,../.claude/skills/markers/status.py
+venues-invisible-from-inside,a session inventories only the venues it can see from its own sandbox,1,2026-08-09,2026-08-09,venues.md
+daisy-color-in-variant,"a daisyUI color inside an arbitrary variant generates nothing, silently",1,2026-08-07,2026-08-07,show-repo.md
+pre-build-boots-alpine-early,a page's own gh.load chain runs after its components init,1,2026-08-07,2026-08-07,loader.md
+regex-backtracking-in-a-hook,"a test that ""hung"" was the redactor going quadratic",1,2026-08-07,2026-08-07,
+use-ref-stale-bundle,"`?use=` served a stale bundle, and a comment said it could not",1,2026-08-07,2026-08-07,showing.md
+ci-run-silently-not-started,a commit sat in an open PR with no checks,1,2026-08-06,2026-08-06,../.github/workflows/test.yml
+form-sized-by-container,"a form's fields stopped short of their labels, and its desktop layout was a ribbon",1,2026-08-06,2026-08-06,HTML-STYLE.md
+fragment-goto-does-not-reload,a render scenario asserts against stale state,1,2026-08-06,2026-08-06,environment/testing.md
+hosted-closer-runs-main,"a 🌿 closer is a hosted link, so it runs main's page",1,2026-08-06,2026-08-06,showing.md
+marker-on-a-living-doc,annotated a doc instead of fixing it,1,2026-08-06,2026-08-06,CONVENTIONS.md
+prose-classes-absent,"`prose` is not available on most pages, and it fails silently",1,2026-08-06,2026-08-06,show-repo.md
+allowlist-table-trusted-stale,trusted the network allowlist table instead of re-probing it,1,2026-08-05,2026-08-05,environment/capabilities.md
+api-access-read-as-impossible,"read ""needs API access"" as ""cannot be done here,"" for three weeks and 147 PRs",1,2026-08-05,2026-08-05,SURFACING.md
+shrank-instead-of-questioned,shrank a redundant artifact instead of asking whether it should exist,1,2026-08-05,2026-08-05,
+house-style-not-consulted,"built a page with stat cards, page prose, and small type, against a doc that forbids all three",1,2026-08-04,2026-08-04,HTML-STYLE.md
+screenshot-hides-overflow,a viewport shot cannot show horizontal overflow,1,2026-08-04,2026-08-04,HTML-STYLE.md
+https-block-resets-instead-of-403,a blocked host looks like a network flake,1,2026-08-03,2026-08-03,environment/capabilities.md
+word-boundary-before-alternation,a scan reports zero and looks authoritative,1,2026-08-03,2026-08-03,
+phosphor-weight-is-a-family,an icon renders as nothing at all,1,2026-07-28,2026-07-28,../skills/phosphor-icons/SKILL.md
+x-collapse-needs-x-show,a panel renders at zero size,1,2026-07-15,2026-07-15,environment/testing.md
+cross-repo-lib-consumer-invisible,in-repo greps cannot see an external runtime consumer of a lib file,0,,,
