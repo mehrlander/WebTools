@@ -39,7 +39,7 @@ tools/render/cdn.mjs,the CDN URL to local-file resolver both renderers share,too
 tools/render/estate-card-demo.mjs,screenshot driver: render the estate's Repos grid with seeded entries,tools/render,72,none found,no,no,no
 tools/render/preview.mjs,"the jsdom logic render: run the full gh.load chain, mount Alpine, report state; no pixels",tools/render,370,npm:preview,no,yes,yes
 tools/render/scenarios/activity-chrome-probe.mjs,,tools/render/scenarios,80,driver,no,no,no
-tools/render/scenarios/activity-fake.mjs,seed fake activity data so the token-gated Open view renders for a shot,tools/render/scenarios,101,driver,no,no,no
+tools/render/scenarios/activity-fake.mjs,seed fake activity data so the token-gated Open view renders for a shot,tools/render/scenarios,111,driver,no,no,no
 tools/render/scenarios/activity-pr-abandoned.mjs,the same seed opened on the Abandoned scope chip,tools/render/scenarios,11,driver,no,no,no
 tools/render/scenarios/activity-pr-state.mjs,"the Branches pane with every PR state seeded (merged, closed, draft, none, unknown)",tools/render/scenarios,80,driver,no,no,no
 tools/render/scenarios/annotate-canvas-tap.mjs,"the three readings of a tap on the blank canvas below the last line: with a pin armed it takes that pin to the end of the buffer (select-to-end, the extent with no other gesture), with nothing armed it is still the one-tap way out of selection mode, and doubled it opens the keyboard with the caret at the end. All need layout, since jsdom has no client rects for hitsText to tell canvas from text",tools/render/scenarios,84,driver,no,no,no
@@ -91,7 +91,7 @@ tools/render/scenarios/estate-jots.mjs,the estate's Jots view with a populated p
 tools/render/scenarios/estate-open.mjs,Activity's Open view seeded token-free so the list renders headlessly,tools/render/scenarios,205,driver,no,no,no
 tools/render/scenarios/estate-pins.mjs,the Lists pane with the Pin block populated above To-do and Jot,tools/render/scenarios,96,driver,no,no,no
 tools/render/scenarios/estate-rows.mjs,the grouped-grid Repos view with a nested companion card,tools/render/scenarios,88,driver,no,no,no
-tools/render/scenarios/estate-sessions.mjs,"the Sessions and Lists panes on fixture data, token-free",tools/render/scenarios,123,driver,no,no,no
+tools/render/scenarios/estate-sessions.mjs,"the Sessions and Lists panes on fixture data, token-free",tools/render/scenarios,218,driver,no,no,no
 tools/render/scenarios/estate-skills.mjs,,tools/render/scenarios,106,driver,no,no,no
 tools/render/scenarios/estate-surfaces-embed.mjs,"the Surfaces view rendering a kind:embed item, collapsed",tools/render/scenarios,81,driver,no,no,no
 tools/render/scenarios/estate-unfiled.mjs,,tools/render/scenarios,99,driver,no,no,no

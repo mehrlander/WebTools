@@ -82,7 +82,7 @@
 <body class="h-[100dvh] flex flex-col overflow-hidden bg-base-100 text-base-content" x-data="sessionPage()" x-cloak>
 
   <!-- Stands down inside a frame, the courtesy branch.html and links.html pay
-       their embedder: show-repo supplies its own chrome.
+       their embedder: the app supplies its own chrome.
 
        Except with nothing loaded, which was a dead end and shipped as one: a
        toss carrying no session address rendered the empty state under a hidden
@@ -90,9 +90,9 @@
        it and no way in. The courtesy is to an embedder that has already
        supplied an address; where none arrived, the way to supply one has to be
        on the page. Found 2026-08-26 by opening the tossed page itself. -->
-  <div x-show="!framed || !record" class="shrink-0 border-b border-base-300 bg-base-100">
+  <div x-show="!framed || !target" class="shrink-0 border-b border-base-300 bg-base-100">
     <div class="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
-      <span class="text-lg">💬</span>
+      <span class="text-lg">&#128172;</span>
       <input x-model="input" @keydown.enter="go()" placeholder="short id, or owner/repo:path"
              class="input input-sm input-bordered font-mono flex-1 min-w-0">
       <button @click="go()" class="btn btn-sm btn-primary" :disabled="busy">
@@ -106,7 +106,7 @@
     <div class="alert alert-warning" x-text="err"></div>
   </div>
 
-  <div x-show="!record && !busy && !err" class="max-w-4xl mx-auto p-8 text-center opacity-60 text-sm">
+  <div x-show="!target && !busy && !err" class="max-w-4xl mx-auto p-8 text-center opacity-60 text-sm">
     Name a session above, or link straight to one:
     <code class="text-xs">#id=abc12345</code>
     <div class="mt-2 text-xs opacity-70">Ids are the record's filename stem, eight hex characters.</div>
@@ -116,96 +116,17 @@
     <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
 
-  <!-- The PAGE, which is the outline. It used to be the record's facts standing
-       behind the deck: the deck opened on arrival, so this was the after-close
-       state and the only way to reach it was to dismiss the conversation. A
-       page you can only get to by closing something else is not a destination,
-       and the facts it carried answered a question nobody had asked.
+  <!-- THE VIEW IS NOT HERE. It is alpineComponents/session-brief.js, mounted
+       below, exactly as pages/branch.html mounts branchBrief. This page owns
+       the address and nothing else.
 
-       Now the page lands here, laid out as branch.html lays out a branch: a
-       title, a strip of facts, then a tab row carrying its own exits as icons.
-       That is not house style for its own sake. The two pages answer the same
-       shape of question about two different objects, and a reader who has
-       learned where the deck button sits on one should not have to find it
-       again on the other.
-
-       Open rather than boxed. The list used to sit in a bordered card on a grey
-       page, which drew a frame around the one thing on the screen and then a
-       second frame inside it for every row. The rows carry their own left
-       rules, so the outer box was decoration that cost width on a phone. -->
-  <template x-if="record && !busy">
-    <div class="max-w-2xl mx-auto w-full min-h-0 grow flex flex-col gap-2.5 px-4 pt-3">
-      <!-- The id rides the blurb rather than the strip. It is not a measure of
-           anything, it is this record's name, so it belongs beside the line
-           that says which session this is; on the strip it sat between two
-           counts and read as a third. Mono and dimmed, in parens, so it reads
-           as an identifier appended to a sentence and not as part of it. -->
-      <div class="shrink-0 text-lg font-medium leading-snug">
-        <span x-text="head.title"></span>
-        <span class="ml-1.5 font-mono text-sm font-normal opacity-45"
-              title="The record's filename stem, and how every other surface names this session"
-              x-text="'(' + (record.short || '') + ')'"></span>
-      </div>
-
-      <!-- The facts strip, labelled rather than run together. It was one mono
-           line of values separated by dots, which reads as an identifier and
-           not as facts: nothing in it said which number was the asks and which
-           the calls. Same data, each value under its own word. -->
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm shrink-0">
-        <template x-for="f in strip" :key="f.k">
-          <span class="whitespace-nowrap cursor-help" :title="f.t">
-            <span class="opacity-55" x-text="f.k"></span>
-            <span class="font-mono font-medium ml-1"
-                  :class="f.k === 'failures' && f.v ? 'text-warning' : ''" x-text="f.v"></span>
-          </span>
-        </template>
-      </div>
-
-      <!-- One row carrying the switch and the exits, branch.html's row exactly.
-           The deck was a labelled button reading "Read as cards (6)"; it is the
-           square soft-primary icon its sibling page uses, the count having moved
-           onto the tab beside it where every other count on both pages lives. -->
-      <div class="flex items-center gap-2 shrink-0">
-        <div role="tablist" class="tabs tabs-box tabs-sm flex-nowrap bg-base-200 p-0.5 min-w-0
-                                   overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <a role="tab" class="tab gap-1 flex-nowrap whitespace-nowrap"
-             :class="pane === 'outline' && 'tab-active'" @click="pane = 'outline'">
-            Outline<span class="font-mono opacity-50" x-text="cards"></span></a>
-          <a role="tab" class="tab gap-1 flex-nowrap whitespace-nowrap"
-             :class="pane === 'raw' && 'tab-active'" @click="pane = 'raw'; $nextTick(() => mountRaw())">
-            Raw<span class="font-mono opacity-50" x-text="rawSize"></span></a>
-        </div>
-        <div class="grow"></div>
-        <button @click="openDeck()"
-                class="btn btn-sm btn-square btn-soft btn-primary max-sm:h-11 max-sm:w-11"
-                :title="'Read ' + cards + ' cards one at a time'">
-          <i class="ph ph-cards-three text-lg max-sm:text-xl"></i></button>
-        <!-- The estate's standard way to link a session: the Claude logomark in
-             brand colour, no label, exactly as the branch and session rows in
-             show-repo's Activity draw it, and as the deck header draws its own
-             exit. Drawn from kits/claude-mark.js rather than pasted. -->
-        <a x-show="record.agent_session" :href="record.agent_session" target="_blank"
-           title="Open this session in Claude Code"
-           class="btn btn-sm btn-square btn-ghost max-sm:h-11 max-sm:w-11"
-           x-html="window.claudeMark.svg({ cls: 'w-4 h-4 max-sm:w-5 max-sm:h-5 shrink-0' })"></a>
-        <a x-show="recordUrl" :href="recordUrl" target="_blank" rel="noopener"
-           title="The stored record on GitHub"
-           class="btn btn-sm btn-square btn-ghost max-sm:h-11 max-sm:w-11">
-          <i class="ph ph-github-logo text-lg max-sm:text-xl"></i></a>
-      </div>
-
-      <div x-ref="outline" x-show="pane === 'outline'" class="min-h-0 grow flex flex-col"></div>
-
-      <!-- The RAW pane: the stored record, which is one JSON file and is the
-           only thing on this page nothing has interpreted. Everything else here
-           is derived from it, so when a count looks wrong this is where the
-           answer is. It goes through chat-render's code card, the same one the
-           deck draws around a tool result, so it arrives with the estate's Copy
-           and its Table view rather than a second viewer written here. -->
-      <div x-ref="raw" x-show="pane === 'raw'" x-cloak
-           class="min-h-0 grow flex flex-col pb-3"></div>
-    </div>
-  </template>
+       That split is the whole point of the lift (2026-08-27). The markup used
+       to live in this file, which made this page the only host it could ever
+       have; show-repo's Sessions pane now mounts the same component per slide,
+       so a session is swipeable there and reads identically in both places
+       because there is one definition. The argument, and the iframe it rules
+       out, is branch-brief.js's header. -->
+  <div id="mount" class="min-h-0 grow flex flex-col"></div>
 
 <script>
   // The store, which is where every record lives. Overridable by an explicit
@@ -214,70 +135,9 @@
 
   document.addEventListener('alpine:init', () => {
     Alpine.data('sessionPage', () => ({
-      input: '', record: null, busy: false, err: '',
-      pane: 'outline', src: null, rawBuilt: false,
+      input: '', target: null, busy: false, err: '',
       framed: (() => { try { return window.self !== window.top; } catch { return true; } })(),
 
-      get head(){ return this.record ? window.sessionRender.describe(this.record) : {}; },
-      get cards(){
-        if (!this.record) return 0;
-        const sr = window.sessionRender;
-        return sr.groups(sr.turns(this.record)).length;
-      },
-      // The strip: what the record IS, as labelled facts. `describe` builds the
-      // same set as one dotted string for the deck header, which has one line
-      // and no room for words; a page has room, so it says which is which.
-      //
-      // ONE strip, not a strip and a panel behind an info button. The split put
-      // the identity facts on the page and the capture facts one tap away, and
-      // the tap bought nothing: they are the same kind of thing, they fit, and
-      // a reader wondering whether a count is low has to see it before knowing
-      // to ask. `replies` is the one that went rather than moving, since prose
-      // turns are a fact about how the session was written and not about what
-      // it did; the deck's own card count says more.
-      //
-      // Each carries its definition as a title, because half of these are
-      // exact about something a plain word is not: `files` counts what four
-      // file tools opened, `asks` counts what the user said and not what the
-      // session answered, and `schema` decides which of the others exist at
-      // all. Source: sessions/README.md in the store.
-      get strip(){
-        const r = this.record || {};
-        const mins = (() => {
-          const a = Date.parse(r.started), b = Date.parse(r.ended);
-          if (!a || !b || b < a) return '';
-          const m = Math.round((b - a) / 60000);
-          return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
-        })();
-        return [
-          ['day', r.day, 'The day the session started'],
-          ['repos', (r.repos || []).map(x => x.name).join(', '), "The checkouts that were the session's working directory"],
-          ['ran', mins, 'Wall clock from the first prompt to the last write, idle time included'],
-          ['asks', r.exchanges, 'Back-and-forths: one per thing the user actually said'],
-          ['calls', r.calls_total, 'Tool calls the session made'],
-          ['failures', r.failures, 'Tool calls that came back an error'],
-          ['files', r.files_total, 'Distinct paths opened by Read, Edit, Write or NotebookEdit. Not "read": a file opened through a shell command, or injected at session start, is not counted'],
-          ['out tokens', r.tokens?.output?.toLocaleString(), "The assistant's own output tokens, not the context it read"],
-          ['schema', r.schema || 1, 'Which version of the record format wrote this, which decides what the other fields can hold'],
-        ].filter(([, v]) => v || v === 0).map(([k, v, t]) => ({ k, v, t }));
-      },
-      // Bytes of the record as this page holds it, which is what the Raw pane
-      // will show rather than the file's own size on disk: the two differ by
-      // whatever the store's own formatting does, and only one of them is what
-      // a reader is about to scroll.
-      get rawJson(){ return this.record ? JSON.stringify(this.record, null, 2) : ''; },
-      get rawSize(){
-        const n = this.rawJson.length;
-        return !n ? '' : n < 1024 ? n + 'B' : n < 1048576 ? Math.round(n / 1024) + 'K' : (n / 1048576).toFixed(1) + 'M';
-      },
-      // The record where it is stored. Present for both addresses that read the
-      // store and absent for #gz=, which carries its own copy and has no file
-      // to point at; the button is bound to this rather than to the record, so
-      // an honest absence is a missing button.
-      get recordUrl(){
-        const s = this.src;
-        return s?.path ? `https://github.com/${s.repo}/blob/${s.ref || 'main'}/${s.path}` : '';
-      },
       async init(){
         // Before anything reads window.sessionRender: Alpine booted inside the
         // pre-build's import, so this page's own chain has not run yet.
@@ -285,16 +145,7 @@
         const t = this.resolve();
         if (!t) return;
         this.input = t.label || '';
-        await this.load(t);
-        // Arriving at an address that names a session lands on the OUTLINE.
-        // It used to open the deck immediately, on the reasoning that a link
-        // naming a session should not ask you to confirm you meant it. True,
-        // and it made the deck the only thing here: the page behind it was
-        // reachable only by dismissing the conversation, so the session had a
-        // reading view and no overview at all. The outline answers "what
-        // happened here" in one screen and puts the deck one tap away, which
-        // is the right order for arriving somewhere.
-        if (this.record) this.$nextTick(() => this.mountOutline());
+        await this.open(t);
       },
 
       // The address, from wherever this page is running. Read THROUGH
@@ -315,83 +166,46 @@
         return null;
       },
 
-      async load(t){
-        this.busy = true; this.err = ''; this.record = null;
-        this.src = null; this.rawBuilt = false; this.pane = 'outline';
+      // Turn an address into the component's options and mount it. Three
+      // addresses, three ways in, and only one of them fetches here: #gz=
+      // carries its own copy and has no file behind it, so this page inflates
+      // it and hands the record over. The other two name a record and the
+      // component reads it, which is what lets a deck slide do the same.
+      async open(t){
+        this.busy = true; this.err = ''; this.target = null;
         try {
-          if (t.kind === 'gz') this.record = await this.readGz(t.gz);
-          else if (t.kind === 'id') this.record = await this.readId(t.id);
-          else this.record = await this.readPath(t.spec);
+          let opts;
+          if (t.kind === 'gz') {
+            opts = { record: await this.readGz(t.gz), framed: this.framed };
+          } else if (t.kind === 'id') {
+            opts = { id: t.id, repo: STORE, framed: this.framed };
+          } else {
+            const spec = window.DataPayload?.parseSpec?.(t.spec) || {};
+            opts = { repo: spec.repo || STORE, path: spec.path || t.spec, framed: this.framed };
+          }
+          this.target = opts;
+          window.__sessionTarget = opts;
+          this.$nextTick(() => {
+            // A fresh element each time: Alpine cannot re-initialise a tree it
+            // already owns, so opening a second session replaces the mount
+            // rather than re-running it. branch.html's own note.
+            const old = document.getElementById('mount');
+            const el = document.createElement('div');
+            el.id = 'mount';
+            el.className = 'min-h-0 grow flex flex-col';
+            el.setAttribute('x-data', 'sessionBrief(window.__sessionTarget)');
+            old.replaceWith(el);
+            Alpine.initTree(el);
+          });
         } catch (e) {
           this.err = e?.message || String(e);
         } finally { this.busy = false; }
-      },
-
-      async readPath(spec){
-        const s = window.DataPayload?.parseSpec?.(spec) || {};
-        const repo = s.repo || STORE;
-        const path = s.path || spec;
-        const g = new window.GH({ token: window.TOKEN, repo, ref: s.ref || 'main' });
-        const f = await g.get(path);
-        this.src = { repo, ref: s.ref || 'main', path };
-        return JSON.parse(f.text);
-      },
-
-      // A short id is what a reader actually has: it is the record's own
-      // filename stem, and it is what search.py --show and the Sessions pane
-      // both print. One recursive tree read names every record and its path, so
-      // resolving is a suffix match rather than a guess at the day.
-      async readId(id){
-        const g = new window.GH({ token: window.TOKEN, repo: STORE, ref: 'main' });
-        const tree = await g.req('git/trees/main?recursive=1');
-        const hit = (tree.tree || []).find(n =>
-          n.type === 'blob' && /^sessions\/\d{4}\/\d{2}\//.test(n.path) && n.path.endsWith(`-${id}.json`));
-        if (!hit) throw new Error(`No record for ${id} in ${STORE}. Ids are the filename stem, like 2bf8fcae.`);
-        const f = await g.get(hit.path);
-        this.src = { repo: STORE, ref: 'main', path: hit.path };
-        return JSON.parse(f.text);
       },
 
       async readGz(gz){
         const bin = Uint8Array.from(atob(gz.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
         const ds = new DecompressionStream('gzip');
         return JSON.parse(await new Response(new Blob([bin]).stream().pipeThrough(ds)).text());
-      },
-
-      // The deck, optionally opening on a given card: tapping an outline row
-      // is the join between the two views, and landing on slide 0 after
-      // choosing row 12 would throw away the choice.
-      async openDeck(at){
-        try { await window.sessionRender.open(this.record, Number.isInteger(at) ? { start: at } : {}); }
-        catch (e) { this.err = e?.message || String(e); }
-      },
-
-      // Mounted imperatively rather than rendered by Alpine: the outline is a
-      // framework-free kit that owns its own selection state, and re-rendering
-      // it through a reactive template would discard that state on any tick.
-      mountOutline(){
-        const box = this.$refs.outline;
-        if (!box || !this.record) return;
-        try {
-          box.replaceChildren(
-            window.sessionExport.index(this.record, { onOpen: i => this.openDeck(i) }).el);
-        } catch (e) { this.err = e?.message || String(e); }
-      },
-
-      // Built once, on the first visit to the pane rather than at load: the
-      // record runs into the hundreds of kilobytes and a code card over it is
-      // not a cost to pay for a reader who never opens the tab.
-      mountRaw(){
-        if (this.rawBuilt || !this.record) return;
-        const box = this.$refs.raw;
-        if (!box) return;
-        try {
-          // `fill` because this pane IS a viewport: the card's own line clamp
-          // would put a second scroll inside the first and leave the page half
-          // empty under a "Show all 983 lines" button, which is what it did.
-          box.replaceChildren(window.chatRender.block({ lang: 'json', code: this.rawJson }, { fill: true }));
-          this.rawBuilt = true;
-        } catch (e) { this.err = e?.message || String(e); }
       },
 
       // Deliberately not a reload: inside a toss the frame has no address of
@@ -404,8 +218,7 @@
           ? { kind: 'path', spec: v, label: v }
           : { kind: 'id', id: v, label: v };
         try { history.replaceState(null, '', '#' + (t.kind === 'id' ? 'id=' : 'gh=') + v); } catch {}
-        await this.load(t);
-        if (this.record) this.$nextTick(() => this.mountOutline());
+        await this.open(t);
       },
     }));
   });

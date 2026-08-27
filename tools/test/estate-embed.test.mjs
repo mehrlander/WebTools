@@ -95,22 +95,29 @@ const embed = (repo, path, extra = {}) => ({
                                           ...(extra.ref ? { ref: extra.ref } : {}) } } } : {}),
 });
 
+// ABSOLUTE, and this test pinned the relative form for eleven days after it
+// stopped resolving. The app moved from pages/show-repo/show-repo.html to app/
+// on 2026-08-16, which turned '../toss-render.html' from a sibling into
+// /web-tools/toss-render.html, a 404. The assertion kept passing because it
+// compared the string this file writes against the string this file writes,
+// which is exactly the shape of check that cannot see a move.
 test('embedUrl builds the toss-render route address', () => {
   const it = embed('mehrlander/chat-histories', 'results/webi-drs-data.json', { page: 'chat-results' });
   assert.equal(
     data.embedUrl(it),
-    '../toss-render.html#chat-results=mehrlander/chat-histories:results/webi-drs-data.json',
+    'https://mehrlander.github.io/web-tools/pages/toss-render.html'
+      + '#chat-results=mehrlander/chat-histories:results/webi-drs-data.json',
   );
   // page defaults to chat-results; a ref renders as @ref inside the address.
   assert.equal(data.embedPage(embed()), 'chat-results');
   assert.equal(
     data.embedUrl(embed('o/r', 'x.json', { ref: 'br' })),
-    '../toss-render.html#chat-results=o/r@br:x.json',
+    'https://mehrlander.github.io/web-tools/pages/toss-render.html#chat-results=o/r@br:x.json',
   );
   // an alternate TOSS_ROUTES key rides through, no code change: schema-blind.
   assert.equal(
     data.embedUrl(embed('o/r', 'x.json', { page: 'other-view' })),
-    '../toss-render.html#other-view=o/r:x.json',
+    'https://mehrlander.github.io/web-tools/pages/toss-render.html#other-view=o/r:x.json',
   );
   // missing repo/path -> empty, so the iframe (x-if="embedUrl(it)") never mounts.
   assert.equal(data.embedUrl(embed('o/r', '')), '');

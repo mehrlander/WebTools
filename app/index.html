@@ -4874,7 +4874,17 @@ function app(){ return {
         const w = this.branchWindow;
         if (w && w !== this.BRANCH_WINDOW_DEFAULT) p.set('window', this.windowParam(w));
       } },
-    { key: 'sessions', open(){ this.goSessions(); } },
+    { key: 'sessions', open(){ this.goSessions(); },
+      stamp(p){
+        // The session open in its swiper, the exact counterpart of `detail` on
+        // the row above. Sessions were the one thing in the Activity group with
+        // no address of their own: the branch rows beside them got a standalone
+        // page and a copied link months ago, and tapping a session opened a
+        // takeover that could not be pointed at. The id alone is enough,
+        // because it is the record's filename stem and resolves against the
+        // store by suffix.
+        if (this.sessionSpec) p.set('session', this.sessionSpec);
+      } },
     { key: 'chats',    open(){ this.goChats(); } },
     { key: 'routes',   open(){ this.goRoutes(); } },
     { key: 'map', alias: 'portable',
@@ -5057,6 +5067,16 @@ function app(){ return {
   setDetail(spec){
     if (this.detailSpec === spec) return;
     this.detailSpec = spec || '';
+    this.syncUrl();
+  },
+  // The same pair for the Sessions pane's own swiper. Two keys rather than one
+  // shared one, because the two decks hold different objects and a link that
+  // said `detail=` for either would have to be disambiguated by the ?view= it
+  // rides with, which is a rule nobody reading the address could apply.
+  sessionSpec: new URLSearchParams(location.search).get('session') || '',
+  setSession(spec){
+    if (this.sessionSpec === spec) return;
+    this.sessionSpec = spec || '';
     this.syncUrl();
   },
 

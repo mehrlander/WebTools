@@ -267,21 +267,25 @@ test('a record naming no harness session leaves agent empty, with schema still r
 
 // ── The join to a branch ────────────────────────────────────────────────────
 
-test('a branch chip addresses that branch at branch.html, not a filtered list', () => {
-  seed([rec()]);
-  data.entries = [{ repo: 'mehrlander/web-tools' }, { repo: 'mehrlander/home' }];
-  const url = data.branchPageUrl(data.sessionRows[0], 'claude/a-1');
+test('a branch addresses that branch at branch.html, not a filtered list', () => {
   // The whole point: the reader asked for a branch and gets that branch. The
-  // old behaviour switched panes and filtered by REPO, leaving the branch still
-  // to find and the session they were reading lost.
-  assert.equal(url, '../branch.html#gh=mehrlander/web-tools@claude/a-1');
+  // behaviour this replaced switched panes and filtered by REPO, leaving the
+  // branch still to find and the session they were reading lost.
+  assert.equal(data.branchPageFor('mehrlander/web-tools', 'claude/a-1'),
+               'https://mehrlander.github.io/web-tools/pages/branch.html#gh=mehrlander/web-tools@claude/a-1');
 });
 
-test('an unresolvable repo still yields the page, without a broken address', () => {
-  seed([rec()]);
-  data.entries = [];
-  const url = data.branchPageUrl(data.sessionRows[0], 'claude/a-1');
-  assert.equal(url, '../branch.html', 'better the page\'s own address field than a link to nowhere');
+test('the branch address is absolute, because the app has moved once already', () => {
+  // There were TWO builders for this until 2026-08-27, and the (row, branch)
+  // one emitted '../branch.html'. That was a sibling path while the app lived
+  // at pages/show-repo/show-repo.html and has resolved to
+  // /web-tools/branch.html, a 404, since the 2026-08-16 move to app/. It had no
+  // caller left, so nothing failed and nothing said so; the test that covered
+  // it compared the broken string to itself. Deleted with its twin, and this is
+  // the claim that outlives both.
+  const url = data.branchPageFor('mehrlander/home', 'claude/x-9');
+  assert.ok(url.startsWith('https://'), 'a relative page address cannot survive the app moving');
+  assert.ok(!url.includes('..'), url);
 });
 
 // ── Labels ──────────────────────────────────────────────────────────────────
@@ -370,4 +374,64 @@ test('both controls draw on a record row, and a stub gets neither', async () => 
   assert.equal(links[0].getAttribute('href'),
     'https://mehrlander.github.io/web-tools/pages/session.html#id=b8fae678');
   assert.equal(doc.querySelectorAll('i.ph-copy').length, 1, 'one copy control, likewise');
+});
+
+
+// ── The ask line's tooltip: how the session CLOSED ──────────────────────────
+// The line is the opening ask, so the hover is the other end of the same
+// session. It replaced a click (the line used to open the conversation), which
+// the cards button in the row's cluster now carries on a control built for the
+// purpose rather than on a line of prose.
+
+test('the ask tooltip carries the closing reply under the ask', () => {
+  const row = window.RepoSessionsCache.summarize(
+    rec({ schema: 4, opening_ask: 'do the thing',
+          replies: [{ at: '2026-08-05T14:00:00Z', text: 'partway' },
+                    { at: '2026-08-05T16:00:00Z', text: 'and here is what came of it' }] }), 'x');
+  const t = data.sessionAskTitle(row);
+  assert.match(t, /^do the thing/, 'the ask leads, since that is the line being hovered');
+  assert.match(t, /Closing reply/);
+  assert.match(t, /and here is what came of it/);
+  assert.ok(!t.includes('partway'), 'the CLOSING reply, not every reply');
+});
+
+test('a record with no replies says the tail is a tail, rather than passing it off', () => {
+  // 52 of the 224 records on file are schema 1 to 3, which never held the
+  // assistant's prose: last_message is the recorder's 500-character tail of the
+  // final turn. Same field, lower fidelity, and the label is what says so.
+  const row = window.RepoSessionsCache.summarize(
+    rec({ schema: 2, last_message: 'the tail of the last turn' }), 'x');
+  assert.equal(row.replyCut, 'tail');
+  assert.match(data.sessionAskTitle(row), /Final turn \(tail only\)/);
+});
+
+test('a reply the cache cut says it was cut', () => {
+  // The store's own schema-5 lesson: a bound is fine and a silent bound is the
+  // damage. Median closing reply is 1,554 characters against a 600 cap, so this
+  // fires on most rows and has to be visible.
+  const row = window.RepoSessionsCache.summarize(
+    rec({ schema: 4, replies: [{ at: 'z', text: 'x'.repeat(2000) }] }), 'x');
+  assert.equal(row.replyCut, 'cut');
+  assert.equal(row.reply.length, window.RepoSessionsCache.REPLY_CHARS);
+  const t = data.sessionAskTitle(row);
+  assert.match(t, /Closing reply \(trimmed\)/);
+  assert.match(t, /…$/, 'the cut is marked where it happened, not only in the label');
+});
+
+test('a row from a cache built before the field falls back to the ask alone', () => {
+  // The field arrived with ROW_V 4 and heals on the next crawl. Until it does,
+  // a row carries no reply and the tooltip is what the line showed before this
+  // existed rather than an empty label.
+  assert.equal(data.sessionAskTitle({ ask: 'do the thing' }), 'do the thing');
+});
+
+test('the row version moved, so one pass re-reads the store and heals it', () => {
+  // A row built by an older summarizer is stale against a NEW FIELD and its
+  // record's sha will never move again to say so, which is what stalePaths
+  // reads the version for.
+  const S = window.RepoSessionsCache;
+  const listing = [{ path: 'sessions/2026/08/2026-08-05-b8fae678.json', sha: 'same' }];
+  const prev = { byPath: { 'sessions/2026/08/2026-08-05-b8fae678.json': { sha: 'same', v: 3 } } };
+  assert.deepEqual(S.stalePaths(prev, listing), listing.map(e => e.path),
+    'an unchanged blob still has to be re-read when the summarizer gained a field');
 });
