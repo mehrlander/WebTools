@@ -101,6 +101,9 @@ window.GH = class {
 // The Registries tab reads three CSVs, so the kit that parses them has to be in
 // the window the same way the pre-build puts it there.
 new window.Function(readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8'))();
+// The ambient bundle, in the same position gh-boot's BOOT manifest gives it
+// (first): the doc deck's rendition escapes through window.esc.
+new window.Function(readFileSync(path.join(repoRoot, 'lib/vanilla-bundle.js'), 'utf8'))();
 new window.Function(readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8'))();
 Alpine.start();
 await tick(3);
@@ -170,9 +173,10 @@ test('Owners loads its own carrier, separately from Docs', async () => {
   await data.loadOwnersReg();
   assert.equal(data.ownersErr, '');
   assert.ok(data.ownersReg.owners.length > 3);
-  // The scope moved to the registry row on 2026-08-16, where every other
-  // registry's scope already lived; owners.csv used to carry a second copy.
-  assert.ok(data.ownersReg.scope, 'the tab reads the scope from the registry row');
+  // Two files, not three: the tab pulled docs/registries.csv as well while its
+  // header carried a scope line, and stopped on 2026-08-26 when the header came
+  // off. The scope is read on the Registries tab, where every registry's is.
+  assert.equal(data.propsReg, null, 'opening Claims does not pull the registry pair');
   assert.equal(data.OWNERS_MANIFEST, 'docs/owners.csv');
   assert.equal(data.OWNERS_REPS, 'docs/repetitions.csv');
 });
@@ -208,14 +212,30 @@ test('a row title opens the doc deck: full folder, tapped row first, rendered by
   // component only lazily loads the CDN copy when window.marked is absent.
   window.marked = { parse: (t) => '<h1>md</h1><!-- ' + t.length + ' chars -->' };
 
+  // MOUNTED, not returned: the section controls kits/md-doc.js hangs on each
+  // heading are listeners on real nodes, so the renderer fills a box it is
+  // handed rather than handing back a string somebody would innerHTML.
+  const into = () => window.document.createElement('div');
   const fetchesBefore = asked.length;
-  assert.match(await data.docDeckRead('docs/CONVENTIONS.md'), /prose/, 'markdown renders as prose');
-  assert.ok((await data.docDeckRead('docs/docs.csv')).startsWith('<pre'),
-    'a JSON doc renders as source, not prose');
+  const mdBox = into();
+  await data.docDeckRead(mdBox, 'docs/CONVENTIONS.md');
+  assert.match(mdBox.innerHTML, /prose/, 'markdown renders as prose');
+  const csvBox = into();
+  await data.docDeckRead(csvBox, 'docs/docs.csv');
+  assert.ok(csvBox.innerHTML.startsWith('<pre'), 'a CSV doc renders as source, not prose');
   const fetchesAfter = asked.length;
-  await data.docDeckRead('docs/CONVENTIONS.md');
+  await data.docDeckRead(into(), 'docs/CONVENTIONS.md');
   assert.equal(asked.length, fetchesAfter, 're-reading hits the cache, not the network');
   assert.ok(fetchesAfter > fetchesBefore, 'first reads did fetch');
+
+  // The address a copied section carries: assembled by the deck, since it is
+  // the only place that knows the repo, the ref, the path and the blob URL at
+  // once. mdDoc adds the line span to it.
+  const addr = data.docDeckAddr('docs/CONVENTIONS.md');
+  assert.equal(addr.repo, 'mehrlander/web-tools');
+  assert.equal(addr.ref, 'main');
+  assert.equal(addr.path, 'docs/CONVENTIONS.md');
+  assert.equal(addr.url, data.hubUrl('docs/CONVENTIONS.md'));
 
   const opened = [];
   window.swipeDeck = { open(o){

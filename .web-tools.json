@@ -12,6 +12,17 @@
     "docs/CONVENTIONS.md",
     "docs/SURFACING.md"
   ],
+  "pages": [
+    {
+      "path": "pages/doc-growth.html",
+      "title": "Doc Growth",
+      "note": "This repo's markdown over time: every file a bubble, drifting right as it grows.",
+      "appView": true,
+      "viewLabel": "Doc Growth",
+      "icon": "ph-chart-scatter",
+      "slug": "doc-growth"
+    }
+  ],
   "stage": {
     "files": [],
     "targets": [

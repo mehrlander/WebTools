@@ -113,6 +113,9 @@
   await gh.load('kits/branch-status.js');
   // Activity-aggregate builders for the private cache (state/activity.json).
   await gh.load('kits/repo-activity-cache.js');
+  // Comma-separated parsing, shared. Loaded before the sessions cache, whose
+  // title join reads the Dispatch export's CSV through it.
+  await gh.load('kits/csv.js');
   // Sessions-aggregate builders for the private cache (state/sessions.json).
   await gh.load('kits/repo-sessions-cache.js');
   // The pure fold behind Activity's Routes pane: the app's own destinations
@@ -1717,17 +1720,34 @@ const RAIL_KIND = { link: 'ph-arrow-up-right', action: 'ph-lightning', repo: 'ph
 // The Map view's tabs, in render order, first = default. Named HERE rather than
 // in map() because the shell validates the ?tab= param before the component
 // mounts; map() renders whichever of these is set.
-const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'claims', 'tests', 'harness', 'skills', 'registries'];
+const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'growth', 'claims', 'tests', 'harness', 'skills', 'registries'];
 
-// marked, loaded once on demand for the overview README render.
+// marked, loaded once on demand for the overview README render. kits/md-doc.js
+// rides with it, because every one of these renders lands in a fixed-width
+// column and a wide table in a README would widen that column until the page
+// itself scrolled sideways. The kit is what puts the table in its own box, and
+// mdHtml() is the one call every README-ish render here goes through, so a
+// fifth one cannot be added without it. Best effort on the kit: if the load
+// fails the prose still renders, and only the containment is missing.
 let _markedP = null;
 function loadMarked(){
-  return _markedP ??= new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
-    s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
+  return _markedP ??= Promise.all([
+    new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    }),
+    window.mdDoc ? Promise.resolve()
+      : (window.gh?.load ? window.gh.load('kits/md-doc.js').catch(() => {}) : Promise.resolve()),
+  ]);
+}
+// One markdown string → the prose markup these views hang on x-html. The
+// container class lives on the <article> in the template, so what comes back
+// here is the body: mdDoc.html() would wrap it in a second prose box, and its
+// `proseClass: ''` says the caller already has one.
+function mdHtml(src){
+  return window.mdDoc ? window.mdDoc.html(src, { proseClass: '' }) : window.marked.parse(src);
 }
 
 // ── Shell: repo context + view state. The header carries the app-level nav,
@@ -1863,7 +1883,15 @@ function app(){ return {
   // repo's config through the same config cache, token-gated: no token, no app
   // views (like the Stage). Each is a sidebar entry in the estate switcher,
   // rendered live through toss-render #gh=.
-  appViews: [],     // resolved [{repo, path, label, icon, order, key}]
+  appViews: [],     // resolved [{repo, path, label, icon, order, slug, key}]
+  // Settles when the crawl above has been read once. A slug address awaits it;
+  // a token-less or failed load still settles, so the wait cannot hang, and the
+  // lookup then simply misses. Pre-set to a resolved promise so a caller that
+  // runs before init (a test, a popstate on a cold frame) awaits nothing.
+  appViewsReady: Promise.resolve(),
+  // One-shot fragment for the next syncUrl; see goAppView. `undefined` means
+  // "carry location.hash through", which is every other caller.
+  _nextHash: undefined,
   appView: null,    // the selected app view when view==='app'
   // The rail: `rail: true` items from the links board a repo declares with
   // `links` in its own config (loadRail). Outbound destinations, not views, so
@@ -2030,7 +2058,11 @@ function app(){ return {
       this.loadConfig();
       await this.refreshConfigs();
     });
-    this.loadEstateSidebar().then(() => this.refreshConfigCache());
+    // Held rather than dropped, because ?app=<slug> resolves against what this
+    // fills in and nothing else can tell it where the page is. Everything else
+    // still routes without waiting; see appViewFromUrl.
+    this.appViewsReady = this.loadEstateSidebar();
+    this.appViewsReady.then(() => this.refreshConfigCache());
     this.processMailbox();
     this.loadProposalCount();
 
@@ -2281,7 +2313,24 @@ function app(){ return {
                 label: pg.viewLabel || pg.title || t.path.split('/').pop(),
                 icon: pg.icon || 'ph-app-window',
                 order: Number.isFinite(pg.order) ? pg.order : 0,
-                key: t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path,
+                // The short address, when the promoting repo declares one. It
+                // is the page's name rather than its location, which is what
+                // makes ?app=<slug> short: a path is most of an address and
+                // none of the meaning. Optional, so a page that declares none
+                // is reached by its address and nothing changes for it.
+                slug: typeof pg.slug === 'string' ? pg.slug.trim() : '',
+                // A page a repo promotes may need arguments to be the view that
+                // repo means: home and web-tools promote the same doc-growth
+                // page and differ only in which payload it reads. appViewUrl
+                // already carries a query; without this it could only ever come
+                // from the address bar, so a manifest could name the page but
+                // not what it should show.
+                query: typeof pg.query === 'string' ? pg.query.replace(/^\?/, '') : '',
+                // Query is part of the identity: two repos may promote the same
+                // page and differ only in what they point it at, and a key that
+                // ignored the query would make them one entry.
+                key: t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path +
+                     (typeof pg.query === 'string' && pg.query ? '?' + pg.query.replace(/^\?/, '') : ''),
               });
             }
           }
@@ -3117,6 +3166,29 @@ function app(){ return {
   SESSIONS_FETCH_POOL: 6,        // record blobs read at once
   SESSIONS_MAX_FETCH: 120,       // records read per crawl; the rest wait for the next
   _sessionsCheckKey: 'wt:sessionsCacheCheckedAt',
+  // ── The title join's second input ────────────────────────────────────────
+  // A session's real title reaches no container, so the recorder cannot capture
+  // one (web-tools-private sessions/README.md, "The third name"). A Dispatch
+  // session on the desktop scrapes the claude.ai/code sidebar instead and
+  // commits one dated CSV per capture to mehrlander/chat-histories. Two calls a
+  // crawl: list the folder, read the newest file.
+  //
+  // Every failure here returns null, which the fold reads as "carry the titles
+  // you already have." A repo the token cannot see, a folder that does not
+  // exist, and a malformed CSV are all the same answer, and none of them may
+  // cost the crawl its records.
+  async _readSessionTitles(){
+    const S = window.RepoSessionsCache;
+    try {
+      const gh = new window.GH({ token: window.TOKEN, repo: S.TITLES_REPO, ref: 'main' });
+      const pick = S.newestExport(await gh.req('contents/' + S.TITLES_DIR));
+      if (!pick) return null;
+      const byId = S.parseTitles((await gh.get(pick.path)).text);
+      // An export that parsed to nothing is a broken export, not an empty one:
+      // treating it as empty would blank every title on the next fold.
+      return Object.keys(byId).length ? { at: pick.at, path: pick.path, byId } : null;
+    } catch(e){ console.warn('session titles export:', e?.message || e); return null; }
+  },
   async refreshSessionsCache(force){
     if (!this.hasToken() || !window.RepoSessionsCache) return { skipped: true };
     // Single-flight: opening the Sessions tab kicks the throttled crawl, and a
@@ -3214,11 +3286,14 @@ function app(){ return {
       };
       await Promise.all(Array.from({ length: Math.min(this.SESSIONS_FETCH_POOL, take.length) }, readOne));
 
+      // The titles export, read after the records so a slow or missing
+      // chat-histories cannot delay the part of the crawl that matters.
+      const titles = await this._readSessionTitles();
       // The scope is the FULL listing, never `take`: a record the cap deferred
       // must keep its row, and only a record genuinely gone from the store
       // loses one.
       const deferred = Math.max(0, stale.length - take.length);
-      const next = S.buildCache(prev, fetched, listing.map(e => e.path), nowISO);
+      const next = S.buildCache(prev, fetched, listing.map(e => e.path), nowISO, titles);
       try { localStorage.setItem(this._sessionsCheckKey, String(Date.now())); } catch {}
       // ONLY WHEN THIS PASS LEFT NOTHING BEHIND, and this is the clause the
       // gate is wrong without. `stale` can exceed the cap, and a record whose
@@ -3244,7 +3319,7 @@ function app(){ return {
                             'Update sessions cache (state/sessions.json) via show-repo', base);
       }
       return { total: listing.length, read: Object.keys(fetched).length,
-               deferred, committed: changed };
+               deferred, committed: changed, titlesAt: next.titlesAt || '' };
     } catch(e){
       console.warn('sessions cache refresh:', e?.message || e);
       return { error: e?.message || String(e) };
@@ -4058,7 +4133,7 @@ function app(){ return {
     try { res = await s.gh.get(file); } catch {}
     if (key !== this._projectBoardKey) return;
     if (res){
-      try { await loadMarked(); this.projectBoardHtml = window.marked.parse(res.text); }
+      try { await loadMarked(); this.projectBoardHtml = mdHtml(res.text); }
       catch { this.projectBoardHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
     }
     this.projectBoardLoading = false;
@@ -4169,7 +4244,7 @@ function app(){ return {
         const res = await s.gh.get(this.projectPath + '/DOCS.md');
         if (key !== this._projectDocsKey) return;
         await loadMarked();
-        this.projectDocsIndexHtml = window.marked.parse(res.text);
+        this.projectDocsIndexHtml = mdHtml(res.text);
       } catch {}
     }
   },
@@ -4225,7 +4300,7 @@ function app(){ return {
     // the current one.
     if (key !== this._projectKey) return;
     if (res){
-      try { await loadMarked(); this.projectHtml = window.marked.parse(res.text); }
+      try { await loadMarked(); this.projectHtml = mdHtml(res.text); }
       catch { this.projectHtml = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
     }
     this.projectLoading = false;
@@ -4831,10 +4906,38 @@ function app(){ return {
       } },
     // App views are estate-level, so the link stands alone (like the Stage):
     // the promoted page's repo and path ride it, independent of the open repo.
-    { key: 'app', when: u => !!(u.appRepo && u.appPath),
-      open(u){ this.goAppView(this.appViewFromUrl(u)); },
+    // Three spellings, one destination. `?app=` is the short form and takes
+    // either a slug a repo declared or the estate's `owner/repo[@ref]:path`
+    // address; the five-key form is what this route was born with and still
+    // resolves, so no minted link ever stops working.
+    { key: 'app', when: u => !!(u.app || (u.appRepo && u.appPath)),
+      async open(u){
+        const v = await this.appViewFromUrl(u);
+        // Captured HERE, not read at render time, and the ordering is the whole
+        // reason: goAppView stamps, the stamp deletes `on` (it is in VIEW_KEYS),
+        // and a render-time read would then find the fallback already gone. So
+        // the ?on= form worked in theory and delivered nothing, which a source
+        // assertion could not have seen. Measured in a browser, 2026-08-25.
+        if (v && !v.query) v.query = this.subjectParamsFor(u);
+        // A slug naming nothing lands on the estate, the page's front door,
+        // rather than on an app view with no page in it. Silent, because a
+        // stale bookmark is not an error worth a dialog, and the estate shows
+        // what the reader can reach instead.
+        if (v) this.goAppView(v); else this.goDashboard();
+      },
       ready(){ return !!this.appView; },
       stamp(p){
+        // The short form is what gets WRITTEN, whenever the open view has a
+        // slug to write. The alternative was to read it and stamp the long one
+        // back, which turns every short link into a long one the moment the
+        // reader touches anything, and an address nobody can keep is not worth
+        // having minted. Precedented: ?view=branches rewrites to ?view=sessions.
+        //
+        // The slug also makes appLabel/appIcon unnecessary. They exist so a
+        // cold deep link is self-describing before the config cache resolves,
+        // and a slug cannot resolve without that cache at all, so by the time
+        // this view is on screen its label and icon are already known.
+        if (this.appView.slug) { p.set('app', this.appView.slug); return; }
         p.set('appRepo', this.appView.repo);
         p.set('appPath', this.appView.path);
         if (this.appView.ref) p.set('appRef', this.appView.ref);
@@ -4852,9 +4955,13 @@ function app(){ return {
   // list so a stale one is cleared rather than carried into a screen that does
   // not mean it; nothing stamps them now. `ref` is deleted here and re-stamped
   // above, being repo-scoped rather than any view's.
+  // `on` is here to be DELETED and never written: it is the query fallback for
+  // the subject's own params (appViewUrl), and the fragment is where they
+  // belong, so an address arriving with ?on= leaves with '#'. That is the
+  // self-heal, and it is why the key is in this list rather than a stamp.
   VIEW_KEYS: ['file', 'view', 'path', 'ref', 'project', 'tab', 'detail', 'item', 'window',
               'sq', 'smode', 'srepo', 'sref', 'spath', 'sfile',
-              'appRepo', 'appPath', 'appRef', 'appLabel', 'appIcon'],
+              'app', 'on', 'appRepo', 'appPath', 'appRef', 'appLabel', 'appIcon'],
 
   routeFor(view){ return this.VIEWS.find(r => r.key === view || r.alias === view); },
 
@@ -4873,9 +4980,18 @@ function app(){ return {
 
   parseUrl(){
     const p = new URLSearchParams(location.search);
-    if (!p.has('repo') && !p.has('file') && !p.has('view')) return null;
+    // `app` joins the gate because it is a route key that names no repo and no
+    // view: `?app=budget-drs` is a complete address and would otherwise parse
+    // to null and land on the estate.
+    if (!p.has('repo') && !p.has('file') && !p.has('view') && !p.has('app')) return null;
     return { repo: p.get('repo') || this.DEFAULT_REPO, ref: p.get('ref') || '',
-             file: p.get('file'), view: p.get('view'), path: p.get('path') || '',
+             file: p.get('file'),
+             // `?app=` names its own route, so it implies view=app: the dispatch
+             // in routeFromUrl keys on url.view, and a short address that named
+             // no view would find no row to open and fall through to the estate.
+             view: p.get('view') || (p.has('app') ? 'app' : null),
+             path: p.get('path') || '',
+             app: p.get('app') || '', on: p.get('on') || '',
              project: p.get('project') || '', tab: p.get('tab') || '',
              appRepo: p.get('appRepo') || '', appPath: p.get('appPath') || '', appRef: p.get('appRef') || '',
              appLabel: p.get('appLabel') || '', appIcon: p.get('appIcon') || '',
@@ -4939,7 +5055,13 @@ function app(){ return {
   syncUrl(){
     this.dropDecksOnNav();
     const qs = this.deepLinkParams(new URLSearchParams(location.search)).toString();
-    const next = location.pathname + (qs ? '?' + qs : '') + location.hash;
+    // The fragment is carried through untouched unless a caller has just asked
+    // for a different one (goAppView, whose view owns its fragment). One shot:
+    // cleared on read, so every other caller keeps the carry-through that has
+    // always been the rule here.
+    const hash = this._nextHash === undefined ? location.hash : this._nextHash;
+    this._nextHash = undefined;
+    const next = location.pathname + (qs ? '?' + qs : '') + hash;
     const cur = location.pathname + location.search + location.hash;
     // Push a new history entry per distinct URL so the browser Back button walks
     // the navigation (repo, view, file, folder). A no-op change, or a change made
@@ -5773,12 +5895,57 @@ function app(){ return {
   openRepoDialog(repo){ document.getElementById('repo')?.__repo?.openDialog(repo, { tab: 'settings' }); },
   // Select an estate-level app view; the main area renders it live via
   // toss-render #gh= (appViewUrl).
-  goAppView(v){ this.appView = v; this.view = 'app'; this.syncUrl(); },
-  // Reconstruct an app view from a deep link (?view=app&appRepo&appPath). Prefer
-  // the loaded entry (its viewLabel/icon), since the collection may not have
-  // resolved yet on a cold open; fall back to a minimal object that still
-  // renders (label from the filename, a default icon).
-  appViewFromUrl(url){
+  goAppView(v){
+    this.appView = v;
+    this.view = 'app';
+    // The fragment is THIS view's address, not the shell's, so it moves with the
+    // view. Two things fall out, and both are bugs without it: a ?on= arrival
+    // self-heals into the fragment form the reader can keep, and switching app
+    // views drops the previous one's params instead of handing News the deep
+    // link that belonged to budget-drs. The shell's own fragment keys are the
+    // exception and survive, since a stage link is not any view's.
+    const kept = String(location.hash || '').replace(/^#/, '').split('&')
+      .filter(seg => seg && this.SHELL_FRAGMENT_KEYS.includes(seg.split('=')[0]));
+    const body = kept.concat(v && v.query ? [v.query] : []).join('&');
+    this._nextHash = body ? '#' + body : '';
+    this.syncUrl();
+  },
+  // Reconstruct an app view from a deep link. Three spellings arrive here and
+  // they resolve differently, which is the whole of this method:
+  //
+  //   ?app=<slug>              a name a repo declared on a promoted page. It
+  //                            carries no repo and no path, so it can ONLY be
+  //                            resolved against the collected list, and that
+  //                            list is a crawl. Hence the await below.
+  //   ?app=owner/repo[@ref]:p  the estate's one address grammar, self-contained.
+  //   ?view=app&appRepo=&…     the five-key form this route was born with.
+  //
+  // The slug and the address are told apart by RepoAddress.parse, which returns
+  // null for anything that is not an address. That is the discriminator rather
+  // than a slug regex of my own, so the grammar keeps one implementation and a
+  // slug is simply "not an address".
+  async appViewFromUrl(url){
+    if (url.app) {
+      const addr = window.RepoAddress && window.RepoAddress.parse(url.app);
+      if (!addr) {
+        // A slug is a lookup, and the table is loaded asynchronously, so this
+        // is the one address form that must wait. It waits HERE rather than at
+        // boot, so every other address still routes at first paint: the cost is
+        // paid only by the form that cannot be resolved without paying it.
+        // A slug that resolves to nothing falls through to null, and the caller
+        // (routeFromUrl) then lands on the estate rather than an empty frame.
+        await this.appViewsReady;
+        return this.appViews.find(v => v.slug === url.app) || null;
+      }
+      const key = addr.repo + (addr.ref ? '@' + addr.ref : '') + ':' + addr.path;
+      return this.appViews.find(v => v.key === key) || {
+        repo: addr.repo, ref: addr.ref, path: addr.path,
+        label: addr.path.split('/').pop(), icon: 'ph-app-window', key,
+      };
+    }
+    // Prefer the loaded entry (its viewLabel/icon/slug), since the collection
+    // may not have resolved yet on a cold open; fall back to a minimal object
+    // that still renders (label from the filename, a default icon).
     const key = url.appRepo + (url.appRef ? '@' + url.appRef : '') + ':' + url.appPath;
     return this.appViews.find(v => v.key === key) || {
       repo: url.appRepo, ref: url.appRef, path: url.appPath,
@@ -5786,17 +5953,76 @@ function app(){ return {
       icon: url.appIcon || 'ph-app-window', key,
     };
   },
-  // An app view's toss address. `query` is optional and rides the address the
-  // way the toss grammar allows (?query on the addressed path), which the
-  // renderer's params shim answers inside the frame; the Links pencil uses it
-  // to open the board straight into edit mode. It is deliberately NOT stamped
-  // into the shell's URL: opening an editor is an action, not a place, so a
-  // reload lands on the board's reading view.
+
+  // ── What the framed page is handed, and whose namespace is whose ──────────
+  //
+  // THE SHELL OWNS THE QUERY. THE FRAGMENT IS THE SUBJECT'S.
+  //
+  // That is the whole rule, and it needs no list of reserved names on either
+  // side, which is the point: the shell's key set grows (VIEW_KEYS carries two
+  // retired keys already) and a framed page's grows too, in another repo, with
+  // nothing comparing them. Under a shared namespace the next addition on
+  // either side is a silent collision that presents as "the deep link opened
+  // the wrong screen". `?view=`, `?tab=` and `?q=` collide today.
+  //
+  // It is also not a new rule. docs/routes.json states it for every parameter
+  // in the estate ("read fragment first, query as fallback"), lib/kits/url-params.js
+  // implements it, StageLink.read already applies it to stage/prompts/mode, and
+  // this shell's own syncUrl has always rebuilt the query while carrying
+  // location.hash through byte for byte. The fragment was a namespace the shell
+  // preserved and did not use; this is the half that was missing.
+  //
+  // Precedence, highest first:
+  //   1. v.query      set programmatically. An action, not an address: the
+  //                   Links pencil opens the board in edit mode this way.
+  //   2. the fragment the reader's address carries, minus the three keys the
+  //      shell claims there (stage, prompts, mode; see StageLink.read).
+  //   3. ?on=<encoded>  the query fallback, for a context that eats the '#'
+  //      (a link-preview crawler, a rewriter). Inbound only: `on` is in
+  //      VIEW_KEYS, so the next stamp drops it and the address self-heals into
+  //      the fragment form.
+  //
+  // The delivery is a ?query on the addressed path, which the toss grammar
+  // allows and the renderer's params shim answers inside the frame. So a framed
+  // page reads its params exactly as it always has and needs no change to be
+  // deep-linkable: budget-drs still reads ?view= and ?data= off its own search.
+  //
+  // One honest limit: this is the address going IN. Navigating inside the frame
+  // does not write back out, so the shell's fragment names where the reader
+  // arrived rather than where they are now. The toss address has always had the
+  // same property, so it is parity rather than a regression, and closing it
+  // would need the framed page to postMessage its address to the shell.
+  // The three keys the shell claims in the fragment, and the only exception to
+  // "the fragment is the subject's". They are the stage link's, and they travel
+  // as one unit; see StageLink.read.
+  SHELL_FRAGMENT_KEYS: ['stage', 'prompts', 'mode'],
+  //
+  // Takes the PARSED url rather than reading `location`, and that is not a
+  // style choice. parseUrl() snapshots the address at boot; by the time this
+  // route opens, two unrelated syncUrl writes have already run (ensureBrowser
+  // moves the browsed ref, and the ref watcher stamps), and each of them
+  // deletes every VIEW_KEY it does not stamp, `on` included. So a live read
+  // finds the fallback gone and the ?on= form delivers nothing, silently.
+  // Measured in a browser on 2026-08-25, after the source assertions passed.
+  // The fragment has no such problem, since syncUrl carries it through, so it
+  // is still read live and only the fallback is threaded.
+  subjectParamsFor(u){
+    if (!window.UrlParams) return '';
+    return window.UrlParams.subject(this.SHELL_FRAGMENT_KEYS, {
+      hash: location.hash,
+      search: u && u.on ? '?on=' + encodeURIComponent(u.on) : '',
+    });
+  },
+  // An app view's toss address, with whatever the subject's namespace holds
+  // riding it as a ?query on the addressed path.
   get appViewUrl(){
     const v = this.appView;
     if (!v || !v.repo || !v.path) return '';
     const ref = v.ref ? '@' + v.ref : '';
-    return '../pages/toss-render.html#gh=' + v.repo + ref + ':' + v.path + (v.query ? '?' + v.query : '');
+    // v.query only. A live subjectParams read here would hand the NEXT app view
+    // the fragment belonging to the one before it.
+    const q = v.query || '';
+    return '../pages/toss-render.html#gh=' + v.repo + ref + ':' + v.path + (q ? '?' + q : '');
   },
   // The sidebar app-view list: the collected app views (from the config cache,
   // main-only), plus the app view currently open if it is not already among
@@ -6314,7 +6540,7 @@ function overview(){ return {
       try { res = await gh.get(p); break; } catch {}
     }
     if (res){
-      try { await loadMarked(); this.html = window.marked.parse(res.text); }
+      try { await loadMarked(); this.html = mdHtml(res.text); }
       catch { this.html = '<pre>' + res.text.replace(/</g, '&lt;') + '</pre>'; }
     }
     this.loading = false;

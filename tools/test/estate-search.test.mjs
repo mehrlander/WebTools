@@ -214,6 +214,47 @@ test('sessions: the derived name is searchable, and says so in the hit', async (
   assert.deepEqual([...slug.hits.map(h => h.id)], ['aaaa1111']);
 });
 
+test('sessions: the exported title is searchable beside the derived name', async () => {
+  ES.reset();
+  FILES = {
+    'state/sessions.json': { titlesAt: '2026-08-04', rows: [
+      { id: 'aaaa1111', day: '2026-08-02', branches: ['claude/fab-naming-todqvq'],
+        title: 'FAB naming convention' },
+    ] },
+    'sessions/2026/08/2026-08-02-aaaa1111.json':
+      { day: '2026-08-02', opening_ask: 'about the app button', prompts: [], last_message: '' },
+  };
+  // The title as it was actually read in the sidebar, which the slug cannot
+  // reach: "convention" is the word the branch name truncated away.
+  const byTitle = await ES.sessions({ q: 'naming convention', registry: REGISTRY, token: 'tkn' });
+  assert.deepEqual([...byTitle.hits.map(h => h.id)], ['aaaa1111']);
+  assert.match(byTitle.hits[0].frag, /session title:/);
+  // Both forms are carried, so the slug still finds the same session. That is
+  // the point of the pair: a titled row must not become unreachable by the name
+  // it was findable by yesterday.
+  ES.reset();
+  const bySlug = await ES.sessions({ q: 'fab-naming', registry: REGISTRY, token: 'tkn' });
+  assert.deepEqual([...bySlug.hits.map(h => h.id)], ['aaaa1111']);
+  assert.match(bySlug.hits[0].frag, /session name:/);
+});
+
+test('sessions: an untitled row still answers to its derived name', async () => {
+  // The per-row fallback, from the search side. Most of the store is in this
+  // state: the join keys on the record's session URL and nothing written before
+  // 2026-08-06 has one.
+  ES.reset();
+  FILES = {
+    'state/sessions.json': { titlesAt: '2026-08-04', rows: [
+      { id: 'aaaa1111', day: '2026-08-02', branches: ['claude/fab-naming-todqvq'] },
+    ] },
+    'sessions/2026/08/2026-08-02-aaaa1111.json':
+      { day: '2026-08-02', opening_ask: 'about the app button', prompts: [], last_message: '' },
+  };
+  const res = await ES.sessions({ q: 'fab naming', registry: REGISTRY, token: 'tkn' });
+  assert.deepEqual([...res.hits.map(h => h.id)], ['aaaa1111']);
+  assert.match(res.hits[0].frag, /session name:/);
+});
+
 test('sessions: a match on what was said beats the name to the note line', async () => {
   ES.reset();
   FILES = {

@@ -536,6 +536,68 @@ specializes in choosing among them. It mints the single-group case of
 `StageLink`'s grammar directly, since `stage.js` is a full Alpine component
 and is not loaded on an ordinary page.
 
+### md-doc.js
+
+A markdown document rendered as something you can read and take pieces **out
+of**. Two jobs over one render, and they are the same complaint from two sides:
+a rendered document has thrown away its source, so the table has lost the pipes
+that would have let it wrap and the section has lost the `##` that would have
+let it travel.
+
+```js
+window.mdDoc.split(src)            // [{ index, depth, title, slug, raw, start, end, startLine, endLine }]
+window.mdDoc.reference(sec, addr)  // the provenance line(s), as an array
+window.mdDoc.payload(sec, addr)    // reference + blank line + sec.raw
+window.mdDoc.html(src, o)          // a prose HTML string, tables contained
+window.mdDoc.render(host, src, o)  // mounts into host -> { box, sections }
+window.mdDoc.enhance(box, src, o)  // the same over markup another renderer made
+window.mdDoc.contain(el)           // el, nothing left that can widen a column
+window.mdDoc.locate(node)          // { addr, sections, section } for any node in a render
+window.mdDoc.sourceRef(node)       // "docs/APP.md § Mechanism (lines 16-28)"
+```
+
+**Contain.** A table's intrinsic min-content width is a floor no ancestor can
+shrink below, so a wide one widens whatever it is in until something scrolls. In
+a swipe-deck slide that something is the slide, which drags the headings and the
+prose sideways along with the table. The wrapper does not force `max-content`:
+typography's `width: 100%` still wraps cells, so only a table that genuinely
+cannot fit starts scrolling.
+
+**Cut.** Every top-level heading gets a control over **that section's source**:
+copy it, copy it with a revision ask on top, or open a note pinned to it. One
+menu rather than three glyphs, since a heading has room for one mark. Sections
+nest the way Wikipedia's do: a section runs to the next heading of equal or
+higher rank, so `##` carries its `###`s and each of those still has its own
+control. Headings are found through `marked.lexer`, not a line regex, so a `#`
+inside a fence is not one; the rendered box's direct-child headings pair against
+the same list by order.
+
+**Declare.** The rendered box says which source and which address it is a
+rendering of, so `locate()` can answer for any node inside it in the source's
+terms. `annotate.js` reads that: on a declared render every note's `Path:` line
+is `docs/APP.md § Mechanism (lines 16-28)` rather than a css path, and its
+`section` targeting mode is raised from this menu, since the heading is the one
+thing that knows which section it opens.
+
+**Enhance** is render's second half, for markup another renderer produced.
+`guide-render.js` renders a doc with the link re-aiming a guide body needs, and
+the Files pane reads markdown through it; that reader wants the containment and
+the controls without giving up the re-aiming. The `src` handed to it must be the
+source that produced that markup, and nothing can check it: get it wrong and
+every control copies the wrong lines.
+
+Copying the **source** rather than the selection is the whole point. A rendered
+section copies as prose with the structure flattened out, and a model asked to
+revise that returns a revision of the flattening. The source slice is the thing
+that can be revised and put back, which the reference's `lines 43-91` is there
+to make possible.
+
+`window.marked` must already be loaded; `window.io.copy` is read when present
+for the iOS clipboard path. The copy control carries `data-annotate-ui`, which
+is how `annotate.js` knows to keep it out of the text a note is anchored in.
+`chat-render.js` keeps its own copy of the table wrap, deliberately: it is a
+standalone script a page can drop in from jsDelivr with nothing else.
+
 ### annotate.js
 
 Notes pinned to pieces of a page: select text (or pick an element, or drag a
