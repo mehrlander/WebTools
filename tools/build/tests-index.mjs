@@ -82,7 +82,7 @@ const TEST_DIR = 'tools/test';
 // browser-driven checks, which are named without `.test.` so `node --test`
 // skips them. The registry covers both, since a check the suite never runs is
 // exactly the kind of thing that goes quietly stale.
-const NOT_A_TEST = new Set(['bootstrap.mjs', 'show-repo-shell.mjs']);
+const NOT_A_TEST = new Set(['bootstrap.mjs', 'shell.mjs']);
 
 // A boot smoke assertion proves one thing: the component mounted and logged
 // nothing. Two things changed here on 2026-08-10, and both are about level.

@@ -70,7 +70,7 @@ dispatched by both chains and stamped by neither, `?view=estate` stamped only
 beside a `repo`/`ref` param on a premise that had expired. Each was a view the
 app could reach and could not name, and none of the three was visible from
 inside any one chain.
-[`tools/test/show-repo-routing.test.mjs`](../tools/test/show-repo-routing.test.mjs)
+[`tools/test/shell-routing.test.mjs`](../tools/test/shell-routing.test.mjs)
 keeps the collapse honest (no view name may be compared directly inside the
 routing functions; every view the shell enters has a row) and then re-parses
 each row's own stamped address, on the default repo and on another, since the
@@ -147,7 +147,7 @@ belong to: it says how to present the screen, not which screen. So it gets no
 `VIEWS` row and is stamped unconditionally beside whatever the view table
 stamped, which is also what carries it through a ref switch (that mints its
 address from an empty base, where `?use=` must not survive but this must).
-`show-repo-routing.test.mjs` holds the two properties the table's own rows get
+`shell-routing.test.mjs` holds the two properties the table's own rows get
 for free: the address reopens as itself, and an unrecognized value reads as
 `full` rather than hiding the header with no way back.
 

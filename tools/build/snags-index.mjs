@@ -51,8 +51,8 @@
 // through the derived-artifacts gate, which fails when the CSV is behind the log.
 //
 // What stays in the markdown is what a CSV cell is a bad home for: the
-// paragraph of reasoning under each entry, which is most of an entry's value
-// and is exactly the residue CONVENTIONS.md says a document is for. The
+// paragraph under each entry naming the criterion, the condition under which
+// the trip happens again, which is what makes an entry actionable. The
 // registry carries only what is mechanical (slug, one-line title, sightings,
 // count, the → targets), the same split docs/docs.csv runs.
 

@@ -13,8 +13,8 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 28 are named by CLAUDE.md,
-5 by a skill, 17 by a page or component. The remaining 18 are
+2 arrive in every session's context, 29 are named by CLAUDE.md,
+6 by a skill, 16 by a page or component. The remaining 17 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -85,7 +85,7 @@ marked *(orphan)* below: nothing points at them except this index.
 ## docs/envelopes/schemas/profiles/
 
 - [`branch-review-v1.schema.json`](envelopes/schemas/profiles/branch-review-v1.schema.json) *(orphan)* — the branch-review profile schema
-- [`inquiry-v1.schema.json`](envelopes/schemas/profiles/inquiry-v1.schema.json) *(orphan)* — the inquiry profile schema
+- [`inquiry-v1.schema.json`](envelopes/schemas/profiles/inquiry-v1.schema.json) — the inquiry profile schema
 - [`stage-v1.schema.json`](envelopes/schemas/profiles/stage-v1.schema.json) *(orphan)* — the stage profile schema
 
 ## docs/environment/

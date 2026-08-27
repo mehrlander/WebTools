@@ -10,14 +10,14 @@
 // channel would look implemented and deliver nothing.
 //
 // The shell's app() lives inline in app/index.html, so this evaluates the plain
-// <script> block against stubs via the shared show-repo-shell.mjs harness.
+// <script> block against stubs via the shared shell.mjs harness.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
-import { makeShell } from './show-repo-shell.mjs';
+import { makeShell } from './shell.mjs';
 
 const mailboxSrc = readFileSync(path.join(repoRoot, 'lib/kits/repo-mailbox.js'), 'utf8');
 

@@ -12,6 +12,13 @@
 // dispatch itself; the taps below are synthesized pointer events, so the check
 // is that the kit needs nothing but them, not that iOS sends them.
 export default async (page) => {
+  // The aims moved behind one menu button, so reaching one is two taps rather
+  // than one. Opening first, by the button's own title, keeps the scenario
+  // driving the same controls a reader does instead of calling the API.
+  const aim = async (title) => {
+    await page.click('button[data-annotate-ui][title^="What the next note is about"]');
+    await page.click(`button[data-annotate-ui][title^="${title}"]`);
+  };
   await page.waitForSelector('#doc h1', { timeout: 15000 });
 
   // The way into the keyboard since the pencil was retired: a double tap on
@@ -67,7 +74,7 @@ export default async (page) => {
   await save('The rule every repo repeats.');
 
   // ── An element, picked by a tap ──────────────────────────────────────────
-  await page.click('button[data-annotate-ui][title^="Tap to select an element"]');
+  await aim('Tap to select an element');
   const box = await page.evaluate(() => {
     const h = [...document.querySelectorAll('#doc h2')][0];
     h.scrollIntoView({ block: 'center' });
