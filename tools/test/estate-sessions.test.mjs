@@ -69,6 +69,9 @@ window.GH = FakeGH;
 window.sessionRender = { open: async (r) => { OPENED.push(r); return { close(){} }; } };
 window.gh = { load: async () => {} };
 const shell = {
+  // Records what a caller asked for, the way the other estate tests stub it,
+  // so an anchoring decision can be asserted without a layout engine.
+  anchorMenu: (ev, rows, opts = {}) => ({ x: 10, y: 20, rows, ...opts }),
   REGISTRY_REPO: REGISTRY,
   DEFAULT_REPO: 'me/tools',
   quickLinks: [],
@@ -509,6 +512,28 @@ test('the card mounts through the deck\'s own renderer, once per card', async ()
   const n = calls.length;
   await data.mountReplyCard(c);
   assert.equal(calls.length, n, 'the same card does not rebuild');
+});
+
+test('the card tells the anchor its own height, since a row count cannot', () => {
+  // anchorMenu decides whether a panel fits below its trigger by estimating
+  // height as rows × MENU_ROW. Every other panel here IS a list of rows; this
+  // one is a transcript capped at 60vh by CSS, and the nine-row estimate (296px
+  // against an actual 480) put 210px of the card below the fold on an 800px
+  // phone. The part you would touch to scroll it was not on screen, which reads
+  // as a card that does not scroll rather than one that is mispositioned.
+  const row = window.RepoSessionsCache.summarize(
+    rec({ schema: 4, replies: [{ at: 'z', text: 'the answer' }] }), 'x');
+  replyCard(row);
+  assert.equal(data.rowCardAt.height, Math.round(window.innerHeight * 0.6),
+    'the same 60vh the stylesheet caps it at');
+  assert.equal(data.rowCardAt.width, data.REPLY_CARD_W, 'and its own width, which is not the other cards\'');
+});
+
+test('a list card still anchors off its rows, because it is a list of rows', () => {
+  const row = window.RepoSessionsCache.summarize(rec(), 'x');
+  data.openSessionCard(row, 'tools', null);
+  assert.equal(data.rowCardAt.height, undefined, 'no override: the estimate is right for a list');
+  assert.equal(data.rowCardAt.width, data.ROW_CARD_W, 'and the narrower width');
 });
 
 test('no renderer means an empty host, not a thrown card', async () => {
