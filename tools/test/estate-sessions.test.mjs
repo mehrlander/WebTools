@@ -514,25 +514,42 @@ test('the card mounts through the deck\'s own renderer, once per card', async ()
   assert.equal(calls.length, n, 'the same card does not rebuild');
 });
 
-test('the card tells the anchor its own height, since a row count cannot', () => {
+test('the panel and the anchor read one height, never two', async () => {
+  // The defect this pane shipped, and the reason the number has one home.
   // anchorMenu decides whether a panel fits below its trigger by estimating
   // height as rows × MENU_ROW. Every other panel here IS a list of rows; this
-  // one is a transcript capped at 60vh by CSS, and the nine-row estimate (296px
-  // against an actual 480) put 210px of the card below the fold on an 800px
-  // phone. The part you would touch to scroll it was not on screen, which reads
-  // as a card that does not scroll rather than one that is mispositioned.
+  // one is a transcript, so nine rows estimated 296px against an actual 480,
+  // the fit test passed on the underestimate, and 210px of the card fell below
+  // an 800px phone's fold. What you would touch to scroll it was not on screen,
+  // which reads as a card that does not scroll rather than one misplaced.
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, replies: [{ at: 'z', text: 'the answer' }] }), 'x');
   replyCard(row);
-  assert.equal(data.rowCardAt.height, Math.round(window.innerHeight * 0.6),
-    'the same 60vh the stylesheet caps it at');
-  assert.equal(data.rowCardAt.width, data.REPLY_CARD_W, 'and its own width, which is not the other cards\'');
+  await Alpine.nextTick();
+  const want = data.rowCardMaxH();
+  assert.equal(data.rowCardAt.height, want, 'the anchor is told the real height');
+  assert.match(data.rowCardStyle, new RegExp('max-height:' + want + 'px'),
+    'and the panel is given the same one, off the same call');
+  assert.equal(data.rowCardAt.width, data.REPLY_CARD_W, 'with its own width, which is not the other cards\'');
+});
+
+test('the height is half the viewport, and never a wall on a tall screen', () => {
+  // Two bounds doing different jobs. The fraction keeps it a card on a phone;
+  // the pixel ceiling is what stops a tall monitor turning it into a page.
+  const real = window.innerHeight;
+  try {
+    window.innerHeight = 700;
+    assert.equal(data.rowCardMaxH(), 350, 'half the viewport');
+    window.innerHeight = 1400;
+    assert.equal(data.rowCardMaxH(), data.CARD_MAX_PX, 'the ceiling, not 700');
+  } finally { window.innerHeight = real; }
 });
 
 test('a list card still anchors off its rows, because it is a list of rows', () => {
   const row = window.RepoSessionsCache.summarize(rec(), 'x');
   data.openSessionCard(row, 'tools', null);
-  assert.equal(data.rowCardAt.height, undefined, 'no override: the estimate is right for a list');
+  assert.equal(data.rowCardAt.height, undefined,
+    'no override: rows × MENU_ROW is the right estimate for a list of rows');
   assert.equal(data.rowCardAt.width, data.ROW_CARD_W, 'and the narrower width');
 });
 
