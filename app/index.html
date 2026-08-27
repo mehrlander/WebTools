@@ -2577,7 +2577,7 @@ function app(){ return {
   // which mis-filed these writes: the hazardous class is writes whose INPUTS
   // or TARGETS the overlay touches, and a main-read, main-derived crawl is
   // not in it. The invariant that keeps this true is held by
-  // tools/test/show-repo-overlay.test.mjs: every client the crawl constructs
+  // tools/test/shell-overlay.test.mjs: every client the crawl constructs
   // reads at main, never at the overlay branch.
   // Returns {committed, changed} when it ran, {skipped:true} when it declined,
   // {error} when it failed. It reported NOTHING until 2026-08-25, which is why
@@ -6145,7 +6145,7 @@ function app(){ return {
   // and no-op'd, so the carousel was a one-way trip and paging out again took
   // the header. Nothing reported it: a pager whose pane lookup returns null
   // looks exactly like a pager on a repo view, where declining is correct.
-  // tools/test/show-repo-panes.test.mjs holds the two lists in step.
+  // tools/test/shell-panes.test.mjs holds the two lists in step.
   get _paneKey(){ return this.isEstate ? 'estate' : this.view; },
   _activePane(){
     return document.querySelector('main [data-pane="' + this._paneKey + '"]');

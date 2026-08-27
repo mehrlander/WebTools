@@ -22,7 +22,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeShell, page } from './show-repo-shell.mjs';
+import { makeShell, page } from './shell.mjs';
 
 const { shell } = makeShell({ browserStore: { repo: '' } });
 const rows = shell.VIEWS;

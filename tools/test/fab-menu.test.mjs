@@ -70,7 +70,7 @@ test('a page contributes its rows, and they carry the side they came from', asyn
   clearPages();
   const d = await mountFab();
   // A fixture, not show-repo's actual row: what this file guards is the fab's
-  // READ of the contract, and the shell owns its own wording (show-repo-intake).
+  // READ of the contract, and the shell owns its own wording (shell-intake).
   await mountPage(`<div x-data="{ menu: [{ label: 'Do the thing', icon: 'ph-clipboard-text', run(){} }] }"></div>`);
   d.openFabMenu();
   assert.equal(d.pageMenu.length, 1);

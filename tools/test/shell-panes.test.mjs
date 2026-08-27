@@ -11,14 +11,14 @@
 //
 // So this asserts the join rather than either side: for every nav stop, the
 // pane key the shell computes exists in the markup. The shell's app() lives
-// inline in app/index.html, hence the show-repo-shell.mjs harness.
+// inline in app/index.html, hence the shell.mjs harness.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
-import { page, makeShell } from './show-repo-shell.mjs';
+import { page, makeShell } from './shell.mjs';
 
 // The estate component's source, for the pill-row join below. Read as text for
 // the same reason the shell is: the markup is a template string inside it, so

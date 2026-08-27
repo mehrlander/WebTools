@@ -15,9 +15,20 @@ problem it serves: something exists somewhere, and someone needs to look at it.
 **Web Tools** is the product name, used wherever a reader is addressed: the
 page title, the README's front door, the app's own address. **show-repo** is
 the shell's internal name and stays on everything that keys by it: the route
-registry ([app-routes.csv](app-routes.csv)), the reference doc, the component
-and harness filenames, and the tracker project tag. The old name records the
-app's origin as a repo viewer; the scope outgrew it.
+registry ([app-routes.csv](app-routes.csv)), the reference doc, the redirect
+stub's path, and the tracker project tag. The old name records the app's origin
+as a repo viewer; the scope outgrew it.
+
+**Cheap and visible is not an identifier.** This sentence used to claim the name
+also stayed on "the component and harness filenames," and both halves had
+already stopped being true. The component is `app()`, renamed with the page when
+it moved to `app/index.html`; only the test files still carried the prefix, and
+they named a page path that redirects and a component that had never been called
+that in the file they read. They are `shell-*.test.mjs` now, after `window.__shell`,
+which is what the code itself calls the thing under test. The test that decides
+this is not whether a gate reads the string: it is whether renaming is expensive
+and invisible to a reader. Nothing outside the repo links a test filename, the
+registry that keys them is generated, and the names print on every run.
 
 **A chat reply, a caption, and a PR body address a reader,** so they take the
 product name. That is where the split fails, not in the tree: a session used
