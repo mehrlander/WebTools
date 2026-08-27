@@ -184,7 +184,7 @@ Where an assertion lives follows from its mode and its readers. **Recorded**
 values are stored, always: judgment cannot be recomputed. **Computed** values are
 stored only where a page or a gate needs a committed artifact (the browser
 fetches files, it does not run generators; a gate needs a stable thing to hold; a
-diff makes a derived change reviewable), and then lockstep discipline applies.
+diff makes a derived change reviewable), and then the gate holds it to its source.
 What a live read already answers is never stored, branch state and CI status
 being the standing examples. Model-bridged output is stored when it is expensive
 and irreproducible, regenerated when it is scripted; chat-histories' two catalog

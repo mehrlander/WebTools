@@ -1,6 +1,6 @@
 // The snags index's parser and its repeat detector.
 //
-// The generated table is already held to its source by artifacts-lockstep, but
+// The generated table is already held to its source by the derived-artifacts gate, but
 // that only proves the bytes match what the code produces. It says nothing
 // about whether the code produces the right thing, and the part most able to
 // go quietly wrong is the DETECTOR: a wrong table is visible on the page, while

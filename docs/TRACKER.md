@@ -137,7 +137,7 @@ The board adds three derived values the task file does not state:
 - **`lastActivity`**, the newest date in the progress log. Empty when a task has no log rather than falling back to `opened:`, since a guess here reads as a fact.
 - **`logEntries`**, the count beside it. The count is mechanical; classifying an entry as work or maintenance is judgment and stays out.
 
-No artifact carries a timestamp, so the same input produces the same bytes and the lockstep checks that re-run the generator against a clean tree do not fail on every run. `board-tags.csv` is written even when nothing is tagged, header and no rows, since a check that compares bytes needs the file to exist either way.
+No artifact carries a timestamp, so the same input produces the same bytes and the gates that re-run the generator against a clean tree do not fail on every run. `board-tags.csv` is written even when nothing is tagged, header and no rows, since a check that compares bytes needs the file to exist either way.
 
 The generator ships with the `portable` plugin as `tasks/build-board.py` (python3, stdlib only, zero dependencies). It is one canonical implementation, so every tracker's board comes out the same shape and a repo does not write its own. A repo running without the plugin fetches that same script by raw URL into a gitignored path (see [PORTABLE.md](PORTABLE.md)); it is the same file reached by a different transport, not a reimplementation. The skill carries the invocation.
 
@@ -171,7 +171,7 @@ Everything else is an open, authored section, the record-level analogue of an op
 
 **Do not copy what the task files and `board.csv` already carry.** Titles, statuses, sizes, and logs live in the tasks; the record cites ids and states judgment about them. `basis` may carry the open counts as read (`onDeck`, `inProgress`, `blocked`) to fix the scale of what was assessed; that is an anchor, not data for a consumer.
 
-The board generator does not read `assessments/`, the board does not render them, and no lockstep check owns them: an authored record has no source to be in lockstep with. What is checked is only the identity and the four required keys (web-tools: `tools/test/tracker-assessments.test.mjs`).
+The board generator does not read `assessments/`, the board does not render them, and no gate owns them: an authored record has no source to be held to. What is checked is only the identity and the four required keys (web-tools: `tools/test/tracker-assessments.test.mjs`).
 
 ## Conflicts
 

@@ -58,7 +58,7 @@ contract that makes all of this possible is in [`../docs/loader.md`](../docs/loa
 | `npm run pages-shots` | Regenerate `pages/thumbs/*.png` — one headless screenshot per page, the card previews for the visual index. Uses the [`screenshot.mjs`](render/screenshot.mjs) renderer; see [Cataloging the pages](#cataloging-the-pages). |
 | `npm run pages-index` | Regenerate both catalogs of every page: [`pages/README.md`](../pages/README.md) (link-dense table) and [`pages/index.html`](../pages/index.html) (visual card index). A *catalog* generator, not part of the code pipeline below — see [Cataloging the pages](#cataloging-the-pages). |
 | `npm run pages` | `pages-shots` then `pages-index` — refresh thumbnails and both catalogs in one step. |
-| `npm run graphql-schema [-- --check]` | Regenerate [`graphql/github-schema.pruned.graphql`](graphql/): fetch GitHub's published SDL (1.5 MB) and write only the slice `lib/gh-fetch.js`'s queries reach (~2 KB), so `npm test` can typecheck them offline. The **one generator that needs the network**, which is why it stays out of the commit hook and the lockstep test; the drift guard lives in [`test/graphql-schema.test.mjs`](test/graphql-schema.test.mjs) instead. Run it after editing a query. |
+| `npm run graphql-schema [-- --check]` | Regenerate [`graphql/github-schema.pruned.graphql`](graphql/): fetch GitHub's published SDL (1.5 MB) and write only the slice `lib/gh-fetch.js`'s queries reach (~2 KB), so `npm test` can typecheck them offline. The **one generator that needs the network**, which is why it stays out of the commit hook and the derived-artifacts gate; the drift guard lives in [`test/graphql-schema.test.mjs`](test/graphql-schema.test.mjs) instead. Run it after editing a query. |
 | `node tools/build/repo-pages-shots.mjs --repo <owner/name> --root <checkout> --out <thumbs-dir>` | Shoot ANOTHER repo's `pages` catalog into the private thumb cache (`web-tools-private/thumbs/`), so show-repo's gallery can show clickable screenshots for that repo. Serves the source checkout, vendors CDN libs from this repo's `node_modules`. Not an npm script (it takes a target). |
 
 Shared internals: [`render/cdn.mjs`](render/cdn.mjs) (URL → local
@@ -207,7 +207,7 @@ cost of carrying components a given page may not use (harmless — an unused
 
 **Staying current.** `dist/web-tools.js` is **committed** (the one exception to
 the gitignored `dist/`) and served same-origin by Pages — never back onto
-jsDelivr, whose cache the loader exists to dodge. It's kept in lockstep with
+jsDelivr, whose cache the loader exists to dodge. It's held to
 `lib/` by the commit-time hook (see [The refresh model](#the-refresh-model)).
 The build is deterministic (sorted cache + sorted boot, no date stamp), so it
 only shows a diff when `lib/` actually changed. Don't hand-edit
@@ -294,7 +294,7 @@ them on every run. Same input, different bytes,
 in an artifact whose own closing comment promises the opposite, unnoticed
 because it is read by machines and diffed by no one. The suite now asserts
 determinism directly rather than inferring it from one passing run, since a
-nondeterministic generator makes a lockstep test flaky rather than false.
+nondeterministic generator makes a byte-comparison gate flaky rather than false.
 
 **Thumbnails (`pages/thumbs/*.png`) refresh once per session, at wrap-up.**
 Screenshots are slow (a Chromium render per page) and not byte-deterministic

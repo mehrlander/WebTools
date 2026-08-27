@@ -81,7 +81,7 @@ const distDir = path.join(repoRoot, 'dist');
 const outPath = path.join(distDir, 'web-tools.js');
 
 // --check: compare instead of write, the same idiom pages-index uses. The
-// commit hook is supposed to keep this file in lockstep with lib/, but a hook
+// commit hook is supposed to keep this file matching lib/, but a hook
 // only runs where it is wired: a session whose project root sits above the repo
 // never loads .claude/settings.json, and the staleness was silent. Emit is
 // deterministic, so comparing bytes is the whole test.

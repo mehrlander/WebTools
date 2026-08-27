@@ -317,8 +317,8 @@ test('a lead that opens with chrome is skipped, not shown as the title', () => {
 });
 
 test('a lead too short to say anything falls through to the next sentence', () => {
-  const rec = answered('Done. The lockstep test now re-runs each generator in check mode.', { calls: [] });
-  assert.equal(outline(rec)[0].title, 'The lockstep test now re-runs each generator in check mode.');
+  const rec = answered('Done. The derived-artifacts gate now re-runs each generator in check mode.', { calls: [] });
+  assert.equal(outline(rec)[0].title, 'The derived-artifacts gate now re-runs each generator in check mode.');
 });
 
 test('with no usable prose, the title says what the card ran', () => {
