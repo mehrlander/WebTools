@@ -78,14 +78,13 @@ Adding to a doc is a pass over it, not just an append. New material has to match
 
 ## Prose that describes state is unimplemented
 
-A document that restates what an app derives, or what a check enforces, is carrying a copy, and the copy is the half that ages with nothing to report it. Before adding to a doc, and whenever one has outgrown its subject, ask four questions in order:
+A document that restates what an app derives, or what a check enforces, is carrying a copy, and the copy is the half that ages with nothing to report it. Before adding to a doc, and whenever one has outgrown its subject, ask three questions in order:
 
 1. **Is this a fact the app derives?** Delete it and link the view.
 2. **Is this a rule the suite enforces?** Delete the description, keep a pointer to the gate. The test is the statement.
 3. **Does another document already own it?** Delete it and link there.
-4. **Is this a reason somebody chose something?** Keep it. This is the residue, and it is what a document is for.
 
-**The fourth question is the guard, not an afterthought.** A pass that reads reasons as a backlog will either delete them or try to encode them, which is how a repo gets a `why` column that runs nought for five.
+**There is no fourth question that saves a passage, and a reason is not exempt because it is a reason.** Nearly every sentence in a bloated document is a reason somebody chose something, which is how it got bloated. What earns its place is the **criterion** inside a reason: the condition, threshold, or named exception that changes how the rule applies at an edge. Lift that into the rule and the rest goes to the PR body or the dated record that owns the decision. Operated by [`state-the-rule`](https://github.com/mehrlander/web-tools/blob/main/skills/state-the-rule/SKILL.md), which carries the labels and the checks.
 
 Two habits separate a chop that holds from one that loses something. **Render before you cut**, since the honest test of "the app already says this" is looking at the app, and a definition that exists only in a tooltip is not rendered. And **look inside the file**: a paragraph repeated verbatim within one document is invisible to a cross-file duplicate scanner by construction, and to a word cap because it fits inside the budget.
 
