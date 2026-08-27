@@ -67,28 +67,28 @@ test('the last section runs to the end of the document', () => {
   host.remove();
 });
 
-// ── The chip: the only conditional one on the bar ───────────────────────────
+// ── The item: the only conditional one in the aim menu ──────────────────────
 
-test('the Section chip is absent until the page holds a declared render', () => {
-  // A chip that lights up over prose it cannot resolve is the dead control the
-  // section menu already refuses to be.
+test('the Section aim is absent until the page holds a declared render', () => {
+  // An item that offers to aim at prose it cannot resolve is the dead control
+  // the section menu already refuses to be.
   A.enable({ doc });
-  const chip = A._state.modeChips.section;
-  assert.equal(chip.style.display, 'none', 'nothing to aim at yet');
+  const item = A._state.modeChips.section;
+  assert.equal(item.style.display, 'none', 'nothing to aim at yet');
 
   const host = render();
-  // md-doc announces every declaration, which is how the chip appears on a deck
+  // md-doc announces every declaration, which is how the item appears on a deck
   // slide rendered after the annotator was switched on.
-  assert.equal(chip.style.display, '', 'a render arrived and the chip came with it');
+  assert.equal(item.style.display, 'flex', 'a render arrived and the aim came with it');
   host.remove();
   A.disable();
 });
 
 test('Element and Region are unconditional', () => {
   A.enable({ doc });
-  const chips = A._state.modeChips;
-  assert.equal(chips.pick.style.display, '');
-  assert.equal(chips.region.style.display, '');
+  const items = A._state.modeChips;
+  assert.equal(items.pick.style.display, 'flex');
+  assert.equal(items.region.style.display, 'flex');
   A.disable();
 });
 

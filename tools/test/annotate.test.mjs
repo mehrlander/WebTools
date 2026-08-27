@@ -1284,6 +1284,70 @@ test('the launcher-staged page draft opens idle: an offer, not a recorder', () =
   A.disable();
 });
 
+test('the aim menu is placed inside the card, not against the viewport', () => {
+  // It hung off the body at fixed coordinates read from the button, which a
+  // pinch-zoomed phone put most of a screen away from it: the card's position
+  // is declarative and the browser keeps it consistent as the visual viewport
+  // moves, while the menu's was a number computed once and frozen. Reported
+  // from a device 2026-08-27.
+  //
+  // What this holds is the SHAPE of the fix, which is all jsdom can see: the
+  // menu is a child of the card and positioned absolutely, so the browser does
+  // the arithmetic and zoom moves both together. The pixel result needs a real
+  // viewport and is not gated anywhere.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+
+  assert.equal(S.aimMenu.style.position, 'absolute',
+    'absolute, so it resolves against the card rather than the viewport');
+  assert.ok(S.ui.contains(S.aimMenu),
+    'and it hangs off the card, so a dragged or zoomed card carries it');
+  assert.ok(!S.panel.contains(S.aimMenu),
+    'but outside the panel, which clips for its corners');
+  assert.notEqual(S.aimMenu.parentElement, doc.body,
+    'never the body: that is what made its coordinates independent of the card');
+  A.disable();
+});
+
+test('an unaimed note is a page note, and the menu names the aim in force', async () => {
+  // The page was a chip on the header, which read as though page association
+  // were something a control supplied. It never was: mdHead and jsonFor put the
+  // title and address at the head of every serialization, whatever the target.
+  // What the page target carries is the ABSENCE of an anchor, so it is what an
+  // unaimed note resolves to, and the card offers only the aims that are not
+  // the default.
+  A.enable({ doc, subject: { title: 'x', url: 'https://e.test/p' } });
+  A.clear();
+  const S = A._state;
+
+  const bare = A.add(null, 'no aim at all');
+  assert.deepEqual(bare.target, { type: 'page' }, 'an omitted target is the page');
+  assert.match(A.toMarkdown(), /## 1\. the page/, 'and it serializes as one');
+
+  // The button carries the aim in force, which at rest is the default.
+  assert.equal(S.aimLabel.textContent, 'Page');
+  assert.equal(S.aimMenu.style.display, 'none', 'and the alternatives cost nothing until asked for');
+
+  S.aimBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.aimMenu.style.display, 'block');
+
+  // Arming an aim renames the button and lights it, so a mode is never a state
+  // you have to remember being in.
+  S.modeChips.region.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.aimLabel.textContent, 'Region');
+  assert.equal(S.aimBtn.style.backgroundColor, 'rgb(250, 204, 21)');
+  assert.equal(S.aimMenu.style.display, 'none', 'and picking closes the menu');
+
+  // AND PAGE IS THE WAY OUT. Backing out of a mode used to mean knowing to tap
+  // the lit chip again, an exit with nothing on screen naming it.
+  S.pageChip.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.mode, null, 'the mode is off');
+  assert.equal(S.aimLabel.textContent, 'Page');
+  A.clear();
+  A.disable();
+});
+
 test('the card spends its whitespace evenly: an empty list is not a band', () => {
   // The list's bottom padding separates the last note from the card's edge.
   // With no notes there is nothing to separate, and the 8px stacked under the
@@ -1300,7 +1364,10 @@ test('the card spends its whitespace evenly: an empty list is not a band', () =>
   A.add({ target: { type: 'page' }, note: 'one' });
   assert.equal(S.listEl.style.paddingBottom, '8px', 'and it returns with the first note');
 
-  assert.match(S.pageChip.getAttribute('style'), /min-height:\s*28px/, 'and a chip plus its group border makes 30');
+  // The aim button is the header's third control and matches the two beside
+  // it: a control half the height of its neighbours reads as a label that
+  // happens to be tappable.
+  assert.match(S.aimBtn.getAttribute('style'), /min-height:\s*30px/, 'and the aim button matches the title and the eye');
   A.disable();
 });
 
@@ -1685,7 +1752,8 @@ test('three readings of one set, and a serialization is shown rather than descri
   assert.equal(S.listEl.style.display, 'none', 'the list gives up the strip of card it shares');
   assert.equal(S.serial.style.display, 'flex');
   assert.equal(S.serialPre.textContent, A.toMarkdown(), 'exactly what Copy hands over, not a paraphrase');
-  assert.equal(S.readChips.md.style.background, 'rgb(250, 204, 21)', 'lit, the way a live mode chip is');
+  assert.equal(S.readChips.md.style.backgroundColor, 'rgb(250, 204, 21)', 'lit, the way a live mode chip is');
+  assert.equal(S.readChips.md._icon.className, 'ph ph-markdown-logo', 'and the cell is a glyph, not the word');
 
   S.readChips.json.dispatchEvent(new window.Event('click', { bubbles: true }));
   // Everything but `at`, which is stamped at the moment of serializing and so
@@ -1705,11 +1773,12 @@ test('three readings of one set, and a serialization is shown rather than descri
   A.disable();
 });
 
-test('a serialization narrows to one note, and says which of how many it is', () => {
-  // The reading no other surface offers. A single note still carries the
-  // preamble, since a note pasted somewhere has to say which page it came
-  // from, and the lead line reads "Note 2 of 3" rather than "1 note", which
-  // would be a claim about the set instead of an excerpt from one.
+test('a serialization is of the whole set, whatever row is selected', () => {
+  // The pane used to narrow to one selected note behind a scope chip, and the
+  // markdown, the JSON and Copy all followed it. Selecting a row is how a
+  // reader scrolls to a note or edits it, so the narrowing arrived unasked for,
+  // and a set is what the two serializations are for. Copying ONE note's words
+  // is still offered, from that note's own row.
   A.enable({ doc, subject: { title: 'Sample doc', url: 'https://e.test/p' } });
   A.clear();
   A.add({ type: 'page' }, 'first');
@@ -1719,29 +1788,106 @@ test('a serialization narrows to one note, and says which of how many it is', ()
   A.expand(true);
   A.setReading('md');
 
-  assert.equal(S.scopeBtn.style.display, 'none', 'nothing selected, so nothing to narrow to');
+  assert.equal(S.serialPre.textContent, A.toMarkdown());
   A.select(two.id, { scroll: false });
-  assert.equal(S.scopeBtn.style.display, 'flex');
-  assert.equal(S.scopeBtn.textContent, 'Set', 'one chip, carrying the scope it is currently showing');
-
-  S.scopeBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.scopeBtn.textContent, 'Note 2', 'and it swaps, labelled by the selection rather than by the word');
-  assert.equal(S.serialPre.textContent, A.noteMarkdown(two.id));
-  assert.match(S.serialPre.textContent, /Note 2 of 3/);
-  assert.match(S.serialPre.textContent, /https:\/\/e\.test\/p/, 'the page it came from rides along');
-  assert.match(S.serialPre.textContent, /second/);
-  assert.doesNotMatch(S.serialPre.textContent, /third/, 'and nothing else in the set does');
+  assert.equal(S.serialPre.textContent, A.toMarkdown(), 'a selected row does not narrow the pane');
+  assert.match(S.serialPre.textContent, /3 notes/, 'and it still says how many it is of');
+  for (const word of ['first', 'second', 'third']) assert.match(S.serialPre.textContent, new RegExp(word));
 
   A.setReading('json');
-  const one = JSON.parse(S.serialPre.textContent);
-  assert.equal(one.format, 'annotate/1', 'still the declared format, with one note in it');
-  assert.equal(one.notes.length, 1);
-  assert.equal(one.notes[0].note, 'second');
+  const all = JSON.parse(S.serialPre.textContent);
+  assert.equal(all.format, 'annotate/1');
+  assert.equal(all.notes.length, 3, 'the JSON is the set too, selection or none');
 
-  // The scope names the SELECTED note, so it cannot outlive the selection.
-  A.select(null);
-  assert.equal(S.scopeBtn.style.display, 'none');
-  assert.equal(JSON.parse(S.serialPre.textContent).notes.length, 3, 'and it falls back to the set');
+  // Nothing on the row offers to narrow it, and nothing in the API does.
+  assert.equal(S.scopeBtn, undefined, 'the scope chip is gone, not merely hidden');
+  for (const gone of ['setScope', 'noteMarkdown', 'noteJSON']) {
+    assert.equal(A[gone], undefined, gone + ' went with it');
+  }
+  A.clear();
+  A.disable();
+});
+
+test('a note row\'s copy key reports too, and on itself', async () => {
+  // The report was written for the header's key and hardwired to it, which left
+  // the key on each row silent: the row calls copyNote, copyNote reported
+  // through setStatus, and setStatus became a no-op when the status line went.
+  // A copy is the one action here whose success is invisible until the paste.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'the words on this note');
+  A.add({ type: 'page' }, '');
+  const S = A._state;
+
+  let copied = null;
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true, value: { clipboard: { writeText: async (t) => { copied = t; } } },
+  });
+
+  const keyOf = (row) => [...row.querySelectorAll('button')][1];
+  const first = keyOf(S.listEl.children[0]);
+  assert.equal(first._icon.className, 'ph ph-copy');
+  first.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(copied, 'the words on this note', 'the row copies its own words');
+  assert.equal(first._icon.className, 'ph ph-check', 'and says so on the key that was tapped');
+
+  // Its own grey, not the header key's: the idle colour is captured per button.
+  assert.equal(first._idleColor, 'rgb(161, 161, 170)');
+
+  // An empty note is a failure to report, not a silence: nothing reaches the
+  // clipboard, and unmarked the reader pastes whatever they copied last.
+  const second = keyOf(S.listEl.children[1]);
+  second.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(second._icon.className, 'ph ph-warning');
+  assert.equal(copied, 'the words on this note', 'and nothing was written');
+
+  // Two keys mid-flash at once, which one shared timer could not have done.
+  assert.equal(first._icon.className, 'ph ph-check', 'the first is still reporting');
+  A.clear();
+  A.disable();
+});
+
+test('the copy key reports on itself, since the card has no status line', async () => {
+  // The card's status line was removed deliberately (a confirmation with no
+  // expiry, still claiming a note was added ten notes later), which left the
+  // one action whose success a reader cannot otherwise see saying nothing at
+  // all: a copy that failed and a copy that took looked identical until the
+  // paste. So the key wears the answer and puts it back, the same swap
+  // kits/chat-render.js and kits/session-export.js make.
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'one');
+  const S = A._state;
+  A.expand(true);
+  A.setReading('md');
+
+  let copied = null;
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true, value: { clipboard: { writeText: async (t) => { copied = t; } } },
+  });
+
+  assert.equal(S.serialCopy._icon.className, 'ph ph-copy', 'at rest it offers the errand');
+  S.serialCopy.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(copied, A.toMarkdown(), 'and it hands over the whole set');
+  assert.equal(S.serialCopy._icon.className, 'ph ph-check', 'then says so');
+  assert.equal(S.serialCopy.style.color, 'rgb(21, 128, 61)');
+
+  // A failure is not a confirmation, and must not read as one.
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { clipboard: { writeText: async () => { throw new Error('denied'); } } },
+  });
+  S.serialCopy.dispatchEvent(new window.Event('click', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(S.serialCopy._icon.className, 'ph ph-warning', 'the other answer, not silence');
+
+  // And no border to carry: a box beside the segmented group read as a fourth
+  // chip in it, which is the one thing this control is not.
+  assert.equal(S.serialCopy.style.border, '0px');
+  assert.equal(S.serialCopy.style.backgroundColor, 'transparent');
   A.clear();
   A.disable();
 });
@@ -1850,7 +1996,7 @@ test('the three readings are one window, and what does not fit scrolls inside it
   A.disable();
 });
 
-test('copy rides the format row, so it needs no word at all', () => {
+test('copy rides the header beside the readings, so it needs no word at all', () => {
   // "Copy markdown" and "Copy JSON" sat in the footer naming a format the strip
   // a row above had already named, and the reader had to check which of the two
   // they were about to press. Beside the chips, the chips are the qualifier,
@@ -1864,7 +2010,10 @@ test('copy rides the format row, so it needs no word at all', () => {
 
   assert.equal(S.serialCopy.textContent.trim(), '', 'the glyph alone: the chips beside it are the qualifier');
   assert.match(S.serialCopy.title, /markdown/, 'the title still says which, for a pointer that hovers');
-  assert.ok(S.readBar.contains(S.serialCopy), 'and it rides the format row, not a footer under it');
+  assert.equal(S.serialCopy.parentElement, S.aimBtn.parentElement,
+    'the header holds it: one row of controls, none under the composer');
+  assert.ok(!S.readBar.contains(S.serialCopy),
+    'and NOT inside the centred group, whose three keys would slide as this came and went');
   assert.equal(S.serialCopy.style.display, 'flex');
 
   A.setReading('json');
@@ -1873,8 +2022,8 @@ test('copy rides the format row, so it needs no word at all', () => {
   // Both leave the row where they mean nothing. A Copy beside the Notes chip
   // has no bytes on screen to take.
   A.setReading('notes');
-  assert.equal(S.serialCopy.style.display, 'none');
-  assert.equal(S.scopeBtn.style.display, 'none');
+  assert.equal(S.serialCopy.style.display, 'none',
+    'it leaves the row rather than holding a place, so the keys stay centred on what a reader sees');
 
   // The footer keeps only what is neither a reading nor a format.
   const acts = [...S.setActs.querySelectorAll('button')].map(b => b.textContent);

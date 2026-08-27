@@ -1087,7 +1087,15 @@ html.dk-dragging main{transition:none !important}
          pages index; the Stage constrains its own column. -->
     <div x-show="isEstate" data-pane="estate" class="h-full"
          :class="listsFill ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'">
-      <div class="mx-auto px-4 lg:px-6 pt-4 !max-w-none"
+      <!-- w-full is load-bearing under listsFill and inert without it. An auto
+           inline margin on a flex ITEM sizes it to its content instead of
+           stretching it, so the moment listsFill turned the pane into a flex
+           column, mx-auto quietly capped this div at the width of its widest
+           row: the Lists pane came out 548px wide inside a 1280px window,
+           whatever !max-w-none said, and the Pin grid split that into two
+           266px columns and truncated a 26-character title for want of 5px.
+           In the ordinary block case width:100% is what the div already had. -->
+      <div class="mx-auto w-full px-4 lg:px-6 pt-4 !max-w-none"
            :class="listsFill ? 'flex-1 min-h-0 flex flex-col pb-4 lg:pt-6' : 'pb-8 lg:pt-6'">
         <template x-if="estateSeen">
           <div x-data="estate()" :class="listsFill && 'flex-1 min-h-0 flex flex-col'"></div>

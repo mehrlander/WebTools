@@ -9,8 +9,15 @@
 // scenario stubs the GH methods the estate touches and serves fixture list
 // files. What the pixels prove: the Pin block on top with its address+title
 // add form, pins in a multi-column grid grouped by group (repo short name
-// as fallback), each with the push-pin mark, title, and note; To-do and Jot
-// unchanged in their halves below.
+// as fallback), each with the push-pin mark, title, and note; each heading's
+// GitHub jump-over beside its count; To-do and Jot unchanged in their halves
+// below.
+//
+// p1 carries the REAL note from lists/pins.json, and p5 the title addPin
+// derives when none is typed (the path's last segment, one long hyphenated
+// token). Both are here as the truncation case: this pane clipped the first
+// to one line and had nowhere to break the second, so a fixture carrying
+// only short, spaced titles could not have shown the bug.
 export default async function (page) {
   const ok = await page.evaluate(() => {
     if (!window.Alpine || !window.__shell || !window.GH) return 'no shell';
@@ -21,13 +28,16 @@ export default async function (page) {
       items: [
         { id: 'p1', target: 'mehrlander/home:chron/2026/08/2026-08-07-merge-methods-and-ancestry.md',
           title: 'Merge methods and ancestry',
-          note: 'Which merges keep the tip as a main ancestor.', group: 'Git', created_at: h(2) },
+          note: 'Which merges keep the tip as a main ancestor, and where landing evidence lives.',
+          group: 'Git', created_at: h(2) },
         { id: 'p2', target: 'mehrlander/web-tools:docs/loader.md',
           title: 'The loader contract', group: 'Git', created_at: h(30) },
         { id: 'p3', target: 'mehrlander/home:projects/budget-drs/data/design/LAYERS.md',
           title: 'Layer vocabulary', note: 'The settled names for the structured stages.', created_at: h(60) },
         { id: 'p4', target: 'mehrlander/home:links/washington-state.md',
           title: 'WA links dossier', created_at: h(80) },
+        { id: 'p5', target: 'mehrlander/home:chron/2026/08/2026-08-03-local-models-split-from-doc-audit.md',
+          title: '2026-08-03-local-models-split-from-doc-audit.md', created_at: h(90) },
       ],
     };
     const TODOS = {
@@ -79,7 +89,7 @@ export default async function (page) {
       .find(el => (el.getAttribute('x-data') || '').includes('estate('));
     if (!host) return false;
     const d = window.Alpine.$data(host);
-    return !d.pinLoading && d.pinItems.length === 4 && !d.jotLoading;
+    return !d.pinLoading && d.pinItems.length === 5 && !d.jotLoading;
   }, { timeout: 20000 });
   await page.waitForTimeout(400);
 }
