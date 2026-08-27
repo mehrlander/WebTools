@@ -15,16 +15,52 @@ problem it serves: something exists somewhere, and someone needs to look at it.
 **Web Tools** is the product name, used wherever a reader is addressed: the
 page title, the README's front door, the app's own address. **show-repo** is
 the shell's internal name and stays on everything that keys by it: the route
-registry ([app-routes.csv](app-routes.csv)), the reference doc, the component
-and harness filenames, and the tracker project tag. The old name records the
-app's origin as a repo viewer; the scope outgrew it.
+registry ([app-routes.csv](app-routes.csv)), the reference doc, the redirect
+stub's path, and the tracker project tag. The old name records the app's origin
+as a repo viewer; the scope outgrew it.
+
+**A name is kept because it is accurate, or because someone outside holds it.
+Never because renaming would be expensive.** This sentence used to claim the
+name also stayed on "the component and harness filenames," and both halves had
+already stopped being true. The component is `app()`, renamed with the page when
+it moved to `app/index.html`; only the test files still carried the prefix, and
+they named a page path that redirects and a component that had never been called
+that in the file they read. They are `shell-*.test.mjs` now, after
+`window.__shell`, which is what the code itself calls the thing under test.
+
+The two reasons are not the same reason, and neither is a cost. The stub's path
+is held by 151 files elsewhere and by links saved on people's phones, so it
+cannot change and the alias absorbs that. Everything else on the list above is
+simply still true: `app-routes.csv`, the reference doc, and the tracker tag all
+name the shell, and the shell is what show-repo means.
+
+The version of this passage written on 2026-08-27 said the test was "whether
+renaming is expensive and invisible to a reader." Both halves were wrong.
+Expense is what a fix costs, not whether it is owed. And invisible is backwards:
+a name nobody reads is the cheapest one to correct, not the safest one to leave
+wrong. An inaccurate name is a defect at any price; the only question the price
+settles is how fast.
+
+**A chat reply, a caption, and a PR body address a reader,** so they take the
+product name. That is where the split fails, not in the tree: a session used
+the internal name in a reply on 2026-08-27 and the reader had to ask what it
+meant. Measured the same day, the tree held 1,022 occurrences across 238 files.
+Two were prose a reader meets: the README's `pages/` list, which re-filed the
+product among the workshop's outputs the address move had just taken it out of,
+and the shell component's `description`, which the Map view renders verbatim.
+Seventeen more were the test filenames and their references, which read as
+identifiers until anyone checked what they named. The rest are accurate or are
+records.
 
 **The address moved on 2026-08-16, the identifiers did not,** and the
 distinction is the whole of the decision. This doc first ruled that renaming
 "would break every saved deep link and buy nothing the prose split does not."
-That holds for **identifiers**: a `?view=` key, a registry key, a component
-name, and the project tag are read by gates, and changing one is expensive and
-invisible to a reader. It does not hold for the **address**. The app served
+That holds for **identifiers** that are still true: a `?view=` key, a registry
+key, and the project tag all name the shell, so there is nothing to correct. It
+does not hold for the **address**, and it never held for a name that had gone
+wrong. This sentence used to list the component name here and to justify the
+whole set on renaming being "expensive and invisible to a reader"; see the
+correction above. The app served
 from `pages/show-repo/show-repo.html` filed the product inside the catalog of
 the workshop's outputs, which it was never a member of, and made its front door
 the longest URL in the estate.

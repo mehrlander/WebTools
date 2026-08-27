@@ -18,7 +18,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeShell } from './show-repo-shell.mjs';
+import { makeShell } from './shell.mjs';
 
 // A shell with the two crawls replaced by counters. Both are the throttled,
 // unforced entry points the arrival paths call, so what is under test is the

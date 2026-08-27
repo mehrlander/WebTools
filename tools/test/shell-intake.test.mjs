@@ -12,7 +12,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeShell, page } from './show-repo-shell.mjs';
+import { makeShell, page } from './shell.mjs';
 
 // A shell with its window listeners captured by type, plus a StageIntake stand-in
 // recording what it was asked to do. The intake's real behavior is stage.test.mjs's
