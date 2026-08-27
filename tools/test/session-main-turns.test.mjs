@@ -1,22 +1,24 @@
-// The main-turn rule, read twice, held to one answer.
+// What the card keeps, against what the deck expands.
 //
-// A session's conversation has two populations of assistant turn. One answers
-// the question. The other announces work: "Now let me render it to check the
-// pixels", immediately followed by the calls it introduces. The swipe deck
-// folds the second kind into the run it announces, and the sessions cache's
-// `turns` field carries the first kind and not the second, so the row's card
-// shows what the deck shows.
+// A session's assistant turns split two ways. Some answer the question. The
+// rest are work in progress: the sentence announcing a step, or the running
+// report between two of them, each immediately followed by tool calls.
 //
-// The rule therefore has two readings. session-render.js decides it per CARD,
-// inside blocks(), because it is building folds. repo-sessions-cache.js decides
-// it per RECORD, inside priorTurns(), because it is building a flat list for a
-// row. Neither can use the other: the render kit would drag the cache kit into
-// every page that shows a deck, and the crawl cannot load a renderer. So there
-// are two implementations, and this is the gate that stops them drifting. It
-// runs both over the same records and asserts the same turns come back.
+// The two surfaces draw the line in different places, on purpose. The DECK is a
+// reading surface, so it folds only the SHORT ones (session-render.js,
+// STEP_INTRO) and leaves a long progress note expanded, where it is worth
+// reading. The CARD is a scan surface, two or three lines a turn, and there a
+// progress note is noise however long it runs: measured on one real record,
+// seven of the fourteen turns the deck expanded were narration clustered just
+// over the deck's threshold, and cut to a card's width they read as seven
+// fragments. So the card drops anything followed by calls.
 //
-// Checked against all 172 schema-4 records in the store on 2026-08-27: exact
-// agreement. The fixtures below are the shapes that agreement rests on.
+// That makes the card's set a strict SUBSET of the deck's, and the subset is
+// what this gate holds. The failure it exists to catch is the card keeping a
+// turn the DECK folds, which would put narration on a surface with no room for
+// it while claiming to agree with the deck. Across the store the card drops 765
+// turns the deck keeps, and what survives has a 10th percentile of 518
+// characters: even the shortest tenth of it is a real answer.
 //
 // Driven over plain objects; no DOM, no network.
 
@@ -45,22 +47,15 @@ function deckExpanded(record) {
   return out;
 }
 
-// What the CACHE keeps, as full text rather than heads, so the two are
-// comparable. priorTurns cuts to TURN_HEAD and drops the closing reply, both of
+// What the CARD keeps, as an assertion about the SOURCE turns rather than the
+// heads it stores: priorTurns cuts to TURN_HEAD and drops the closing reply,
 // which are the row's business and not the rule's.
-function cacheMain(record) {
-  const seq = [];
-  for (const p of record.prompts || []) seq.push({ role: 'user', md: p.text || '', at: p.at });
-  for (const x of record.replies || []) seq.push({ role: 'assistant', md: x.text || '', at: x.at });
-  for (const c of record.calls || []) seq.push({ role: 'tool', md: '', at: c.at });
-  const RANK = { user: 0, assistant: 1, tool: 2 };
-  seq.forEach((t, i) => { t._i = i; });
-  seq.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)
-    || (RANK[a.role] - RANK[b.role]) || (a._i - b._i));
-  return seq.filter((t, i) =>
-    t.role === 'assistant'
-    && !((t.md || '').length <= S.STEP_INTRO && seq[i + 1]?.role === 'tool')).map(t => t.md);
+function cardKeeps(record) {
+  const heads = S.priorTurns(record).filter(([k]) => k === 'a').map(([, t]) => t);
+  return heads;
 }
+// The deck's answers, put through the same head, so the two are comparable.
+const asHeads = (mds) => mds.map(md => S.head(md, S.TURN_HEAD));
 
 const at = (n) => `2026-08-05T10:${String(n).padStart(2, '0')}:00Z`;
 const long = (n) => 'x'.repeat(n);
@@ -81,51 +76,73 @@ const TYPICAL = {
   ],
 };
 
-test('a step intro folds in the deck and never reaches the row', () => {
-  const got = cacheMain(TYPICAL);
-  assert.equal(got.length, 1, 'the answer only');
-  assert.equal(got[0], long(2000));
-  assert.deepEqual(got, deckExpanded(TYPICAL), 'and the deck agrees');
+test('a step intro folds in the deck and never reaches the card', () => {
+  // The case both surfaces agree on: short, and followed by calls.
+  const deck = deckExpanded(TYPICAL);
+  assert.equal(deck.length, 1, 'the deck expands the answer only');
+  assert.equal(deck[0], long(2000));
+  assert.equal(S.priorTurns(TYPICAL).filter(([k]) => k === 'a').length, 0,
+    'and it is the closing reply, which the row carries itself');
 });
 
-test('a long turn followed by calls is an answer, not an intro', () => {
-  // The cut is length and only length. A turn over STEP_INTRO is saying
-  // something even when work follows it, which is the shape of a turn that
-  // both reports and continues. 6% of turns followed by calls are this.
+test('a LONG turn followed by calls: the deck keeps it, the card does not', () => {
+  // The one case the two surfaces disagree on, and the whole reason this gate
+  // is a subset rather than an equality. Progress notes cluster just over the
+  // deck's threshold; at a card's width they are fragments.
   const rec = {
     schema: 4,
     prompts: [{ at: at(0), text: 'ask' }],
-    replies: [{ at: at(1), text: long(S.STEP_INTRO + 1) }, { at: at(3), text: 'done' }],
+    replies: [{ at: at(1), text: 'Now let me check the thing. ' + long(400) },
+              { at: at(3), text: 'Done, and here is what came of it.' }],
     calls: [{ at: at(2), name: 'Bash', ok: true }],
   };
-  assert.deepEqual(cacheMain(rec), deckExpanded(rec));
-  assert.equal(cacheMain(rec).length, 2, 'both turns are main');
+  assert.equal(deckExpanded(rec).length, 2, 'the deck expands both');
+  assert.equal(cardKeeps(rec).length, 0,
+    'the card keeps neither: one is narration, the other is the closing reply');
 });
 
-test('exactly at the cut it is an intro; one character over it is not', () => {
+test('the card never keeps a turn the deck folds', () => {
+  // The failure this gate exists to catch. A card holding narration the deck
+  // hides would be putting fragments on the surface with the least room for
+  // them, while claiming to agree with the deck.
+  const recs = [TYPICAL, {
+    schema: 4,
+    prompts: [{ at: at(0), text: 'ask' }, { at: at(6), text: 'again' }],
+    replies: [{ at: at(1), text: 'Let me look.' },
+              { at: at(3), text: 'Now the longer note. ' + long(400) },
+              { at: at(5), text: long(900) },
+              { at: at(7), text: 'closing' }],
+    calls: [{ at: at(2), name: 'Read', ok: true }, { at: at(4), name: 'Bash', ok: true }],
+  }];
+  for (const r of recs) {
+    const deck = new Set(asHeads(deckExpanded(r)));
+    for (const kept of cardKeeps(r)) assert.ok(deck.has(kept), 'not in the deck: ' + kept);
+  }
+});
+
+test('length does not enter the card\'s rule at all', () => {
+  // The deck has a threshold; the card has none. Followed by calls is the whole
+  // test, so there is no boundary here for a turn to sit awkwardly on.
   const mk = (n) => ({
     schema: 4,
     prompts: [{ at: at(0), text: 'ask' }],
-    replies: [{ at: at(1), text: long(n) }, { at: at(3), text: 'the answer' }],
+    replies: [{ at: at(1), text: 'Sentence one. ' + long(n) }, { at: at(3), text: 'the answer' }],
     calls: [{ at: at(2), name: 'Bash', ok: true }],
   });
-  assert.equal(cacheMain(mk(S.STEP_INTRO)).length, 1, 'at the cut: folds');
-  assert.equal(cacheMain(mk(S.STEP_INTRO + 1)).length, 2, 'over it: stays');
-  for (const n of [S.STEP_INTRO, S.STEP_INTRO + 1])
-    assert.deepEqual(cacheMain(mk(n)), deckExpanded(mk(n)), `n=${n}`);
+  for (const n of [10, 300, 3000]) assert.equal(cardKeeps(mk(n)).length, 0, `n=${n}`);
 });
 
-test('a short turn with no calls after it is an answer, not an intro', () => {
-  // "Done." is short and it is still the reply. The predicate needs BOTH
-  // halves; length alone would drop the shortest answers in the store.
+test('a short turn with nothing after it is an answer, and both keep it', () => {
+  // "Done." is short and it is still the reply. Dropping on length alone would
+  // lose the shortest answers in the store; what matters is what follows.
   const rec = {
     schema: 4,
-    prompts: [{ at: at(0), text: 'ask' }],
-    replies: [{ at: at(2), text: 'Done.' }],
+    prompts: [{ at: at(0), text: 'ask' }, { at: at(3), text: 'again' }],
+    replies: [{ at: at(2), text: 'Done.' }, { at: at(4), text: 'closing' }],
     calls: [{ at: at(1), name: 'Bash', ok: true }],
   };
-  assert.deepEqual(cacheMain(rec), ['Done.']);
-  assert.deepEqual(cacheMain(rec), deckExpanded(rec));
+  assert.deepEqual(deckExpanded(rec), ['Done.', 'closing']);
+  assert.deepEqual(cardKeeps(rec), ['Done.'], 'kept, with the closing reply on the row');
 });
 
 test('an assistant turn sorts above the calls that share its timestamp', () => {
@@ -138,8 +155,8 @@ test('an assistant turn sorts above the calls that share its timestamp', () => {
     replies: [{ at: at(1), text: 'Let me check.' }, { at: at(2), text: long(900) }],
     calls: [{ at: at(1), name: 'Read', ok: true }],
   };
-  assert.deepEqual(cacheMain(rec), [long(900)], 'the intro folded');
-  assert.deepEqual(cacheMain(rec), deckExpanded(rec));
+  assert.deepEqual(deckExpanded(rec), [long(900)], 'the intro folded');
+  assert.deepEqual(cardKeeps(rec), [], 'and the survivor is the closing reply');
 });
 
 // ── The row's own shaping, which is not the rule ────────────────────────────
@@ -178,17 +195,55 @@ test('the asks are what makes a run of replies read as a conversation', () => {
     'the opener is on `ask` and the last answer on `reply`, so what is left is answer then ask');
 });
 
-test('each entry is cut to its opening, and an ask is cut shorter', () => {
+test('an entry ends where a sentence does, not mid-word', () => {
+  // The complaint this replaced: a hard slice at a character count landed
+  // mid-word with nothing to mark it, so every entry read as damage. Whole
+  // sentences while they fit is what makes a short entry look finished.
   const rec = {
     schema: 4,
-    prompts: [{ at: at(0), text: 'the opener' }, { at: at(2), text: long(500) }],
-    replies: [{ at: at(1), text: long(500) }, { at: at(3), text: 'closing' }],
+    prompts: [{ at: at(0), text: 'the opener' }, { at: at(3), text: 'a follow-up ask' }],
+    replies: [{ at: at(1), text: 'First sentence here. Second one follows. ' + long(500) },
+              { at: at(4), text: 'closing' }],
     calls: [],
   };
-  const got = S.priorTurns(rec);
-  assert.equal(got[0][1].length, S.TURN_HEAD, 'a turn shows its first sentence');
-  assert.equal(got[1][1].length, S.PROMPT_HEAD, 'an ask is structure, so it is shorter');
-  assert.ok(S.PROMPT_HEAD < S.TURN_HEAD, 'and the two caps are not the same number');
+  const [[, turn], [, ask]] = S.priorTurns(rec);
+  assert.equal(turn, 'First sentence here. Second one follows.',
+    'both whole sentences fit; the 500-character third does not, so it is left out');
+  assert.ok(!turn.endsWith('…'), 'and nothing was cut, so nothing is marked');
+  assert.equal(ask, 'a follow-up ask');
+  assert.ok(S.PROMPT_HEAD < S.TURN_HEAD, 'an ask is structure, so its cap is smaller');
+});
+
+test('a first sentence longer than the cap is cut at a word, and says so', () => {
+  // The one case a boundary cannot be found: there is no earlier sentence to
+  // fall back to. Cut at a word and mark it, rather than mid-word and silent.
+  const rec = {
+    schema: 4,
+    prompts: [{ at: at(0), text: 'opener' }, { at: at(3), text: 'ask' }],
+    replies: [{ at: at(1), text: 'alpha bravo '.repeat(60) }, { at: at(4), text: 'closing' }],
+    calls: [],
+  };
+  const [[, turn]] = S.priorTurns(rec);
+  assert.ok(turn.endsWith('…'), 'marked: ' + turn);
+  assert.ok(turn.length <= S.TURN_HEAD + 1, 'within the cap, plus the ellipsis');
+  // Every word kept is a WHOLE word from the source: cap() drops the trailing
+  // partial before appending the mark, which is the whole difference between a
+  // cut that reads as a summary and one that reads as damage.
+  const words = turn.replace(/…$/, '').trim().split(' ');
+  assert.ok(words.every(x => x === 'alpha' || x === 'bravo'), 'no half word: ' + words.at(-1));
+});
+
+test('an entry does not open on chrome, so a branch anchor is skipped', () => {
+  // Half this estate's replies open with a branch anchor or a bare link. Titled
+  // by that, an entry says the address and nothing about the turn.
+  const rec = {
+    schema: 4,
+    prompts: [{ at: at(0), text: 'opener' }, { at: at(3), text: 'ask' }],
+    replies: [{ at: at(1), text: 'Working branch: claude/thing\n\nThe actual finding is here.' },
+              { at: at(4), text: 'closing' }],
+    calls: [],
+  };
+  assert.equal(S.priorTurns(rec)[0][1], 'The actual finding is here.');
 });
 
 test('the newest survive the cap, because a reader scrolls backwards', () => {

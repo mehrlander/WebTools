@@ -50,13 +50,15 @@ const SESSIONS = [
     // The scroll back, in the shape repo-sessions-cache's priorTurns emits:
     // [role, head] pairs, chronological, asks at PROMPT_HEAD and turns at
     // TURN_HEAD, the closing reply excluded because `reply` above carries it.
+    // Sentence-shaped heads at TURN_HEAD, the way priorTurns emits them: an
+    // entry ends where a thought does. Narration turns are absent because the
+    // card drops anything followed by tool calls, which the deck keeps.
     turns: [
-      ['a', 'Here is where it stands. The mechanisms live as data in `docs/showing-mechanisms.csv`', '14:02:11'],
+      ['a', 'Here is where it stands. The mechanisms live as data in `docs/showing-mechanisms.csv`, and the Map view renders that file directly rather than restating it in prose.', '14:02:11'],
       ['u', 'Can we get the render line printed rather than remembered?', '14:19:40'],
-      ['a', '`npm run showing` reads the branch\'s changed files and prints the line to paste, or', '14:31:07'],
-      ['a', 'One caveat: only a **page** renders this way. For a kit or a doc the honest answer', '14:48:52'],
+      ['a', '`npm run showing` now reads the branch\'s changed files and prints the line to paste, or an honest no-link with the reason. The rule the section stated in prose is executable.', '14:31:07'],
       ['u', 'Good. Please proceed with the Map view tab.', '15:20:03'],
-      ['a', 'The Showing tab is up. It reads the CSV directly, so a new mechanism is a row and', '15:44:29'],
+      ['a', 'The Showing tab is up. It reads the CSV directly, so a new mechanism is a row rather than a paragraph, and the honesty gate survives because no script can supply it.', '15:44:29'],
     ],
     turnsCut: 'cut',
     askAt: '13:51:08',
