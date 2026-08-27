@@ -11,6 +11,7 @@ pages,array,show-repo,,,"A hand-declared page catalog. A repo with a non-empty `
 pages[].path,string,show-repo,,yes,"A bare repo-relative path, or a qualified 'owner/repo[@ref]:path' cross-repo ref. The cross-repo form lets a repo promote a page whose file lives elsewhere."
 pages[].title,string,show-repo,,no,The card's heading. Defaults to the filename.
 pages[].note,string,show-repo,,no,The card's one-line description.
+pages[].query,string,show-repo,,no,"A query string handed to the page when it opens, without the leading `?`. It lets one promoted page serve several repos' data: mehrlander/home points web-tools' `pages/doc-growth.html` at its own `data/doc-growth.json` this way, rather than committing a copy of the page. Declared 2026-08-27, after home's manifest used it and the registry had no row for it."
 pages[].icon,string,show-repo,,no,"Phosphor class, used as the app-view icon when promoted."
 pages[].thumb,string,show-repo,,no,"Path to a committed thumbnail. A private repo has none, so tiles render live instead."
 pages[].project,string,show-repo,,no,The workspace this page belongs to (a `projects` entry's path). Only needed for a page that lives outside the workspace folder; the project view derives the rest by path prefix.

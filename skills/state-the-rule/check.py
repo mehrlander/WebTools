@@ -68,6 +68,7 @@ kept_src = ' '.join(units[k]['text'] for k in units
 lost = sorted((refs(orig) - refs(new)) & refs(kept_src))
 excused = sorted((refs(orig) - refs(new)) - refs(kept_src))
 
+print(f'READ       {origf} -> {newf}')
 print(f'CONTRACT   KEEP honoured {honoured}/{nk}   candidate breaches {len(breach)}   '
       f'not-removed {len(ghost)}')
 print(f'REFERENCES lost {len(lost)}: {lost or "none"}'

@@ -169,3 +169,46 @@ which is a row the docs legs measure, so running it last left the registry a
 restamp behind. Fourth time this family has bitten, and the fix is one clause,
 not a new step: a generator that writes a governed file runs before one that
 measures it.
+
+## 2026-08-27, run on home/CLAUDE.md, and the seam check (web-tools #516)
+
+**The segmenter assumed a blank line under every heading, and a second repo did
+not.** home's `CLAUDE.md` puts bullet lists directly under `###` headings, so
+`re.match(r'\s*#{1,6} ', block)` classified whole 700-word sections as one
+`heading` unit. 140 units for 6,895 words, which is not an annotation. A heading
+now owns its own line and the rest of its block is segmented on its own terms,
+and a run of list items with no blank lines between them splits per item: 355
+units for the same words. This was the first run outside web-tools and the
+defect was in the first command.
+
+**The seam defect earned its check on the third recurrence, and the check found
+six of seven.** Built before fixing anything, so it got an honest test.
+`seams.py` reports a neighbour left pointing back at nothing, a heading that
+swallowed the line under it, a phrase the rewrite now says twice, and an indent
+lost at a join. It caught all of those; it missed one indent case, and three of
+its nine reports were fine. Two of its four checks were written wrong the first
+time: one read a field that does not exist in a unit, so it could never fire, and
+one compared a `REWRITE`'s *original* text against its neighbours when the
+symptom is in the output. Dead code that cannot fire is worse than no check.
+
+**A check that ran against the wrong file printed a clean result and said
+nothing.** Twice, because the working directory had changed and `CLAUDE.md` was
+relative. `check.py` and `seams.py` now print `READ <orig> -> <new>` on every run.
+
+**The seam pass can legitimately absorb a `KEEP`, and the contract cannot say
+so.** Two units were folded into rewrites while fixing seams, and the contract
+reported them as breaches. Amending the annotation to `REWRITE` is the honest
+move and is now in step 6; silently letting the contract pass would have made the
+contract worth less than the trouble of writing it.
+
+**The loosest document yet, and a duplicate hiding in plain sight.** 65% `KEEP`,
+floor 35%, achieved 38%. Five sentences restated the portable PR and merge rules
+that arrive injected into the same context window, so both copies were loaded on
+every turn. And "Six exist" named six of eight projects, omitting one the same
+file referenced two sections later: an enumeration of what the tree already
+derives, wrong at the moment it was read.
+
+**Growth, measured.** home's `data/doc-growth.json` (landed the same day) puts
+`CLAUDE.md` at 316 words in March and 6,776 in August, across 109 edits, with not
+one negative weekly delta in 23 weeks. That is the phenomenon this skill exists
+for, and it is the first time the estate has had a number for it.

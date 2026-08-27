@@ -107,6 +107,22 @@ both.
 reworded survivors. Probe each candidate for its distinctive content before
 calling it a loss.
 
+**Then read the seams**, which is the other half of step 6:
+
+```bash
+python3 seams.py units.jsonl annotations.tsv <original> <rewrite>
+```
+
+Removing a unit can break the unit next to it, and that neighbour survived, so
+the contract counts it honoured. `seams.py` reports the four shapes this has
+taken: a neighbour left pointing back at nothing, a heading that swallowed the
+line under it, a phrase the rewrite now says twice, and an indent lost at a join.
+Advisory, and roughly a third of what it reports is fine.
+
+**The seam pass may absorb a `KEEP`.** When it does, amend the annotation to
+`REWRITE` and say why. Do not leave the contract to pass quietly on a unit you
+decided to remove after signing it.
+
 **The check does not replace the repo's own gates.** Run them too: a lost pointer
 has twice passed `check.py` and been caught by the repo's own derivation.
 
@@ -136,8 +152,8 @@ tooling.**
 
 ## Files
 
-`segment.py` · `check.py` · `runs.csv` · `LOG.md`
+`segment.py` · `check.py` · `seams.py` · `runs.csv` · `LOG.md`
 
 `reanchor.py` is for the case this pass does not have: an annotation that must
 outlive edits to its source rather than being consumed by one run. Offsets are a
-hint; the quote selector is the anchor. Six runs have not needed it.
+hint; the quote selector is the anchor. Seven runs have not needed it.

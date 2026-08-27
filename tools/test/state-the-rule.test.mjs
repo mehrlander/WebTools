@@ -152,3 +152,69 @@ test('--section and --not-section slice to opposite halves of a file', () => {
   assert.ok(part < whole && rest < whole,
     'a slice that returned the whole file would compare a section against a document');
 });
+
+// Learned on home/CLAUDE.md, the first run outside this repo: that file puts
+// bullet lists directly under `###` headings with no blank line, so a whole
+// 700-word section arrived as a single `heading` unit and could not be
+// annotated at all. A block is not always one unit.
+test('a heading with no blank line under it does not swallow its section', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'str-'));
+  const f = join(dir, 'x.md');
+  writeFileSync(f, ['### Rules', '- First rule. It has two sentences.',
+                    '- Second rule.', '- Third rule.'].join('\n'));
+  const units = execFileSync('python3', [join(SKILL, 'segment.py'), f, '1', '99'],
+                             { encoding: 'utf8' }).trim().split('\n').map(JSON.parse);
+  rmSync(dir, { recursive: true, force: true });
+  assert.equal(units[0].kind, 'heading', 'the heading is its own unit');
+  assert.equal(units[0].text, '### Rules', 'and owns only its own line');
+  assert.ok(units.length >= 5,
+    `three bullets and a two-sentence first one is 5+ units, got ${units.length}`);
+  assert.ok(units.every(u => u.words < 20), 'no unit swallowed the section');
+});
+
+// The defect the contract check structurally cannot see: the neighbour of a
+// removed unit survives, so the contract counts it honoured. Three runs found
+// these by hand before seams.py existed.
+test('seams.py reports a neighbour left pointing at nothing', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'str-'));
+  const orig = join(dir, 'orig.md');
+  const rw = join(dir, 'rewrite.md');
+  writeFileSync(orig, 'Always close the lid.\n\nThe contents spoil.\n\nThat is why.');
+  writeFileSync(rw, 'Always close the lid.\n\nThat is why.');
+  const units = execFileSync('python3', [join(SKILL, 'segment.py'), orig, '1', '99'],
+                             { encoding: 'utf8' });
+  writeFileSync(join(dir, 'u.jsonl'), units);
+  const ids = units.trim().split('\n').map(l => JSON.parse(l).uid);
+  writeFileSync(join(dir, 'a.tsv'), ['uid\tlabel\tstruct\tverdict',
+    `${ids[0]}\tWHAT\t0\tKEEP`, `${ids[1]}\tWHY-MOT\t0\tDROP`,
+    `${ids[2]}\tWHY-MOT\t0\tKEEP`].join('\n') + '\n');
+  const out = execFileSync('python3',
+    [join(SKILL, 'seams.py'), join(dir, 'u.jsonl'), join(dir, 'a.tsv'), orig, rw],
+    { encoding: 'utf8' });
+  rmSync(dir, { recursive: true, force: true });
+  assert.match(out, /back-reference/, '"That is why" lost what it pointed at');
+  assert.match(out, /SEAMS      1 /, 'one seam, not one per removed predecessor');
+  assert.match(out, /READ/, 'the check names the files it read');
+});
+
+// The other shape, and the one that broke a heading in the real run: a removed
+// span can take the newline with it and leave the heading carrying prose.
+test('seams.py reports a heading that swallowed the line under it', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'str-'));
+  const orig = join(dir, 'orig.md');
+  const rw = join(dir, 'rewrite.md');
+  writeFileSync(orig, '## Blog\n\nA tentative format.\n\nPosts are canonical.');
+  writeFileSync(rw, '## Blog Posts are canonical.');
+  const units = execFileSync('python3', [join(SKILL, 'segment.py'), orig, '1', '99'],
+                             { encoding: 'utf8' });
+  writeFileSync(join(dir, 'u.jsonl'), units);
+  const ids = units.trim().split('\n').map(l => JSON.parse(l).uid);
+  writeFileSync(join(dir, 'a.tsv'), ['uid\tlabel\tstruct\tverdict',
+    `${ids[0]}\tWHAT\t0\tKEEP`, `${ids[1]}\tWHY-MOT\t0\tDROP`,
+    `${ids[2]}\tWHAT\t0\tKEEP`].join('\n') + '\n');
+  const out = execFileSync('python3',
+    [join(SKILL, 'seams.py'), join(dir, 'u.jsonl'), join(dir, 'a.tsv'), orig, rw],
+    { encoding: 'utf8' });
+  rmSync(dir, { recursive: true, force: true });
+  assert.match(out, /heading-absorbed/, 'the heading line carries a sentence');
+});

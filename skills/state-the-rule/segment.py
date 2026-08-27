@@ -19,32 +19,57 @@ def unguard(s):
         s = s.replace(a, b)
     return s
 
+# A block is not always one unit. A heading with no blank line under it, and a
+# run of list items with no blank lines between them, are each several units
+# that happen to share a block. Splitting them is what lets a section be
+# annotated at all: without it a 700-word section arrives as one `heading`.
+BULLET = re.compile(r'(?m)^(?=[ \t]{0,3}(?:[-*+]|\d+\.)[ \t])')
+
+def prose_units(block, bstart, base_off, out):
+    g = block
+    for pat, rep in GUARD:
+        g = re.sub(pat, rep, g)
+    for sm in re.finditer(r'(?s).*?[.!?](?=\s|$)|.+$', g):
+        seg = sm.group(0)
+        if not seg.strip():
+            continue
+        out.append((base_off + bstart + sm.start(), base_off + bstart + sm.end(),
+                    'sent', unguard(seg).strip()))
+
+def block_units(block, bstart, base_off, out):
+    if block.lstrip().startswith('```'):
+        out.append((base_off + bstart, base_off + bstart + len(block), 'code', block))
+        return
+    if block.lstrip().startswith('|'):
+        out.append((base_off + bstart, base_off + bstart + len(block), 'table', block))
+        return
+    # A heading owns its own line only; whatever follows it is segmented on its
+    # own terms.
+    m = re.match(r'[ \t]*#{1,6} [^\n]*', block)
+    if m:
+        out.append((base_off + bstart, base_off + bstart + m.end(), 'heading',
+                    block[:m.end()].strip()))
+        rest = block[m.end():]
+        if rest.strip():
+            block_units(rest, bstart + m.end(), base_off, out)
+        return
+    parts = [(mm.start(), mm.end()) for mm in
+             re.finditer(r'(?s).+?(?=\n(?=[ \t]{0,3}(?:[-*+]|\d+\.)[ \t]))|.+$', block)]
+    if len(parts) > 1:
+        for a, b in parts:
+            if block[a:b].strip():
+                prose_units(block[a:b], bstart + a, base_off, out)
+        return
+    prose_units(block, bstart, base_off, out)
+
 def units(text, base_off):
     out = []
-    pos = 0
     # split into blocks on blank lines, keeping offsets
     for m in re.finditer(r'(?s)(.+?)(\n\s*\n|\Z)', text):
         block = m.group(1)
-        bstart = m.start(1)
         if not block.strip():
             continue
-        kind = 'prose'
-        if block.lstrip().startswith('```'): kind = 'code'
-        elif block.lstrip().startswith('|'): kind = 'table'
-        elif re.match(r'\s*#{1,6} ', block): kind = 'heading'
-        if kind != 'prose':
-            out.append((base_off + bstart, base_off + bstart + len(block), kind, block))
-            continue
-        g = block
-        for pat, rep in GUARD:
-            g = re.sub(pat, rep, g)
-        cur = 0
-        for sm in re.finditer(r'(?s).*?[.!?](?=\s|$)|.+$', g):
-            seg = sm.group(0)
-            if not seg.strip():
-                continue
-            s0 = bstart + sm.start(); s1 = bstart + sm.end()
-            out.append((base_off + s0, base_off + s1, 'sent', unguard(seg).strip()))
+        block_units(block, m.start(1), base_off, out)
     return out
 
 if __name__ == '__main__':
