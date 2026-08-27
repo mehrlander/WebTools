@@ -86,6 +86,14 @@
     cannot do is context: homophones are out of its reach entirely, and only
     a model reading the sentence around a word would go further.
 
+    AND THE MODEL IS NOW A MENU ROW, which is that last sentence answered
+    rather than restated. Ask Grok sends the SELECTION, not the note, to the
+    `Ask-Grok` shortcut and the answer comes back on the clipboard. The
+    receiver is deliberately empty of judgment: it hands its input to Grok and
+    copies the reply, so the prompt lives in this page (`ASK`, overridable with
+    ?ask=) and the next question costs a line of prose rather than another
+    shortcut installed on the phone. Nothing it returns touches the buffer.
+
   WHERE THE CONTROLS SIT. The HEADER is a three-column grid: the session on
   the left (record, and how long it has run), the TARGET on the centre line,
   and the history plus the menu on the right (undo, redo, backspace). The
@@ -122,6 +130,7 @@
   ADDRESSING
     ?to=copy|share|jot|drop   which destination the save sheet opens on
     ?dest=owner/repo[@ref]:dir   where Drop writes, overriding home/chron/dump
+    ?ask=<prompt>             what Ask Grok puts in front of the selection
     ?lang=en-US               recognition language, default the browser's
     ?use=<ref>                pin the lib chain to a branch for previewing
 
@@ -206,6 +215,27 @@
   const DRAFT = 'dictate:draft';
   const GRANT = 'dictate:granted';
 
+  // ── Asking a model about the selection ──────────────────────────────────
+  // The gap autocorrect concedes in its own note above: a list of word pairs
+  // has no context, so a homophone or a clumsy sentence is out of its reach,
+  // and only something reading the sentence around the words goes further.
+  //
+  // THE PROMPT LIVES HERE, NOT IN THE SHORTCUT. `Ask-Grok` (shortcut-tools,
+  // workflows/ask-grok.json) hands whatever it is given straight to Grok, so
+  // it is one receiver for every question rather than one shortcut per
+  // question: a second button on this page costs a line of prose, and the
+  // wording is revisable in git rather than by editing an action card on a
+  // phone. ?ask= overrides it for a one-off.
+  //
+  // AND THE ANSWER COMES BACK BY CLIPBOARD, which is the only channel a
+  // shortcut has to a page it did not open. The receiver shows it as well, so
+  // it can be read before it is taken. Nothing here touches the buffer: a
+  // model's rewrite is a suggestion, and this page's whole contract is that
+  // the words are the reader's until they file them.
+  const GROK = 'Ask-Grok';
+  const ASK = q.get('ask')
+    || 'Offer a more succinct version of this text as drop in replacement for an Apple shortcut:';
+
   const ls = {
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch {} },
@@ -256,6 +286,17 @@
       },
       get empty() { return !this.text.trim() && !this.interim.trim(); },
       get sel() { this.beat; return !!(this.d && this.d.hasSelection); },
+      get picked() { this.beat; const r = this.d && this.d.range; return r ? this.d.text.slice(r.start, r.end).trim() : ''; },
+      // AN ANCHOR, NOT A SCRIPTED NAVIGATION. A custom scheme reached by
+      // assigning location.href is at WebKit's discretion; an href the reader
+      // taps is a user activation, which is the case the platform is built
+      // around. Absent when there is nothing picked out, so the row goes inert
+      // the way a disabled button does, with no handler to guard.
+      get askHref() {
+        const t = this.picked;
+        return t ? 'shortcuts://run-shortcut?name=' + GROK + '&input=text&text='
+                   + encodeURIComponent(ASK + '\n\n' + t) : null;
+      },
       get stitchable() { this.beat; return !!(this.d && this.d.canStitch); },
       get breakable() { this.beat; return !this.edit && !!this.text && !!(this.d && this.d.segments.length); },
       get canUndo() { this.beat; return !!(this.d && this.d.canUndo); },
@@ -1568,6 +1609,15 @@
             <i class="ph ph-book-open text-lg opacity-60"></i>Autocorrect
             <span class="ml-auto font-mono text-sm opacity-40" x-text="corrections.length"></span>
           </button>
+          <a :href="askHref" @click="if (askHref) menu = false"
+             class="flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-base-200"
+             :class="askHref ? '' : 'opacity-40 pointer-events-none'"
+             :title="askHref ? 'Send the selected words to Grok; the answer comes back on the clipboard'
+                             : 'Pick out some words first: this asks about a selection, not the whole note'">
+            <i class="ph ph-sparkle text-lg opacity-60"></i>Ask Grok
+            <span x-show="picked" class="ml-auto font-mono text-sm opacity-40"
+                  x-text="picked ? picked.split(/\s+/).length : ''"></span>
+          </a>
           <div x-show="d && d.relaunches" class="px-3 pt-1.5 pb-0.5 font-mono text-[11px] opacity-30"
                x-text="(d ? d.relaunches : 0) + ' relaunches'"></div>
         </div>
