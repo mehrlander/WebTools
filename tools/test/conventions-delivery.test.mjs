@@ -108,10 +108,10 @@ test('it carries every primitive and none of the course', () => {
 // the body's byte count that decides which rung a budget selects. Two shifts so
 // far: the receipts reserved inside the budget on 2026-08-27 (514 bytes off the
 // body), then two surfacing primitives grew on the same day. Measured after
-// both, this rung is chosen for a budget in [26938, 27832); pick the midpoint so
+// both, this rung is chosen for a budget in [26876, 27771); pick the midpoint so
 // a small future edit does not walk the test off either edge silently.
 test('over budget it drops the front matter before it drops a single rule', () => {
-  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '27385' });
+  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '27323' });
   assert.match(out, /ALSO NOT INCLUDED, to fit the channel/,
     'the second rung says what it withheld, as the first one does');
   assert.doesNotMatch(out, /PARTIAL LOAD/, 'and it is not the last rung');
