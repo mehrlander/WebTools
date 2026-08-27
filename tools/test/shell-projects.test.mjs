@@ -9,7 +9,7 @@
 // own.
 //
 // The shell's app() lives inline in app/index.html, so the test evaluates the
-// plain <script> block against stubs via the shared show-repo-shell.mjs
+// plain <script> block against stubs via the shared shell.mjs
 // harness (see its header for the tactic and its provenance).
 
 import test from 'node:test';
@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
-import { page, makeShell } from './show-repo-shell.mjs';
+import { page, makeShell } from './shell.mjs';
 
 test('repoProjects: absent, non-array, or empty config yields no rows', () => {
   const { shell } = makeShell();
@@ -239,7 +239,7 @@ test('the Board pill exists for a file board only, and renders the board keyed p
   // header and no rows, so the loader falls through to the markdown board:
   // exactly the path a tracker that has not regenerated yet takes. Both fetches
   // are the correct trace for that case; the projection's own path is covered
-  // in show-repo-board-review.test.mjs.
+  // in shell-board-review.test.mjs.
   assert.deepEqual(gets, ['projects/a/tracker/board.csv', 'projects/a/tracker/board.md']);
   assert.equal(shell.projectBoardTasks, null, 'nothing parsed as a projection');
   assert.equal(shell.projectBoardLoading, false);

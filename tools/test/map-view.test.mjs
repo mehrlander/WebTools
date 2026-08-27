@@ -366,8 +366,8 @@ test('openConfig opens the repo dialog on the Config tab without throwing', () =
 // its manifest. Both halves are asserted here, since a passing half is exactly
 // the failure mode (a stamped URL nothing reads, or a rendered tab with no
 // address). The shell's app() lives inline in app/index.html, hence the
-// show-repo-shell.mjs harness.
-const { page, makeShell } = await import('./show-repo-shell.mjs');
+// shell.mjs harness.
+const { page, makeShell } = await import('./shell.mjs');
 
 test('a tab tap renders, loads, and hands the tab to the shell', async () => {
   const taps = [];
@@ -444,7 +444,7 @@ test('the shell reads the tab back off a deep link, on both boot paths', () => {
   assert.equal(url.tab, 'docs');
   // Boot and popstate share one dispatch through the VIEWS table, so routing
   // the tab is the map row's job rather than a line copied into two chains.
-  // That the two paths cannot disagree is show-repo-routing.test.mjs's beat.
+  // That the two paths cannot disagree is shell-routing.test.mjs's beat.
   shell.routeFor('map').open.call(shell, url);
   assert.equal(shell.mapTab, 'docs', 'the map row does not route the tab off the URL');
 });

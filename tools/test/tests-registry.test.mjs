@@ -220,7 +220,7 @@ test('every kind of check carries a gloss that says what the kind means', () => 
 // A sanity check on the corpus itself rather than on the registry: tools/test/
 // should hold tests and the two known helpers, nothing else.
 test('tools/test holds only tests and its declared helpers', () => {
-  const HELPERS = new Set(['bootstrap.mjs', 'show-repo-shell.mjs']);
+  const HELPERS = new Set(['bootstrap.mjs', 'shell.mjs']);
   const stray = readdirSync(path.join(repoRoot, 'tools', 'test'))
     .filter(n => n.endsWith('.mjs') && !HELPERS.has(n))
     .filter(n => !registry.tests.some(t => t.path.endsWith('/' + n)));

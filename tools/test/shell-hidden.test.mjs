@@ -13,7 +13,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeShell } from './show-repo-shell.mjs';
+import { makeShell } from './shell.mjs';
 
 const REGISTRY = 'mehrlander/web-tools-private';
 

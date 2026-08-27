@@ -18,7 +18,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeShell } from './show-repo-shell.mjs';
+import { makeShell } from './shell.mjs';
 
 // Drive the declared-catalog branch of gallery.load() with no token, so the
 // thumb cache short-circuits and nothing reaches the network.

@@ -10,7 +10,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { page, makeShell } from './show-repo-shell.mjs';
+import { page, makeShell } from './shell.mjs';
 
 const REGISTRY = 'mehrlander/web-tools-private';
 const BRANCH = 'claude/some-branch';
