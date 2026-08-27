@@ -2790,6 +2790,16 @@ function app(){ return {
     } finally { this.activityRefreshing = false; this.closeCrawl('activity'); }
   },
 
+  // Announce a finished sessions crawl, handing the document along. The exact
+  // sibling of announceActivity below, and it did not exist until 2026-08-27:
+  // every caller dispatched the bare event by hand, so the Sessions pane went
+  // back to the API for a file the crawl was holding, and its age pill reported
+  // the last COMMIT rather than the last check. See the crawl's own note.
+  announceSessions(r){
+    document.dispatchEvent(new CustomEvent('web-tools:sessions-refreshed',
+      { detail: r?.doc ? { cache: r.doc } : null }));
+  },
+
   // Announce a finished activity crawl, handing the document along. A listener
   // that re-reads the cache on this event is re-fetching a file the crawl still
   // holds, so the detail carries it; a listener that gets no detail (the
@@ -3326,8 +3336,19 @@ function app(){ return {
         await this.saveFold(reg, S.CACHE_PATH, next,
                             'Update sessions cache (state/sessions.json) via show-repo', base);
       }
+      // `doc` rides the summary for the reason the activity crawl's does, plus
+      // one this crawl has and that one does not. The shared reason is cost:
+      // state/sessions.json is a megabyte and the crawl is holding it, so a
+      // listener that re-reads it is paying twice. The extra reason is the
+      // STAMP. A pass that changes nothing does not commit, so the stored file
+      // still carries the previous pass's `generatedAt`, and a listener that
+      // re-read it snapped its age pill back to that: press Refresh on a quiet
+      // estate and Branches said "now" while Sessions said "1h", off one
+      // gesture. The built document always carries `generatedAt: nowISO`
+      // whether or not it was worth committing, which is the honest answer to
+      // "when was this last checked".
       return { total: listing.length, read: Object.keys(fetched).length,
-               deferred, committed: changed, titlesAt: next.titlesAt || '' };
+               deferred, committed: changed, titlesAt: next.titlesAt || '', doc: next };
     } catch(e){
       console.warn('sessions cache refresh:', e?.message || e);
       return { error: e?.message || String(e) };
@@ -3346,7 +3367,7 @@ function app(){ return {
     this.openCrawl('sessions', 'Listing records', 'records');
     try {
       const r = await this.refreshSessionsCache(true);
-      document.dispatchEvent(new CustomEvent('web-tools:sessions-refreshed'));
+      this.announceSessions(r);
       const toast = Alpine.store('toast');
       if (!toast || !r) return;
       const plural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
@@ -3390,7 +3411,7 @@ function app(){ return {
       this.openCrawl('sessions', 'Listing records', 'records');
       try { s = await this.refreshSessionsCache(true); }
       finally { this.sessionsRefreshing = false; this.closeCrawl('sessions'); }
-      document.dispatchEvent(new CustomEvent('web-tools:sessions-refreshed'));
+      this.announceSessions(s);
 
       this.activityRefreshing = true;
       this.openCrawl('activity', 'Refreshing activity', 'repos');
@@ -5520,10 +5541,16 @@ function app(){ return {
   // over it, with the one control it offers being the crawl that had just run.
   // Announcing on commit is what closes that: same shape as
   // arrivalActivityRefresh, which had it from the start.
+  //
+  // The gate is `doc OR committed`, not `committed` alone, and the widening is
+  // the 2026-08-27 fix seen from this end. A pass that RAN and found nothing to
+  // commit still checked the store, and the document it built says so; only a
+  // pass that was THROTTLED has neither a document nor a commit, and that one
+  // must stay silent or every arrival costs a read of a megabyte for no news.
   async warmSessionsCache(){
     try {
       const r = await this.refreshSessionsCache(false);
-      if (r?.committed) document.dispatchEvent(new CustomEvent('web-tools:sessions-refreshed'));
+      if (r?.doc || r?.committed) this.announceSessions(r);
     } catch(e){ console.warn('arrival sessions refresh:', e?.message || e); }
   },
   // Chats warms nothing, and the absence is the design. The other three panes

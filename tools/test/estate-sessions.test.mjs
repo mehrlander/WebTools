@@ -435,3 +435,66 @@ test('the row version moved, so one pass re-reads the store and heals it', () =>
   assert.deepEqual(S.stalePaths(prev, listing), listing.map(e => e.path),
     'an unchanged blob still has to be re-read when the summarizer gained a field');
 });
+
+
+// ── The age pill answers "when was this last CHECKED" ───────────────────────
+// A refresh on Branches and a refresh on Sessions gave two different answers to
+// that, off one gesture, and the cause was that the activity crawl handed its
+// freshly built document to the pane while the sessions crawl fired a bare
+// event and made the pane re-read the file. Two consequences, both visible:
+// a pass that changes nothing does not commit, so the stored file still carries
+// the PREVIOUS pass's stamp and the pill snapped back to it; and a pass that
+// did commit was read moments after its own write.
+//
+// Measured 2026-08-27 against the real store: the pane read "1h" straight after
+// a refresh whose crawl had committed three minutes earlier.
+
+test('a handed document lands without a read', async () => {
+  FILES = {
+    'state/sessions.json': {
+      generatedAt: '2026-08-05T10:00:00Z',
+      rows: [window.RepoSessionsCache.summarize(rec(), 'sha1')],
+    },
+  };
+  await data.loadSessions(reg());
+  assert.equal(data.sessionsGeneratedAt, '2026-08-05T10:00:00Z');
+
+  GETS = [];
+  await data.reloadSessions({
+    generatedAt: '2026-08-05T18:30:00Z', titlesAt: '2026-08-05',
+    rows: [window.RepoSessionsCache.summarize(rec({ short: 'newone' }), 'sha2')],
+    attention: [{ path: 'a.js', count: 1, sessions: 1, last: '' }],
+  });
+  assert.equal(data.sessionsGeneratedAt, '2026-08-05T18:30:00Z');
+  assert.equal(data.sessionsTitlesAt, '2026-08-05');
+  assert.equal(data.sessionRows_.length, 1);
+  assert.equal(data.sessionRows_[0].id, 'newone');
+  assert.deepEqual(GETS, [], 'the crawl was holding the document; re-reading it is the bug');
+});
+
+test('a crawl that committed nothing still moves the stamp it hands over', () => {
+  // The whole failure in one assertion. buildCache stamps generatedAt on every
+  // build, commit or no commit, so a quiet pass reports that it checked. The
+  // stored file keeps the older stamp on purpose, and the State view is where
+  // last-BUILT is answered; the pill is not.
+  const quiet = window.RepoSessionsCache.buildCache(
+    { generatedAt: '2026-08-05T10:00:00Z', rows: [], byPath: {} },
+    {}, [], '2026-08-05T18:30:00Z', null);
+  assert.equal(quiet.generatedAt, '2026-08-05T18:30:00Z');
+  assert.equal(window.RepoSessionsCache.cacheChanged(
+    { generatedAt: '2026-08-05T10:00:00Z', rows: [] }, quiet), false,
+    'and it is still not worth a commit, which is why the pane must be handed it');
+});
+
+test('a detail-less event still falls back to reading, so the contract only widened', async () => {
+  FILES = {
+    'state/sessions.json': {
+      generatedAt: '2026-08-05T21:00:00Z',
+      rows: [window.RepoSessionsCache.summarize(rec(), 'sha9')],
+    },
+  };
+  GETS = [];
+  await data.reloadSessions();
+  assert.ok(GETS.includes('state/sessions.json'));
+  assert.equal(data.sessionsGeneratedAt, '2026-08-05T21:00:00Z');
+});
