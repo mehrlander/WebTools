@@ -46,7 +46,7 @@ const SESSIONS = [
       '',
       'So the choice is executable rather than remembered.',
     ].join('\n'),
-    replyCut: 'cut',
+    replyCut: '',
     // The scroll back, in the shape repo-sessions-cache's priorTurns emits:
     // [role, head] pairs, chronological, asks at PROMPT_HEAD and turns at
     // TURN_HEAD, the closing reply excluded because `reply` above carries it.
@@ -64,7 +64,6 @@ const SESSIONS = [
     turnsCut: 'cut',
     askAt: '13:51:08',
     replyAt: '16:49:16',
-    replyDropped: 1204,
     schema: 4, sha: 'a',
   },
   {

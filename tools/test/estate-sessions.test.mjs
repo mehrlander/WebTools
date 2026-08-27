@@ -454,22 +454,16 @@ test('a record with no replies says its text is a tail, rather than passing it o
   assert.equal(c.turns.at(-1).ts, '', 'and no clock, because a schema-3 record kept none');
 });
 
-test('a reply the cache cut says so in the label and in the card', () => {
-  // The store's own schema-5 lesson: a bound is fine and a silent bound is the
-  // damage. Median closing reply is 1,554 characters against a 600 cap.
+test('the closing reply reaches the card whole, and claims no trim', () => {
+  // It was capped at 600 and the cap was wrong for the one turn the card is
+  // opened for. The scroll back above it is still openings; this is not.
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, replies: [{ at: 'z', text: 'x'.repeat(2000) }] }), 'x');
-  // One unbroken run with no sentence to stop at, so the cap cuts it and marks
-  // the cut: REPLY_CHARS of text plus the ellipsis that says so.
-  assert.equal(row.reply.length, window.RepoSessionsCache.REPLY_CHARS + 1);
-  assert.ok(row.reply.endsWith('…'));
-  assert.equal(row.replyDropped, 1400, 'and the row says how much is not here');
+  assert.equal(row.reply.length, 2000, 'byte for byte');
   const c = replyCard(row);
-  assert.equal(c.label, 'closing reply, trimmed');
-  assert.equal(c.turns.at(-1).label, 'Assistant · closing reply, trimmed');
-  assert.equal(c.turns.at(-1).dropped, 1400,
-    'carried on the TURN, so the note lands under the turn it is about');
-  assert.equal(c.cut, true);
+  assert.equal(c.label, 'closing reply', 'no "trimmed": nothing was');
+  assert.equal(c.turns.at(-1).label, 'Assistant · closing reply');
+  assert.ok(!c.turns.at(-1).dropped, 'and no note under it; the mount draws one off this');
 });
 
 test('a row with no reply yet still opens, on the ask, and says why', () => {
@@ -482,7 +476,6 @@ test('a row with no reply yet still opens, on the ask, and says why', () => {
   assert.equal(c.label, 'opening ask', 'the header names what it actually has');
   assert.equal(roles(c), 'u', 'the ask alone');
   assert.equal(c.pending, true, 'and the body draws the why off this');
-  assert.equal(c.cut, false, 'nothing was trimmed, because there is nothing to trim');
 });
 
 test('the truncated scroll back is reported on the card, not silently dropped', () => {

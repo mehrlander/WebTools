@@ -237,24 +237,29 @@ test('what is missing is counted, whether the cap or the lead filter took it', (
   assert.equal(lead.dropped, 19, 'a skipped lead is still text the reader is not seeing');
 });
 
-test('the closing reply is cut like every other turn, not sliced raw', () => {
-  // It was a raw slice at REPLY_CHARS, so the one turn a reader opens the card
-  // FOR was the only one still ending mid-word and unmarked: "which joins
-  // three artifacts of one source pac". Reported 2026-08-27.
-  const rec = {
-    schema: 4,
-    replies: [{ at: at(1), text: 'A complete sentence here. ' + 'z'.repeat(900) + '.' }],
-  };
-  const reply = S.closingReply(rec);
-  assert.equal(reply, 'A complete sentence here.', 'ends where a sentence does');
-  assert.equal(S.replyDropped(rec), 901);
-  assert.equal(S.replyPartial(rec), 'cut');
+test('the closing reply is carried WHOLE, alone among the turns', () => {
+  // Every other entry is an opening, because the card is a scan. This one is
+  // the thing being scanned for, so a cap on it was cutting the answer: the
+  // median reply runs 746 characters against the 600 it used to be cut at.
+  const long = 'A complete sentence here. ' + 'z'.repeat(4000) + '.';
+  const rec = { schema: 4, replies: [{ at: at(1), text: long }] };
+  assert.equal(S.closingReply(rec), long, 'byte for byte');
+  assert.equal(S.replyPartial(rec), '', 'and nothing to claim about it');
 });
 
-test('a reply that fits is not flagged, however close to the cap', () => {
-  const rec = { schema: 4, replies: [{ at: at(1), text: 'One.\n\nTwo.\n\nThree.' }] };
-  assert.equal(S.replyDropped(rec), 0);
-  assert.equal(S.replyPartial(rec), '', 'and so it claims nothing');
+test('whole is safe because the RECORD bounds it, not this cache', () => {
+  // The recorder caps prose at 8 KB a turn. Measured over the 233 replies on
+  // file 2026-08-27 the longest is 7,453 characters, nine are over 5,000 and
+  // none over 10,000, so removing the cap here does not remove the bound.
+  const rec = { schema: 4, replies: [{ at: at(1), text: 'x'.repeat(7453) }] };
+  assert.equal(S.closingReply(rec).length, 7453);
+});
+
+test('a schema-3 record still says its text is only a tail', () => {
+  // The one fidelity claim left, and the cache is not the one making the cut:
+  // last_message is the recorder's own 500-character tail of the final turn.
+  assert.equal(S.replyPartial({ schema: 3, last_message: 'the tail' }), 'tail');
+  assert.equal(S.replyPartial({ schema: 4, replies: [{ at: at(1), text: 'whole' }] }), '');
 });
 
 test('a bold or code lead is the answer, not chrome, and survives', () => {
