@@ -93,3 +93,33 @@ test('a start page is only passed when it is a real forward offset', () => {
   // so both have to fall through rather than being spread in.
   assert.match(src, /Number\.isInteger\(start\)\s*&&\s*start\s*>\s*0/);
 });
+
+// ── the table narrowing ──────────────────────────────────────────────────────
+//
+// The second host hook, and the reason it is initialHeaderFilter rather than
+// setFilter: a narrowing the reader cannot see is a table that disagrees with
+// its own row count and offers no way back to the whole file.
+
+test('a col/find pair becomes a visible header filter', () => {
+  const f = window.ViewRegistry.headerFilter({ filter: { col: 'Vendor', find: 'VOYA' } });
+  assert.deepEqual(Object.keys(f), ['initialHeaderFilter']);
+  assert.equal(f.initialHeaderFilter.length, 1);
+  assert.equal(f.initialHeaderFilter[0].field, 'Vendor');
+  assert.equal(f.initialHeaderFilter[0].value, 'VOYA');
+});
+
+test('a half-specified narrowing is no narrowing at all', () => {
+  // Spread into a Tabulator config, so the empty case has to be an empty
+  // object: `{ initialHeaderFilter: undefined }` is a declared key with a
+  // garbage value, which Tabulator reads and this does not.
+  for (const bad of [undefined, {}, { filter: {} }, { filter: { col: 'a' } }, { filter: { find: 'b' } }]) {
+    assert.deepEqual(Object.keys(window.ViewRegistry.headerFilter(bad)), [], JSON.stringify(bad));
+  }
+});
+
+test('both table-drawing modes read the narrowing', () => {
+  for (const id of ['table', 'xlsx']) {
+    const src = window.ViewRegistry.modules.find(m => m.id === id).after.toString();
+    assert.match(src, /ViewRegistry\.headerFilter\(/, `the ${id} mode ignores the host narrowing`);
+  }
+});
