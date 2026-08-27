@@ -88,16 +88,31 @@
 
   WHERE THE CONTROLS SIT. The HEADER is a three-column grid: the session on
   the left (record, and how long it has run), the TARGET on the centre line,
-  and the history plus the menu on the right (undo, redo, backspace). The
-  BOTTOM holds the marks and Save. Record doubles as the state readout, since
-  red and pulsing answers "is it hearing me" from across the room and the page
-  then needs no word for it.
+  and the history plus the menu on the right (undo, redo, the keyboard). The
+  BOTTOM is two rows, and they are split by what a tap DOES rather than by
+  how it looks: the KEYS that compose (the marks, the shift, backspace) and
+  the DESTINATIONS that end it (Copy, Share, Jot, Drop). Record doubles as
+  the state readout, since red and pulsing answers "is it hearing me" from
+  across the room and the page then needs no word for it.
 
-  Backspace is the one placement worth arguing with: it is tapped mid-sentence
-  more than anything but the marks, and it now lives at the top of the screen
-  where a thumb has to travel. Moved there 2026-08-25 on the reading that it
-  undoes a word the way undo undoes an act, so the three belong together. If
-  it turns out to cost more than the grouping buys, it goes back.
+  BACKSPACE IS A KEY, and its two earlier homes were both reasoned from
+  something other than how often it is tapped. In the header it sat beside
+  undo and redo, on the reading that the three all take something back: true,
+  and beside the point, since undo is reached for a handful of times in a
+  session and backspace is reached for mid-sentence, over and over. Moved
+  down on 2026-08-25 it landed in the row that ends the note, which was the
+  only room there was, so the key that removes a word sat against the button
+  that filed it. It is the fifth key now, at the right end, where every
+  keyboard the reader has ever used puts it. Five across a phone is 73px
+  each, still half again the composer's column key.
+
+  THE DESTINATIONS ARE FOUR BUTTONS, not a Save that opens four. The sheet
+  they were in was a CHOOSER and never a confirmation: tapping Jot in it
+  filed the note there and then, so the extra tap bought no safety, only
+  distance. Flattened 2026-08-27. What the sheet carried and the row cannot
+  is a line of description under each name; those are titles now, and the one
+  that says something a reader cannot infer, where Drop writes, is also in
+  the toast that lands after it writes.
 
   THE TARGET IS TWO GESTURES ON ONE BUTTON, because they are one job: this is
   the control that aims. DRAG it and the caret moves (the pad, below). TAP it
@@ -120,7 +135,7 @@
   moment its own gesture does.
 
   ADDRESSING
-    ?to=copy|share|jot|drop   which destination the save sheet opens on
+    ?to=copy|share|jot|drop   which destination is painted as the lead
     ?dest=owner/repo[@ref]:dir   where Drop writes, overriding home/chron/dump
     ?lang=en-US               recognition language, default the browser's
     ?use=<ref>                pin the lib chain to a branch for previewing
@@ -238,7 +253,7 @@
       elapsed: 0, since: 0,
       edit: false, draft: '',
       breaks: false,
-      menu: false, sheet: false, autoOpen: false,
+      menu: false, autoOpen: false,
       dest: q.get('to') || 'copy',
       autoFrom: '', autoTo: '',
       corrections: [], autoRe: null,
@@ -255,6 +270,11 @@
         return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
       },
       get empty() { return !this.text.trim() && !this.interim.trim(); },
+      // Nothing to send, which is not the same as an empty BUFFER: in the
+      // keyboard half the words are in the draft and the buffer is behind it.
+      // A getter because four destinations read it, where Save read it once
+      // inline and the fifth reader would have got it wrong.
+      get blank() { return this.empty && !this.draft.trim(); },
       get sel() { this.beat; return !!(this.d && this.d.hasSelection); },
       get stitchable() { this.beat; return !!(this.d && this.d.canStitch); },
       get breakable() { this.beat; return !this.edit && !!this.text && !!(this.d && this.d.segments.length); },
@@ -1378,12 +1398,12 @@
         return (t.trim().split(/\s+/).slice(0, 7).join('-') || 'note')
           .toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'note';
       },
-      openSheet() { if (this.empty && !this.draft.trim()) return; this.sheet = true; },
-      // ?to= names the destination a link already has in mind, and the sheet
-      // paints that one primary rather than opening on it: choosing is still
+      // ?to= names the destination a link already has in mind, and the row
+      // paints that one primary rather than acting on it: choosing is still
       // the reader's, and a URL that could file a note on arrival would be a
-      // different and much less safe thing.
-      lead(k) { return this.dest === k ? 'btn-primary' : ''; },
+      // different and much less safe thing. It is the only difference between
+      // the four buttons, so it is a class rather than a branch.
+      lead(k) { return this.dest === k ? 'btn-primary' : 'btn-ghost bg-base-200'; },
 
       // Copy and Share only READ the buffer, so they leave it standing and
       // leave the draft in place: nothing durable has happened yet and a
@@ -1393,7 +1413,6 @@
         const n = this.words;
         try {
           await navigator.clipboard.writeText(t);
-          this.sheet = false;
           Alpine.store('toast')('clipboard-text', 'Copied ' + n + ' words', 'alert-success', 2200);
         } catch (e) {
           // Rather than a silent no-op: a clipboard write can be refused, and
@@ -1404,7 +1423,6 @@
       },
       async share() {
         const t = this.outgoing();
-        this.sheet = false;
         try { await navigator.share({ text: t }); } catch {}
       },
       // Jot and Drop file it, so both clear: the note has a home now and the
@@ -1441,7 +1459,6 @@
         try {
           const inst = new window.GH({ token: this.token, repo, ref: ref || '' });
           const where = await work(inst);
-          this.sheet = false;
           this.clear();
           Alpine.store('toast')('check', 'Filed in ' + where, 'alert-success', 3200);
         } catch (e) {
@@ -1670,11 +1687,12 @@
 
   </div>
 
-  <!-- ── The marks ───────────────────────────────────────────────────────
-       The composer's three keys and its shift, laid across instead of down.
-       Four keys at a phone's width is 90px each, which is a larger target
-       than the column's 46 and costs the text nothing. Tapped over and over
-       inside one note, so they are the tall row. -->
+  <!-- ── The keys ────────────────────────────────────────────────────────
+       The composer's three keys and its shift, laid across instead of down,
+       with backspace on the end. Five keys at a phone's width is 73px each,
+       which is still half again the column's 46 and costs the text nothing.
+       Tapped over and over inside one note, so they are the tall row, and
+       being the tall row is what qualifies a control to be here. -->
   <div x-show="!edit" class="shrink-0 flex items-stretch gap-1 px-1 pt-1">
     <template x-for="k in pad" :key="k.k">
       <button @pointerdown.prevent="key(k.k)" :title="k.t"
@@ -1695,78 +1713,63 @@
             :class="shift ? 'btn-warning' : 'btn-ghost bg-base-200'"
             title="The other three marks"
             x-text="shift ? 'abc' : '·!¶'"></button>
-  </div>
-
-  <!-- ── The bottom row ──────────────────────────────────────────────────
-       The one that ends the note, and the one tapped most while writing it.
-       Backspace sat in the header beside undo and redo, on the reading that
-       the three are one group: they all take something back. True, and the
-       wrong grouping. Undo and redo are reached for occasionally and from
-       anywhere; backspace is reached for over and over in the middle of
-       talking, which is what the pad row above is tall for. It belongs where
-       the thumb already is, so it moved down here beside the keys rather
-       than up there beside its logical siblings. -->
-  <div class="shrink-0 flex items-stretch gap-1 px-1 pb-1 pt-1"
-       style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.25rem)">
-    <button @pointerdown.prevent="back()" :disabled="edit"
-            class="btn btn-ghost bg-base-200 h-12 min-h-0 w-14 px-0 text-error"
-            title="Delete the last word (dictation keeps running)">
+    <!-- BACKSPACE, the fifth key, at the right end. It is red because it is
+         the one key here that takes something away, and the tint is the aim:
+         the other four are reached for by position and this one has to be
+         found in a hurry, mid-sentence, without reading. It needs no
+         `:disabled` for the keyboard half, since the row it is in is hidden
+         there and the software keyboard has its own. -->
+    <button @pointerdown.prevent="back()"
+            class="btn btn-ghost bg-base-200 h-14 min-h-0 grow basis-0 px-0 text-error"
+            title="Delete the last word, or the selection (dictation keeps running)">
       <i class="ph ph-backspace text-2xl"></i>
     </button>
-    <button @click="openSheet()" :disabled="empty && !draft.trim()"
-            class="btn btn-primary h-12 min-h-0 grow gap-1.5 px-0">
-      <i class="ph ph-paper-plane-tilt text-lg"></i>Save
-    </button>
   </div>
 
-  <!-- ── The save sheet ──────────────────────────────────────────────────
-       A bottom sheet rather than a centred dialog, because the choice is made
-       with the same thumb that has been tapping the pad. -->
-  <div x-show="sheet" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
-    <div class="absolute inset-0 bg-black/40" @click="sheet = false"></div>
-    <div class="relative w-full max-w-3xl bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-2"
-         style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
-      <div class="flex items-baseline gap-2 pb-1">
-        <span class="font-medium">Save</span>
-        <span class="font-mono text-xs opacity-40" x-text="words + ' words'"></span>
-        <div class="grow"></div>
-        <button @click="sheet = false" class="btn btn-ghost btn-sm btn-square"><i class="ph ph-x text-lg"></i></button>
-      </div>
+  <!-- ── The destinations ────────────────────────────────────────────────
+       Four buttons, one tap each, in the row that used to hold one button
+       that opened a sheet holding these four. The row is the same rhythm as
+       the keys above it and half a step shorter, which is the whole visual
+       statement that it is a different kind of control: keys compose, these
+       end it. Copy and Share leave the words standing, Jot and Drop file
+       them and clear the page, and the pair that needs a token is the pair
+       that writes to a repository.
 
-      <button @click="copy()" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('copy')">
-        <i class="ph ph-clipboard-text text-2xl"></i>
-        <span class="flex flex-col items-start leading-tight">
-          <span>Copy</span><span class="text-xs font-normal opacity-50">to paste into a chat</span>
-        </span>
-      </button>
+       A phone at 390px gives each of four 92px, so the name fits beside the
+       icon and neither has to go. The row lays out `grow basis-0`, so
+       Share dropping out on a browser with no `navigator.share` widens the
+       other three rather than leaving a hole.
 
-      <button x-show="canShare" @click="share()" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('share')">
-        <i class="ph ph-share-network text-2xl"></i>
-        <span class="flex flex-col items-start leading-tight">
-          <span>Share</span><span class="text-xs font-normal opacity-50">the system sheet: any app on the phone</span>
-        </span>
-      </button>
-
-      <button @click="jot()" :disabled="!token || !!saving" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('jot')">
-        <i class="ph ph-note-pencil text-2xl"></i>
-        <span class="flex flex-col items-start leading-tight">
-          <span>Jot</span><span class="text-xs font-normal opacity-50">the estate's pile, beside the others</span>
-        </span>
-      </button>
-
-      <button @click="drop()" :disabled="!token || !!saving" class="btn btn-lg justify-start gap-3 h-16 min-h-0" :class="lead('drop')">
-        <i class="ph ph-tray-arrow-down text-2xl"></i>
-        <span class="flex flex-col items-start leading-tight">
-          <span>Drop</span>
-          <span class="text-xs font-normal opacity-70" x-text="destName + ', for the next drain'"></span>
-        </span>
-      </button>
-
-      <p x-show="!token" class="text-sm opacity-50 px-1 pt-1">
-        Jot and Drop write to a repository, so they need this browser's GitHub token.
-        Copy and Share do not.
-      </p>
-    </div>
+       NO TOKEN DOES NOT DISABLE Jot and Drop, which is the one place this row
+       departs from the sheet it replaces. The sheet could afford to grey them
+       out because it had a paragraph underneath saying why; a row has nowhere
+       to put that sentence except a permanent line between these buttons and
+       the keys, costing 34px on every screen to explain a state most readers
+       are never in. So the tap is left live and `commit()` answers it with the
+       toast it already carried and the sheet made unreachable: no token here,
+       use Copy or Share. The explanation arrives when it is asked for. -->
+  <div class="shrink-0 flex items-stretch gap-1 px-1 pb-1 pt-1"
+       style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.25rem)">
+    <button @click="copy()" :disabled="blank"
+            class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
+            :class="lead('copy')" title="Copy the words, to paste into a chat">
+      <i class="ph ph-clipboard-text text-lg"></i>Copy
+    </button>
+    <button x-show="canShare" @click="share()" :disabled="blank"
+            class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
+            :class="lead('share')" title="The system sheet: any app on the phone">
+      <i class="ph ph-share-network text-lg"></i>Share
+    </button>
+    <button @click="jot()" :disabled="blank || !!saving"
+            class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
+            :class="lead('jot')" title="File it in the estate's jots pile, beside the others">
+      <i class="ph ph-note-pencil text-lg"></i>Jot
+    </button>
+    <button @click="drop()" :disabled="blank || !!saving"
+            class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
+            :class="lead('drop')" :title="'Write a dated markdown file into ' + destName + ', for the next drain'">
+      <i class="ph ph-tray-arrow-down text-lg"></i>Drop
+    </button>
   </div>
 
   <!-- ── Autocorrect ─────────────────────────────────────────────────────
