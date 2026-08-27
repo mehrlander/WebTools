@@ -212,7 +212,10 @@ test('every browser check is owned by an npm script', () => {
 // value). The registry's own note went the way every other one did: to the prose
 // that already describes it.
 test('every kind of check carries a gloss that says what the kind means', () => {
-  assert.ok(KINDS.length > 3, 'the kind domain is declared');
+  // Was `> 3`, when seven values were declared. The floor is 2 now: a
+  // one-value domain would classify nothing, which is the failure this
+  // assertion is really watching for.
+  assert.ok(KINDS.length >= 2, 'the kind domain is declared');
   for (const k of KINDS)
     assert.ok((glossOf(k) || '').length > 20, k + ': the gloss says what the kind means');
 });

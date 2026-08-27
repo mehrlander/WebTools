@@ -74,7 +74,15 @@ import { parseCsv, writeCsv, splitList } from './registries-load.mjs';
 const TEST_COLS = ['path', 'kind', 'protects', 'assertions', 'method', 'runner', 'boot_smoke', 'assertion_names'];
 import { fileURLToPath } from 'node:url';
 
-export const KINDS = ['behavior', 'component', 'kit', 'tool', 'gate', 'guard'];
+// Two values, because `method` already answers the question the other five
+// were answering. component/kit/tool glossed to `alpine`/`kit`/`spawn` word
+// for word, and `guard` glossed to a convention check while three of its
+// five rows were behaviour with a quiet failure mode. What is left is the
+// one split method cannot recover: is the subject code being run, or a
+// committed file's content? `read` does not predict it (41 behaviour rows
+// read a file; 14 gates do too), which is the test of whether this column
+// earns its place beside `method`.
+export const KINDS = ['behavior', 'gate'];
 export const METHODS = ['kit', 'alpine', 'spawn', 'read', 'pure'];
 
 const TEST_DIR = 'tools/test';
