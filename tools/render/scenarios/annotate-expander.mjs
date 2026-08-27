@@ -1,24 +1,31 @@
 // The card's own reading of the set, opened by the expander: the list with
-// room in it, or either serialization, of the whole set or of one note. Driven
-// on pages/annotate.html, which is the card at its plainest (no drawer, no
-// toss, nothing else on the page competing for the corner).
+// room in it, or either serialization of the whole set. Driven on
+// pages/annotate.html, which is the card at its plainest (no drawer, no toss,
+// nothing else on the page competing for the corner).
 //
 //   npm run shot -- pages/annotate.html --script tools/render/scenarios/annotate-expander.mjs
 //   npm run shot -- pages/annotate.html --query "reading=md" --width 430 --script …
 //
-// Four knobs on the query. `notes=0` seeds none, which is the state a reader
+// Three knobs on the query. `notes=0` seeds none, which is the state a reader
 // ARRIVES in and the one the expander first got wrong by hiding itself in it;
 // `open=0` leaves the card collapsed; `reading` picks which of the three is
-// photographed (notes | md | json); `scope=note` narrows a serialization to
-// the selected note. What the PNG is evidence of: the card grew UPWARD from
+// photographed (notes | md | json). A fourth, `scope=note`, went with the
+// scope chip: a serialization is of the set, always. What the PNG is evidence
+// of: the card grew UPWARD from
 // its own bottom edge, the readings strip and the set's actions arriving with
 // it, and the pane showing the bytes Copy would hand over rather than a
 // description of them.
 export default async (page) => {
+  // The aims moved behind one menu button, so reaching one is two taps rather
+  // than one. Opening first, by the button's own title, keeps the scenario
+  // driving the same controls a reader does instead of calling the API.
+  const aim = async (title) => {
+    await page.click('button[data-annotate-ui][title^="What the next note is about"]');
+    await page.click(`button[data-annotate-ui][title^="${title}"]`);
+  };
   await page.waitForSelector('#doc h1', { timeout: 15000 });
   const q = new URL(page.url()).searchParams;
   const reading = q.get('reading') || 'notes';
-  const scope = q.get('scope') || 'set';
   const seed = q.get('notes') !== '0';
   const open = q.get('open') !== '0';
 
@@ -75,7 +82,7 @@ export default async (page) => {
 
     // A page note takes no gesture at all, which is the case the other targets
     // cannot serve: a complaint about the document itself.
-    await page.click('button[data-annotate-ui][title^="Note this page as a whole"]');
+    await aim('Note this page as a whole');
     await save('Three sections in and the scope is still not stated.');
   }
 
@@ -92,13 +99,6 @@ export default async (page) => {
   if (reading !== 'notes') {
     const label = reading === 'json' ? 'annotate/1 JSON' : 'markdown';
     await page.click(`button[data-annotate-ui][title^="The set as ${label}"]`);
-    if (scope === 'note') {
-      // Selecting from the list is what puts a note behind the second scope
-      // chip; the chip is labelled by that selection rather than sitting there
-      // greyed out, so it does not exist until there is one.
-      await page.evaluate(() => window.Annotate.select(window.Annotate.items[1].id, { scroll: false }));
-      await page.click('button[data-annotate-ui][title^="Showing the whole set"]');
-    }
     await page.waitForTimeout(200);
   }
   await page.waitForTimeout(300);

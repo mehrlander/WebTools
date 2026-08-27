@@ -26,12 +26,13 @@ import { repoRoot } from './bootstrap.mjs';
 const read = (p) => readFileSync(path.join(repoRoot, p), 'utf8');
 const words = (s) => s.split(/\s+/).filter(Boolean).length;
 
-// Set 2026-08-26, each a little above the size the file reached after PR #509,
-// so the next stretch of growth trips it rather than the one after that.
-// CONVENTIONS.md shares CLAUDE.md's number because it plays the same part.
+// Set 2026-08-27, each a little above the size the file reached after the
+// docs-editing sessions' compression pass, so the next stretch of growth trips
+// it rather than the one after that. CONVENTIONS.md shares CLAUDE.md's number
+// because it plays the same part.
 const LIMITS = {
-  'docs/CONVENTIONS.md': 1600,   // 1,389w when set
-  'docs/SURFACING.md': 4600,     // 4,125w when set
+  'docs/CONVENTIONS.md': 1600,   // 1,339w when set
+  'docs/SURFACING.md': 4400,     // 3,918w when set
 };
 
 for (const [file, limit] of Object.entries(LIMITS)) {
@@ -45,20 +46,23 @@ for (const [file, limit] of Object.entries(LIMITS)) {
   });
 }
 
-// The density half, and the one the raw ceilings above cannot do.
+// The primitives section on its own, which the file ceiling above cannot do.
 //
-// Between 2026-08-11 and 2026-08-25 the primitives section gained 950 words
-// while stating exactly the same twenty rules: 119 words per rule, then 167.
-// A total-word ceiling cannot tell that apart from five new primitives, and
-// the two deserve opposite answers. Adding a rule is the section doing its
-// job; elaborating one is the failure mode both injected documents name and
-// neither could see in itself.
+// Between 2026-08-11 and 2026-08-25 this section gained 950 words while stating
+// exactly the same twenty rules: the rule set was frozen and the prose was not.
+// A whole-file ceiling misses that whenever another section shrinks by as much,
+// which is not hypothetical: on 2026-08-27 the file fell 207 words while this
+// section rose 254.
 //
-// So this is scale-free on purpose. The section may grow all it likes by
-// acquiring rules. It may not grow by explaining the ones it has.
-const PER_PRIMITIVE = 120;      // 107.2 when set
+// This was a words-PER-RULE budget for one day, and the distribution says that
+// was the wrong statistic. Two of the twenty entries hold 45% of the section
+// (the surfacing caption at 717 words, closing state at 344; the median is 72).
+// So a mean tracks those two and almost nothing else, and one rewrite of the
+// caption moved it 12% in a day. A section total catches the same failure, has
+// no statistic to misreport, and does not turn one entry's edit into a gate.
+const SECTION_LIMIT = 2600;      // 2,342w when set, over 20 rules
 
-test('the primitives section states rules rather than explaining them', () => {
+test('the primitives section stays under its own budget', () => {
   const surfacing = read('docs/SURFACING.md');
   const section = surfacing
     .split('## Surfacing primitives')[1]?.split('## The surfacing course')[0];
@@ -67,12 +71,20 @@ test('the primitives section states rules rather than explaining them', () => {
   const rules = (section.match(/^\* \*\*/gm) || []).length;
   assert.ok(rules > 10, 'the section parses into primitives');
 
-  const density = words(section) / rules;
-  assert.ok(density < PER_PRIMITIVE,
-    `the primitives section runs ${density.toFixed(1)} words per rule across ` +
-    `${rules} rules, over its ${PER_PRIMITIVE}-word budget. This one does not ` +
-    'fire for adding a primitive, only for explaining one: each entry states ' +
-    'the rule, then Form where there is a syntax, then Boundary where deleting ' +
-    'the clause would change how the rule applies at an edge. Provenance goes ' +
-    'to the PR body, which already carries it.');
+  const n = words(section);
+  assert.ok(n < SECTION_LIMIT,
+    `the primitives section is ${n} words across ${rules} rules, over its ` +
+    `${SECTION_LIMIT}-word budget. Adding a rule is the section doing its job ` +
+    'and costs about a median entry (72 words); explaining one is the failure ' +
+    'this catches. Each entry states the rule, then Form where there is a ' +
+    'syntax, then Boundary where deleting the clause would change how the rule ' +
+    'applies at an edge. Provenance goes to the PR body, which already carries it.');
+});
+
+// The parse point the injector depends on. inject-conventions.sh splits here to
+// fit the session-start channel, so a rename empties half the payload; it fails
+// open to the whole file, which is over the limit and therefore truncated.
+test('the course heading the injector splits on is still there', () => {
+  assert.match(read('docs/SURFACING.md'), /^## The surfacing course$/m,
+    'inject-conventions.sh splits the injected payload on this heading');
 });

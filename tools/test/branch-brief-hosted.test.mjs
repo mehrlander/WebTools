@@ -133,8 +133,10 @@ const mount = async (branch, extra = {}) => {
 const reset = () => { calls.compare.length = 0; calls.pulls.length = 0; calls.csv.length = 0; meta.length = 0; };
 
 // What the reader tapping the Files tab does. The tab's own handler is
-// `pane = 'files'; ensureCompare()`, so this is that pair.
-const openFiles = async (d = data) => { d.pane = 'files'; await d.ensureCompare(); await tick(2); };
+// `setPane('files'); ensureCompare()`, so this is that pair. It goes through
+// setPane rather than assigning, because the assignment stopped being the whole
+// gesture when the pane became a reported fact the host stamps its address from.
+const openFiles = async (d = data) => { d.setPane('files'); await d.ensureCompare(); await tick(2); };
 
 test('a host mounts it at a branch and is told what the read found', async () => {
   window.BranchBrief.forget();

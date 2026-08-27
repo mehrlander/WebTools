@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doc Growth</title>
+<!-- Gapminder-style animated bubble chart of a repo's markdown over time: every
+     file is a bubble, x is its length in words, y is how hard it is being worked,
+     and the whole cloud drifts right as documentation accretes. Data comes from
+     scripts/doc-growth.py as one JSON payload; see docs/doc-growth.md.
+
+     Colors are the dataviz reference palette. A bubble chart is scored on the
+     ALL-PAIRS pairlist, where only three categorical slots clear the floors, so
+     three groups carry hue at a time and the rest fold into a recessive "Other"
+     gray. The light-mode aqua slot sits under 3:1, which obliges relief: the
+     table view and the always-on tooltip are it. -->
+
+<meta name="shot-query" content="src=self">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/alpinejs@3/dist/cdn.min.js,npm/@phosphor-icons/web,npm/fflate/umd/index.js" defer></script>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+</head>
+<body class="min-h-screen bg-base-200" x-data="growth()" x-init="boot()">
+
+<div class="max-w-6xl mx-auto p-3 sm:p-5 space-y-3">
+
+  <!-- header -->
+  <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+    <h1 class="text-xl sm:text-2xl font-semibold">Doc Growth</h1>
+    <span class="text-sm opacity-60" x-text="data ? data.repo : ''"></span>
+    <span class="text-sm opacity-40" x-show="data"
+          x-text="data ? `${data.files.length} files · ${data.frames.length} weeks` : ''"></span>
+    <div class="grow"></div>
+    <button class="btn btn-xs btn-ghost" @click="showTable = !showTable">
+      <i class="ph ph-table"></i><span x-text="showTable ? 'Chart' : 'Table'"></span>
+    </button>
+  </div>
+
+  <div x-show="err" x-cloak class="alert alert-warning text-sm" x-text="err"></div>
+  <div x-show="!data && !err" class="card bg-base-100 shadow-sm">
+    <div class="card-body items-center py-16 gap-3">
+      <span class="loading loading-dots loading-lg text-primary"></span>
+      <p class="text-sm opacity-60">Reading the history…</p>
+    </div>
+  </div>
+
+  <!-- chart -->
+  <div x-show="data && !showTable" class="card bg-base-100 shadow-sm">
+    <div class="card-body p-2 sm:p-4 gap-3">
+
+      <div class="relative">
+        <canvas x-ref="cv" class="w-full block rounded-lg touch-none"
+                style="height:clamp(360px,58vh,620px)"
+                @pointermove="hover($event)" @pointerleave="hovered = null"
+                @pointerdown="pick($event)"></canvas>
+        <div x-show="visible === 0" x-cloak
+             class="pointer-events-none absolute inset-0 grid place-content-center">
+          <p class="text-sm opacity-50">No file this size existed yet.</p>
+        </div>
+        <div x-show="hovered" x-cloak
+             class="pointer-events-none absolute z-10 rounded-md bg-neutral text-neutral-content
+                    text-xs px-2 py-1.5 shadow-lg max-w-[16rem]"
+             :style="`left:${tipX}px; top:${tipY}px`">
+          <div class="font-mono break-all" x-text="hovered?.p"></div>
+          <div class="opacity-70 mt-0.5" x-text="tipMeta"></div>
+        </div>
+      </div>
+
+      <!-- transport -->
+      <div class="flex items-center gap-2">
+        <button class="btn btn-sm btn-primary btn-circle" @click="toggle()">
+          <i class="ph" :class="playing ? 'ph-pause' : 'ph-play'"></i>
+        </button>
+        <input type="range" class="range range-xs range-primary grow" min="0"
+               :max="(data?.frames.length ?? 1) - 1" step="0.01"
+               x-model.number="t" @input="playing = false; draw()">
+        <span class="text-xs font-mono opacity-60 w-20 text-right" x-text="frameLabel"></span>
+      </div>
+
+      <!-- controls -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <div class="join">
+          <button class="join-item btn btn-xs" :class="yMode==='churn' && 'btn-active'"
+                  @click="yMode='churn'; draw()">Effort</button>
+          <button class="join-item btn btn-xs" :class="yMode==='net' && 'btn-active'"
+                  @click="yMode='net'; draw()">Net change</button>
+          <button class="join-item btn btn-xs" :class="yMode==='age' && 'btn-active'"
+                  @click="yMode='age'; draw()">Settled</button>
+        </div>
+        <div class="join">
+          <button class="join-item btn btn-xs" :class="unit==='w' && 'btn-active'"
+                  @click="unit='w'; draw()">All words</button>
+          <button class="join-item btn btn-xs" :class="unit==='r' && 'btn-active'"
+                  @click="unit='r'; draw()">Prose only</button>
+        </div>
+        <label class="flex items-center gap-1.5">
+          <span class="opacity-60">min edits</span>
+          <input type="range" class="range range-xs w-24" min="1" max="30"
+                 x-model.number="minEdits" @input="draw()">
+          <span class="font-mono w-5" x-text="minEdits"></span>
+        </label>
+        <label class="label cursor-pointer gap-1.5 py-0">
+          <input type="checkbox" class="checkbox checkbox-xs" x-model="trails" @change="draw()">
+          <span class="opacity-60">trails</span>
+        </label>
+      </div>
+
+      <!-- legend: three hue slots, everything else recessive -->
+      <div class="flex flex-wrap gap-1.5">
+        <template x-for="g in data?.groups ?? []" :key="g">
+          <button class="badge badge-sm gap-1 cursor-pointer"
+                  :class="slot(g) < 0 && 'badge-ghost opacity-50'"
+                  :style="slot(g) >= 0 ? `background:${HUE[slot(g)]};border-color:${HUE[slot(g)]};color:#fff` : ''"
+                  @click="toggleGroup(g)" x-text="g"></button>
+        </template>
+      </div>
+
+      <p class="text-xs opacity-50 leading-relaxed" x-text="caption"></p>
+    </div>
+  </div>
+
+  <!-- table view: the relief the light-mode contrast warn obliges -->
+  <div x-show="data && showTable" class="card bg-base-100 shadow-sm">
+    <div class="card-body p-2 sm:p-4">
+      <div class="overflow-x-auto">
+        <table class="table table-xs table-pin-rows">
+          <thead><tr>
+            <th>File</th><th>Group</th><th class="text-right">First</th>
+            <th class="text-right">Now</th><th class="text-right">Change</th><th class="text-right">Edits</th>
+          </tr></thead>
+          <tbody>
+            <template x-for="r in tableRows" :key="r.p">
+              <tr>
+                <td class="font-mono text-[11px] break-all" x-text="r.p"></td>
+                <td class="opacity-60" x-text="r.g"></td>
+                <td class="text-right tabular-nums" x-text="r.a.toLocaleString()"></td>
+                <td class="text-right tabular-nums" x-text="r.b.toLocaleString()"></td>
+                <td class="text-right tabular-nums font-medium"
+                    :class="r.b - r.a > 0 ? 'text-warning' : 'text-success'"
+                    x-text="(r.b - r.a > 0 ? '+' : '') + (r.b - r.a).toLocaleString()"></td>
+                <td class="text-right tabular-nums opacity-60" x-text="r.e"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style type="text/tailwindcss">[x-cloak]{display:none}</style>
+
+<script>
+// Categorical hues: dataviz reference palette slots 1-3, the run that clears the
+// all-pairs floors in both modes. "Other" is deliberately achromatic.
+const LIGHT = ['#2a78d6', '#eb6834', '#1baf7a'], DARK = ['#3987e5', '#d95926', '#199e70'];
+
+function growth() {
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  return {
+    HUE: dark ? DARK : LIGHT,
+    ink: dark ? '#e8e6e1' : '#0b0b0b',
+    grid: dark ? 'rgba(232,230,225,0.10)' : 'rgba(11,11,11,0.08)',
+    other: dark ? '#6f6d67' : '#a9a7a1',
+    surface: dark ? 'rgba(16,16,18,0.75)' : 'rgba(255,255,255,0.75)',
+    data: null, err: '', t: 0, playing: false, raf: 0,
+    yMode: 'churn', unit: 'w', minEdits: 5, trails: true,
+    picked: null, hovered: null, tipX: 0, tipY: 0, showTable: false, bounds: null,
+    visible: 0,
+    groups: [],
+
+    async boot() {
+      const q = new URLSearchParams(location.search);
+      try {
+        this.data = await loadPayload(q);
+      } catch (e) {
+        this.err = `Could not load data: ${e.message}`;
+        return;
+      }
+      // Open on the three groups with the most actively maintained files. Picking
+      // by total bytes instead handed a hue slot to `archive`, which is exactly
+      // the material nobody is working on.
+      const live = {};
+      for (const f of this.data.files) {
+        if (f.edits < this.minEdits) continue;
+        const g = this.data.groups[f.g];
+        live[g] = (live[g] ?? 0) + 1;
+      }
+      this.groups = Object.entries(live).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+      const all = this.data.files;
+      const peak = (f, k) => Math.max(...f[k].filter(v => v != null), 0);
+      this.bounds = {
+        w: { x: Math.max(100, ...all.map(f => peak(f, 'w'))) },
+        r: { x: Math.max(100, ...all.map(f => peak(f, 'r'))) },
+        net: Math.max(50, ...all.flatMap(f => f.n.map(Math.abs))),
+        churn: Math.max(4, ...all.flatMap((f) => f.e.map((_, k) => this.churn(f, k)))),
+        age: Math.max(this.data.days, ...all.map(f => this.age(f, f.w.length - 1))),
+      };
+      this.t = this.data.frames.length - 1;
+      addEventListener('resize', () => this.draw());
+      this.$nextTick(() => this.draw());
+    },
+
+    slot(g) { return this.groups.indexOf(g); },
+    toggleGroup(g) {
+      const i = this.groups.indexOf(g);
+      if (i >= 0) this.groups.splice(i, 1);
+      else { this.groups.push(g); if (this.groups.length > 3) this.groups.shift(); }
+      this.draw();
+    },
+
+    get frameLabel() { return this.data?.frames[Math.round(this.t)] ?? ''; },
+    get caption() {
+      const n = this.visible, tot = this.shown().length;
+      if (this.yMode === 'churn')
+        return `${n} of ${tot} files on screen (edited in ${this.minEdits}+ commits). Up means actively worked; right means long.`;
+      if (this.yMode === 'age')
+        return `${n} of ${tot} files on screen. Up means untouched for longer, so the top right is a monument and the bottom right is contested.`;
+      return `${n} of ${tot} files on screen. Above the line gained words that week, below it gave some back.`;
+    },
+    get tipMeta() {
+      const f = this.hovered; if (!f) return '';
+      const k = Math.round(this.t);
+      return `${(f[this.unit][k] ?? 0).toLocaleString()} words · ${f.edits} edits · ${this.data.groups[f.g]}`;
+    },
+    get tableRows() {
+      return this.shown().map(f => {
+        const s = f[this.unit];
+        return { p: f.p, g: this.data.groups[f.g], a: s[f.born] ?? 0,
+                 b: s.findLast(v => v != null) ?? 0, e: f.edits };
+      }).sort((x, y) => (y.b - y.a) - (x.b - x.a));
+    },
+
+    shown() { return this.data ? this.data.files.filter(f => f.edits >= this.minEdits) : []; },
+
+    toggle() {
+      this.playing = !this.playing;
+      cancelAnimationFrame(this.raf);
+      if (!this.playing) return;
+      if (this.t >= this.data.frames.length - 1) this.t = 0;
+      let prev = performance.now();
+      const tick = (now) => {
+        this.t = Math.min(this.data.frames.length - 1, this.t + (now - prev) / 1000 * 4);
+        prev = now;
+        this.draw();
+        if (this.t >= this.data.frames.length - 1) { this.playing = false; return; }
+        this.raf = requestAnimationFrame(tick);
+      };
+      this.raf = requestAnimationFrame(tick);
+    },
+
+    // --- geometry -----------------------------------------------------------
+    // Values are read at a fractional frame so playback tweens rather than
+    // stepping: a bubble slides between its Tuesday and next-Tuesday sizes.
+    at(series, t) {
+      const a = Math.floor(t), b = Math.min(series.length - 1, a + 1), u = t - a;
+      const va = series[a], vb = series[b];
+      if (va == null) return vb == null ? null : vb;
+      return vb == null ? va : va + (vb - va) * u;
+    },
+    churn(f, t) {
+      const k = Math.round(t), lo = Math.max(0, k - 3);
+      return f.e.slice(lo, k + 1).reduce((s, v) => s + v, 0);
+    },
+    // Days since the file was last touched, at this frame. Read back out of the
+    // churn array rather than carried in the payload: it is the same fact
+    // counted from the other end, and a second copy is a second thing to keep
+    // true. A file never touched inside the window ages from its first frame.
+    age(f, t) {
+      const k = Math.round(t);
+      for (let i = k; i >= 0; i--) if (f.e[i]) return (k - i) * this.data.days;
+      return Math.max(0, k - f.born) * this.data.days;
+    },
+
+    draw() {
+      if (!this.data) return;
+      const cv = this.$refs.cv, dpr = devicePixelRatio || 1;
+      const W = cv.clientWidth, H = cv.clientHeight;
+      cv.width = W * dpr; cv.height = H * dpr;
+      const c = cv.getContext('2d');
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.clearRect(0, 0, W, H);
+
+      const P = { l: 44, r: 14, t: 12, b: 30 };
+      const files = this.shown();
+      const net = this.yMode === 'net', age = this.yMode === 'age';
+
+      // x: words, log. y: effort (linear) or net change (symlog, zero centred).
+      const xMax = this.bounds[this.unit].x;
+      const lx = v => P.l + (Math.log10(Math.max(v, 10)) - 1) / (Math.log10(xMax) - 1) * (W - P.l - P.r);
+      const yTop = net ? this.bounds.net : age ? this.bounds.age : this.bounds.churn;
+      const sym = v => Math.sign(v) * Math.log10(Math.abs(v) + 1);
+      const ly = v => net
+        ? P.t + (1 - (sym(v) / sym(yTop) + 1) / 2) * (H - P.t - P.b)
+        : P.t + (1 - Math.log1p(Math.max(v, 0)) / Math.log1p(yTop)) * (H - P.t - P.b);
+
+      // the big ghosted date, Rosling's clock
+      c.fillStyle = this.ink;
+      c.globalAlpha = 0.055;
+      c.font = `700 ${Math.min(W * 0.22, 150)}px ui-sans-serif, system-ui, sans-serif`;
+      c.textAlign = 'right'; c.textBaseline = 'bottom';
+      c.fillText(this.frameLabel.slice(0, 7), W - P.r - 6, H - P.b - 4);
+      c.globalAlpha = 1;
+
+      // grid + axes
+      c.strokeStyle = this.grid; c.lineWidth = 1;
+      c.fillStyle = this.ink; c.font = '10px ui-monospace, monospace';
+      c.textAlign = 'right'; c.textBaseline = 'middle';
+      const yTicks = net ? [-yTop, -yTop / 10, 0, yTop / 10, yTop]
+                   : age ? [0, 7, 28, yTop].filter((v, i, a) => v <= yTop && a.indexOf(v) === i)
+                         : [0, 1, 5, 20, yTop].filter((v, i, a) => v <= yTop && a.indexOf(v) === i);
+      for (const v of yTicks) {
+        const y = Math.round(ly(v)) + 0.5;
+        c.beginPath(); c.moveTo(P.l, y); c.lineTo(W - P.r, y);
+        c.strokeStyle = (net && v === 0) ? this.grid.replace(/[\d.]+\)$/, '0.35)') : this.grid;
+        c.stroke();
+        c.globalAlpha = 0.55;
+        c.fillText(net ? fmt(v) : Math.round(v) + (age ? 'd' : ''), P.l - 6, y);
+        c.globalAlpha = 1;
+      }
+      c.textAlign = 'center'; c.textBaseline = 'top';
+      for (let e = 1; Math.pow(10, e) <= xMax; e++) {
+        const x = Math.round(lx(Math.pow(10, e))) + 0.5;
+        c.beginPath(); c.moveTo(x, P.t); c.lineTo(x, H - P.b); c.stroke();
+        c.globalAlpha = 0.55;
+        c.fillText(fmt(Math.pow(10, e)), x, H - P.b + 6);
+        c.globalAlpha = 1;
+      }
+      c.textAlign = 'right';
+      c.globalAlpha = 0.45;
+      c.fillText('words →', W - P.r, H - P.b + 18);
+      c.save(); c.translate(11, P.t + 2); c.rotate(-Math.PI / 2); c.textAlign = 'right';
+      c.fillText(net ? 'words gained ↑' : age ? 'days untouched ↑' : 'edits / month ↑', 0, 0);
+      c.restore();
+      c.globalAlpha = 1;
+
+      // bubbles, largest first so the small ones stay clickable on top
+      const pts = [];
+      for (const f of files) {
+        const w = this.at(f[this.unit], this.t);
+        if (w == null || this.t < f.born - 0.5) continue;
+        const y = net ? this.at(f.n, this.t) : age ? this.age(f, this.t) : this.churn(f, this.t);
+        const r = Math.max(2.5, Math.sqrt(f.edits) * 1.5);
+        pts.push({ f, x: lx(w), y: ly(y ?? 0), r });
+      }
+      pts.sort((a, b) => b.r - a.r);
+
+      if (this.trails && this.picked) this.drawTrail(c, lx, ly, net, age);
+
+      for (const p of pts) {
+        const g = this.data.groups[p.f.g], s = this.slot(g);
+        const col = s >= 0 ? this.HUE[s] : this.other;
+        const on = this.picked === p.f || this.hovered === p.f;
+        c.globalAlpha = s >= 0 ? (on ? 1 : 0.72) : 0.3;
+        c.beginPath(); c.arc(p.x, p.y, p.r, 0, 7);
+        c.fillStyle = col; c.fill();
+        // 2px surface ring keeps overlapping marks separable
+        c.lineWidth = on ? 2 : 1.25;
+        c.strokeStyle = on ? this.ink : this.surface;
+        c.globalAlpha = on ? 1 : 0.5;
+        c.stroke();
+      }
+      c.globalAlpha = 1;
+      this._pts = pts;
+      this.visible = pts.length;
+
+      // direct label for the pinned file
+      if (this.picked) {
+        const p = pts.find(q => q.f === this.picked);
+        if (p) {
+          c.font = '600 11px ui-monospace, monospace';
+          c.fillStyle = this.ink; c.textAlign = 'left'; c.textBaseline = 'bottom';
+          const name = p.f.p.split('/').pop();
+          c.fillText(name, Math.min(p.x + p.r + 5, W - P.r - c.measureText(name).width), p.y - p.r - 2);
+        }
+      }
+    },
+
+    drawTrail(c, lx, ly, net, age) {
+      const f = this.picked, s = f[this.unit];
+      c.beginPath();
+      let started = false;
+      for (let k = 0; k <= Math.round(this.t); k++) {
+        if (s[k] == null) continue;
+        const y = net ? f.n[k] : age ? this.age(f, k) : this.churn(f, k);
+        const x = lx(s[k]), yy = ly(y ?? 0);
+        started ? c.lineTo(x, yy) : (c.moveTo(x, yy), started = true);
+      }
+      const sl = this.slot(this.data.groups[f.g]);
+      c.strokeStyle = sl >= 0 ? this.HUE[sl] : this.other;
+      c.globalAlpha = 0.45; c.lineWidth = 2; c.stroke(); c.globalAlpha = 1;
+    },
+
+    nearest(ev) {
+      const r = this.$refs.cv.getBoundingClientRect();
+      const x = ev.clientX - r.left, y = ev.clientY - r.top;
+      let best = null, bd = 400;
+      for (const p of this._pts ?? []) {
+        const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+        if (d < bd + p.r ** 2) { bd = d; best = p; }
+      }
+      return best;
+    },
+    hover(ev) {
+      const p = this.nearest(ev);
+      this.hovered = p?.f ?? null;
+      if (p) {
+        const r = this.$refs.cv.getBoundingClientRect();
+        this.tipX = Math.min(p.x + 10, r.width - 200);
+        this.tipY = Math.max(4, p.y - 46);
+      }
+    },
+    pick(ev) {
+      const p = this.nearest(ev);
+      this.picked = p && p.f !== this.picked ? p.f : null;
+      this.draw();
+    },
+  };
+}
+
+const fmt = v => Math.abs(v) >= 1000 ? (v / 1000).toFixed(Math.abs(v) < 10000 ? 1 : 0) + 'k'
+                                     : String(Math.round(v));
+
+// Three ways in, cheapest first: an inline payload, a plain URL, or a repo path
+// read through the viewer's stored token (the only route that reaches a private
+// repo, and the reason a fresh browser may need one pasted in first).
+async function loadPayload(q) {
+  const gz = new URLSearchParams(location.hash.slice(1)).get('gz');
+  if (gz) {
+    const bin = atob(gz.replace(/-/g, '+').replace(/_/g, '/'));
+    const bytes = Uint8Array.from(bin, ch => ch.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(fflate.gunzipSync(bytes)));
+  }
+  if (q.get('url')) return (await fetch(q.get('url'))).json();
+
+  const src = q.get('src');
+  if (!src || src === 'self') {
+    const r = await fetch('../data/doc-growth/web-tools.json');
+    if (!r.ok) throw new Error(`web-tools.json (HTTP ${r.status})`);
+    return r.json();
+  }
+  const [repoRef, path] = src.split(':');
+  const [repo, ref = 'main'] = repoRef.split('@');
+  let token = '';
+  try { token = localStorage.getItem('ghToken') || ''; } catch {}
+  const r = await fetch(`https://api.github.com/repos/${repo}/contents/${path}?ref=${ref}`, {
+    headers: { Accept: 'application/vnd.github.raw', ...(token && { Authorization: `Bearer ${token}` }) },
+  });
+  if (!r.ok) throw new Error(`${src} (HTTP ${r.status}${r.status === 404 && !token ? ', no stored token' : ''})`);
+  // The raw media type is a request, not a guarantee: anything that does not
+  // honor it answers with the contents envelope instead, and the payload is
+  // then base64 inside `content` rather than the body. Both shapes are normal.
+  const d = await r.json();
+  if (d && d.content && d.encoding === 'base64') {
+    const bin = atob(String(d.content).replace(/\s/g, ''));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0))));
+  }
+  return d;
+}
+</script>
+
+<script>
+// A dead Alpine is otherwise silent: x-show leaves everything visible, x-text
+// leaves everything empty, and the result looks like a page mid-load forever.
+addEventListener('load', () => setTimeout(() => {
+  if (window.Alpine) return;
+  document.body.innerHTML =
+    '<div class="max-w-xl mx-auto p-6 text-sm">' +
+    '<h1 class="text-lg font-semibold mb-2">Doc Growth could not start</h1>' +
+    '<p class="opacity-70">Alpine.js did not load, so nothing on this page is wired up. ' +
+    'Usually the CDN bundle was blocked or served the wrong build.</p></div>';
+}, 3000));
+</script>
+</body>
+</html>

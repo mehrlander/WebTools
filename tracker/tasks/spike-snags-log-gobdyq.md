@@ -117,3 +117,31 @@ both files, or a decision to drop it.
   header calls meaningful the one number that is wrong. Converting them is
   mechanical and belongs with whatever shape this spike settles, since the
   recurrence marker is exactly what the spike is deciding.
+
+- 2026-08-26: **The recurrence defect above is fixed, and the format question is
+  half-settled.** The seven unslugged tail entries are converted and an eighth,
+  a bold-lead bullet at the very bottom, turned out to be a third trip on
+  `x-data-scope-shadows-component-names` and is folded there. The measured
+  damage: the log held 53 entries and the parse saw 46, while
+  `status-audit-skipped-index` read ×8 against a true ×1, three of its
+  sightings being the words `one text`, `one fill`, `one straggler` split out
+  of a seen list written as prose. Both failure modes now report rather than
+  absorb: a sighting must be a date (the `×N` multiplier is read), and an
+  unslugged heading is named at the terminal.
+
+  On **Format**, the spike's open question of whether `slug / symptom /
+  corrected move / recurrence / → doc` is enough: the answer taken is a split
+  rather than a schema. The mechanical half is a derived registry,
+  `docs/snags.csv` (slug, title, count, last_seen, seen, targets), written by
+  the same generator and gated by `artifacts-lockstep`; the prose stays in the
+  markdown, because the paragraph explaining why a trip was invisible is most
+  of an entry's value and is what CONVENTIONS.md calls the residue a document
+  is for. (**Stale 2026-08-27 → docs/CONVENTIONS.md:** the "residue" rule was
+  removed. The split this entry decided still holds; what carries an entry is
+  the criterion in its paragraph, not that it is a reason.) That also makes the log renderable: a Map tab is one registry's
+  detail view, and snag rows read as a filterable list. The tab is not built,
+  so `renders_in` is empty, which is the warning state that field exists for.
+
+  Still open, unchanged: **PR-body intake** (whether a snag is authored in a
+  guide-PR body and projected here), the **escalation threshold** and its
+  hand-off to the tracker, the **graduation rule**, and **portability**.

@@ -34,9 +34,17 @@ const run = (script, env = {}, input = '') =>
     env: { ...process.env, ...env }, input, encoding: 'utf8', timeout: 30000,
   });
 
-const BUDGET = 26000;   // inject-conventions.sh's own default
+// Read out of the script rather than restated here. A test that carries its own
+// copy of a budget passes while the script uses a different one, which is the
+// failure this whole file exists to prevent, one level up.
+const BUDGET = Number(
+  /BUDGET=\$\{WEB_TOOLS_INJECT_BUDGET:-(\d+)\}/
+    .exec(readFileSync(join(HOOKS, 'inject-conventions.sh'), 'utf8'))?.[1]
+);
 
 test('the injected payload fits the channel', () => {
+  assert.ok(Number.isFinite(BUDGET) && BUDGET > 0,
+    'the budget parses out of the script, so this cannot pass against a stale copy');
   const out = run('inject-conventions.sh');
   assert.ok(out.length < BUDGET,
     `the injector emits ${out.length} bytes, over its own ${BUDGET}-byte budget. ` +

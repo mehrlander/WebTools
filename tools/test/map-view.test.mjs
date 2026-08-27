@@ -173,9 +173,10 @@ test('Owners loads its own carrier, separately from Docs', async () => {
   await data.loadOwnersReg();
   assert.equal(data.ownersErr, '');
   assert.ok(data.ownersReg.owners.length > 3);
-  // The scope moved to the registry row on 2026-08-16, where every other
-  // registry's scope already lived; owners.csv used to carry a second copy.
-  assert.ok(data.ownersReg.scope, 'the tab reads the scope from the registry row');
+  // Two files, not three: the tab pulled docs/registries.csv as well while its
+  // header carried a scope line, and stopped on 2026-08-26 when the header came
+  // off. The scope is read on the Registries tab, where every registry's is.
+  assert.equal(data.propsReg, null, 'opening Claims does not pull the registry pair');
   assert.equal(data.OWNERS_MANIFEST, 'docs/owners.csv');
   assert.equal(data.OWNERS_REPS, 'docs/repetitions.csv');
 });

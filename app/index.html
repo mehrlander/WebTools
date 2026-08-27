@@ -1087,7 +1087,15 @@ html.dk-dragging main{transition:none !important}
          pages index; the Stage constrains its own column. -->
     <div x-show="isEstate" data-pane="estate" class="h-full"
          :class="listsFill ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'">
-      <div class="mx-auto px-4 lg:px-6 pt-4 !max-w-none"
+      <!-- w-full is load-bearing under listsFill and inert without it. An auto
+           inline margin on a flex ITEM sizes it to its content instead of
+           stretching it, so the moment listsFill turned the pane into a flex
+           column, mx-auto quietly capped this div at the width of its widest
+           row: the Lists pane came out 548px wide inside a 1280px window,
+           whatever !max-w-none said, and the Pin grid split that into two
+           266px columns and truncated a 26-character title for want of 5px.
+           In the ordinary block case width:100% is what the div already had. -->
+      <div class="mx-auto w-full px-4 lg:px-6 pt-4 !max-w-none"
            :class="listsFill ? 'flex-1 min-h-0 flex flex-col pb-4 lg:pt-6' : 'pb-8 lg:pt-6'">
         <template x-if="estateSeen">
           <div x-data="estate()" :class="listsFill && 'flex-1 min-h-0 flex flex-col'"></div>
@@ -1720,7 +1728,7 @@ const RAIL_KIND = { link: 'ph-arrow-up-right', action: 'ph-lightning', repo: 'ph
 // The Map view's tabs, in render order, first = default. Named HERE rather than
 // in map() because the shell validates the ?tab= param before the component
 // mounts; map() renders whichever of these is set.
-const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'claims', 'tests', 'harness', 'skills', 'registries'];
+const MAP_TABS = ['set', 'surfacing', 'showing', 'docs', 'growth', 'claims', 'tests', 'harness', 'skills', 'registries'];
 
 // marked, loaded once on demand for the overview README render. kits/md-doc.js
 // rides with it, because every one of these renders lands in a fixed-width
@@ -2319,7 +2327,18 @@ function app(){ return {
                 // none of the meaning. Optional, so a page that declares none
                 // is reached by its address and nothing changes for it.
                 slug: typeof pg.slug === 'string' ? pg.slug.trim() : '',
-                key: t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path,
+                // A page a repo promotes may need arguments to be the view that
+                // repo means: home and web-tools promote the same doc-growth
+                // page and differ only in which payload it reads. appViewUrl
+                // already carries a query; without this it could only ever come
+                // from the address bar, so a manifest could name the page but
+                // not what it should show.
+                query: typeof pg.query === 'string' ? pg.query.replace(/^\?/, '') : '',
+                // Query is part of the identity: two repos may promote the same
+                // page and differ only in what they point it at, and a key that
+                // ignored the query would make them one entry.
+                key: t.repo + (t.ref ? '@' + t.ref : '') + ':' + t.path +
+                     (typeof pg.query === 'string' && pg.query ? '?' + pg.query.replace(/^\?/, '') : ''),
               });
             }
           }

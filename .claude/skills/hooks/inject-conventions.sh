@@ -49,13 +49,20 @@ set -uo pipefail
 # the ceiling sits at or below that. BUDGET is set under the bound with room for
 # the other scripts the dispatcher runs alongside this one, since the limit
 # applies to their combined output and not to this script's alone. Those others
-# came to about 600 bytes when this was measured, so 26,000 leaves roughly 3 KB
+# came to about 600 bytes when this was measured, so 27,000 leaves roughly 2 KB
 # of margin under the bound.
 #
 # The number is set from the CHANNEL, not from what happens to fit today. If the
 # payload later outgrows it the partial load below fires and says so, which is
 # the check working rather than a number that needs raising.
-BUDGET=${WEB_TOOLS_INJECT_BUDGET:-26000}
+#
+# Raised from 26,000 on 2026-08-27, before it had ever fired. The docs-editing
+# sessions shrank SURFACING.md by 207 words and grew its primitives section by
+# 254, which took the payload to 63 bytes under the old number. A budget that
+# close is a tripwire rather than a budget, and the fallback here is coarse:
+# over by one byte drops every primitive. Headroom is worth more than precision
+# on a number whose real ceiling is undocumented anyway.
+BUDGET=${WEB_TOOLS_INJECT_BUDGET:-27000}
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd) || exit 0
 DOCS="$HERE/../web-tools"

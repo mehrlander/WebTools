@@ -6,6 +6,7 @@ scripts/code-shape.py,"per-file observable properties of lib/: what a file attac
 scripts/dead-links.py,"report markdown links that no longer resolve, in three classes (internal, cross-repo, github)",scripts,256,argv,no,yes,yes
 scripts/dead-opacity.py,"report a daisyUI theme colour carrying an opacity step that generates no CSS rule. The ramp daisyUI ships is 10..90 by tens, so every other step, both ends, and the bracket form fall back: a background to transparent and TEXT to full strength, which is the wrong direction and errors nowhere. Stock palette colours take any step and are never reported, which is the half a looser scan gets wrong. --check gates it",scripts,152,npm:opacity-scan,no,yes,yes
 scripts/declared-paths.py,check every page a .web-tools.json declares still exists; runs in consumer repos' verify suites,scripts,137,argv,no,yes,no
+scripts/doc-growth.py,"weekly size-and-churn series for a repo's markdown, as one JSON payload: every file's length in words at each sample plus the commit churn around it, for pages/doc-growth.html. Samples trees rather than diffing, and reads blob contents through one cat-file batch fed from a thread",scripts,176,npm:doc-growth,yes,yes,no
 scripts/duplicated-claims.py,"report file pairs sharing near-duplicated prose, the quiet failure where a claim is restated and the copies age apart (advisory; ported from home)",scripts,138,npm:claims-scan,no,no,yes
 scripts/embedded-prose.py,"count the prose inside .js, .mjs, .html and .py, split into commentary, text tables, and inline reader-facing text; --check gates a comment-length budget",scripts,759,argv,no,yes,no
 scripts/mcp-link-safe.py,"report markdown links the GitHub MCP write path would defang: a URL of 150 characters or more inside a markdown link is stored wrapped in backticks and renders dead, 149 or fewer survives, and the label never counts. Measures a slash-joined pair as one fused span, since )/[ does not end the URL token. --check gates; --unescape-entities is for a body read back through the MCP",scripts,209,argv,no,yes,yes
@@ -30,11 +31,11 @@ tools/build/pages-shots.mjs,"regenerate pages/thumbs/*.png, one screenshot per p
 tools/build/registries-load.mjs,"read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",tools/build,103,imported,no,no,yes
 tools/build/registries-reach.mjs,"stamp renders_in into docs/registries.csv: the app files that name each registry's path, empty being the Registries tab's warning state",tools/build,91,npm:registries-reach,yes,yes,yes
 tools/build/repo-pages-shots.mjs,regenerate pages-gallery thumbnails for another repo's pages catalog,tools/build,167,argv,no,yes,no
-tools/build/snags-index.mjs,generates the index at the top of docs/SNAGS.md and warns about likely repeats,tools/build,169,npm:snags-index,no,yes,yes
+tools/build/snags-index.mjs,generates the index at the top of docs/SNAGS.md and warns about likely repeats,tools/build,252,npm:snags-index,no,yes,yes
 tools/build/tests-index.mjs,"restamp the derived half of docs/tests.csv, the test registry",tools/build,235,npm:tests-index,yes,no,yes
 tools/build/tools-index.mjs,restamp the derived half of this registry,tools/build,175,npm:tools-index,yes,yes,yes
 tools/build/verify-build.mjs,prove a page's dist build renders byte-identical to its live gh.load chain,tools/build,86,npm:verify-build,no,yes,no
-tools/render/cdn.mjs,the CDN URL to local-file resolver both renderers share,tools/render,369,imported,no,yes,yes
+tools/render/cdn.mjs,the CDN URL to local-file resolver both renderers share,tools/render,375,imported,no,yes,yes
 tools/render/estate-card-demo.mjs,screenshot driver: render the estate's Repos grid with seeded entries,tools/render,72,none found,no,no,no
 tools/render/preview.mjs,"the jsdom logic render: run the full gh.load chain, mount Alpine, report state; no pixels",tools/render,370,npm:preview,no,yes,yes
 tools/render/scenarios/activity-chrome-probe.mjs,,tools/render/scenarios,80,driver,no,no,no
@@ -49,8 +50,9 @@ tools/render/scenarios/annotate-demo.mjs,"a text selection annotated end to end:
 tools/render/scenarios/annotate-dictate-demo.mjs,"the voice-first compose surface with SpeechRecognition stubbed: committed text, a live interim, the punctuation bar, and a resume across a pause, which is the case that shows the period and the capital coming back off together",tools/render/scenarios,67,driver,no,no,no
 tools/render/scenarios/annotate-double-tap.mjs,"a double tap on a word opening the keyboard with the caret inside that word, and the long press still taking the word: the two gestures that traded places on 2026-08-13, both needing a real caret-from-point that jsdom stubs",tools/render/scenarios,62,driver,no,no,no
 tools/render/scenarios/annotate-edit-row.mjs,"the pencil folding a note out of the list while it is open in the composer, and the row coming back on save. Needs a browser: the two states are one DOM apart and the point is that only one copy of the note is on screen at a time",tools/render/scenarios,46,driver,no,no,no
-tools/render/scenarios/annotate-expander.mjs,"the card's own reading of the set, which jsdom cannot photograph: the expander grown UPWARD from the card's pinned bottom edge, the readings strip and the set's actions arriving with it, and a serialization shown at real size. `reading=` picks which of the three (notes | md | json) and `scope=note` narrows it to the selected note",tools/render/scenarios,106,driver,no,no,no
-tools/render/scenarios/annotate-in-place.mjs,"annotate's three touch-only paths: an element picked by a plain tap, a selection noted from the card's bar, and the set read in place",tools/render/scenarios,95,driver,no,no,no
+tools/render/scenarios/annotate-expander.mjs,"the card's own reading of the set, which jsdom cannot photograph: the expander grown UPWARD from the card's pinned bottom edge, the readings strip and the set's actions arriving with it, and a serialization shown at real size. `reading=` picks which of the three (notes | md | json); the scope knob went with the scope chip, since a serialization is of the set",tools/render/scenarios,106,driver,no,no,no
+tools/render/scenarios/annotate-header-centre.mjs,"whether the notes card's reading keys are CENTRED in the header, which no node test can answer: the suite is browser-free and jsdom has no layout engine. Reports the gap either side of the group, to the nearest LAID-OUT neighbour and to the nearest VISIBLE one, since a control holding its place with visibility:hidden occupies layout an eye cannot",tools/render/scenarios,54,driver,no,no,no
+tools/render/scenarios/annotate-in-place.mjs,"annotate's three touch-only paths: an element picked by a plain tap, a selection noted from the card's bar, and the set read in place",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/annotate-keyboard-mode.mjs,"the composer with the keyboard open: whether the way out wears a microphone, and whether the mic still holds its slot",tools/render/scenarios,98,driver,no,no,no
 tools/render/scenarios/annotate-page-note.mjs,"the page-level note through the real path (Page chip, typed, saved) plus the two controls it shipped with: the review button reading the drawer's state, and the launcher's long-press menu",tools/render/scenarios,51,driver,no,no,no
 tools/render/scenarios/annotate-row-keys.mjs,"a note row's three floating keys and the edit one of them leads to: edit, copy and remove sitting over the note where a kebab menu used to open, and the note reopened in the composer with its text loaded",tools/render/scenarios,35,driver,no,no,no
@@ -60,6 +62,7 @@ tools/render/scenarios/annotate-stitch.mjs,"the composer pad's stitch key: a car
 tools/render/scenarios/annotate-tap-canvas.mjs,"a tap on the blank canvas below the text, which jsdom cannot judge: whether it reaches a listener at all, and whether the painted rects say it missed the words",tools/render/scenarios,103,driver,no,no,no
 tools/render/scenarios/annotate-triple-tap.mjs,"the buffer scrolled to its newest line in a box of whole lines, then three taps in a run taking the whole thing",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/annotate-units-demo.mjs,"the two unit modes, element pick and region drag, driven through real pointer events",tools/render/scenarios,54,driver,no,no,no
+tools/render/scenarios/branch-address.mjs,,tools/render/scenarios,83,driver,no,no,yes
 tools/render/scenarios/branch-brief-errors.mjs,"the branch page's failure states, driven through the real load() path",tools/render/scenarios,59,driver,no,no,no
 tools/render/scenarios/branch-deck.mjs,,tools/render/scenarios,131,driver,no,yes,no
 tools/render/scenarios/branch-file-card.mjs,a branch row's file pair opened as a card over the seeded Activity view,tools/render/scenarios,140,driver,no,no,no
@@ -84,9 +87,9 @@ tools/render/scenarios/diff-tool-roots.mjs,the browse panel's root list over a s
 tools/render/scenarios/diff-tool-sources.mjs,the Sources tab with the normalization strip open and two prose drafts loaded,tools/render/scenarios,25,driver,no,no,no
 tools/render/scenarios/entities-stub.mjs,"pages/entities.html against the committed index, token-free",tools/render/scenarios,35,driver,no,no,no
 tools/render/scenarios/estate-crawl-progress.mjs,"Branches or Sessions mid-crawl: the pane seeded, then the shell's progress slot written by hand",tools/render/scenarios,61,driver,no,no,no
-tools/render/scenarios/estate-jots.mjs,the estate's Jots view with a populated pile,tools/render/scenarios,74,driver,no,no,no
+tools/render/scenarios/estate-jots.mjs,the estate's Jots view with a populated pile,tools/render/scenarios,90,driver,no,no,no
 tools/render/scenarios/estate-open.mjs,Activity's Open view seeded token-free so the list renders headlessly,tools/render/scenarios,205,driver,no,no,no
-tools/render/scenarios/estate-pins.mjs,the Lists pane with the Pin block populated above To-do and Jot,tools/render/scenarios,86,driver,no,no,no
+tools/render/scenarios/estate-pins.mjs,the Lists pane with the Pin block populated above To-do and Jot,tools/render/scenarios,96,driver,no,no,no
 tools/render/scenarios/estate-rows.mjs,the grouped-grid Repos view with a nested companion card,tools/render/scenarios,88,driver,no,no,no
 tools/render/scenarios/estate-sessions.mjs,"the Sessions and Lists panes on fixture data, token-free",tools/render/scenarios,123,driver,no,no,no
 tools/render/scenarios/estate-skills.mjs,,tools/render/scenarios,106,driver,no,no,no

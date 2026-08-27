@@ -1,0 +1,9 @@
+date,target,units,words_before,words_after,floor_pct,achieved_pct,real_losses,caught_by
+2026-08-26,web-tools docs/SURFACING.md primitives,155,3226,1772,33,45,6,check.py stage two
+2026-08-26,web-tools docs/CONVENTIONS.md,94,1599,1389,20,13,0,-
+2026-08-26,web-tools docs/SURFACING.md primitives (rebased on #505/#507),155,3342,2087,33,38,0,-
+2026-08-26,web-tools skills/state-the-rule/SKILL.md (itself),64,1041,1015,9,2,0,-
+2026-08-26,web-tools docs/TRACKER.md,229,4717,3841,21,19,0,-
+2026-08-26,web-tools docs/SURFACING.md course (the rest of the file),124,1978,1520,19,23,0,-
+2026-08-27,home CLAUDE.md (+ 2 sections moved out),355,6895,4243,35,38,0,seams.py
+2026-08-27,web-tools docs/CONVENTIONS.md (re-run without the fourth question),83,1422,1339,1,6,0,-
