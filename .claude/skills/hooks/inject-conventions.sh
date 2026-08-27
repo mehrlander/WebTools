@@ -134,11 +134,78 @@ emit() {
   echo
 }
 
+# ── The receipt ────────────────────────────────────────────────────────────
+#
+# This script is the only party that knows what it supplied. The payload is two
+# documents concatenated and names neither, so a later reader can only
+# pattern-match content back to a path, and the rungs below mean the answer is
+# not even fixed: what arrives depends on which one fired.
+#
+# So each document gets one `[startup-context]` line carrying its path, a
+# content hash, its byte count, and WHICH RUNG DELIVERED IT.
+# sessions/tools/record.py reads them out of the transcript's hook_success
+# entry into the record's `startup_context`, and the Map view's Docs tab shows
+# presence beside access rather than the hard-coded word "injected".
+#
+# The `delivered` field is the part that earns this. The 2026-08-26 failure was
+# a payload silently cut to 5%, invisible because the script exited 0 and the
+# hook reported success. A receipt that states the rung turns the same silence
+# into a value that changed.
+#
+# Budgeted like the rest of the payload, and RESERVED FIRST. A receipt is what
+# reports a dropped payload, so it must be the last thing dropped; that argues
+# for reserving room, not for exempting it. Exempting it is just an overrun
+# nobody counted, which is how this first shipped and what CI caught.
+sha_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | cut -d' ' -f1
+  else
+    printf ''
+  fi
+}
+
+CONV_SHA=$(sha_of "$DOCS/CONVENTIONS.md")
+SURF_SHA=$(sha_of "$DOCS/SURFACING.md")
+CONV_BYTES=$(wc -c <"$DOCS/CONVENTIONS.md" | tr -d ' ')
+SURF_BYTES=$(wc -c <"$DOCS/SURFACING.md" | tr -d ' ')
+
+receipt() {
+  printf '[startup-context] {"path":"web-tools/docs/%s.md","via":"session_hook","source":"portable-plugin:docs/%s.md","sha256":"%s","bytes":%s,"delivered":"%s","basis":"receipt"}\n' \
+    "$1" "$1" "$2" "$3" "$4"
+}
+
+# CONVENTIONS.md rides every rung whole. SURFACING.md never does: the course is
+# withheld by design even at rung 1, so its best case is stated as what it is.
+receipts() {
+  receipt CONVENTIONS "$CONV_SHA" "$CONV_BYTES" full
+  receipt SURFACING "$SURF_SHA" "$SURF_BYTES" "$1"
+}
+
+# BYTES, NOT CHARACTERS. `${#BODY}` counts characters in a UTF-8 locale and
+# bytes in C, and the channel this budget describes is bytes. The two differ by
+# about 200 here, since these documents carry ⭐ 🥏 📦 and their friends, and
+# that gap is enough to choose a rung that then overflows. Measured 2026-08-27
+# from one commit: the sandbox (LC_ALL=C) chose the primitives rung at 26,745
+# bytes and the GitHub runner (C.UTF-8) chose the wider one at 27,639, over the
+# budget, because it was measuring the same payload in the smaller unit.
+bytes_of() { printf '%s' "$1" | wc -c | tr -d ' '; }
+
+# The receipt is part of the payload, so it is budgeted like the rest. Reserving
+# it FIRST rather than exempting it is the whole point: a receipt is the thing
+# that reports a dropped payload, so it must be the last thing dropped, and a
+# receipt sitting outside the accounting is simply an overrun nobody counted.
+# Sized on the longest rung label, so the reservation is an upper bound whichever
+# rung ends up firing.
+RESERVED=$(bytes_of "$(receipts primitives_only)")
+BUDGET=$((BUDGET - RESERVED))
+
 # Rung 1: everything but the course.
 BODY="$(emit)"
 
 # Rung 2: drop SURFACING.md's front matter, keeping every rule.
-if [ "${#BODY}" -gt "$BUDGET" ]; then
+if [ "$(bytes_of "$BODY")" -gt "$BUDGET" ]; then
   BODY="$(emit skip_head)"
   DROPPED_HEAD=1
 fi
@@ -147,16 +214,18 @@ fi
 # The harness would cut this mid-sentence with nothing to say so; a session that
 # knows it received a partial payload can go read the rest, which is the whole
 # difference between a degraded load and a load that lies about itself.
-if [ "${#BODY}" -gt "$BUDGET" ]; then
+if [ "$(bytes_of "$BODY")" -gt "$BUDGET" ]; then
   echo "===== Portable conventions: PARTIAL LOAD ====="
-  echo "The injected payload is ${#BODY} bytes, over its ${BUDGET}-byte budget, and the"
+  echo "The injected payload is $(bytes_of "$BODY") bytes, over its ${BUDGET}-byte budget, and the"
   echo "harness truncates a large hook payload to a 2,000-byte preview without saying so."
   echo "Only CONVENTIONS.md is injected below. Run /web-tools to load the surfacing"
   echo "primitives before surfacing any work."
   echo
   cat "$DOCS/CONVENTIONS.md"
+  receipts omitted
   exit 0
 fi
 
 printf '%s\n' "$BODY"
+receipts "$([ "${DROPPED_HEAD:-}" = "1" ] && echo primitives_only || echo without_course)"
 exit 0

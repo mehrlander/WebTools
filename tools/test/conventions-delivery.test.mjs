@@ -52,6 +52,40 @@ test('the injected payload fits the channel', () => {
   assert.doesNotMatch(out, /OUTPUT TRUNCATED|PARTIAL LOAD/, 'and it is the whole payload');
 });
 
+test('the budget is measured in bytes, so the locale cannot change the rung', () => {
+  // `${#BODY}` counts CHARACTERS in a UTF-8 locale and BYTES in C. The channel
+  // is bytes, these documents carry ⭐ 🥏 📦 and friends, and the gap between the
+  // two units is about 200 bytes: enough to choose a rung that then overflows.
+  // Measured 2026-08-27 from one commit, before the fix: the sandbox (C) chose
+  // the primitives rung at 26,745 bytes and the GitHub runner (C.UTF-8) chose
+  // the wider one at 27,639 and blew the budget. CI caught it and no local run
+  // could have, which is exactly why the locale is pinned here rather than
+  // inherited.
+  const under = loc => run('inject-conventions.sh', { LC_ALL: loc });
+  const c = under('C'), utf8 = under('C.UTF-8');
+  assert.equal(c, utf8, 'the same commit must deliver the same payload in either locale');
+  for (const [loc, out] of [['C', c], ['C.UTF-8', utf8]]) {
+    assert.ok(Buffer.byteLength(out, 'utf8') < BUDGET,
+      `under ${loc} the injector emits ${Buffer.byteLength(out, 'utf8')} bytes, over ${BUDGET}`);
+  }
+});
+
+test('the receipts are inside the budget, not exempt from it', () => {
+  // A receipt is what reports a dropped payload, so it must be the last thing
+  // dropped. That argues for reserving room, never for exempting it: an exempt
+  // receipt is just an overrun nobody counted, which is how this first shipped.
+  const out = run('inject-conventions.sh');
+  const receipts = out.split('\n').filter(l => l.startsWith('[startup-context] '));
+  assert.equal(receipts.length, 2, 'one per document the injector supplies');
+  for (const line of receipts) {
+    const e = JSON.parse(line.slice('[startup-context] '.length));
+    assert.ok(e.path && e.sha256 && e.basis === 'receipt', 'each receipt is complete');
+    assert.ok(e.delivered, 'and names the rung that delivered it');
+  }
+  // The reservation is real: the whole payload, receipts included, fits.
+  assert.ok(Buffer.byteLength(out, 'utf8') < BUDGET);
+});
+
 test('it carries every primitive and none of the course', () => {
   const out = run('inject-conventions.sh');
   const doc = readFileSync(join(HOOKS, '..', 'web-tools', 'SURFACING.md'), 'utf8');
@@ -70,8 +104,14 @@ test('it carries every primitive and none of the course', () => {
 // payload went 127 bytes over: under a two-rung design that cost every
 // primitive. What a session can most afford to lose goes first, and the rules
 // themselves are not it.
+// The rung window moves whenever the injected prose changes size, since it is
+// the body's byte count that decides which rung a budget selects. Two shifts so
+// far: the receipts reserved inside the budget on 2026-08-27 (514 bytes off the
+// body), then two surfacing primitives grew on the same day. Measured after
+// both, this rung is chosen for a budget in [26876, 27771); pick the midpoint so
+// a small future edit does not walk the test off either edge silently.
 test('over budget it drops the front matter before it drops a single rule', () => {
-  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '26500' });
+  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '27323' });
   assert.match(out, /ALSO NOT INCLUDED, to fit the channel/,
     'the second rung says what it withheld, as the first one does');
   assert.doesNotMatch(out, /PARTIAL LOAD/, 'and it is not the last rung');
