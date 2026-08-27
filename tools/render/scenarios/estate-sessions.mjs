@@ -212,6 +212,17 @@ export default async function (page) {
     return;
   }
 
+  // PENDING=1 strips the reply from the first row, which is the state most of
+  // the store is in until the crawl has run twice against row version 5. It is
+  // the case the reply card was invisible on when it first shipped.
+  if (process.env.PENDING) {
+    await page.evaluate(() => {
+      const st = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
+      st.sessionRows_ = st.sessionRows_.map((r, i) => (i ? r : { ...r, reply: '', replyCut: '' }));
+    });
+    await page.waitForTimeout(200);
+  }
+
   const card = process.env.CARD;
   if (card) {
     // Anchored off the real trigger, so the panel lands where a reader's tap

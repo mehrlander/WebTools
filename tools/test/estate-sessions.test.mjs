@@ -423,13 +423,29 @@ test('a reply the cache cut says so in the label and in the body', () => {
   assert.equal(c.cut, true, 'the body draws its own trimmed note off this');
 });
 
-test('a row from a cache built before the field opens no card at all', () => {
-  // The field arrived with ROW_V 4 and heals on the next crawl. Until it does a
-  // row carries no reply, so the ask line gets no handler and no help cursor:
-  // an empty panel would be worse than a line that simply does not open.
+test('a row with no reply yet still opens, on the ask, and says why', () => {
+  // How this first shipped: gated on `row.reply`, so a hover on an unhealed row
+  // did NOTHING. The field arrived with ROW_V 5 and one crawl pass reads 120
+  // records, so most of a 225-row store is unhealed until the second pass, and
+  // a reader could not tell a missing feature from a missing field. Every ask
+  // opens now; the absence is stated rather than performed.
   const row = window.RepoSessionsCache.summarize(rec({ schema: 3 }), 'x');
   assert.equal(row.reply, '', 'no reply on the row');
-  assert.equal(data.replyLabel(row), 'closing reply', 'the label still answers, for callers that ask');
+  const c = replyCard(row);
+  assert.equal(c.label, 'opening ask', 'the header names what it actually has');
+  assert.equal(c.text, '');
+  assert.equal(c.ask, 'do the thing', 'the full ask is the floor; the row truncates it');
+  assert.equal(c.pending, true, 'and the body draws the why off this');
+  assert.equal(c.cut, false, 'nothing was trimmed, because there is nothing to trim');
+});
+
+test('a reply present means the card is about the reply, not the ask', () => {
+  const row = window.RepoSessionsCache.summarize(
+    rec({ schema: 4, replies: [{ at: 'z', text: 'and here is what came of it' }] }), 'x');
+  const c = replyCard(row);
+  assert.equal(c.pending, false);
+  assert.equal(c.label, 'closing reply');
+  assert.equal(c.ask, 'do the thing', 'the ask rides along as context either way');
 });
 
 test('the row version moved, so one pass re-reads the store and heals it', () => {
