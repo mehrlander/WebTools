@@ -169,7 +169,7 @@ skills. Naming a file is the opt-in; deleting it is the opt-out.
 The vendored copies are a derived artifact, so they have the two owners this
 repo gives every derived artifact: `.claude/hooks/build-on-commit.sh` refreshes
 and stages them in the same commit that touches `docs/`, and
-[`tools/test/artifacts-lockstep.test.mjs`](../tools/test/artifacts-lockstep.test.mjs)
+[`tools/test/derived-artifacts.test.mjs`](../tools/test/derived-artifacts.test.mjs)
 fails if they fall behind, for the sessions where the hook never fires. A stale
 copy is the failure worth guarding: it injects confidently and governs the
 session with last month's rules.

@@ -11,7 +11,7 @@ properties,exclusive,no,,one row may hold several values from the domain
 properties,exclusive,yes,,one row holds at most one value from the domain
 properties,form,column,,reserves a slot on every row
 properties,form,list,,records only where the assertion holds
-properties,mode,computed,,"stamped by a named deriver and held to a re-derivation by a lockstep or registry gate, never hand-edited. Mode sits on the declaration rather than the property, since the same property can be recorded in one scope and computed in another"
+properties,mode,computed,,"stamped by a named deriver and held to a re-derivation by a registry gate, never hand-edited. Mode sits on the declaration rather than the property, since the same property can be recorded in one scope and computed in another"
 properties,mode,recorded,,"authored judgment, irreplaceable, never machine-edited"
 properties,required,counted,,"a blank is legal and surfaced as a ledger figure, the count-rather-than-ban posture the computed sets run for authored judgment"
 properties,required,none,,"optional, or filled by practice with no gate behind it"
@@ -24,13 +24,8 @@ registries,membership,computed,,"the rule is executable (a folder, an extension,
 registries,membership,curated,,"which targets belong is a judgment, so there is nothing to recompute; the strongest gate available is a promise-to-implementation one"
 registries,span,hub,Hub,"every target is inside this repository, so the checkout is a complete enumeration"
 registries,span,estate,Estate,"targets live in other repositories too, so this repo holds an aggregate and not the population; the carrier still lives here, which is what keeps it gateable"
-tests,kind,behavior,,calls the subject's own functions and asserts what comes back
-tests,kind,component,,boots an Alpine component in jsdom and drives it
-tests,kind,gate,,"holds committed data to the repo, so documentation cannot drift from what it describes"
-tests,kind,guard,,asserts a convention or policy rather than a behavior
-tests,kind,kit,,loads a lib/kits file through the bootstrap and exercises its surface
-tests,kind,lockstep,,holds a generated artifact to its source
-tests,kind,tool,,runs a CLI script as a process and asserts its output
+tests,kind,behavior,,exercises the subject and asserts what it does; how it is reached is the method
+tests,kind,gate,,"holds a committed file to its source or to a rule, so a claim in the repo cannot quietly stop being true"
 skills,group,prose,Prose,"the writing itself is the subject: drafting, tightening, outlining, anchoring to sources, showing an edit"
 skills,group,documents,Documents,"a file format is the subject: docx, pdf, pptx, xlsx, and the query language that feeds them"
 skills,group,web,Web,"building something that renders in a browser: markup, components, icons, bundling"

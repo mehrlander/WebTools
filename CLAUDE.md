@@ -70,7 +70,7 @@ Don't hand-edit any of those five files; edit the source and let the hook refres
 
 **It is a git hook, not a Claude Code hook, deliberately:** a `PreToolUse` hook is read only when the session's project root IS this repo, so a multi-repo session ran it never and said nothing. [`.claude/hooks/session-githooks.sh`](.claude/hooks/session-githooks.sh) sets `core.hooksPath`; `--no-verify` bypasses. Why, and what it does not generalize to: [extending.md](docs/environment/extending.md).
 
-**Best-effort still.** A clone that never set `core.hooksPath` runs nothing, so `npm test` keeps [`tools/test/artifacts-lockstep.test.mjs`](tools/test/artifacts-lockstep.test.mjs), which re-runs each generator in `--check` mode and fails if a tracked artifact is behind its source. Run the command it names and commit the result.
+**Best-effort still.** A clone that never set `core.hooksPath` runs nothing, so `npm test` keeps [`tools/test/derived-artifacts.test.mjs`](tools/test/derived-artifacts.test.mjs), which re-runs each generator in `--check` mode and fails if a tracked artifact is behind its source. Run the command it names and commit the result.
 
 Regenerating by hand after touching `lib/` or `pages/` is still the fast path; the test makes forgetting loud instead of silent. Why each generator has to be byte-deterministic, and the tracker board's 2026-08-05 counterexample, are in [`tools/README.md`](tools/README.md#the-refresh-model).
 
