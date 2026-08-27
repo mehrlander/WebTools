@@ -246,6 +246,73 @@ test('an entry does not open on chrome, so a branch anchor is skipped', () => {
   assert.equal(S.priorTurns(rec)[0][1], 'The actual finding is here.');
 });
 
+// ── Attachments are not prose ───────────────────────────────────────────────
+// The harness records an attached image as a prompt whose whole text is its own
+// placeholder. 653 of the 3,895 prompts on file are these, every one of them
+// placeholder-only, never a placeholder beside a sentence.
+
+const IMG = (n) => '[Image: original 3000x1900, displayed at 2000x1267. '
+  + 'Multiply coordinates by ' + n + ' to map to original image.]';
+
+test('an image-only prompt is an attachment, not a sentence to mine', () => {
+  // What it did before, and why it looked like a parsing bug: the placeholder
+  // is two sentences to a splitter, the first is discarded as a noise lead
+  // because it opens with a bracket, and the SECOND survived. The turn read
+  // "Multiply coordinates by 1.50 to map to original image.]".
+  const rec = {
+    schema: 4,
+    prompts: [{ at: at(0), text: 'opener' }, { at: at(2), text: IMG('1.50') }],
+    replies: [{ at: at(1), text: 'first answer' }, { at: at(3), text: 'closing' }],
+    calls: [],
+  };
+  const got = S.priorTurns(rec);
+  assert.deepEqual(got.at(-1), ['u', '[image]', '10:02:00']);
+  assert.ok(!got.some(([, t]) => /Multiply coordinates/.test(t)), 'no half-placeholder anywhere');
+});
+
+test('a run of attachments is one turn, counted, dated from its first', () => {
+  // They arrive in runs because a person drops several screenshots into one
+  // message: across the store 653 attachments fall into 299 runs, the longest
+  // 13. One line each is thirteen identical lines saying nothing.
+  const prompts = [{ at: at(0), text: 'opener' }];
+  for (let i = 1; i <= 5; i++) prompts.push({ at: at(i), text: IMG('1.2' + i) });
+  const rec = { schema: 4, prompts, replies: [{ at: at(9), text: 'closing' }], calls: [] };
+  const got = S.priorTurns(rec);
+  assert.deepEqual(got, [['u', '[5 images]', '10:01:00']],
+    'one entry, the count, and the clock the run started on');
+});
+
+test('a run broken by words is two runs, not one', () => {
+  const rec = {
+    schema: 4,
+    prompts: [{ at: at(0), text: 'opener' }, { at: at(1), text: IMG('1.2') },
+              { at: at(2), text: 'and here is a question' }, { at: at(3), text: IMG('1.3') },
+              { at: at(4), text: IMG('1.4') }],
+    replies: [{ at: at(9), text: 'closing' }], calls: [],
+  };
+  assert.deepEqual(S.priorTurns(rec).map(([, t]) => t),
+    ['[image]', 'and here is a question', '[2 images]']);
+});
+
+test('the cut note counts a run as the one entry it becomes', () => {
+  // Counting attachments singly would report a cut the list does not make.
+  const prompts = [{ at: at(0), text: 'opener' }];
+  for (let i = 1; i <= 40; i++) prompts.push({ at: at(i), text: IMG('1.5') });
+  const rec = { schema: 4, prompts, replies: [{ at: at(50), text: 'closing' }], calls: [] };
+  assert.equal(S.priorTurns(rec).length, 1, 'forty attachments, one entry');
+  assert.equal(S.turnsPartial(rec), '', 'so nothing was cut, and the card must not say it was');
+});
+
+test('a prompt with words is untouched by any of this', () => {
+  const rec = {
+    schema: 4,
+    prompts: [{ at: at(0), text: 'opener' }, { at: at(2), text: 'a real question about images' }],
+    replies: [{ at: at(1), text: 'first answer' }, { at: at(3), text: 'closing' }],
+    calls: [],
+  };
+  assert.equal(S.priorTurns(rec).at(-1)[1], 'a real question about images');
+});
+
 test('the newest survive the cap, because a reader scrolls backwards', () => {
   const prompts = [], replies = [];
   for (let i = 0; i < 40; i++) {
