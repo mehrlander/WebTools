@@ -542,3 +542,91 @@ test('pointerOf keeps the ask to one line, and omits it rather than showing an e
   const none = S.pointerOf(S.summarize(record({ opening_ask: '' }), 'x'));
   assert.ok(!/^Ask:/m.test(none));
 });
+
+// ── Startup context (record schema 6) ───────────────────────────────────────
+// The half of a session's file contact that no tool call records. What these
+// hold is the boundary between PRESENCE and ACCESS: `attention` counts tool
+// calls and may be summed, this counts sessions and may not. Folding the two
+// together would report a document present in forty sessions and opened in
+// three as having been read forty-three times, which is the failure the docs
+// registry was avoiding with a hard-coded "injected" string on two rows.
+const CONV = 'web-tools/docs/CONVENTIONS.md';
+
+function withStartup(entries, over = {}) {
+  return { ...S.summarize(record({ startup_context: entries }), 'x'),
+           started: '2026-08-27T00:00:00Z', ...over };
+}
+
+test('startupOf keeps a file per channel, since one document arrives two ways', () => {
+  // Not hypothetical: CONVENTIONS.md is fetched from main by the conventions
+  // hook AND @-imported from a local checkout by web-tools/CLAUDE.md. On a
+  // feature branch those are different bytes under one name.
+  const row = withStartup([
+    { path: CONV, via: 'session_hook', basis: 'receipt' },
+    { path: CONV, via: 'project_instructions', basis: 'reconstructed' },
+  ]);
+  assert.deepEqual(row.startup, [[CONV, 'receipt'], [CONV, 'reconstructed']]);
+});
+
+test('startupOf drops an entry with no path and sorts for a stable diff', () => {
+  const row = withStartup([
+    { path: 'home/CLAUDE.md', basis: 'reconstructed' },
+    { via: 'session_hook', basis: 'receipt' },
+    { path: CONV, basis: 'receipt' },
+  ]);
+  assert.deepEqual(row.startup.map(e => e[0]), ['home/CLAUDE.md', CONV]);
+});
+
+test('startupOf treats any basis but receipt as reconstructed', () => {
+  // The field is a claim about how the entry was obtained, so an unknown value
+  // must fall to the weaker side rather than being carried through as data.
+  const row = withStartup([{ path: CONV, basis: 'guessed' }]);
+  assert.deepEqual(row.startup, [[CONV, 'reconstructed']]);
+});
+
+test('startupAttention counts sessions, never occurrences', () => {
+  const rows = [withStartup([{ path: CONV, basis: 'receipt' }]),
+                withStartup([{ path: CONV, basis: 'receipt' }])];
+  const [e] = S.startupAttention(rows);
+  assert.equal(e.sessions, 2, 'two sessions, each holding it once');
+  assert.equal(e.receipt, 2);
+  assert.equal(e.reconstructed, 0);
+});
+
+test('a session holding one file by both channels still counts once, as a receipt', () => {
+  // The receipt wins deliberately rather than by sort order: it is the stronger
+  // claim, and counting the session on both sides would double it.
+  const [e] = S.startupAttention([withStartup([
+    { path: CONV, via: 'project_instructions', basis: 'reconstructed' },
+    { path: CONV, via: 'session_hook', basis: 'receipt' },
+  ])]);
+  assert.equal(e.sessions, 1);
+  assert.equal(e.receipt, 1);
+  assert.equal(e.reconstructed, 0);
+});
+
+test('startupAttention carries the newest session date, and ranks by reach', () => {
+  const rows = [
+    withStartup([{ path: CONV, basis: 'receipt' }], { started: '2026-08-01T00:00:00Z' }),
+    withStartup([{ path: CONV, basis: 'receipt' },
+                 { path: 'home/CLAUDE.md', basis: 'reconstructed' }],
+                { started: '2026-08-27T00:00:00Z' }),
+  ];
+  const got = S.startupAttention(rows);
+  assert.deepEqual(got.map(e => e.path), [CONV, 'home/CLAUDE.md']);
+  assert.equal(got[0].last, '2026-08-27T00:00:00Z', 'newest, not last seen');
+});
+
+test('a record predating schema 6 contributes nothing rather than a zero', () => {
+  // Every record written before this field existed is permanently without it,
+  // and an absent startup context must read as unmeasured, not as unused.
+  const row = { ...S.summarize(record(), 'x'), started: '2026-08-05T13:51:08Z' };
+  assert.deepEqual(row.startup, []);
+  assert.deepEqual(S.startupAttention([row]), []);
+});
+
+test('the row version moved, so the crawl re-summarizes for the new field', () => {
+  // A row built by an older summarizer is refetched on sha, and a record whose
+  // sha never moves again would otherwise keep an empty startup forever.
+  assert.ok(S.ROW_V >= 4, 'ROW_V must advance when summarize() reads something new');
+});
