@@ -60,23 +60,52 @@ test('the head folds into the turn\'s first line, so a turn costs no chrome row'
   const el = dense({ role: 'user', md: 'why do three tables carry a label?', ts: '22:56:11' });
   assert.equal(standaloneHead(el), undefined, 'no chrome row above the text');
   const pre = el.querySelector('pre');
-  assert.ok(pre.textContent.startsWith('22:56:11'), 'the clock opens the first line');
-  assert.ok(pre.textContent.includes('why do three'), 'and the text follows it in the same block');
+  assert.ok(pre.querySelector('i.ph'), 'the lead sits inside the first block');
+  assert.ok(pre.textContent.startsWith('why do three'), 'and the text opens it');
   const a = dense({ role: 'assistant', md: 'Not a bug. The badge renders a kind.', ts: '22:58:30' });
   assert.equal(standaloneHead(a), undefined);
-  assert.ok(a.querySelector('p').textContent.startsWith('Not a bug.'), 'a reply opens on its own sentence');
+  assert.ok(a.querySelector('p').textContent.startsWith('Not a bug.'), 'a reply opens on its own sentence too');
 });
 
-test('the clock belongs to the ask, and a reply keeps its own on the icon', () => {
-  // Two numbers down the left edge where one is the landmark: a reply lands a
-  // minute or two after the ask it answers, so its clock restates rather than
-  // locates. Dropped from the line, kept where it costs nothing.
-  const a = dense({ role: 'assistant', md: 'the answer', ts: '22:58:30' });
-  assert.ok(!a.textContent.includes('22:58:30'), 'not on the line');
-  assert.equal(a.querySelector('i.ph').getAttribute('title'), '22:58:30', 'but not lost either');
-  const u = dense({ role: 'user', md: 'the ask', ts: '22:56:11' });
-  assert.ok(u.textContent.includes('22:56:11'), 'the ask opens the exchange, so it prints one');
-  assert.equal(u.querySelector('i.ph').getAttribute('title'), null, 'and needs no title for it');
+test('no clock on any dense turn, and every turn keeps its own on the icon', () => {
+  // A column of digits down the left edge is something the eye skips to reach
+  // the sentence. What a card is read for is WHO, and the icon says that in one
+  // glyph. The fact is not lost, only unrendered.
+  for (const role of ['user', 'assistant', 'system']) {
+    const el = dense({ role, md: 'text here', ts: '22:58:30' });
+    assert.ok(!el.textContent.includes('22:58:30'), `a ${role} turn prints no clock`);
+    assert.equal(el.querySelector('i.ph').getAttribute('title'), '22:58:30', 'but carries it');
+  }
+  const none = dense({ role: 'user', md: 'text here' });
+  assert.equal(none.querySelector('i.ph').getAttribute('title'), null, 'and invents none where there was none');
+  // Full size still prints it: a deck slide reads against the clock.
+  assert.ok(cr.message({ role: 'user', md: 'x', ts: '22:58:30' }, { collapse: 0 })
+    .textContent.includes('22:58:30'));
+});
+
+test('the chip is bound to the last word, so it cannot be orphaned on its own line', () => {
+  // With a margin the chip is its own breakable token, and a last line ending
+  // near the right edge dropped it onto a line by itself, where it read as a
+  // fact about the turn rather than about that sentence.
+  const el = dense({ role: 'assistant', md: 'One here.', dropped: 891 });
+  const p = el.querySelector('p');
+  const chip = p.lastElementChild;
+  assert.ok(chip.textContent.includes('+891 chars'));
+  assert.equal(chip.previousSibling.nodeType, 3, 'a text node sits between the prose and the chip');
+  assert.equal(chip.previousSibling.data, '\u00A0', 'and it is the space that will not break');
+  assert.ok(!/\bml-/.test(chip.className), 'no margin, which is what made it breakable');
+});
+
+test('a fenced artifact inside a dense reply takes the dense rhythm', () => {
+  // Left at block()'s own my-3 it was the one thing still spaced for a page, so
+  // a reply carrying a fence read as two turns with a gap between them.
+  const el = dense({ role: 'assistant', md: 'before.\n\n```js\nconst x = 1;\n```\n\nafter.' });
+  const card = el.querySelector('[data-block]');
+  assert.ok(card, 'the fence rendered as an artifact');
+  assert.equal(card.style.marginTop, '0.6em');
+  assert.equal(card.style.marginBottom, '0.6em');
+  const plain = cr.message({ role: 'assistant', md: '```js\nconst x = 1;\n```' }, { collapse: 0 });
+  assert.equal(plain.querySelector('[data-block]').style.marginTop, '', 'full size keeps my-3');
 });
 
 test('a dense reply carries typography\'s paragraph rhythm halved, edges included', () => {
@@ -165,6 +194,6 @@ test('a raw user turn folds its head into the <pre>, where the text is', () => {
   const el = dense({ role: 'user', md: 'why do only three tables have the label?', ts: '22:56:11' });
   assert.equal(standaloneHead(el), undefined);
   const pre = el.querySelector('pre');
-  assert.ok(pre.textContent.startsWith('22:56:11'), 'the clock opens the typed text');
-  assert.ok(pre.textContent.includes('why do only three'));
+  assert.equal(pre.firstElementChild?.querySelector('i.ph')?.tagName, 'I', 'the lead is the pre\'s first child');
+  assert.ok(pre.textContent.includes('why do only three'), 'and the typed text runs on from it');
 });
