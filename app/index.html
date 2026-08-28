@@ -2145,6 +2145,9 @@ function app(){ return {
     // Browser Back/Forward restores state from the URL (syncUrl pushes an entry
     // per distinct URL, so the history has real steps to walk).
     window.addEventListener('popstate', () => this.restoreFromUrl());
+    // The framed page's mark, announced up by toss-render. Wired here rather
+    // than on the frame so it is registered before any app view can load.
+    window.addEventListener('toss-subject-mark', () => this.onSubjectMark());
     this.wireRevisit();
   },
 
@@ -5186,9 +5189,47 @@ function app(){ return {
     // exactly when deepLinkParams stamps `repo` (off the default only), owner
     // dropped the way the sidebar crumb drops it. Stamped here rather than in
     // a watcher so the title and the address cannot disagree.
+    //
+    // AN APP VIEW NAMES ITSELF FIRST, which is the one place the order flips.
+    // Everywhere else the product leads, because the repo is context on a Web
+    // Tools screen. A promoted page is not a Web Tools screen: `?app=` is a
+    // whole address and the three surfaces that read this title (the tab strip,
+    // a bookmark, a home-screen tile) all truncate from the RIGHT, so leading
+    // with the product spends the visible characters saying which shell rather
+    // than which app. It takes the disambiguated `label` rather than
+    // `baseLabel`, so two repos promoting one page are still told apart here.
+    this.stampTitle();
+    // Every route change passes through here, so this is the one place that
+    // reliably sees an app view being LEFT. A watcher on `view` would miss the
+    // boot case, where the shell arrives on a route without ever changing it.
+    if (this.view !== 'app') { this._appTitle = ''; this.resetAppIcon(); }
+  },
+
+  // Its own method because the mark arrives LATE, after the address is
+  // already stamped, and re-running syncUrl for it would push a history entry
+  // for a tab caption.
+  stampTitle(){
+    const av = this.view === 'app' ? this.appView : null;
+    const name = this.appTabName(av);
+    if (name) { document.title = `${name} · Web Tools`; return; }
     const repo = Alpine.store('browser').repo;
     document.title = repo && repo !== this.DEFAULT_REPO
       ? `Web Tools · ${repo.split('/')[1] || repo}` : 'Web Tools';
+  },
+
+  // What an app view is called in a tab. THE DECLARED LABEL WINS wherever
+  // there is one, because that is the name the sidebar and the header nav
+  // render, and a tab disagreeing with them is worse than a plain tab.
+  //
+  // The exception is the one case that has no declared label: a cold deep link
+  // by address, before (or without) the crawl that carries the manifest, falls
+  // back to the filename and reads `app.html`, which names nothing. The framed
+  // page's own <title> answers exactly that case, and nothing else: it would
+  // otherwise overrule a name its own repo chose for it.
+  appTabName(av){
+    if (!av) return '';
+    if (av.labelFrom !== 'path') return av.label || '';
+    return this._appTitle || av.label || '';
   },
 
   // Browser Back/Forward: re-derive the shell state from the URL through the
@@ -6009,6 +6050,10 @@ function app(){ return {
   // Select an estate-level app view; the main area renders it live via
   // toss-render #gh= (appViewUrl).
   goAppView(v){
+    // Switching between two app views never passes through stamp()'s reset
+    // (both are `view === 'app'`), so the outgoing mark is dropped here or it
+    // sits on the tab naming the wrong app until the new frame resolves.
+    if (!v || !this.appView || v.key !== this.appView.key) this.resetAppIcon();
     this.appView = v;
     this.view = 'app';
     // The fragment is THIS view's address, not the shell's, so it moves with the
@@ -6051,9 +6096,14 @@ function app(){ return {
         return this.appViews.find(v => v.slug === url.app) || null;
       }
       const key = addr.repo + (addr.ref ? '@' + addr.ref : '') + ':' + addr.path;
+      // `labelFrom` says whether the name below is one somebody CHOSE or one
+      // this line invented from the path; the tab caption is the only reader,
+      // and it needs to know which so it can prefer the page's own title over
+      // a filename. See appTabName().
       return this.appViews.find(v => v.key === key) || {
         repo: addr.repo, ref: addr.ref, path: addr.path,
         label: addr.path.split('/').pop(), icon: 'ph-app-window', key,
+        labelFrom: 'path',
       };
     }
     // Prefer the loaded entry (its viewLabel/icon/slug), since the collection
@@ -6064,6 +6114,9 @@ function app(){ return {
       repo: url.appRepo, ref: url.appRef, path: url.appPath,
       label: url.appLabel || url.appPath.split('/').pop(),
       icon: url.appIcon || 'ph-app-window', key,
+      // The five-key form carries a label of its own, which is why it exists;
+      // only its absence falls back to the filename.
+      labelFrom: url.appLabel ? 'url' : 'path',
     };
   },
 
@@ -6137,6 +6190,124 @@ function app(){ return {
     const q = v.query || '';
     return '../pages/toss-render.html#gh=' + v.repo + ref + ':' + v.path + (q ? '?' + q : '');
   },
+  // ── The app view's mark: what the tab, the bookmark and the tile carry ────
+  //
+  // The shell ships one favicon for every route (lib/favicon.svg, the hex nut),
+  // so budget-drs, News and the estate dashboard all read as the same thing in
+  // a tab strip and in a bookmark list. An app view is a page some repo
+  // PROMOTED, and its address names it; the mark should too.
+  //
+  // THE MARK IS THE FRAMED PAGE'S OWN, not a reconstruction of it. toss-render
+  // resolves the real icon (a private repo's icon file is reachable no other
+  // way than through the token, at the subject's ref) and announces the
+  // undimmed result on `toss-subject-icon`; the dimming stays down there, since
+  // a toss says it is a rendering and a promoted view does not. The two
+  // alternatives both get the runtime cases wrong: drawing the Phosphor glyph
+  // from `.web-tools.json` shows a mark the page never chose, and parsing the
+  // page source misses an icon set after boot, which is most of them (gh-boot
+  // injects the default asynchronously).
+  //
+  // Keyed on the app view it belongs to, so a mark can never outlive the view
+  // that earned it: every apply re-checks the key it started with, and any
+  // route that is not an app view resets (see stamp()).
+  APP_ICON_PX: 180,        // apple-touch-icon's size; a tab renders it far smaller
+  _appIconKey: '',         // which app view the mark on screen belongs to
+  _appTitle: '',           // the framed page's own <title>, when it announced one
+  _baseIcon: '',           // the hex nut, captured before anything replaces it
+
+  // Lazy rather than read at init, but always called before the first
+  // replacement, which is what makes it safe: setFavicon REMOVES the link it
+  // is replacing, so a capture that ran afterwards would find nothing.
+  baseIcon(){
+    if (!this._baseIcon) {
+      const el = document.querySelector('link[rel~="icon"]');
+      this._baseIcon = (el && el.getAttribute('href')) || '';
+    }
+    return this._baseIcon;
+  },
+
+  // Replace rather than append. Two <link rel=icon> elements leave the choice
+  // to the browser, which is not a thing to bet a mark on; toss-render's
+  // setFavicon settled this the same way.
+  setFavicon(href, rel){
+    document.querySelectorAll(`link[rel~="${rel}"]`).forEach(el => el.remove());
+    if (!href) return;
+    const link = document.createElement('link');
+    link.rel = rel;
+    link.href = href;
+    document.head.appendChild(link);
+  },
+
+  resetAppIcon(){
+    if (!this._appIconKey) return;              // nothing of ours is on screen
+    this._appIconKey = '';
+    this.setFavicon(this.baseIcon(), 'icon');
+    this.setFavicon('', 'apple-touch-icon');    // there is no base one to restore
+  },
+
+  // One listener on THIS window, wired at init, because the announcement comes
+  // to us: an address-mode render is same-origin, so toss-render writes into
+  // its parent. Nothing hangs off the frame, so there is no per-load
+  // registration to leak and no handle to clear when the frame goes.
+  //
+  // A cleared mark is a real message, not an absence. toss-render clears on
+  // every setSubject, which is how the tab drops the old app the moment the
+  // frame starts on another one rather than at whatever later point the next
+  // mark resolves.
+  onSubjectMark(){
+    const mark = window.__tossSubjectMark || null;
+    if (!mark) {
+      this._appTitle = '';
+      this.resetAppIcon();
+      this.stampTitle();
+      return;
+    }
+    if (this.view !== 'app' || !this.appView) return;
+    this._appTitle = mark.title || '';
+    this.stampTitle();
+    if (mark.icon) this.applyAppIcon(this.appView.key, mark.icon);
+  },
+
+  // Rasterize before hanging it on either link, and the tile is the reason:
+  // iOS reads apple-touch-icon and will not take an SVG, which is what most of
+  // these pages declare. A canvas is also where a letterboxed square comes
+  // from, so one step answers both. Best-effort throughout: a mark is cosmetic
+  // and a failure here leaves the tab alone rather than drawing a broken one.
+  async applyAppIcon(key, src){
+    this.baseIcon();                            // capture before the first replace
+    const png = await this.iconPng(src);
+    // The reader may have moved on while the canvas was decoding.
+    if (this.view !== 'app' || !this.appView || this.appView.key !== key) return;
+    this._appIconKey = key;
+    this.setFavicon(png || src, 'icon');
+    if (png) this.setFavicon(png, 'apple-touch-icon');
+  },
+
+  iconPng(src){
+    return new Promise(resolve => {
+      try {
+        const img = new window.Image();
+        img.onload = () => {
+          try {
+            const px = this.APP_ICON_PX;
+            const c = document.createElement('canvas');
+            c.width = c.height = px;
+            const ctx = c.getContext('2d');
+            // An SVG carrying only a viewBox reports no intrinsic size in some
+            // engines; square is the honest fallback.
+            const iw = img.naturalWidth || px, ih = img.naturalHeight || px;
+            const s = Math.min(px / iw, px / ih);      // letterbox, never stretch
+            const w = iw * s, h = ih * s;
+            ctx.drawImage(img, (px - w) / 2, (px - h) / 2, w, h);
+            resolve(c.toDataURL('image/png'));
+          } catch (e) { resolve(null); }
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+      } catch (e) { resolve(null); }
+    });
+  },
+
   // The sidebar app-view list: the collected app views (from the config cache,
   // main-only), plus the app view currently open if it is not already among
   // them. Discovery is main-gated, so a deep link to an app view whose repo has

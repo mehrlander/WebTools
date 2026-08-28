@@ -127,6 +127,19 @@ embed and opens that page full-viewport. Files, Branches, Map, Search, State,
 Activity, and a repo's default overview are the shell's own, with nothing to
 bust out to. `?shell=none` is the address that shows one of them alone.
 
+**An app view names and pictures itself.** The tab, the bookmark and the iOS
+home-screen tile all read the shell's `<title>` and its icon links, and one
+title under one favicon for every route made `?app=budget-drs` indistinguishable
+from the dashboard on all three. An open app view now takes the tab: its name
+leads (`Budget DRS · Web Tools`, subject first, since those three surfaces
+truncate from the right), and the framed page's own icon replaces the hex nut,
+rasterized to a PNG so it can also fill the `apple-touch-icon` iOS demands and
+will not take an SVG for. Both come from `toss-render`, which resolves the
+subject's mark anyway and announces it up undimmed on `toss-subject-mark`; its
+own tab keeps the dimming, because a toss is a rendering of a page and a
+promoted view is a destination. The mark drops with the view, so a tab never
+names an app the reader has left.
+
 **The sidebar is one boolean at every width now** (`sidebarOpen`), and the
 viewports differ in two things only: below `lg` it overlays with a scrim, at
 `lg` and up it is a column the main area sits beside, and it starts out on the
