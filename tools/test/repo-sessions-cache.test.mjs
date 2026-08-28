@@ -676,6 +676,79 @@ test('a record with no replies falls back to the tail, and empty means empty', (
   assert.equal(S.closingState(null), '');
 });
 
+// ── The sequence behind the glyph ──────────────────────────────────────────
+// A session does not close once. Measured 2026-08-28: median 12 states a
+// record, and 180 of the 183 CHANGE state at least once. So the row's glyph is
+// the last frame of a history, and `states` is the history.
+
+test('every reply that closes in a state contributes one, chronological', () => {
+  const st = S.closingStates({ replies: [
+    reply('2026-08-05T10:00:00Z', 'a\n\n🟡 **Pending:** waiting.'),
+    reply('2026-08-05T11:00:00Z', 'b\n\nno state in this one'),
+    reply('2026-08-05T12:00:00Z', 'c\n\n🟢 **Ready to continue:** go.'),
+  ] });
+  assert.deepEqual(st.map(e => e[0]), ['pending', 'ready'], 'newest last');
+  assert.deepEqual(st.map(e => e[2]), ['10:00:00', '12:00:00'], 'each keeps its clock');
+});
+
+test('the message is the passage from the marker down, not the whole reply', () => {
+  // What sits above the marker is the work being reported, and the card that
+  // renders these is not a transcript of the session.
+  const st = S.closingStates({ replies: [
+    reply('1', 'I rebuilt the index and the check passes.\n\n⚪ **Clean exit.** Nothing left here.'),
+  ] });
+  assert.equal(st[0][1], '⚪ **Clean exit.** Nothing left here.');
+  assert.ok(!st[0][1].includes('rebuilt'), 'the work above it is not the message');
+});
+
+test('the newest is carried long and the priors are cut, as reply and turns are', () => {
+  const long = (lead) => lead + ' ' + 'This sentence is here to run the passage past the head cap. '.repeat(12);
+  const st = S.closingStates({ replies: [
+    reply('1', long('🟡 **Pending:**')),
+    reply('2', long('🟢 **Ready to continue:**')),
+  ] });
+  const [prior, newest] = st;
+  assert.ok(prior[1].length < newest[1].length,
+    'the prior is cut to the turn head and the newest is not');
+  assert.ok(prior[3] > 0, 'and it says how much it dropped');
+  assert.ok(newest[1].length > 600, 'the newest is the one the row stands for');
+});
+
+test('only the newest STATES_KEPT survive, and the row says the front was cut', () => {
+  const many = Array.from({ length: S.STATES_KEPT + 4 }, (_, i) =>
+    reply('2026-08-05T' + String(10 + i).padStart(2, '0') + ':00:00Z',
+          (i === 0 ? '🔵' : '🟢') + ' **A state:** number ' + i));
+  const st = S.closingStates({ replies: many });
+  assert.equal(st.length, S.STATES_KEPT);
+  assert.ok(!st.some(e => e[0] === 'short'), 'the oldest fell off the front');
+  assert.equal(S.statesPartial({ replies: many }), 'cut');
+  assert.equal(S.statesPartial({ replies: many.slice(0, 3) }), '', 'and says nothing when nothing was');
+});
+
+test('the tip and the sequence cannot disagree: one parser, one answer', () => {
+  const r = { replies: [
+    reply('1', '🟡 **Pending:** waiting.'),
+    reply('2', '🆚 **Choice needed:** pick one.'),
+    reply('3', 'An echo of the merge. Nothing to act on.'),
+  ] };
+  const st = S.closingStates(r);
+  assert.equal(S.closingState(r), st[st.length - 1][0]);
+  assert.equal(S.closingState(r), 'choice');
+});
+
+test('the row carries the sequence beside the tip', () => {
+  const row = S.summarize(record({ replies: [
+    reply('2026-08-05T14:00:00Z', '🟡 **Pending:** waiting.'),
+    reply('2026-08-05T16:00:00Z', '⚪ **Clean exit.** Done.'),
+  ] }), 'sha1');
+  assert.equal(row.state, 'clean');
+  assert.equal(row.states.length, 2);
+  assert.equal(row.statesCut, '');
+  // The scalar is kept because the chips filter on it and the histogram counts
+  // it; reaching into the array on every pass over 400 rows would be worse.
+  assert.equal(row.state, row.states[row.states.length - 1][0]);
+});
+
 test('the row carries it, so the pane draws a glyph without opening the record', () => {
   const row = S.summarize(record({
     replies: [reply('2026-08-05T16:00:00Z', 'Done.\n\n⚪ **Clean exit.** Merged and verified.')],

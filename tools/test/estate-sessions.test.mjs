@@ -460,10 +460,11 @@ test('the closing state draws as its glyph, in a slot that holds even when empty
   assert.equal(data.sessionStateMark(withState), '🟢');
   assert.match(data.sessionStateNote(withState), /Ready to continue/);
 
-  // Empty is a claim too, and the note says WHY rather than leaving a blank
-  // slot to be read as a state.
+  // Empty is a claim too, and it DRAWS: the absence takes the Counts
+  // histogram's own symbol so the slot stops being a live target with nothing
+  // in it, and the note says which absence it is.
   const bare = window.RepoSessionsCache.summarize(rec(), 'sha1');
-  assert.equal(data.sessionStateMark(bare), '');
+  assert.equal(data.sessionStateMark(bare), '–');
   assert.match(data.sessionStateNote(bare), /did not end a reply with one/);
   assert.match(data.sessionStateNote({ ...bare, v: 1 }), /summarised before the field existed/,
     'an unhealed row says it is behind, rather than claiming the session said nothing');
@@ -472,7 +473,88 @@ test('the closing state draws as its glyph, in a slot that holds even when empty
   // by a glyph on every row without one, and a column that jitters is not one
   // the eye can run down.
   const card = await sessionRow(bare);
-  assert.ok(card.querySelector('span.w-5'), 'the slot is drawn on a row with no state');
+  assert.ok(card.querySelector('button.w-5'), 'the slot is drawn on a row with no state');
+});
+
+// ── The states card ────────────────────────────────────────────────────────
+// The glyph is the last frame of a sequence, so it opens the sequence, in the
+// same prose panel the ask line opens. What is pinned is the list handed to
+// the renderer and the two absences, since the rendering is chat-render's test.
+
+const statesRow = (states, over = {}) =>
+  ({ ...window.RepoSessionsCache.summarize(rec(), 'sha1'),
+     state: states.length ? states[states.length - 1][0] : '',
+     states, statesCut: '', ...over });
+
+test('the glyph opens the whole sequence, oldest first so the card reads back', () => {
+  const row = statesRow([
+    ['pending', '🟡 **Pending:** waiting.', '10:00:00'],
+    ['ready', '🟢 **Ready to continue:** go.', '12:00:00'],
+  ]);
+  data.openSessionCard(row, 'state', null);
+  const c = data.rowCard;
+  assert.equal(c.kind, 'prose', 'the same panel the reply card uses');
+  assert.deepEqual(plain(c.turns.map(t => t.md)),
+    ['🟡 **Pending:** waiting.', '🟢 **Ready to continue:** go.']);
+  assert.ok(c.turns.every(t => t.role === 'assistant'));
+  assert.deepEqual(plain(c.turns.map(t => t.ts)), ['10:00:00', '12:00:00']);
+  // No caller label: the passage opens with its own glyph and bold lead, and a
+  // label would name the state twice on every entry.
+  assert.ok(c.turns.every(t => !t.label));
+  assert.deepEqual(plain(c.unit), ['state', 'states'], 'the header does not say "2 turns"');
+});
+
+test('a session with one state opens a card that reads finished, not broken', () => {
+  const row = statesRow([['merged', '🟣 **Merged.** It shipped.', '11:00:00']]);
+  data.openSessionCard(row, 'state', null);
+  assert.equal(data.rowCard.turns.length, 1);
+  assert.equal(data.rowCard.pending, false);
+});
+
+test('an empty sequence says WHICH absence it is, rather than sitting blank', () => {
+  const V = window.RepoSessionsCache.ROW_V;
+  const none = statesRow([]);
+  data.openSessionCard(none, 'state', null);
+  assert.equal(data.rowCard.pending, true);
+  assert.match(data.rowCard.pendingNote, /ended no reply with a closing state/);
+
+  const behind = statesRow([], { v: V - 1 });
+  data.openSessionCard(behind, 'state', null);
+  assert.match(data.rowCard.pendingNote, /summarised before the states were read/);
+});
+
+test('the two absences draw apart on the row, in the histogram\'s own symbols', () => {
+  const V = window.RepoSessionsCache.ROW_V;
+  assert.equal(data.sessionStateMark(statesRow([['ready', 'x', '1']])), '🟢');
+  assert.equal(data.sessionStateMark(statesRow([])), '–', 'closed in no state');
+  assert.equal(data.sessionStateMark(statesRow([], { v: V - 1 })), '?', 'not read yet');
+});
+
+test('a cut sequence says so in its own words, not the reply card\'s', () => {
+  const row = statesRow([['ready', 'x', '1']], { statesCut: 'cut' });
+  data.openSessionCard(row, 'state', null);
+  assert.equal(data.rowCard.priorCut, true);
+  assert.match(data.rowCard.priorNote, /earlier states not kept/);
+  assert.match(data.rowCard.priorNote, new RegExp(String(window.RepoSessionsCache.STATES_KEPT)));
+});
+
+test('the glyph is a control on the row, and carries no native title beside it', async () => {
+  // A title attribute and a styled card fire on one hover and say different
+  // things: the failure the rail's legend already made and the day now carries.
+  const row = statesRow([['ready', '🟢 **Ready to continue:** go.', '12:00:00']]);
+  shell.view = 'sessions';
+  data.sessionLens = 'list';
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.activity = {};
+  data.sessionRows_ = [row];
+  await Alpine.nextTick();
+  const card = [...window.document.querySelectorAll('div.border-l-4')]
+    .find(d => d.querySelector('.tabular-nums'));
+  const glyph = [...card.querySelectorAll('button')].find(b => b.textContent.trim() === '🟢');
+  assert.ok(glyph, 'the glyph is a button');
+  assert.equal(glyph.getAttribute('title'), null, 'and not also a tooltip');
 });
 
 // ── The state axis ─────────────────────────────────────────────────────────

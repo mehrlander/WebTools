@@ -73,6 +73,20 @@ const SESSIONS = [
     // next go. That pair is the whole reason the glyph is on the row, so the
     // fixture has to be able to show it.
     state: 'ready',
+    // And the sequence behind it, in the shape closingStates emits: [key,
+    // passage, clock] chronological, newest last, the newest carried long and
+    // the priors cut to TURN_HEAD. A session closes at the end of every
+    // stretch of work (median 12 across the store), and the states CHANGE,
+    // which is what makes the card worth opening rather than a tooltip. This
+    // one walks pending → assess → clean → ready, so the shot shows a history
+    // rather than four of the same glyph.
+    states: [
+      ['pending', '🟡 **Pending:** the Map view needs `docs/showing-mechanisms.csv` to exist before the tab can read it, and the CSV is still being derived from the prose. Nothing to look at yet.', '14:31:07'],
+      ['assess', '❇️ **Ready to assess:** whether the render line should be printed rather than remembered. The section that was meant to stop the wrong link is the longest one in the file, so reading it is evidently not what fixes this.', '15:02:44'],
+      ['clean', '⚪ **Clean exit.** The Showing tab reads the CSV directly, so a new mechanism is a row rather than a paragraph. `npm run showing` prints the line to paste.', '16:10:22'],
+      ['ready', '🟢 **Ready to continue.** Available on "go": (1) the Docs tab\'s growth-versus-readership quadrant, which the registry already has both axes for; (2) folding `docs/showing.md` down now that the app holds the mechanisms; (3) a gate on the honesty rule, which is the one part no script can supply.', '16:48:51'],
+    ],
+    statesCut: '',
     schema: 4, sha: 'a',
   },
   {
@@ -88,6 +102,12 @@ const SESSIONS = [
     reply: 'Found it: the board sorted on a Map iteration order that follows insertion, so two tasks closed in one commit swapped places on every regeneration. Sorting by id inside the group makes it byte-deterministic and the lockstep test now catches a relapse.',
     replyCut: '',
     state: 'merged',
+    // The other end of the range: one state and nothing to scroll back
+    // through. The card has to read as finished rather than as broken.
+    states: [
+      ['merged', '🟣 **Merged.** The board sorts by id inside each group, so two tasks closed in one commit no longer swap places on every regeneration. The lockstep test catches a relapse.', '11:38:02'],
+    ],
+    statesCut: '',
     schema: 4, sha: 'b',
   },
   {
@@ -123,6 +143,7 @@ const SESSIONS = [
     filesTotal: 3, files: [['web-tools/.github/workflows/wsl-fetch.yml', 5]],
     reply: 'The schedule is fine and the runner is asleep: the cron fires while the machine is off, and a hosted runner cannot reach the share. It needs the self-hosted runner, which is yours to start.',
     replyCut: '', state: 'pending',
+    states: [['pending', "🟡 **Pending:** the schedule is fine and the runner is asleep. The cron fires while the machine is off, and a hosted runner cannot reach the share, so this needs the self-hosted runner started.", '11:10:40']], statesCut: '',
     schema: 4, sha: 'd',
   },
   {
@@ -137,6 +158,7 @@ const SESSIONS = [
     filesTotal: 2, files: [['web-tools/docs/SNAGS.md', 6]],
     reply: 'Both work and they cost differently. A projector keeps the index honest and adds a generator to the hook chain; hand-appending stays free and drifts. The call is yours.',
     replyCut: '', state: 'choice',
+    states: [['choice', "🆚 **Choice needed.** A projector keeps the index honest and adds a generator to the hook chain; hand-appending stays free and drifts. I lean projector, since the index is already wrong twice. Your call.", '09:03:15']], statesCut: '',
     schema: 4, sha: 'e',
   },
   // The unhealed row: a record the crawl has not re-read since the field
@@ -347,14 +369,18 @@ export default async function (page) {
     // Anchored off the real trigger, so the panel lands where a reader's tap
     // would put it rather than at an invented coordinate.
     const sel = { turns: 'ph-chats-circle', tools: 'ph-wrench',
-                  files: 'ph-files', tokens: null, reply: null }[card];
+                  files: 'ph-files', tokens: null, reply: null, state: null }[card];
     await page.evaluate(({ card, sel }) => {
       const host = document.querySelector('[x-data^="estate"]');
       const st = window.Alpine.$data(host);
       const row = st.sessionRows[0];
       // The reply card opens off the ask LINE, which is a <p> and not a
       // button: that is the whole point of it staying prose.
-      const btn = card === 'reply'
+      // The states card opens off the GLYPH, the row's first control, which
+      // is the one button on the line carrying no text of its own.
+      const btn = card === 'state'
+        ? document.querySelector('button.w-5')
+        : card === 'reply'
         ? document.querySelector('p.truncate.mt-0\\.5')
         : sel
         ? document.querySelector(`.ph.${sel}`)?.closest('button')
