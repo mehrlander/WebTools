@@ -2070,7 +2070,22 @@ function app(){ return {
     // fills in and nothing else can tell it where the page is. Everything else
     // still routes without waiting; see appViewFromUrl.
     this.appViewsReady = this.loadEstateSidebar();
-    this.appViewsReady.then(() => this.refreshConfigCache());
+    // Crawl, and RE-READ WHEN THE CRAWL MOVED SOMETHING. The sidebar above is
+    // built from the cache as it stood when the page opened, so a manifest
+    // change merged since the last crawl is invisible to this load: the crawl
+    // fixes the cache and the nav keeps rendering what it read before it. That
+    // is a whole session of a nav known to be wrong, cleared only by a reload
+    // nobody knows to perform, and it is how two "Doc Growth" rows outlived
+    // the merge that removed them (2026-08-28).
+    //
+    // refreshConfigCache reports whether it committed, so the re-read costs one
+    // cache GET on the loads that changed something and nothing on the rest.
+    // Same order the save path has always used (refreshConfigs): rebuild first,
+    // then re-read, never the reverse.
+    this.appViewsReady
+      .then(() => this.refreshConfigCache())
+      .then(r => r?.committed ? this.loadEstateSidebar() : null)
+      .catch(() => {});
     this.processMailbox();
     this.loadProposalCount();
 
@@ -2318,6 +2333,12 @@ function app(){ return {
               const t = resolveCatalogPath(pg.path, repo, '');
               views.push({
                 repo: t.repo, ref: t.ref, path: t.path,
+                // WHO PROMOTED IT, which is not where it lives. A cross-repo
+                // promotion resolves `repo` to the page's home (home promotes
+                // the hub's doc-growth page, so t.repo is the hub), and the
+                // fact a reader needs is whose view this is. Only the
+                // disambiguation below reads it; the address uses t.repo.
+                declaredBy: repo,
                 label: pg.viewLabel || pg.title || t.path.split('/').pop(),
                 icon: pg.icon || 'ph-app-window',
                 order: Number.isFinite(pg.order) ? pg.order : 0,
@@ -2345,6 +2366,38 @@ function app(){ return {
         }
       } catch {}
       views.sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label));
+      // A ROW MUST NAME ITSELF. The sidebar and the header nav render an app
+      // view as its icon and its label and nothing else, so two views sharing a
+      // label are one view listed twice as far as any reader can tell. That is
+      // not hypothetical: web-tools and home both promoted pages/doc-growth.html
+      // as "Doc Growth", correctly (two payloads are two views), and the estate
+      // nav said the same two words twice for two days.
+      //
+      // The federated Growth tab fixed that instance and manifest-registry's
+      // slug gate stops one namespace collision, but neither reaches this:
+      // viewLabel is free text, two repos may legitimately choose the same
+      // words, and no gate should stop them. So the fix belongs where the
+      // ambiguity appears. A repeated label takes the PROMOTING repo as a
+      // suffix, which is the fact that actually differs: a cross-repo promotion
+      // resolves to the page's own repo, so home's Doc Growth and the hub's
+      // both address mehrlander/web-tools and suffixing by that names one repo
+      // twice. `declaredBy` is whose manifest said so.
+      //
+      // Only the repeats are suffixed: a unique label is already an answer, and
+      // qualifying every row would spend the sidebar's width saying what the
+      // Repos section says. `baseLabel` keeps the declared text for anything
+      // that wants the name rather than the disambiguated display.
+      const labelCount = views.reduce((m, v) => m.set(v.label, (m.get(v.label) || 0) + 1), new Map());
+      for (const v of views) {
+        v.baseLabel = v.label;
+        // Two views from ONE repo cannot be told apart this way. The suffix
+        // still points at the manifest to fix, which is the next question a
+        // reader has.
+        if (labelCount.get(v.label) > 1) {
+          const owner = v.declaredBy || v.repo;
+          v.label = v.label + ' · ' + (owner.split('/')[1] || owner);
+        }
+      }
       repos.sort((a, b) => a.group.localeCompare(b.group) || (a.order - b.order) || a.repo.localeCompare(b.repo));
       this.appViews = views;
       this.estateRepos = repos;
@@ -5312,7 +5365,11 @@ function app(){ return {
   get appNav(){
     return this.sidebarAppViews.map(v => ({
       view: 'app', key: v.key, icon: v.icon, label: v.label,
-      title: v.label + ' — ' + v.repo, go: () => this.goAppView(v),
+      // The declaring repo, for the same reason the suffix uses it: a
+      // cross-repo promotion's `repo` is the page's home, and "whose view is
+      // this" is what a tooltip on a repeated label is being asked.
+      title: (v.baseLabel || v.label) + ' — ' + (v.declaredBy || v.repo),
+      go: () => this.goAppView(v),
     }));
   },
   // The board behind the rail, if some repo also promotes it as an app view:
