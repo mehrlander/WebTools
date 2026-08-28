@@ -169,19 +169,24 @@ test('a body that opens on a code fence keeps the standalone head', () => {
   assert.ok(head.textContent.includes('09:00:00'));
 });
 
-test('every dense turn sits on one left edge: no rail, no indent, no frame', () => {
-  // The rail went, then the fill, then the reply's own indent, and each was
-  // doing the same job: saying which voice this is by putting the turn
-  // somewhere. Four carriers say it without moving anything, so the card is one
-  // column of text with a glyph hung off it.
+test('every dense turn sits on one left edge, and only the ask is tinted in it', () => {
+  // The rail went, then this band, then the reply's indent, and the band came
+  // back once the indent was gone: the two were saying the same thing, so with
+  // the indent in place the band was a second voice for one fact and now it is
+  // the only one. Nothing MOVES a turn any more.
   const u = dense({ role: 'user', md: 'the ask' });
   const a = dense({ role: 'assistant', md: 'the answer' });
   const sys = dense({ role: 'system', md: 'a note' });
   for (const [name, el] of [['ask', u], ['reply', a], ['system turn', sys]])
-    assert.equal(el.className, '', `the ${name} carries no frame at all`);
+    assert.ok(!/border-l|\bml-/.test(el.className), `the ${name} is neither railed nor moved`);
+  assert.equal(a.className, '', 'the reply carries no frame at all');
+  assert.equal(sys.className, '', 'nor does any other turn that is not the ask');
+  assert.ok(u.className.includes('bg-primary/10'), 'the ask carries the fill');
+  assert.ok(u.className.includes('-mx-2') && u.className.includes('px-2'),
+    'which bleeds past the text, so the two text columns still line up');
   const prose = a.querySelector('[data-flow="prose"]');
-  assert.equal(prose.style.fontSize, '13px', 'the size step is one of the four, as a style: it has to beat prose-sm on the same element');
-  assert.equal(u.querySelector('pre').tagName, 'PRE', 'and mono against prose is another');
+  assert.equal(prose.style.fontSize, '13px', 'the size step, as a style: it has to beat prose-sm on the same element');
+  assert.equal(u.querySelector('pre').tagName, 'PRE', 'and mono against prose');
   // Full size is untouched: a deck slide is a page, not a panel.
   assert.ok(/border-l-2/.test(cr.message({ role: 'assistant', md: 'x' }, { collapse: 0 }).className));
 });
@@ -214,15 +219,12 @@ test('the lead is tinted for the two conversation roles, and only those', () => 
     .querySelector('i.ph').style.color, '');
 });
 
-test('no fill on any dense turn, so nothing is drawn around the text', () => {
-  // The ask carried a band for one round and it did find the exchanges, but the
-  // way a rail did: by drawing a shape around the text rather than letting the
-  // text make one.
-  for (const role of ['user', 'assistant', 'system', 'tool', 'meta'])
+test('the fill is the ask\'s alone, and full size takes none', () => {
+  for (const role of ['assistant', 'system', 'tool', 'meta'])
     assert.ok(!/\bbg-|\bborder|rounded/.test(dense({ role, md: 'x' }).className),
       `a ${role} turn carries no fill, rail or corner`);
   assert.ok(!/\bbg-/.test(cr.message({ role: 'user', md: 'x' }, { collapse: 0 }).className),
-    'and full size never had one either');
+    'and full size has its rails instead');
 });
 
 test('the turn hangs on its lead: the icon in the margin, every other line on one edge', () => {
