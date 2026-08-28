@@ -45,112 +45,130 @@ the caret was (the page took the image, a form field took the text) and the rest
 was gone. Neither behavior was the platform's: `clipboardData.types` had always
 listed all three.
 
-Now the flavor that was always taken is still taken, and the rest appear on an
-**offer bar** above the staged list, one tap each. A bar rather than a dialog,
-since the common case is "take the obvious one and carry on," and the bar is
-also the only place that says what a copy actually put on your clipboard. A form
-field keeps its native paste untouched and contributes what it cannot hold. Each
-flavor is named for what it is, which is load-bearing rather than cosmetic:
-tab-separated text is detected and named `.tsv` (at least two lines, every line
-carrying the same nonzero number of tabs, so prose with a stray tab is not a
-grid), and the reader opens `.tsv` as a **table**. The button path reads
-`io.pasteItems()`, so it sees the same set the keyboard path does; on iOS, where
-Safari fires no paste event unless an editable is focused, it is the only intake
-and used to be text-only.
+Now the flavor that was always taken is still taken, and **every** flavor appears
+on a **flavor bar** above the staged list, the taken one ticked, one tap each
+way. A bar rather than a dialog, since the common case is "take the obvious one
+and carry on," and the bar is also the only place that says what a copy actually
+put on your clipboard. Until 2026-08-28 it listed only the LEFTOVERS, which made
+it an add list: bringing the html in was one tap and choosing it INSTEAD of the
+text was a tap plus hunting the text down in the list below, and choosing
+between two readings of one copy is the commoner want. A tick that toggles says
+both in one control, and the chip's state is read off the stage rather than held
+on the chip, so removing the row below un-ticks it. A form field keeps its native
+paste untouched, ticks nothing, and still names what it could not hold.
 
-The reader opens a staged file through `ViewRegistry.READ_MODE`, the same
-policy the Files view uses: markdown rendered, JSON as a tree, delimited data as
-a table, everything else highlighted, raw past 300 KB. It was the Files view's
-private constant until 2026-08-15; the stage wanting it is what made it shared.
+**Hovering a pill shows what is inside it**, through the house hover card
+([`kits/source-peek.js`](../lib/kits/source-peek.js)) rather than anything this
+view draws. What separated `html 4.1 KB` from `txt 192 B` was a title attribute
+reading "Stage 2026-08-28-paste.html", which is the pill's own label again, so
+the flavor with the addresses in it was unopenable until you had committed to
+staging it.
 
-**A dropped file is text when its bytes are text.** Every file intake reaches
-the stage as an ArrayBuffer, and until 2026-08-17 the item was stamped binary on
-that basis alone, so a dropped `.md` was held as opaque bytes: the "Not text"
-note instead of the file, no diff, no bundle block, and no link able to carry
-it, while the same characters pasted staged as text and opened rendered. The
-decision is by capability, in two questions. A type the viewer draws from its
-own bytes (image, PDF, workbook) stays bytes, since that is what makes it open
-at all; everything else goes to a strict UTF-8 decode, and a decode that throws
-or yields a NUL is what binary means here. So any text extension works, not a
-list of them, and a `.md` now reads rendered with raw one tap away.
+The card was a split pill with an eye and a panel for an afternoon, then a
+daisyUI tooltip for another: two tap targets inside one badge, and then a dark
+box in a light app that reinvented placement, dwell, the keyboard path and the
+touch rule, each one worse. **The kit had already decided all of them.**
 
-Takes from:
+Using it widened its convention rather than copying it: a peek's subject was
+"an exact file on GitHub" and is now **a named text**, of which a repo file is
+one case. Nothing in the kit had to change. `data-peek` carries the pasted
+file's own name, `seed()` puts the bytes in its cache, and a key that is not an
+address never reaches the fetch, since the cache hit comes first; the card's
+head falls back to showing the key as the path, which is the file name wanted
+here. The extension decides the rendition, so an `.html` flavor
+shows as source and a `.md` one renders, unless the seeder overrules it (below).
+An **image** carries no peek, since this card reads text; its menu is the whole
+of what it offers.
 
-1. upload: the drop-zone (a file, or pasted text; pasted ref lines stage as refs),
-2. **a drop or a paste anywhere in the host app** (below),
-3. a repo: the **Add box** on the bench (below),
-4. a repo manifest's `stage.files` (seeds an empty stage when that repo opens),
-5. a `#stage=` link.
+**Each pill carries a menu of what can be done with its flavor.** The pill is
+the subject and the menu is the verbs: **Copy**, **Markdown** on markup,
+**Base64**, and **Decoded** where the text decodes. Each label names the
+**version you get**, not the trip to it. The tap still stages and unstages,
+which is what is wanted most and the one thing that should not cost a menu.
 
-All five append. An intake briefly took a POSITION (2026-08-19), for a
-compare-with-the-clipboard that needed its paste in the slot the positional pair
-rule read; the reader picks its other side by name now, so where an item landed
-stopped mattering and the parameter went with the gesture.
+**A conversion lands as a pill, and does not open the reader.** Opening it was
+the first shape and it was wrong twice over: it takes the screen away from the
+bar you are working in, and it answers a question ("what does this look like")
+that was not the one asked ("give me this version"). So the bar stops meaning
+"what the clipboard held" and starts meaning **what this paste has produced**,
+which is also what makes a conversion composable: the markdown that just landed
+carries its own Copy and its own Base64, so a second step is a tap rather than a
+trip through the staged list. A derived pill is labelled by the **tag** that made
+it rather than by its extension, since `md` says nothing next to a paste that
+sniffed `.md` and a decode can land on any extension at all. It is also
+**dashed**, and stays dashed once it is staged: the border says where the thing
+came from, which does not change, while the tick says whether it is on the
+stage, which does.
 
-**A drop anywhere in the app stages, and the intake is why it can.** Until
-2026-08-17 the fold lived inside the component, so nothing could stage anything
-before the bench had mounted, and the bench mounts on your first visit to the
-Stage: a file dragged onto Repos, a file view, or the Map had nowhere to land
-and nothing on screen said so. The decisions now sit on `window.StageIntake`
-(`take`, `takeFile`, `takeDrop`) with no view attached, and the host owns the
-gesture: show-repo's shell takes a window drop on any view, stages it, routes to
-the Stage, and, when exactly one file arrived, opens it in the reader. A batch
-lands and stays listed, since a modal over a set nobody has seen listed is the
-wrong first look at it. `StageIntake.focus(item)` is how the opening is asked
-for: it names the item on `store.stageFocus` rather than calling the bench,
-because at drop time the bench may not exist yet; the stager reads the key when
-it mounts, or on the spot when it is already up, and clears it. Two drops the
-shell leaves alone: one over a form field, which keeps its native drop, and one
-the Stage view's own root already handled, which it can tell by
-`defaultPrevented`.
+Conversions had a pill of their own for a day, which put a derivation beside the
+formats it is made from and could hold only the one anybody had asked for; the
+row would have grown by a pill per verb. The shape before that was a links
+extractor, as a csv and then as a markdown list, and it is gone entirely:
+converting the markup carries every link as `[text](url)` already, in its own
+context. What is lost is that reduction, a bare list with the prose stripped
+out.
 
-**A paste anywhere stages too, and it took the same move to get there.** The
-Stage has taken a paste since 2026-08-15, but through a window listener the
-STAGER registered and gated on `view === 'stage'`: the gesture was reachable
-only from the view it was staging into, and only once the bench had mounted. On
-2026-08-18 the fold followed the drop's out to `StageIntake.takePaste(cd, opts)`
-and the shell took the gesture, so a block of refs copied while reading a repo's
-files, or a screenshot pasted on the Map, now lands the way a dropped file does:
-staged, routed to the Stage, opened when it is the only thing that arrived.
+**Copy is the reason the menu exists at all.** The stage is where a paste lands,
+so the cheapest way to change what is on the clipboard is to take a flavor back
+out of it: copy the html of a copy that only gave you text, or copy the markdown
+of a page. It goes through `window.io.copy`, which owns the focus wait, the
+insecure-context fallback and the legacy DOM path, rather than
+`navigator.clipboard` directly.
 
-Two things differ from the drop, and neither was a preference. **There is no
-`defaultPrevented` tell**, because the ordering runs the other way: a drop on
-the Stage hits that view's own ELEMENT handler first and the window second, so
-the window can see it was taken, while window listeners fire in registration
-order and the shell's `init()` always precedes a component that mounts on first
-visit. So the stage's listener was removed rather than coordinated with, and the
-shell's is the only one. Being the only one is also what keeps the multi-flavor
-contract whole: one reader of the clipboard, so nothing takes `text/plain` out
-from under the bar that would have offered the HTML table beside it. And **the
-offer bar only fills where it can be seen.** A paste into a form field keeps its
-native paste everywhere; on the Stage the flavors the field cannot hold still go
-to the bar, and on any other view the clipboard is not read at all, since
-recording an offer nobody was told about is worse than not looking.
+**Base64 runs both ways, and `base64Info` is one function rather than a test and
+a converter**, so the two cannot disagree about what valid means: an item the
+menu offers has already been decoded. Three gates, each paying down a false
+positive. The **alphabet** (url-safe accepted) and a **length** that is a
+multiple of four, which is what the padding is for and what rules out most
+prose; a floor of 16 characters, below which a word like `deadbeef` qualifies on
+arithmetic alone; and a decode that lands on something **nameable**, meaning
+text, or bytes whose first four say what file they are (png, jpg, gif, pdf, zip,
+webp). Unknown binary is refused rather than staged as `.bin`, since "here are
+some bytes" is not an answer anybody asked the menu for.
 
-The offers ride `store.stageOffers` for the reason `stageFocus` does, one step
-further along: the paste that produces one can land anywhere, so the named,
-deduped flavors have to survive until a bench exists to draw them. Naming and
-dedupe are `StageIntake.offerable`'s, so a host gets the same answer the bench
-would.
+A `data:<mime>;base64,` URI is read too, and **its own media type beats the
+sniff**, since it is what the encoder said the bytes were. That is the whole
+reason the prefix is worth recognizing rather than the arithmetic, which the
+payload passes on its own. Text still wins where the bytes are text, so a
+base64'd `image/svg+xml` lands as markup rather than as an opaque file.
+Encoding is `b64OfText` (the escape/encodeURIComponent sandwich, since `btoa` is
+a byte encoder and throws on the first smart quote) or `b64OfBytes` (chunked, for
+a pasted screenshot, which is the case base64 exists for and the only verb a byte
+flavor can answer).
 
-**A pasted grid is a grid whichever delimiter it uses,** and the naming is
-where that is decided: `nameForText` picks an extension from the first
-characters and `ViewRegistry.READ_MODE` keys on the extension alone, so what a
-paste is CALLED is the whole of what the reader then sees. JSON is the one
-flavor that can be checked rather than guessed, so it is: `isJson` parses, and
-the leading `[` or `{` only guards the parse. Guessing it from that character
-alone named a PowerShell script `.json` and sent it to the tree view, which
-renders nothing for text that will not parse, so the paste was hidden rather
-than merely mislabelled. Until 2026-08-18
-`isDelimited` counted tabs only, so a spreadsheet range (which reaches the
-clipboard as TSV) opened as a table while the same data pasted as CSV opened as
-a wall of text. `delimiterOf` reads tab or comma at the same strictness the tab
-test always had, counting separators outside double quotes so a quoted comma
-stays a value; tab is tried first, so a TSV whose cells carry prose commas is
-still a TSV. A `rows => rows` function is named `.js` in the same pass, and a
-JSON array of records now opens as a table rather than a tree, which is what
-this policy's sibling on the data-view page (`AUTO_VIEW`) always did by reading
-the content.
+**The conversion is Turndown's, and the host loads it**, the same contract the
+transform workbench states: `StageIntake.mdOf` owns the options and the GFM
+plugin (which is what turns a pasted web-page TABLE into a table rather than a
+run of cells) and throws rather than fetching, since a lazy fetch inside a tap
+spends the gesture and then reports the loss as something else. Two files and
+31 KB, fetched the first time somebody chooses the item and never on a paste
+where nobody does. Cached against the **source text**, not the name: two pastes
+on one day carry the same sniffed name, so a name-keyed cache hands the second
+one the first one's markdown.
+
+**And the markdown opens raw**, where every other `.md` in the app renders.
+`READ_MODE`'s rule is right for a document, whose question is what it SAYS; a
+conversion is a **payload**, and its question is what it IS, since the reason to
+make one is to copy the text somewhere else. Rendering it puts a mode switch
+between the reader and the thing they asked for, and strips the `[text](url)`
+that was the point. The override is `StageIntake.opensRaw`, keyed on the name
+`derivedName` mints, which is a closed loop: the intake is the only producer of
+that suffix and the stage's own reader the only consumer.
+
+**The card has to agree with the reader**, or a hover previews a different thing
+than the tap opens, so `seedPeeks` passes `'source'` for exactly the names
+`opensRaw` claims. That is the second widening the kit absorbed without changing:
+`seed(addr, text, kind)` lets a seeder that MADE the bytes state a rendition the
+name cannot say, and omitting it leaves the extension deciding as it always
+has.
+
+Every derivation is named for its flavor (`-markdown.md`, `-base64.txt`,
+`-decoded.<sniffed>`), and the decode is named by what its bytes turned out to be
+rather than by the `.txt` they arrived as, which is what split `extForText` out
+of `nameForText`. Scoped to the paste's flavors, since the bar is about the
+paste; a staged file that arrived some other way keeps its markdown route through
+the reader's header, which **focuses instead of adding a pill**, since its
+subject is a staged file rather than a flavor of the paste on the bar.
 
 **The stage is also the transform workbench's door.** The workbench
 (`lib/alpineComponents/transform-workbench.js`) has shipped inside show-repo

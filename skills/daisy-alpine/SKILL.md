@@ -1,6 +1,6 @@
 ---
 name: daisy-alpine
-description: Building HTML artifacts and web UI components using DaisyUI 5, Tailwind CSS 4, and Alpine.js. Use when creating single-file web applications, dashboards, interactive prototypes, or browser-based tools. Covers DaisyUI component syntax, Alpine.js V3 patterns, and key migration notes from Alpine V2.
+description: Building HTML artifacts and web UI components using DaisyUI 5, Tailwind CSS 4, and Alpine.js. Use when creating single-file web applications, dashboards, interactive prototypes, or browser-based tools. Covers DaisyUI component syntax, Alpine.js V3 patterns, tooltips, and key migration notes from Alpine V2.
 ---
 
 # DaisyUI + Alpine.js Reference
@@ -43,6 +43,17 @@ by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-t
    balanced when short; across a deck it moves the first line on every card.
 6. **One accent, and it means something.** Colour carries information, not decoration.
    In a comparison, each side keeps a fixed treatment across every view.
+7. **A tooltip worth having is worth building.** Prefer text on the page. Do not use
+   `cursor-help`, daisyUI's `tooltip`, or `data-tip`; this overrides
+   `references/daisyui.md`. Use `title` only for simple, nonessential labels, like a
+   word in a mockup. Give icon-only controls an `aria-label`.
+
+   Custom tooltips must work on every screen size. Enable hover only when
+   `(hover: hover) and (pointer: fine)` match: open after about 140 ms and close
+   about 220 ms after leaving both the control and tooltip. Tapping the control must
+   toggle the tooltip using its actual visibility, not a separate state flag.
+   Dismiss on Escape or a capture-phase `pointerdown` outside the control and
+   tooltip; do not rely on `@click.outside` alone.
 
 ## References
 
