@@ -1,6 +1,6 @@
 ---
 name: daisy-alpine
-description: Building HTML artifacts and web UI components using DaisyUI 5, Tailwind CSS 4, and Alpine.js. Use when creating single-file web applications, dashboards, interactive prototypes, or browser-based tools. Covers DaisyUI component syntax, Alpine.js V3 patterns, and key migration notes from Alpine V2.
+description: Building HTML artifacts and web UI components using DaisyUI 5, Tailwind CSS 4, and Alpine.js. Use when creating single-file web applications, dashboards, interactive prototypes, or browser-based tools. Covers DaisyUI component syntax, Alpine.js V3 patterns, tooltips, and key migration notes from Alpine V2.
 ---
 
 # DaisyUI + Alpine.js Reference

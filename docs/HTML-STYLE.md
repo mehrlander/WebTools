@@ -19,9 +19,9 @@ relitigating it per page
 `tooltip`, or `data-tip`. Use `title` only as a redundant label on something
 already tappable, never as the only carrier of a fact; the accessible name is
 `aria-label`. Tooltip panels must open and close by tapping the same control, and
-must stay available on small screens. Build one by house-style rule 7 in the
-[daisy-alpine skill](../skills/daisy-alpine/SKILL.md); `npm run stranded-titles`
-lists the facts already parked in a `title`.
+must stay available on small screens. More on tooltips: the
+[daisy-alpine skill](https://github.com/mehrlander/web-tools/blob/main/skills/daisy-alpine/SKILL.md).
+`npm run stranded-titles` lists facts parked in a `title`.
 
 **Don't narrow text to a reading column.** The pattern is `max-w-*` plus `mx-auto`, usually
 `max-w-2xl` through `max-w-4xl`, or `max-w-prose` at 65ch; `container mx-auto` is the same

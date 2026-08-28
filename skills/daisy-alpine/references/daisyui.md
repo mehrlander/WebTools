@@ -878,4 +878,4 @@ Tooltip can be used to show a message when hovering over an element
 - **House style overrides this component: do not use it.** (Added here, not
   upstream.) It is CSS `:hover` only, so on a touch screen the first tap sticks
   it open and only a tap somewhere else clears it, and nothing inside it can be
-  tapped. Build the panel instead: House style rule 7 in `SKILL.md`.
+  tapped. Build the panel instead: the tooltip rule in `SKILL.md`.
