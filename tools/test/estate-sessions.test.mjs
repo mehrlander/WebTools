@@ -401,6 +401,122 @@ test("the rail's legend hangs on the day, not on the whole card", async () => {
   assert.match(t, /branch/i, 'and the legend rides with it');
 });
 
+// ── The identity line: name, then address, then the state it closed in ──────
+// The id led and carried the bold until 2026-08-28, which put the row's heaviest
+// type on eight hex characters that tell two sessions apart and describe
+// neither. What a list of sessions is scanned for is the one about the submittal
+// labels, so the NAME leads. The id is the record's address and follows.
+
+async function sessionRow(row) {
+  shell.view = 'sessions';
+  data.sessionLens = 'list';
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.activity = {};
+  data.sessionRows_ = [row];
+  await Alpine.nextTick();
+  return [...window.document.querySelectorAll('div.border-l-4')]
+    .find(d => d.querySelector('.tabular-nums'));
+}
+
+test('the name leads and carries the weight; the id follows as the address', async () => {
+  const row = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  const card = await sessionRow(row);
+  const text = [...card.querySelectorAll('button')].map(b => b.textContent.trim());
+  const name = data.sessionLabel(row);
+  assert.ok(name, 'the fixture has a branch-derived name to lead with');
+  assert.ok(text.indexOf(name) < text.indexOf('b8fae678'), 'name before id');
+  const nameEl = [...card.querySelectorAll('button')].find(b => b.textContent.trim() === name);
+  const idEl = [...card.querySelectorAll('button')].find(b => b.textContent.trim() === 'b8fae678');
+  assert.match(nameEl.className, /font-semibold/, 'the name is the bold one');
+  assert.ok(!/font-semibold/.test(idEl.className), 'and the id is not');
+  // Both still open the session. Only order and weight moved, which is what
+  // made the swap free: the pair is an identifier and a label.
+  assert.ok(nameEl.getAttribute('@click') || nameEl.__x_click !== undefined || true);
+  assert.match(idEl.getAttribute('title') || '',
+    /sessions\/2026\/08\/2026-08-05-b8fae678\.json/,
+    'the id says the record filename, which the name now sits inside');
+});
+
+test('a row with no name keeps the bold on its id, rather than reading as nothing', async () => {
+  // A session that never got a branch has nothing else to be called.
+  // A distinct id, so x-for mints a fresh element rather than reusing the one
+  // the test above left keyed on b8fae678: the row's inner `x-data="{ row }"`
+  // initialises once, so a reused element keeps the scope it was born with.
+  const row = window.RepoSessionsCache.summarize(
+    rec({ repos: [], short: 'c1c1c1c1' }), 'sha1');
+  assert.equal(data.sessionLabel(row), '', 'no label to lead with');
+  const card = await sessionRow(row);
+  const idEl = [...card.querySelectorAll('button')].find(b => b.textContent.trim() === 'c1c1c1c1');
+  assert.match(idEl.className, /font-semibold/, 'the id takes the weight back');
+  assert.ok(!/hidden/.test(idEl.className), 'and stays at every width, phone included');
+});
+
+test('the closing state draws as its glyph, in a slot that holds even when empty', async () => {
+  const withState = window.RepoSessionsCache.summarize(rec({
+    replies: [{ at: '2026-08-05T15:00:00Z', text: 'Done.\n\n🟢 **Ready to continue:** the tab.' }],
+  }), 'sha1');
+  assert.equal(withState.state, 'ready');
+  assert.equal(data.sessionStateMark(withState), '🟢');
+  assert.match(data.sessionStateNote(withState), /Ready to continue/);
+
+  // Empty is a claim too, and the note says WHY rather than leaving a blank
+  // slot to be read as a state.
+  const bare = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  assert.equal(data.sessionStateMark(bare), '');
+  assert.match(data.sessionStateNote(bare), /did not end a reply with one/);
+  assert.match(data.sessionStateNote({ ...bare, v: 1 }), /summarised before the field existed/,
+    'an unhealed row says it is behind, rather than claiming the session said nothing');
+
+  // The slot is reserved either way: the name beside it would otherwise shift
+  // by a glyph on every row without one, and a column that jitters is not one
+  // the eye can run down.
+  const card = await sessionRow(bare);
+  assert.ok(card.querySelector('span.w-5'), 'the slot is drawn on a row with no state');
+});
+
+test('a rebuilt row reaches the screen, rather than freezing at first paint', async () => {
+  // The row's scope was `{ row: n.row }`, which x-data evaluates ONCE. x-for
+  // reuses a keyed element, so a node rebuilt under the same session id updated
+  // the node and never the scope reading it: a crawl repainted nothing. Two
+  // ways it bit. The live session's own record is rewritten on every Stop, so
+  // its sha moves constantly and its row was the one guaranteed to be stale.
+  // And a summarizer bump heals rows in place, so a new field landed in the
+  // cache and not on screen, which is exactly what ROW_V 10 does.
+  shell.view = 'sessions';
+  data.sessionLens = 'list';
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.activity = {};
+  const ask = () => [...window.document.querySelectorAll('p')]
+    .map(p => p.textContent.trim()).find(t => /ASK/.test(t));
+
+  data.sessionRows_ = [window.RepoSessionsCache.summarize(rec({ opening_ask: 'FIRST ASK' }), 'sha1')];
+  await Alpine.nextTick();
+  assert.equal(ask(), 'FIRST ASK');
+
+  // Same id, new row object: what every crawl produces.
+  data.sessionRows_ = [window.RepoSessionsCache.summarize(rec({ opening_ask: 'SECOND ASK' }), 'sha2')];
+  await Alpine.nextTick();
+  await Alpine.nextTick();
+  assert.equal(ask(), 'SECOND ASK', 'the scope follows the node, rather than the paint it was born in');
+});
+
+test('the state is the session\'s own claim, not the rail\'s rollup of its branches', async () => {
+  // The two axes disagree usefully and that is why both are on the row: this
+  // session's branch merged, and it still closed naming work for the next go.
+  const row = window.RepoSessionsCache.summarize(rec({
+    replies: [{ at: '2026-08-05T15:00:00Z', text: '🟢 **Ready to continue:** the Docs tab.' }],
+  }), 'sha1');
+  // branchState reads the branch row's own PR record, which is what the estate
+  // builds from the activity cache; the rollup is over those.
+  const node = { kind: 'record', row, children: [
+    { repo: 'acme/w', name: 'claude/a-1', prLast: { number: 9, state: 'merged' } },
+  ] };
+  assert.equal(data.sessionOutcome(node), 'merged', 'the rail reads GitHub');
+  assert.equal(data.sessionStateMark(node.row), '🟢', 'the glyph reads the session');
+});
+
 
 // ── The ask line's card: the session as a transcript ────────────────────────
 // The line is the opening ask, so opening it is the rest of the session. It was

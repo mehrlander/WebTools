@@ -68,6 +68,11 @@ const SESSIONS = [
     turnsCut: 'cut',
     askAt: '13:51:08',
     replyAt: '16:49:16',
+    // The closing state, and it deliberately DISAGREES with the rail above it:
+    // this session's branches shipped, and it still closed naming work for the
+    // next go. That pair is the whole reason the glyph is on the row, so the
+    // fixture has to be able to show it.
+    state: 'ready',
     schema: 4, sha: 'a',
   },
   {
@@ -82,6 +87,7 @@ const SESSIONS = [
     filesTotal: 6, files: [['web-tools/tools/build/tracker-board.mjs', 9]],
     reply: 'Found it: the board sorted on a Map iteration order that follows insertion, so two tasks closed in one commit swapped places on every regeneration. Sorting by id inside the group makes it byte-deterministic and the lockstep test now catches a relapse.',
     replyCut: '',
+    state: 'merged',
     schema: 4, sha: 'b',
   },
   {
@@ -96,6 +102,9 @@ const SESSIONS = [
     filesTotal: 0, files: [],
     reply: 'Nine crosswalk CSVs, and the verify suite passes.',
     replyCut: 'tail',
+    // No `state`, and that is the schema-2 case: the record kept a tail of the
+    // final turn and no replies, so there is nothing to read a marker out of.
+    // Its slot draws empty, which is what holds the column straight.
     schema: 2, sha: 'c',
   },
 ];

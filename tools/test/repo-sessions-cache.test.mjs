@@ -608,6 +608,85 @@ test('the summarizer version is bumped, so the cache heals rather than reading e
     'back catalogue only through a version bump that stalePaths treats as stale');
 });
 
+// ── The closing state ───────────────────────────────────────────────────────
+// The row's answer to "does this still want me", read out of the session's own
+// prose rather than out of GitHub. Two things can go wrong and both are here:
+// reading the WRONG REPLY (the last one is routinely a PR-event acknowledgement
+// with the state a turn or two above it) and reading a QUOTATION (a session
+// that edited SURFACING.md has the whole vocabulary in its own text).
+
+const reply = (at, text) => ({ at, text });
+const stateOf = (replies, over = {}) => S.closingState({ replies, ...over });
+
+test('the state is the marker the reply closed with, as a key rather than a glyph', () => {
+  assert.equal(stateOf([reply('1', 'Shipped it.\n\n🟣 **Merged:** the branch is in.')]), 'merged');
+  assert.equal(stateOf([reply('1', '⚪ **Clean exit.** Nothing left here.')]), 'clean');
+  // Two spellings of one state: ⚪ and ⚪️ differ by a variation selector, and
+  // both are in the store. A glyph on the row would carry the difference onto
+  // the screen; a key cannot.
+  assert.equal(stateOf([reply('1', '⚪️ **Clean exit.** Nothing left here.')]), 'clean');
+  assert.equal(stateOf([reply('1', '✴️ **Needs you:** tap the link.')]), 'needs');
+  assert.equal(stateOf([reply('1', '✴ **Needs you:** tap the link.')]), 'needs');
+});
+
+test('it scans back past the wake replies, which is where most of the signal is', () => {
+  // The shape a subscribed session ends in: it closed, the PR merged, the wake
+  // arrived, and the last thing it said was that the event needed nothing.
+  // Reading the last reply alone finds a state on 148 of the 238 records on
+  // file; scanning back finds 183, and 102 of the last 102.
+  const s = stateOf([
+    reply('2026-08-05T16:00:00Z', 'Done.\n\n🟢 **Ready to continue:** the tab is next.'),
+    reply('2026-08-05T18:00:00Z', 'Both notices echo the merge I ran. Nothing to act on.'),
+  ]);
+  assert.equal(s, 'ready', 'the newest reply that CARRIES one, not the newest reply');
+});
+
+test('sorted by time, so a record whose replies arrive out of order still reads', () => {
+  const s = stateOf([
+    reply('2026-08-05T18:00:00Z', 'Nothing to act on.'),
+    reply('2026-08-05T16:00:00Z', '🟡 **Pending:** waiting on the export.'),
+  ]);
+  assert.equal(s, 'pending');
+});
+
+test('a quoted vocabulary is not a state: a list marker fails the pattern', () => {
+  // The session that edits SURFACING.md prints the whole vocabulary back. Every
+  // line of it is a bullet, and the closing state never is.
+  const doc = [
+    'The states are:',
+    '',
+    '- 🟢 **Ready to continue:** work is ready to do now.',
+    '- 🆚 **Choice needed:** a genuine choice remains.',
+    '- 🔴 **Closed:** the branch closed unmerged.',
+  ].join('\n');
+  assert.equal(stateOf([reply('1', doc)]), '', 'no state, rather than the last one quoted');
+  assert.equal(stateOf([reply('1', doc + '\n\n⚪ **Clean exit.** The doc is updated.')]), 'clean',
+    'and its own closing line still reads, under the quotation');
+});
+
+test('the last candidate wins, which is where a closing state sits', () => {
+  assert.equal(stateOf([reply('1', '🟡 **Pending:** first.\n\nmore\n\n🆚 **Choice needed:** last.')]),
+    'choice');
+});
+
+test('a record with no replies falls back to the tail, and empty means empty', () => {
+  assert.equal(S.closingState({ last_message: '🟠 **Attention:** the tail kept it' }), 'attention');
+  assert.equal(stateOf([reply('1', 'no marker anywhere in this one')]), '');
+  assert.equal(S.closingState({}), '');
+  assert.equal(S.closingState(null), '');
+});
+
+test('the row carries it, so the pane draws a glyph without opening the record', () => {
+  const row = S.summarize(record({
+    replies: [reply('2026-08-05T16:00:00Z', 'Done.\n\n⚪ **Clean exit.** Merged and verified.')],
+  }), 'sha1');
+  assert.equal(row.state, 'clean');
+  // It is a SEPARATE axis from the branch rollup the rail draws: this row's
+  // session says it is finished, and says nothing about what became of the
+  // branch, which is the estate's job and may disagree.
+  assert.ok('state' in row, 'the field is on every row, present or empty');
+});
+
 // ── Startup context (record schema 6) ───────────────────────────────────────
 // The half of a session's file contact that no tool call records. What these
 // hold is the boundary between PRESENCE and ACCESS: `attention` counts tool
