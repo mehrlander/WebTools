@@ -164,7 +164,7 @@ tools/render/scenarios/stage-rename-local.mjs,,tools/render/scenarios,23,driver,
 tools/render/scenarios/stage-sniffed-name.mjs,,tools/render/scenarios,25,driver,no,no,no
 tools/render/scenarios/stage-stitch.mjs,"the stage composer's stitch key: a caret in a sentence gap turns the full-stop cell into the cell that takes one back, the same swap the annotator's card makes off the same kit verb",tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/stage-transform-chip.mjs,"stages three transform-shaped items, opens one in the workbench, and asserts the table actually drew",tools/render/scenarios,54,driver,no,no,yes
-tools/render/scenarios/state-view.mjs,"Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",tools/render/scenarios,224,driver,no,no,no
+tools/render/scenarios/state-view.mjs,"Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",tools/render/scenarios,280,driver,no,no,no
 tools/render/scenarios/subject-action-probe.mjs,"probe: can the shell invoke a toss subject's action closure, or only reach it",tools/render/scenarios,124,driver,no,no,no
 tools/render/scenarios/toss-fragment.mjs,prove toss-render hands a trailing #frag to the rendered page in both trust postures,tools/render/scenarios,96,driver,no,no,no
 tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,254,npm:shot,yes,yes,yes
