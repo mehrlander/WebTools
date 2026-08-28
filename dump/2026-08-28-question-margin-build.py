@@ -18,16 +18,29 @@ d = json.load(open(REC))
 reply = next(r for r in d['replies'] if r['at'].startswith('2026-08-27T02:50:09'))
 paras = [p.strip() for p in reply['text'].split('\n\n') if p.strip()]
 
-# question, the answer in one line, and whether that answer is a no or a not-yet
+# question, the answer, and whether that answer is a no or a not-yet.
+#
+# The answer is a sentence that stands on its own. It leads with the direct
+# answer where the question is yes-or-no, names its own subject rather than
+# inheriting one from the question, and carries the fact rather than a label
+# for the fact. "both, in that order" fails all three and reads as coy.
+# Short is fine where the fact is short; vague is never fine.
 Q = [
- ('Did the back-out and the merge both happen?', 'both, in that order',                    False),
- ('Is Ask Grok gone everywhere it was?',         'chain, README row, both mirrors, PR closed', False),
- ('Did anything from that work survive?',        'a note on why it could not be built blind', False),
- ('What went into the merge?',                   '#22 at 5d2f5f3: five fixes, 221 tests',   False),
- ('Does --publish remove a mirror whose chain is gone?', 'no, and I left it unfixed',       True),
- ('Does the phone need anything?',               'two installs, when convenient',           False),
- (None,                                          None,                                      False),
- ('Where does the branch stand?',                'merged',                                  False),
+ ('Did the back-out and the merge both happen?',
+  'Yes to both: Ask Grok is withdrawn, and shortcut-tools #22 is merged.',                False),
+ ('Is Ask Grok gone everywhere it was?',
+  'Yes. The chain, its README row and both mirrors are off the branch, and main never carried it.', False),
+ ('Did anything from that work survive?',
+  'One note in docs/shortcuts-format-notes.md, on why AskGrok could not be built blind.', False),
+ ('What went into the merge?',
+  'Back-DoubleTap recovered at 59 actions, three dead targets resolved, the Get-FileInfo list bug fixed, 221 tests passing.', False),
+ ('Does --publish remove a mirror whose chain is gone?',
+  'No. An orphaned artifact keeps serving a withdrawn link, and I did not fix it.',       True),
+ ('Does the phone need anything?',
+  'Yes. Back-DoubleTap and Dictate both need reinstalling.',                              False),
+ (None, None,                                                                            False),
+ ('Where does the branch stand?',
+  'Merged into shortcut-tools main.',                                                    False),
 ]
 
 def fmt(p):
