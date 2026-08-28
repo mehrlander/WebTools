@@ -1,158 +1,62 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Question lane &mdash; a parallel view of one session</title>
-<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web,npm/alpinejs@3/dist/cdn.min.js" defer></script>
+<title>Questions &mdash; a compact lane</title>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/alpinejs@3/dist/cdn.min.js" defer></script>
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
-<script>window.DATA = {"meta": {"id": "d0aaedcc", "day": "2026-08-26", "started": "2026-08-26T03:00:24Z", "ended": "2026-08-27T17:40:14Z", "prompts": 41, "replies": 174, "calls": 464, "exchanges": 37, "agent": "https://claude.ai/code/session_01MmeswhoMg9zpNxZZz3E1tz", "opening": "Did we try anything to revise double back tap in a recent session?  Shortcuts?  Did it land?"}, "ex": [{"at": "2026-08-26T03:00:24Z", "ask": "Did we try anything to revise double back tap in a recent session? Shortcuts? Did it land?", "calls": 13, "n": 1, "nr": 2}, {"at": "2026-08-26T04:23:34Z", "ask": "How should we proceed?", "calls": 8, "n": 2, "nr": 2}, {"at": "2026-08-26T04:26:56Z", "ask": "Go ahead", "calls": 58, "n": 3, "nr": 15}, {"at": "2026-08-26T04:42:29Z", "ask": "I ran the probes did it give what you wanted?", "calls": 7, "n": 4, "nr": 4}, {"at": "2026-08-26T04:49:12Z", "ask": "Go ahead. Note I don’t mind running shortcuts from your links. It’s only annoying if I have to know what to do along the way. But you can help that also if you use proper guidance like the shortcut itself saying “watch w", "calls": 27, "n": 5, "nr": 14}, {"at": "2026-08-26T05:04:23Z", "ask": "Said couldn’t find Library-Replace on first one. Note that generally we can reinstall over one and that’s fine. It asks me if I want to save over it and I can do as I like.", "calls": 5, "n": 6, "nr": 3}, {"at": "2026-08-26T05:12:34Z", "ask": "Ran them. The double tap one didn’t replace the menu with list approach though did it?", "calls": 12, "n": 7, "nr": 5}, {"at": "2026-08-26T05:21:19Z", "ask": "Done", "calls": 17, "n": 8, "nr": 5}, {"at": "2026-08-26T05:40:11Z", "ask": "I swapped in Open-RecentShortcut I think that’s the new version of what it had been. So we have then: Open-RecentShortcut Show-ShortcutsInfo Copy-TemplateActions Choose-Manage Manage-Shelf Out I think that’s good for tha", "calls": 6, "n": 9, "nr": 5}, {"at": "2026-08-26T05:52:42Z", "ask": "Can you give link to copy to my clipboard the chunk for if app is shortcuts?", "calls": 4, "n": 10, "nr": 3}, {"at": "2026-08-26T06:06:34Z", "ask": "I see get file caption is thrown off if get file info processed a list. Then the json doesn’t have the sought property. Do you see that?", "calls": 7, "n": 11, "nr": 5}, {"at": "2026-08-26T06:11:28Z", "ask": "Yes I think you can give a replacement.", "calls": 9, "n": 12, "nr": 4}, {"at": "2026-08-26T12:38:08Z", "ask": "I installed it. Can you give the test to run by link?", "calls": 4, "n": 13, "nr": 3}, {"at": "2026-08-26T12:42:17Z", "ask": "Ran them. Btw could you make a simpler direct version of the get file info shortcut that just has it all in the one shortcut?", "calls": 8, "n": 14, "nr": 5}, {"at": "2026-08-26T13:03:07Z", "ask": "This sounds good, and I installed it. I noticed that it still has the multiple text cards in it for combining the pieces, but I'm thinking at this point, when you can write step for me, you could just put it all into the", "calls": 7, "n": 15, "nr": 4}, {"at": "2026-08-26T13:11:15Z", "ask": "Can you check for updates to surfacing.md in web tools? Just interested if you have the latest.", "calls": 4, "n": 16, "nr": 3}, {"at": "2026-08-26T13:23:37Z", "ask": "Great thanks. I was noticing you had greens that were telling me what to do, which is a misuse for green. And it highlights that this could be a good place to update for asks on your part as we develop our functionality ", "calls": 7, "n": 17, "nr": 4}, {"at": "2026-08-26T13:58:51Z", "ask": "📳✴️🔸🔶🟧 These happen to exist in orange and could fit well with what we have in terms of needing user input.", "calls": 0, "n": 18, "nr": 1}, {"at": "2026-08-26T14:02:49Z", "ask": "I think you overlooked that color coding is what we are doing here.", "calls": 0, "n": 19, "nr": 1}, {"at": "2026-08-26T14:06:46Z", "ask": "I understand that some of these appear in different colors on different devices, but at least on my iPhone, they all show up in orange. You might be able to discern from the image. Anyway, I do think that the Sparkle one", "calls": 28, "n": 20, "nr": 9}, {"at": "2026-08-26T18:32:21Z", "ask": "Reorient what we’ve done this session.", "calls": 3, "n": 21, "nr": 1}, {"at": "2026-08-26T18:35:13Z", "ask": "Did you update documentation for surfacing?", "calls": 3, "n": 22, "nr": 2}, {"at": "2026-08-26T19:46:28Z", "ask": "Okay. What about what we were doing on the shortcuts themselves? Where did we leave that?", "calls": 3, "n": 23, "nr": 1}, {"at": "2026-08-26T19:53:27Z", "ask": "I think you used the show HTML for the dictation one. But for some of those, it would make more sense to use the... what do they call it? The the web view or something. So not the one that just renders it in Safari, but ", "calls": 8, "n": 24, "nr": 5}, {"at": "2026-08-26T20:10:21Z", "ask": "There's the quick view action, but that's not the one that I had in mind. That one brings up a dialogue, and it's possible that it could work if you find a way to render the page. I had a time. But I was referring to the", "calls": 7, "n": 25, "nr": 6}, {"at": "2026-08-26T21:35:21Z", "ask": "Done", "calls": 4, "n": 26, "nr": 2}, {"at": "2026-08-26T21:49:33Z", "ask": "Done", "calls": 2, "n": 27, "nr": 2}, {"at": "2026-08-26T21:57:21Z", "ask": "If there's another test around about microphone or whatever else, we should just do it.", "calls": 3, "n": 28, "nr": 3}, {"at": "2026-08-26T22:05:06Z", "ask": "It seemed to say something about copy failing, but I'm sure that we have made copy work. If you look at the page we have for, like, show-recentshortcuts or something like that. I think it shows where we use some mechanis", "calls": 4, "n": 29, "nr": 3}, {"at": "2026-08-26T22:14:55Z", "ask": "I'm not sure what that one was doing. I think that if we do want to actually paste into it, we have to use some kind of interaction on my part like that page I showed. But let me know what you see.", "calls": 2, "n": 30, "nr": 2}, {"at": "2026-08-26T22:51:28Z", "ask": "Ok move ahead using your judgment.", "calls": 56, "n": 31, "nr": 7}, {"at": "2026-08-27T01:45:22Z", "ask": "Can we update the dictate page to use this new shortcut? It would have a button that calls this shortcut on the selected text. <?xml version=\"1.0\" encoding=\"UTF-8\"?> <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"", "calls": 49, "n": 32, "nr": 10}, {"at": "2026-08-27T02:11:39Z", "ask": "I installed it. Is the menu supposed to be working? It could be from the three dot menu.", "calls": 2, "n": 33, "nr": 1}, {"at": "2026-08-27T02:46:52Z", "ask": "Ok it doesn’t work let’s back out the ask grok thing it’s fine. Then we can wrap and merge.", "calls": 18, "n": 34, "nr": 6}, {"at": "2026-08-27T15:26:58Z", "ask": "I don't quite follow your note on pruning and did not fix. Is it something you can assess further and possibly resolve?", "calls": 26, "n": 35, "nr": 9}, {"at": "2026-08-27T15:43:30Z", "ask": "Are there loose ends or it's a good place to wrap and merge? If we're ready please go ahead.", "calls": 22, "n": 36, "nr": 7}, {"at": "2026-08-27T16:19:33Z", "ask": "Is there a reason not to ship 514? It looks like you are using the VS where possibly it should just be white like clean exit if we merge. But if I'm missing some tough question please clarify.", "calls": 21, "n": 37, "nr": 10}], "inv": [{"n": 1, "at": "08-26T03:00", "by": "user", "ex": 1, "kind": "question", "found": "scan", "text": "Did the double-back-tap revision land in an earlier session?", "status": "answered", "at2": "08-26T03:02", "ex2": 1, "note": "Verbatim carried three question marks for one ask."}, {"n": 2, "at": "08-26T04:23", "by": "user", "ex": 2, "kind": "decision", "found": "scan", "text": "How should we proceed?", "status": "answered", "at2": "08-26T04:25", "ex2": 2}, {"n": 3, "at": "08-26T04:42", "by": "user", "ex": 4, "kind": "question", "found": "scan", "text": "Did the probes I ran return what you needed?", "status": "answered", "at2": "08-26T04:44", "ex2": 4}, {"n": 4, "at": "08-26T04:49", "by": "user", "ex": 5, "kind": "standing", "found": "read", "text": "Shortcut prompts should carry their own guidance, so I never have to arrive knowing what to do.", "status": "adopted", "at2": "08-26T04:56", "ex2": 5, "note": "A standing instruction inside an otherwise procedural reply. No question mark anywhere."}, {"n": 5, "at": "08-26T04:49", "by": "user", "ex": 5, "kind": "question", "found": "read", "text": "Does a shortcut-testing skill exist, and does it say this?", "verbatim": "(Our shortcut testing skill should mention this succinctly if it doesn’t, assuming we have one)", "status": "answered", "at2": "08-26T04:56", "ex2": 5, "note": "Parenthetical, conditional, no question mark. The live session caught it; the scan does not."}, {"n": 6, "at": "08-26T05:04", "by": "user", "ex": 6, "kind": "defect", "found": "read", "text": "Library-Replace was not found on the first install link.", "status": "fixed", "at2": "08-26T05:12", "ex2": 7}, {"n": 7, "at": "08-26T05:12", "by": "user", "ex": 7, "kind": "question", "found": "scan", "text": "The double-tap shortcut did not get the list treatment, did it?", "status": "answered", "at2": "08-26T05:14", "ex2": 7}, {"n": 8, "at": "08-26T05:43", "by": "claude", "ex": 9, "kind": "decision", "found": "scan", "text": "Which shortcut should the chunk target?", "status": "answered", "at2": "08-26T05:52", "ex2": 10}, {"n": 9, "at": "08-26T05:52", "by": "user", "ex": 10, "kind": "request", "found": "scan", "text": "Give me a clipboard link for the if-app-is-Shortcuts chunk.", "status": "delivered", "at2": "08-26T05:55", "ex2": 10}, {"n": 10, "at": "08-26T06:06", "by": "user", "ex": 11, "kind": "defect", "found": "scan", "text": "Get-FileInfo’s caption breaks when Get File Info processed a list.", "verbatim": "Do you see that?", "status": "confirmed → fixed", "at2": "08-26T06:11", "ex2": 12, "note": "The scan row reads \"Do you see that?\" and names nothing. The subject sits in the sentence before it."}, {"n": 11, "at": "08-26T06:08", "by": "claude", "ex": 11, "kind": "confirm", "found": "scan", "text": "Should the fix go on this branch, in web-tools-private?", "status": "answered", "at2": "08-26T06:11", "ex2": 12}, {"n": 12, "at": "08-26T12:42", "by": "user", "ex": 14, "kind": "request", "found": "scan", "text": "Make a simpler one-shortcut version of Get File Info.", "status": "delivered", "at2": "08-26T12:58", "ex2": 14}, {"n": 13, "at": "08-26T13:03", "by": "user", "ex": 15, "kind": "question", "found": "scan", "text": "What is the minimum way to collapse the combining text cards into one?", "status": "answered", "at2": "08-26T13:08", "ex2": 15}, {"n": 14, "at": "08-26T13:11", "by": "user", "ex": 16, "kind": "question", "found": "scan", "text": "Do we have the latest SURFACING.md?", "status": "answered", "at2": "08-26T13:14", "ex2": 16}, {"n": 15, "at": "08-26T13:23", "by": "user", "ex": 17, "kind": "critique", "found": "read", "text": "Greens were telling me what to do, which misuses green. Orange should mean a decision is needed from me, and there is a missing state for \"you should investigate this yourself.\"", "status": "resolved → ❇️ and ✴️ added, PR #514", "at2": "08-26T14:06", "ex2": 20, "note": "The largest item in the session and it carries no question mark. A critique that turned into a documentation change."}, {"n": 16, "at": "08-26T13:58", "by": "user", "ex": 18, "kind": "proposal", "found": "read", "text": "Which orange glyph should mark \"needs you\"? Five candidates offered.", "status": "resolved → ✴️ chosen", "at2": "08-26T14:06", "ex2": 20}, {"n": 17, "at": "08-26T14:02", "by": "user", "ex": 19, "kind": "correction", "found": "read", "text": "You overlooked that colour coding is the point here.", "status": "accepted", "at2": "08-26T14:06", "ex2": 20, "note": "A correction of the previous answer. Not a question by any test, and the item most worth surfacing."}, {"n": 18, "at": "08-26T18:35", "by": "user", "ex": 22, "kind": "audit", "found": "scan", "text": "Did you update the surfacing documentation?", "status": "answered: yes, on a branch", "at2": "08-26T18:37", "ex2": 22, "note": "The user auditing item 15 five hours later. A live inventory answers this without a turn."}, {"n": 19, "at": "08-26T19:46", "by": "user", "ex": 23, "kind": "re-entry", "found": "scan", "text": "Where did we leave the shortcuts work?", "status": "answered", "at2": "08-26T19:48", "ex2": 23, "note": "A re-entry ask. Its answer is exactly this inventory."}, {"n": 20, "at": "08-26T19:53", "by": "user", "ex": 24, "kind": "correction", "found": "read", "text": "Use the Show Web View sheet action, not Show HTML in Safari, so the flow stays inside the shortcut.", "status": "done", "at2": "08-26T20:30", "ex2": 25, "note": "Restated once at 20:10 because the first reply reached for Quick View instead."}, {"n": 21, "at": "08-26T21:57", "by": "user", "ex": 28, "kind": "request", "found": "read", "text": "Run whatever other test exists around the microphone.", "status": "done", "at2": "08-26T22:05", "ex2": 29}, {"n": 22, "at": "08-26T22:05", "by": "user", "ex": 29, "kind": "correction", "found": "read", "text": "Copy reportedly failed, but we have made copy work; see the show-recentshortcuts page.", "status": "investigated", "at2": "08-26T22:14", "ex2": 30}, {"n": 23, "at": "08-27T01:45", "by": "user", "ex": 32, "kind": "request", "found": "scan", "text": "Update the dictate page to call this new shortcut on selected text.", "status": "delivered → backed out", "at2": "08-27T02:50", "ex2": 34, "note": "Superseded by item 24’s sibling: the Ask-Grok chain was withdrawn."}, {"n": 24, "at": "08-27T02:11", "by": "user", "ex": 33, "kind": "question", "found": "scan", "text": "Is the menu supposed to be working?", "status": "answered: no, back it out", "at2": "08-27T02:50", "ex2": 34}, {"n": 25, "at": "08-27T02:50", "by": "claude", "ex": 34, "kind": "defect", "found": "read", "flag": true, "text": "Neither pack.py --publish nor plist.py --publish removes a mirror whose chain is gone, so an orphaned artifact keeps serving a withdrawn link.", "verbatim": "One thing I noticed while pruning and did not fix: …", "status": "open 12h 37m → resolved", "at2": "08-27T15:34", "ex2": 35, "note": "Raised by Claude, mid-paragraph, inside a 3,005-character wrap-up reply. No question mark, no heading, no closing-state marker. The user had to re-read the reply the next day to find it."}, {"n": 26, "at": "08-27T15:26", "by": "user", "ex": 35, "kind": "reopen", "found": "scan", "text": "Assess and resolve the pruning note you said you did not fix.", "verbatim": "Is it something you can assess further and possibly resolve?", "status": "resolved", "at2": "08-27T15:34", "ex2": 35, "note": "This whole exchange exists only because item 25 had nowhere to be listed."}, {"n": 27, "at": "08-27T15:43", "by": "user", "ex": 36, "kind": "question", "found": "scan", "text": "Loose ends, or is this a good place to wrap and merge?", "status": "answered", "at2": "08-27T15:48", "ex2": 36}, {"n": 28, "at": "08-27T16:19", "by": "user", "ex": 37, "kind": "question", "found": "scan", "text": "Is there a reason not to ship #514?", "status": "answered", "at2": "08-27T16:25", "ex2": 37}], "fp": [{"q": "what do they call it?", "why": "A spoken aside mid-sentence (\"the … what do they call it? the web view\"). Dictation artifact."}, {"q": "Worth knowing before you tap: this overwrites the edit you made by hand.", "why": "Matched the no-question-mark rule on \"worth knowing\". It is a statement."}, {"q": "I think that’s good for that one for now?", "why": "An upward inflection on a decision already made, not an open ask."}]};</script>
+<script>window.Q = {"id": "d0aaedcc", "day": "2026-08-26", "items": [{"i": 0, "at": "2026-08-26T03:00", "at2": "2026-08-26T03:02", "by": "u", "q": "Did the double-back-tap revision land in an earlier session?"}, {"i": 1, "at": "2026-08-26T04:23", "at2": "2026-08-26T04:25", "by": "u", "q": "How should we proceed?"}, {"i": 2, "at": "2026-08-26T04:42", "at2": "2026-08-26T04:44", "by": "u", "q": "Did the probes I ran return what you needed?"}, {"i": 3, "at": "2026-08-26T04:49", "at2": "2026-08-26T04:56", "by": "u", "q": "Does a shortcut-testing skill exist, and does it say this?"}, {"i": 4, "at": "2026-08-26T05:04", "at2": "2026-08-26T05:12", "by": "u", "q": "Why was Library-Replace not found on the first install link?"}, {"i": 5, "at": "2026-08-26T05:12", "at2": "2026-08-26T05:14", "by": "u", "q": "The double-tap shortcut did not get the list treatment, did it?"}, {"i": 6, "at": "2026-08-26T05:43", "at2": "2026-08-26T05:52", "by": "c", "q": "Which shortcut should the chunk target?"}, {"i": 7, "at": "2026-08-26T06:06", "at2": "2026-08-26T06:11", "by": "u", "q": "Does Get-FileInfo’s caption break when Get File Info processed a list?"}, {"i": 8, "at": "2026-08-26T06:08", "at2": "2026-08-26T06:11", "by": "c", "q": "Should the fix go on this branch, in web-tools-private?"}, {"i": 9, "at": "2026-08-26T12:42", "at2": "2026-08-26T12:58", "by": "u", "q": "Can Get File Info be one shortcut instead of several?"}, {"i": 10, "at": "2026-08-26T13:03", "at2": "2026-08-26T13:08", "by": "u", "q": "What is the minimum way to collapse the combining text cards?"}, {"i": 11, "at": "2026-08-26T13:11", "at2": "2026-08-26T13:14", "by": "u", "q": "Do we have the latest SURFACING.md?"}, {"i": 12, "at": "2026-08-26T13:23", "at2": "2026-08-26T14:06", "by": "u", "q": "Green is being used for asks. What marks a decision I owe you?"}, {"i": 13, "at": "2026-08-26T13:58", "at2": "2026-08-26T14:06", "by": "u", "q": "Which orange glyph should mark \"needs you\"?"}, {"i": 14, "at": "2026-08-26T18:35", "at2": "2026-08-26T18:37", "by": "u", "q": "Did you update the surfacing documentation?"}, {"i": 15, "at": "2026-08-26T19:46", "at2": "2026-08-26T19:48", "by": "u", "q": "Where did we leave the shortcuts work?"}, {"i": 16, "at": "2026-08-26T19:53", "at2": "2026-08-26T20:30", "by": "u", "q": "Why not the Show Web View sheet instead of Show HTML in Safari?"}, {"i": 17, "at": "2026-08-26T22:05", "at2": "2026-08-26T22:14", "by": "u", "q": "Copy reportedly failed, but have we not already made copy work?"}, {"i": 18, "at": "2026-08-27T01:45", "at2": "2026-08-27T02:50", "by": "u", "q": "Can the dictate page call this new shortcut on selected text?"}, {"i": 19, "at": "2026-08-27T02:11", "at2": "2026-08-27T02:50", "by": "u", "q": "Is the menu supposed to be working?"}, {"i": 20, "at": "2026-08-27T02:50", "at2": "2026-08-27T15:34", "by": "c", "q": "Should --publish remove a mirror whose chain is gone? Noticed, not fixed."}, {"i": 21, "at": "2026-08-27T15:26", "at2": "2026-08-27T15:34", "by": "u", "q": "Can you assess and resolve the pruning note?"}, {"i": 22, "at": "2026-08-27T15:43", "at2": "2026-08-27T15:48", "by": "u", "q": "Loose ends, or is this a good place to wrap and merge?"}, {"i": 23, "at": "2026-08-27T16:19", "at2": "2026-08-27T16:25", "by": "u", "q": "Is there a reason not to ship #514?"}], "marks": ["2026-08-26T03:00", "2026-08-26T03:02", "2026-08-26T04:23", "2026-08-26T04:25", "2026-08-26T04:42", "2026-08-26T04:44", "2026-08-26T04:49", "2026-08-26T04:56", "2026-08-26T05:04", "2026-08-26T05:12", "2026-08-26T05:14", "2026-08-26T05:43", "2026-08-26T05:52", "2026-08-26T06:06", "2026-08-26T06:08", "2026-08-26T06:11", "2026-08-26T12:42", "2026-08-26T12:58", "2026-08-26T13:03", "2026-08-26T13:08", "2026-08-26T13:11", "2026-08-26T13:14", "2026-08-26T13:23", "2026-08-26T13:58", "2026-08-26T14:06", "2026-08-26T18:35", "2026-08-26T18:37", "2026-08-26T19:46", "2026-08-26T19:48", "2026-08-26T19:53", "2026-08-26T20:30", "2026-08-26T22:05", "2026-08-26T22:14", "2026-08-27T01:45", "2026-08-27T02:11", "2026-08-27T02:50", "2026-08-27T15:26", "2026-08-27T15:34", "2026-08-27T15:43", "2026-08-27T15:48", "2026-08-27T16:19", "2026-08-27T16:25"]};</script>
 </head>
-<body class="bg-base-200 text-base-content">
-<div x-data="lane()" class="max-w-[1500px] mx-auto p-3 sm:p-5">
+<body class="bg-base-200">
+<div x-data="lane()" class="max-w-md mx-auto p-3 text-sm">
 
-  <header class="mb-4">
-    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <h1 class="text-xl font-semibold">Question lane</h1>
-      <span class="opacity-60 text-sm">a parallel view of session <code x-text="D.meta.id"></code></span>
-    </div>
-    <p class="text-sm opacity-70 mt-1" x-text="D.meta.opening + '…'"></p>
-    <div class="stats stats-horizontal shadow-sm bg-base-100 mt-3 w-full overflow-x-auto">
-      <div class="stat py-2 px-4"><div class="stat-title text-xs">exchanges</div><div class="stat-value text-xl" x-text="D.meta.exchanges"></div></div>
-      <div class="stat py-2 px-4"><div class="stat-title text-xs">replies</div><div class="stat-value text-xl" x-text="D.meta.replies"></div></div>
-      <div class="stat py-2 px-4"><div class="stat-title text-xs">tool calls</div><div class="stat-value text-xl" x-text="D.meta.calls"></div></div>
-      <div class="stat py-2 px-4"><div class="stat-title text-xs">items</div><div class="stat-value text-xl text-primary" x-text="D.inv.length"></div></div>
-      <div class="stat py-2 px-4"><div class="stat-title text-xs">found by regex</div><div class="stat-value text-xl" x-text="nScan"></div></div>
-      <div class="stat py-2 px-4"><div class="stat-title text-xs">needs a read</div><div class="stat-value text-xl text-warning" x-text="nRead"></div></div>
-    </div>
-  </header>
-
-  <div class="flex flex-wrap gap-2 items-center mb-3">
-    <div class="join">
-      <button class="join-item btn btn-sm" :class="filter==='all'&&'btn-active btn-primary'" @click="filter='all'">All</button>
-      <button class="join-item btn btn-sm" :class="filter==='read'&&'btn-active btn-primary'" @click="filter='read'">Only a read finds these</button>
-      <button class="join-item btn btn-sm" :class="filter==='claude'&&'btn-active btn-primary'" @click="filter='claude'">Claude raised</button>
-    </div>
-    <label class="label cursor-pointer gap-2 text-sm">
-      <input type="checkbox" class="toggle toggle-sm" x-model="showVerbatim">
-      <span class="opacity-70">show the words as spoken</span>
-    </label>
+  <div class="flex items-baseline gap-2 mb-1">
+    <span class="font-semibold">Questions</span>
+    <span class="opacity-50" x-text="Q.id"></span>
     <span class="grow"></span>
-    <button class="btn btn-sm btn-ghost" @click="sel=null">clear</button>
+    <span class="tabular-nums" :class="open.length ? 'text-warning font-semibold' : 'opacity-50'"
+          x-text="open.length + ' open'"></span>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-4">
+  <input type="range" class="range range-xs mb-3" min="0" :max="Q.marks.length-1" x-model.number="t">
+  <div class="-mt-2 mb-2 text-xs opacity-40 tabular-nums" x-text="'as of ' + now.slice(5).replace('T',' ')"></div>
 
-    <!-- discussion lane -->
-    <section>
-      <h2 class="text-sm uppercase tracking-wide opacity-60 mb-2">The discussion</h2>
-      <div class="bg-base-100 rounded-box p-1 max-h-[70vh] overflow-y-auto">
-        <template x-for="e in D.ex" :key="e.n">
-          <div :id="'ex'+e.n" class="border-l-4 px-3 py-2 my-0.5 rounded-r transition"
-               :class="lit(e.n) ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-base-200'">
-            <div class="flex items-baseline gap-2">
-              <span class="badge badge-xs badge-ghost font-mono" x-text="e.n"></span>
-              <span class="font-mono text-xs opacity-50" x-text="e.at.slice(5,16)"></span>
-              <template x-for="it in itemsAt(e.n)" :key="it.n">
-                <span class="badge badge-xs cursor-pointer" :class="badge(it)"
-                      @click="sel = sel===it.n ? null : it.n" x-text="'#'+it.n"></span>
-              </template>
-              <span class="grow"></span>
-              <span class="text-xs opacity-40" x-show="e.calls" x-text="e.calls+' calls'"></span>
-            </div>
-            <p class="text-sm mt-1 leading-snug" x-text="e.ask.slice(0,190) + (e.ask.length>190?'…':'')"></p>
-          </div>
-        </template>
-      </div>
-    </section>
-
-    <!-- question lane -->
-    <section>
-      <h2 class="text-sm uppercase tracking-wide opacity-60 mb-2">
-        The inventory <span class="opacity-50 normal-case" x-text="'('+shown.length+' of '+D.inv.length+')'"></span>
-      </h2>
-      <div class="bg-base-100 rounded-box p-1 max-h-[70vh] overflow-y-auto">
-        <template x-for="it in shown" :key="it.n">
-          <div class="px-3 py-2 my-0.5 rounded cursor-pointer transition border-l-4"
-               :class="sel===it.n ? 'border-primary bg-primary/10' : (it.flag ? 'border-warning/60 hover:bg-base-200' : 'border-transparent hover:bg-base-200')"
-               @click="pick(it.n)">
-            <div class="flex flex-wrap items-center gap-1.5">
-              <span class="badge badge-xs font-mono" :class="badge(it)" x-text="'#'+it.n"></span>
-              <span class="badge badge-xs badge-outline" x-text="it.kind"></span>
-              <span class="text-xs font-mono opacity-50" x-text="it.at.slice(0,11)"></span>
-              <span class="text-xs opacity-60" x-text="it.by==='claude' ? 'Claude asked' : ''"></span>
-              <span class="grow"></span>
-              <span class="badge badge-xs"
-                    :class="it.flag ? 'badge-warning' : (it.found==='read' ? 'badge-ghost' : 'badge-ghost opacity-50')"
-                    x-text="it.found==='read' ? 'needs a read' : 'regex'"></span>
-            </div>
-            <p class="text-sm mt-1 leading-snug" x-text="it.text"></p>
-            <p class="text-xs mt-1 font-mono opacity-50 italic" x-show="showVerbatim && it.verbatim"
-               x-text="'as spoken: “' + (it.verbatim||'') + '”'"></p>
-            <div class="flex items-center gap-2 mt-1.5 text-xs">
-              <span class="opacity-70" x-text="it.status"></span>
-              <span class="opacity-40" x-show="it.at2" x-text="'→ ' + it.at2"></span>
-            </div>
-            <p class="text-xs mt-1.5 opacity-70 leading-snug border-l-2 border-base-300 pl-2"
-               x-show="sel===it.n && it.note" x-text="it.note"></p>
-          </div>
-        </template>
-      </div>
-    </section>
-  </div>
-
-  <!-- what the scan got wrong -->
-  <section class="mt-5">
-    <h2 class="text-sm uppercase tracking-wide opacity-60 mb-2">What the regex found that is not an item</h2>
-    <div class="bg-base-100 rounded-box p-3 space-y-2">
-      <template x-for="f in D.fp" :key="f.q">
-        <div class="text-sm">
-          <span class="font-mono text-error/80" x-text="'“'+f.q+'”'"></span>
-          <span class="opacity-60" x-text="' · ' + f.why"></span>
-        </div>
-      </template>
+  <template x-for="it in open" :key="it.i">
+    <div class="flex gap-2 py-1 border-l-2 border-warning pl-2">
+      <span class="tabular-nums text-warning w-16 shrink-0" x-text="since(it.at)"></span>
+      <span x-text="it.q"></span>
+      <span class="opacity-40 shrink-0" x-show="it.by==='c'">c</span>
     </div>
-  </section>
+  </template>
 
-  <p class="text-xs opacity-50 mt-5 leading-relaxed">
-    The discussion lane is read from the record at
-    <code>sessions/2026/08/2026-08-26-d0aaedcc.json</code> in web-tools-private.
-    The inventory lane is hand-authored, to show what a complete one holds; the
-    <em>regex</em> / <em>needs a read</em> chip on each row says which half a
-    mechanical extractor would have produced on its own.
+  <div class="h-px bg-base-300 my-2" x-show="open.length && done.length"></div>
+
+  <template x-for="it in done" :key="it.i">
+    <div class="flex gap-2 py-1 pl-2 opacity-45">
+      <span class="tabular-nums w-16 shrink-0" x-text="took(it)"></span>
+      <span x-text="it.q"></span>
+      <span class="shrink-0" x-show="it.by==='c'">c</span>
+    </div>
+  </template>
+
+  <p class="text-xs opacity-40 mt-4 leading-relaxed">
+    Drag to move through the session. Left column is how long a question has been
+    open, or how long it took. <code>c</code> marks one Claude raised.
   </p>
 </div>
 
 <script>
 function lane() {
+  const span = (a, b) => {
+    const m = Math.round((Date.parse(b + 'Z') - Date.parse(a + 'Z')) / 60000);
+    return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+  };
   return {
-    D: window.DATA, sel: null, filter: 'all', showVerbatim: false,
-    get nScan() { return this.D.inv.filter(i => i.found === 'scan').length },
-    get nRead() { return this.D.inv.filter(i => i.found === 'read').length },
-    get shown() {
-      const f = this.filter;
-      return this.D.inv.filter(i =>
-        f === 'all' ? true : f === 'read' ? i.found === 'read' : i.by === 'claude');
-    },
-    itemsAt(n) { return this.D.inv.filter(i => i.ex === n || i.ex2 === n) },
-    pick(n) {
-      this.sel = this.sel === n ? null : n;
-      if (this.sel == null) return;
-      const it = this.D.inv.find(i => i.n === n);
-      this.$nextTick(() => {
-        const el = document.getElementById('ex' + it.ex);
-        if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      });
-    },
-    lit(n) {
-      if (this.sel == null) return false;
-      const it = this.D.inv.find(i => i.n === this.sel);
-      return it && (it.ex === n || it.ex2 === n);
-    },
-    badge(it) {
-      if (it.flag) return 'badge-warning';
-      if (it.by === 'claude') return 'badge-secondary';
-      return { correction: 'badge-error', critique: 'badge-error', defect: 'badge-error',
-               reopen: 'badge-warning' }[it.kind] || 'badge-primary';
-    },
+    Q: window.Q, t: window.Q.marks.length - 1,
+    get now() { return this.Q.marks[this.t] },
+    get open() { return this.Q.items.filter(i => i.at <= this.now && i.at2 > this.now) },
+    get done() { return this.Q.items.filter(i => i.at2 <= this.now).reverse() },
+    since(at) { return span(at, this.now) || '0m' },
+    took(it) { return span(it.at, it.at2) },
   }
 }
 </script>
