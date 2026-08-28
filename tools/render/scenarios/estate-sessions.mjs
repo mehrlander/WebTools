@@ -49,14 +49,17 @@ const SESSIONS = [
     ].join('\n'),
     replyCut: '',
     // The scroll back, in the shape repo-sessions-cache's priorTurns emits:
-    // [role, head] pairs, chronological, asks at PROMPT_HEAD and turns at
-    // TURN_HEAD, the closing reply excluded because `reply` above carries it.
+    // [role, head, clock, dropped?] tuples, chronological, both an ask and a
+    // reply cut at 240 since 2026-08-28, the closing reply excluded because
+    // `reply` above carries it. A user turn long enough to be cut is in here
+    // deliberately: 36% of the store's are, and the chip that says so is the
+    // one piece of card chrome with no other surface to be shot on.
     // Sentence-shaped heads at TURN_HEAD, the way priorTurns emits them: an
     // entry ends where a thought does. Narration turns are absent because the
     // card drops anything followed by tool calls, which the deck keeps.
     turns: [
       ['a', 'Here is where it stands. The mechanisms live as data in `docs/showing-mechanisms.csv`, and the Map view renders that file directly rather than restating it in prose.', '14:02:11', 2264],
-      ['u', 'Can we get the render line printed rather than remembered?', '14:19:40'],
+      ['u', 'Can we get the render line printed rather than remembered? I keep handing over the wrong link and the section that was meant to stop it is the longest one in the file, so reading it is clearly not the thing that fixes this.', '14:19:40', 168],
       ['a', '`npm run showing` now reads the branch\'s changed files and prints the line to paste, or an honest no-link with the reason. The rule the section stated in prose is executable.', '14:31:07'],
       ['u', '[3 images]', '15:12:44'],
       ['u', 'Good. Please proceed with the Map view tab.', '15:20:03'],

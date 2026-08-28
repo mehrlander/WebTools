@@ -211,7 +211,14 @@ test('an entry ends where a sentence does, not mid-word', () => {
     'both whole sentences fit; the 500-character third does not, so it is left out');
   assert.ok(!turn.endsWith('…'), 'and nothing was cut, so nothing is marked');
   assert.equal(ask, 'a follow-up ask');
-  assert.ok(S.PROMPT_HEAD < S.TURN_HEAD, 'an ask is structure, so its cap is smaller');
+  // The cap ran the other way until 2026-08-28, on the argument that an ask
+  // here was STRUCTURE and only had to separate one exchange from the next.
+  // The card is a transcript now and the ask is the half a reader scans for,
+  // so an ask cut shorter than the reply under it is the cut that costs them
+  // the thread. Stated as a direction rather than a number, so either cap can
+  // move without the other having to.
+  assert.ok(S.PROMPT_HEAD >= S.TURN_HEAD,
+    'an ask is what a reader scans for, so it is never the shorter of the two');
 });
 
 // ── How much is missing ─────────────────────────────────────────────────────
