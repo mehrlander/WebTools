@@ -229,3 +229,39 @@ test('the ask is banded and the reply is not, so exchanges are found without rea
   assert.ok(!/\bbg-/.test(cr.message({ role: 'user', md: 'x' }, { collapse: 0 }).className),
     'and full size takes none either');
 });
+
+test('the turn hangs on its lead: the icon in the margin, every other line on one edge', () => {
+  // The body is pushed in by the lead's width and the first line pulled back
+  // out by the same amount, so the glyph sits outside the text column and lines
+  // two onward, and every later paragraph, share one edge with line one's text.
+  for (const role of ['user', 'assistant']) {
+    const el = dense({ role, md: 'a turn' });
+    const host = el.querySelector('.relative');
+    const blk = el.querySelector('pre, p');
+    assert.equal(host.style.paddingLeft, '17px', `${role}: the body clears the lead`);
+    assert.equal(blk.style.textIndent, '-17px', `${role}: and line one comes back out`);
+  }
+  // Full size hangs nothing: its head is its own row.
+  const full = cr.message({ role: 'user', md: 'a turn' }, { collapse: 0 });
+  assert.equal(full.querySelector('.relative').style.paddingLeft, '');
+});
+
+test('the lead stops the indent inheriting, or a label lands on the icon', () => {
+  // text-indent INHERITS, and the hanging indent puts a negative one on the
+  // block the lead is prepended into. Left to inherit it the lead's own
+  // contents were pulled a further 17px left, which with a label printed the
+  // word on top of the icon. Invisible on an icon-only turn, which is every
+  // turn but one, so it shipped looking correct.
+  const el = dense({ role: 'assistant', md: 'the end.', label: 'closing reply' });
+  const lead = el.querySelector('i.ph').parentElement;
+  assert.equal(lead.style.textIndent, '0px');
+  assert.ok(lead.textContent.includes('closing reply'), 'and the label is still in the lead');
+});
+
+test('a turn whose lead could not fold hangs nothing', () => {
+  // The standalone head is its own row, so there is no first line to pull out
+  // of and an indent would only push the whole body right for nothing.
+  const el = dense({ role: 'assistant', md: '```js\nconst x = 1;\n```\n\nafter.' });
+  assert.ok(standaloneHead(el), 'the fallback head is in play');
+  assert.equal(el.querySelector('.relative').style.paddingLeft, '');
+});
