@@ -637,25 +637,81 @@
     });
   }
 
+  // ── Handing the subject's MARK up: how the page names and pictures itself ─
+  //
+  // Whoever framed this render may have a tab of its own to fill, and the
+  // subject is what that tab is showing. show-repo's app view is the case: a
+  // page some repo promoted, framed through here, whose address is a
+  // destination rather than a preview.
+  //
+  // THE ICON GOES UP UNDIMMED and the dimming below stays local. That is the
+  // honest split rather than a convenience: a toss says it is a rendering of a
+  // page, a promoted view does not, and each surface should get to say its own
+  // thing about the same file.
+  //
+  // The TITLE rides the same channel because it answers the same question and
+  // is free to read: the subject renders same-origin in address mode, so its
+  // <title> is one property away. It is announced separately from the icon,
+  // which resolves later and then usually never changes again.
+  //
+  // The host list is the subject channel's, minus its `__fabHosted` gate,
+  // which this file is the one that sets. An address-mode render is
+  // same-origin so the parent is reachable; a payload toss is opaque and the
+  // access throws, which is the end of it. The event is constructed with the
+  // TARGET window's own CustomEvent, the way kits/subject-channel.js does it.
+  function markHosts() {
+    const out = [window];
+    try {
+      if (window.parent && window.parent !== window && window.parent.document)
+        out.push(window.parent);
+    } catch (e) { /* opaque origin: nothing to reach */ }
+    return out;
+  }
+  // Merged per host rather than replaced, so the title announced on load is
+  // still there when the icon lands seconds later.
+  function announceMark(patch) {
+    for (const w of markHosts()) {
+      try {
+        w.__tossSubjectMark = Object.assign(
+          { icon: null, title: '' }, w.__tossSubjectMark, patch);
+        w.dispatchEvent(new w.CustomEvent('toss-subject-mark'));
+      } catch (e) { /* cosmetic; never surface this */ }
+    }
+  }
+  function clearMark() {
+    for (const w of markHosts()) {
+      try {
+        w.__tossSubjectMark = null;
+        w.dispatchEvent(new w.CustomEvent('toss-subject-mark'));
+      } catch (e) {}
+    }
+  }
+
   // Watch the frame for its icon. gh-boot injects its default asynchronously
   // and a page may set its own later still, so sample on load and then keep
   // observing briefly, rather than reading once and accepting whatever was
   // there first.
   let cancelIconWatch = null;
   function adoptSubjectIcon(subject) {
-    let stopped = false, seen = '';
+    let stopped = false, seen = '', seenTitle = '';
     const apply = async () => {
       if (stopped) return;
       let doc;
       try { doc = frame.contentDocument; } catch (e) { return; }   // opaque origin
       if (!doc) return;
+      // The title first, and on its own: it is there from the first sample,
+      // where the icon may take a fetch and a canvas to arrive, and gating one
+      // on the other would hold the cheap fact behind the expensive one.
+      const t = (doc.title || '').trim();
+      if (t && t !== seenTitle) { seenTitle = t; announceMark({ title: t }); }
       const el = doc.querySelector('link[rel~="icon"]');
       const href = el && el.getAttribute('href');
       if (!href || href === seen) return;
       seen = href;
       try {
         const src = await iconDataUri(href, subject);
-        if (!src) return;
+        if (!src || stopped) return;
+        announceMark({ icon: src });
         const icon = await isCanonicalSubject(subject) ? src : await dimIcon(src);
         if (icon && !stopped) setFavicon(icon);
       } catch (e) { /* a favicon is cosmetic; never surface this */ }
@@ -709,6 +765,11 @@
     window.__tossFrame = s ? frame : null;
     if (cancelIconWatch) { cancelIconWatch(); cancelIconWatch = null; }
     setFavicon(baseIcon);
+    // The host's mark resets with ours. Without this, switching between two
+    // app views would leave the first one's icon and name on the shell's tab
+    // for as long as the second took to resolve, which reads as the wrong app
+    // being open rather than as one still loading.
+    clearMark();
     if (s) adoptSubjectIcon(s);
     window.dispatchEvent(new CustomEvent('toss-subject'));
   }
