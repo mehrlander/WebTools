@@ -76,6 +76,33 @@ export default async (page) => {
     const MEMBERS = ['mehrlander/web-tools', 'mehrlander/home', 'mehrlander/web-tools-private',
                      'mehrlander/budget-wa', 'mehrlander/fn-data', 'mehrlander/wps',
                      'mehrlander/shortcut-tools', 'mehrlander/doc-audit', 'mehrlander/surfacer'];
+    // Hours ago, per repo, for the commits the Branches rail draws. Uneven on
+    // purpose: a working day looks like a burst and a gap, not a metronome.
+    const COMMIT_HOURS = [
+      [0.4, 1.1, 1.4, 3, 6, 21, 44, 51, 96, 120],
+      [2, 2.3, 5, 9, 30, 74, 140],
+      [0.8, 4, 4.5, 11, 19, 26, 60, 88, 155],
+      [7, 33, 81, 129],
+      [1.7, 12, 18, 47, 108],
+      [23, 64, 151],
+      [3.5, 3.9, 16, 40, 92],
+      [10, 55, 133],
+      [0.6, 5.5, 28, 70, 118, 160],
+    ];
+    const SESS = (i) => 'https://claude.ai/code/session_01J' + (i + 20).toString(36).toUpperCase();
+    // [hours ago it was last active, minutes it ran, title state]. The live one
+    // leads: last active a few minutes ago, having started nine hours back.
+    const SESSION_HOURS = [
+      [0.1, 540, 'named'], [1.2, 46, 'named'], [2.6, 19, 'untitled'], [4, 71, 'named'],
+      [8, 25, 'named'], [13, 88, 'untitled'], [20, 34, 'named'], [27, 52, 'named'],
+      [35, 17, 'named'], [46, 63, 'old'], [59, 29, 'named'], [72, 41, 'old'],
+      [95, 22, 'named'], [118, 57, 'old'], [140, 36, 'named'], [161, 48, 'old'],
+    ];
+    const SESSION_TITLES = [
+      'Both spans on the state rail', 'Session titles beside the entity index',
+      'Read the session card as a log', 'One Growth tab with a corpus control',
+      'The nav re-reads after the crawl',
+    ];
     const realGet = window.GH.prototype.get;
     window.GH.prototype.get = async function (p) {
       if (!String(p).startsWith('state/')) return realGet.call(this, p);
@@ -104,7 +131,14 @@ export default async (page) => {
       const repos = {};
       MEMBERS.forEach((repo, i) => {
         repos[repo] = { config: { estate: true, group: 'core' }, fetchedAt: iso(2),
-                        hash: 'h' + i + ((i + v) % 3 === 0 ? v : 0) };
+                        hash: 'h' + i + ((i + v) % 3 === 0 ? v : 0),
+                        // What the two rails are drawn from. Spread over the
+                        // full week the wide rail shows, and denser inside the
+                        // last day, because that is the shape the pair exists
+                        // to make legible: an even scatter would photograph the
+                        // same on both rails and show nothing about either.
+                        recentCommits: COMMIT_HOURS[i % COMMIT_HOURS.length]
+                          .map((h, j) => ({ sha: 'c' + i + j + 'f9ab3', date: iso(h) })) };
       });
       // The sessions cache keys by store path and fingerprints on the record's
       // blob sha, so the row would diff against an empty map without its own
@@ -124,13 +158,35 @@ export default async (page) => {
       // into the file it is about to commit. Capped short of the window on
       // purpose, so the oldest rows show the honest absent case for a commit
       // that predates the ring.
+      // The sessions rows, which the Sessions rail and the titles row both
+      // read: `ended` is what the rail draws (a live session rewrites it every
+      // turn, so `started` would pin a working session to hours ago), and the
+      // title column is the export's, joined on. Three states, because the
+      // titles row counts them apart: a joined title, a session id with no
+      // title in this export, and a record too old to carry an id at all.
+      const rows = SESSION_HOURS.map(([h, mins, kind], i) => ({
+        id: (i + 16).toString(16) + 'a4b2c1',
+        repo: MEMBERS[i % MEMBERS.length],
+        started: iso(h + mins / 60), ended: iso(h), mins,
+        agent: kind === 'old' ? '' : SESS(i),
+        title: kind === 'named' ? SESSION_TITLES[i % SESSION_TITLES.length] : '',
+      }));
+
       let rt = +new Date(DATES['state/activity.json']);
       const runs = GAPS_H.slice(0, 6).map((g, i) => {
         rt -= g * 3600e3;
         return { at: new Date(rt - 4000).toISOString(),
                  ms: 9000 + i * 7400, checked: 9, changed: 2 + (i % 4), failed: i === 3 ? 1 : 0 };
       }).reverse();
-      return { text: JSON.stringify({ generatedAt: iso(2), repos, byPath, runs }, null, 2) };
+      return { text: JSON.stringify({
+        generatedAt: iso(2), repos, byPath, runs, rows,
+        // The export is a dated snapshot from another venue, so the row that
+        // reports it states the file's own date rather than the moment it was
+        // read. Two days back, which is a capture that has been missed once.
+        titlesAt: new Date(now - 2 * 86400e3).toISOString().slice(0, 10),
+        titlesFrom: 'claude-code-web/'
+          + new Date(now - 2 * 86400e3).toISOString().slice(0, 10) + '-sessions.csv',
+      }, null, 2) };
     };
 
     // Two of the three checked-stamps exist; sessions has none, so that row
