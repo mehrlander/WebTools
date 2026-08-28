@@ -882,7 +882,7 @@ test('a text flavor carries its own name as the key, and its bytes behind it', a
     data: { 'text/plain': 'the first a relative one someone', 'text/html': PAGE },
   }));
   const html = data.offers.find(o => data.flavorLabel(o) === 'html');
-  assert.equal(data.peekKey('flavor', html), html.name,
+  assert.equal(data.peekKey(html), html.name,
     'the key is the file name, so the card head says what it is without an address');
   assert.equal(peeks().get(html.name), PAGE,
     'and the bytes are handed over, so a key that is not an address never reaches the network');
@@ -891,30 +891,15 @@ test('a text flavor carries its own name as the key, and its bytes behind it', a
 test('an image carries no peek, since the card reads text', async () => {
   reset();
   await paste(fakeCd({ types: ['Files'], files: [fakeFile('image.png', 'image/png', 4096)] }));
-  assert.equal(data.peekKey('flavor', data.offers[0]), '');
+  assert.equal(data.peekKey(data.offers[0]), '');
   assert.equal(peeks().size, 0);
 });
 
-test('the conversion is seeded as source, not as the markdown its name implies', async () => {
-  reset();
-  stubTurndown();
-  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  const t = data.pasteMarkdown[0];
-  await data.mdFor(t.flavor);
-  const seeded = [];
-  window.SourcePeek = { seed: (k, text, kind) => seeded.push([k, kind]) };
-  data.seedPeeks();
-  assert.deepEqual(plain_(seeded.find(r => r[0] === t.dest)), [t.dest, 'source'],
-    'the card previews what the reader is about to see, and that opens raw');
-});
-
-// ---- the general case: markup to markdown ---------------------------------
+// ---- the pill's menu -------------------------------------------------------
 //
-// The links pill is a REDUCTION of one thing markup carries; this is what is
-// behind it. The conversion itself is Turndown's and is asserted in the browser
-// (tools/render/scenarios/stage-flavor-bar.mjs); what these hold is the part
-// this component owns: which flavors qualify, what the result is called, and
-// that nothing is fetched or converted until somebody asks.
+// The pill is the SUBJECT and its menu the verbs. Markdown had a pill of its own
+// for a day, which put a derivation beside the formats it is made from and could
+// hold only the one conversion anybody had asked for.
 
 const stubTurndown = () => {
   const seen = [];
@@ -927,43 +912,112 @@ const stubTurndown = () => {
   return seen;
 };
 
-test('only markup offers a markdown conversion', async () => {
+const ids = (fl) => plain_(data.flavorActions(fl).map(a => a.id));
+const flavor = (label) => data.offers.find(o => data.flavorLabel(o) === label);
+
+test('a text flavor offers copy and base64; markup adds markdown', async () => {
   reset();
   await paste(fakeCd({
     types: ['text/plain', 'text/html'],
     data: { 'text/plain': 'plain words here', 'text/html': PAGE },
   }));
-  assert.deepEqual(plain_(data.pasteMarkdown.map(t => t.from)), ['html'],
-    'plain text is already what it is, so converting it is not an offer');
-  assert.match(data.pasteMarkdown[0].dest, /-markdown\.md$/);
+  assert.deepEqual(ids(flavor('txt')), ['copy', 'base64'],
+    'text is already what it is, so converting it to markdown is not an offer');
+  assert.deepEqual(ids(flavor('html')), ['copy', 'markdown', 'base64']);
 });
 
-test('nothing is loaded or converted until the pill is tapped', async () => {
+test('an image offers only base64, which is the one thing bytes can answer', async () => {
   reset();
-  delete window.TurndownService;
-  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  assert.equal(data.pasteMarkdown.length, 1, 'the pill draws from the flavor alone');
-  assert.equal(data._mdText, null, 'and 31 KB is not fetched to label it');
+  await paste(fakeCd({ types: ['Files'], files: [fakeFile('image.png', 'image/png', 4096)] }));
+  assert.deepEqual(ids(data.offers[0]), ['base64']);
 });
 
-test('the pill converts once and stages the result under its own name', async () => {
+test('base64 is offered back only where it decodes to text', async () => {
+  reset();
+  const b64 = window.btoa('a document that was encoded on the way here');
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': b64 } }));
+  assert.ok(ids(data.offers[0]).includes('unbase64'),
+    'looksBase64 runs the decode it is deciding about, so the item always works');
+});
+
+test('prose is not base64, however long it runs', () => {
+  const IN = window.StageIntake;
+  assert.equal(IN.looksBase64('deadbeef'), false, 'under the floor, and a hex word qualifies on arithmetic alone');
+  assert.equal(IN.looksBase64('one, two, three and a fourth thing'), false, 'the alphabet rules out spaces');
+  assert.equal(IN.looksBase64('QUJDRA'), false, 'a length that is not a multiple of four is not padded base64');
+  assert.equal(IN.looksBase64(window.btoa('sixteen or more characters here')), true);
+});
+
+test('base64 round-trips text past the byte range btoa refuses', () => {
+  const IN = window.StageIntake;
+  const text = 'a smart quote \u2019 and an accent \u00e9';
+  const b64 = IN.b64OfText(text);
+  assert.equal(IN.fromBase64(b64), text,
+    'btoa alone throws on either of those, which is what the utf-8 sandwich is for');
+});
+
+test('to base64 stages a .txt named for its flavor, and back again sniffs what it was', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  const html = data.offers[0];
+  await data.runAction(html, { id: 'base64', label: 'To base64' });
+  await tick(3);
+  const enc = data.localItems.find(it => /-base64\.txt$/.test(it.name));
+  assert.ok(enc, 'named for its source, so the pair reads as a pair');
+  assert.equal(window.atob(enc.text), window.btoa ? window.atob(window.StageIntake.b64OfText(PAGE)) : '',
+    'and it is the flavor, encoded');
+
+  // Now the inverse, from a paste of that encoding.
+  reset();
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': enc.text } }));
+  await data.runAction(data.offers[0], { id: 'unbase64', label: 'From base64' });
+  await tick(3);
+  const dec = data.localItems.find(it => /-decoded\./.test(it.name));
+  assert.ok(dec, 'the decode lands');
+  assert.equal(dec.text, PAGE);
+  assert.match(dec.name, /-decoded\.xml$/,
+    'named by what the bytes turned out to be, not by the .txt they arrived as. A bare '
+    + 'fragment sniffs as xml rather than html, which wants a doctype or an <html>; both '
+    + 'are markup, so the markdown action is offered either way');
+});
+
+test('copy hands the flavor to the house clipboard helper, and says which', async () => {
+  reset();
+  const copied = [];
+  const said = [];
+  const realToast = Alpine.store('toast');
+  const realIo = window.io;
+  window.io = { copy: async (t) => { copied.push(t); return true; } };
+  Alpine.store('toast', (kind, msg) => said.push(msg));
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  await data.runAction(data.offers[0], { id: 'copy', label: 'Copy' });
+  assert.deepEqual(plain_(copied), [PAGE]);
+  assert.match(said[0] || '', /^Copied .*\.html$/);
+  assert.equal(data.localItems.length, 1, 'copying stages nothing: it is the one verb with no file');
+  window.io = realIo;
+  Alpine.store('toast', realToast);
+});
+
+test('the markdown action converts once and stages the result under its own name', async () => {
   reset();
   const opts = stubTurndown();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  const t = data.pasteMarkdown[0];
-  assert.equal(data.peekKey('md', t), '',
-    'no peek until the conversion exists, since a key with nothing behind it is an error card');
-  data.primeMd(t);
+  const html = data.offers[0];
+  await data.runAction(html, { id: 'markdown', label: 'To markdown' });
   await tick(3);
-  assert.equal(data.peekKey('md', t), t.dest, 'and the key appears when it lands');
-  assert.match(peeks().get(t.dest), /^MD</);
-  await data.stageMd(t);
-  await tick(3);
-  assert.equal(opts.length, 1, 'peeking then staging is the ordinary sequence, so it converts once');
+  assert.equal(opts.length, 1);
   assert.equal(opts[0].headingStyle, 'atx');
-  const made = data.localItems.find(it => it.name === t.dest);
-  assert.ok(made, 'staged under the name the pill named');
+  const made = data.localItems.find(it => /-markdown\.md$/.test(it.name));
+  assert.ok(made, 'staged under the name derivedName mints');
   assert.ok(data.reader, 'and the reader opens on it');
+});
+
+test('nothing is loaded or converted until the action is chosen', async () => {
+  reset();
+  delete window.TurndownService;
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  assert.ok(ids(data.offers[0]).includes('markdown'), 'the menu draws from the flavor alone');
+  assert.equal(data._mdText, null, 'and 31 KB is not fetched to fill it in');
 });
 
 test('a converter that will not load is reported, not swallowed', async () => {
@@ -975,14 +1029,13 @@ test('a converter that will not load is reported, not swallowed', async () => {
   Alpine.store('toast', (kind, msg) => said.push(msg));
   // A load that resolves without the global arriving, which is what a blocked
   // host or a bad pin actually looks like: the script tag settles and the
-  // window is still missing what it was fetched for. mdOf's own guard is what
-  // has to catch that, since a converter it cannot see would otherwise throw
-  // deeper and less legibly.
+  // window is still missing what it was fetched for. mdOf's own guard catches
+  // that, and runAction turns it into the menu item's name plus the reason.
   data.loadMarkdownDeps = async () => {};
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  await data.stageMd(data.pasteMarkdown[0]);
+  await data.runAction(data.offers[0], { id: 'markdown', label: 'To markdown' });
   assert.equal(data.localItems.length, 1, 'nothing half-made is staged');
-  assert.match(said[0] || '', /^Markdown: the markdown converter is not loaded/);
+  assert.match(said[0] || '', /^To markdown: the markdown converter is not loaded/);
   assert.equal(data.mdBusy, false, 'and the pill stops spinning');
   data.loadMarkdownDeps = realDeps;
   Alpine.store('toast', realToast);
@@ -992,7 +1045,7 @@ test('a new paste drops the conversions the old one made', async () => {
   reset();
   stubTurndown();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  await data.mdFor(data.pasteMarkdown[0].flavor);
+  await data.mdFor(data.offers[0]);
   assert.ok(data._mdText.size);
   data.offers = [];
   assert.equal(data._mdText, null, 'a conversion is a reading of a paste that is gone');
@@ -1011,7 +1064,7 @@ test('a ref is never a source, since it has no text until it is fetched', () => 
   reset();
   IN().take({ text: 'me/a:docs/page.html', size: 18 });
   assert.equal(data.refItems.length, 1);
-  assert.deepEqual(plain_(data.pasteMarkdown), []);
+  assert.deepEqual(plain_(data.offers), [], 'a ref line stages refs and carries no flavor bar');
 });
 
 test('prose with a stray tab is not a grid', async () => {

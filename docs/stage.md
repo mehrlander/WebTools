@@ -75,64 +75,68 @@ one case. Nothing in the kit had to change. `data-peek` carries the pasted
 file's own name, `seed()` puts the bytes in its cache, and a key that is not an
 address never reaches the fetch, since the cache hit comes first; the card's
 head falls back to showing the key as the path, which is the file name wanted
-here. The extension decides the rendition, so a `-links.md` peek renders as the
-tappable list it will become and an `.html` flavor shows as source.
+here. The extension decides the rendition, so an `.html` flavor
+shows as source and a `.md` one renders. An **image** carries no peek, since
+this card reads text; its menu is the whole of what it offers.
 
-Two pills carry no peek. An **image**, since this card reads text. And the
-**markdown** pill until its conversion exists, because a key with nothing behind
-it draws an error card: a hover starts the conversion and the card comes with
-the next one.
+**Each pill carries a menu of what can be done with its flavor.** The pill is
+the subject and the menu is the verbs: **Copy**, **To markdown** on markup, **To
+base64**, and **From base64** where the text decodes. The tap still stages and
+unstages, which is what is wanted most and the one thing that should not cost a
+menu.
 
-**Two derivations ride the bar, and both land as markdown.** A copy off a web
-page splits across the same two flavors and the split is unhelpful in both
-directions: `text/plain` carries every link's label and not one of its
-addresses, and `text/html` carries the addresses inside markup nobody wants to
-read. Both were stageable and neither answered "just give me the links", which
-is a common thing to want and took several steps to get.
+Conversions had a pill of their own for a day, which put a derivation beside the
+formats it is made from and could hold only the one anybody had asked for; the
+row would have grown by a pill per verb. The shape before that was a links
+extractor, as a csv and then as a markdown list, and it is gone entirely:
+converting the markup carries every link as `[text](url)` already, in its own
+context, so the reduction was a second reader of html earning its keep by being
+shorter. What is lost is that reduction, a bare list with the prose stripped
+out.
 
-The pills are `<n> links` and `markdown`, dashed and un-monospaced so they do
-not read as a fourth format, drawn only where there is something in them, each
-carrying the flavor bar's own eye. The shape took three tries in a day: a
-coloured row of its own read as clutter over one paste, then a `⋯` menu, which
-is an option nobody reaches for because finding out it exists costs a tap.
+**Copy is the reason the menu exists at all.** The stage is where a paste lands,
+so the cheapest way to change what is on the clipboard is to take a flavor back
+out of it: copy the html of a copy that only gave you text, or copy the markdown
+of a page. It goes through `window.io.copy`, which owns the focus wait, the
+insecure-context fallback and the legacy DOM path, rather than
+`navigator.clipboard` directly.
 
-**The links were a `.csv` for a day, and that was the wrong reading of the
-errand.** A csv opens as a filterable table and `transformKindOf` calls it rows,
-which is reasoning from the machinery; what a csv is not is a thing you can copy
-out and paste somewhere, and copying out is the whole job. Markdown renders the
-same links as a tappable list (`READ_MODE` sends `.md` to preview), its raw mode
-is `- [text](url)` lines, and unlike the csv it generalizes: markdown is what
-ANY markup is worth converting into, which is what the second pill is.
-
-`StageIntake.linksOf(text, name)` is keyed on the name the intake already chose,
-for the reason `transformKindOf` is. Markup (`.html`, `.xml`) goes through
-`DOMParser` and `a[href]`; the other two text kinds (`.md`, `.txt`) are scanned
-for markdown links, angle autolinks, and bare addresses, with the markdown spans
-blanked first so one link is one row. `.csv` and `.js` are not sources: the
-first is the transform chip's, and a URL in a comment is not a link anybody
-asked for. An in-page `#anchor` and a `javascript:` handler are dropped,
-`mailto:` is kept, and one address appears once however often the page repeats
-it, first label winning, since a masthead included in the copy is not forty
-findings. A relative href stays relative: a paste carries the markup and not the
-page it came off, so there is no base to resolve against and inventing an origin
-would be a guess presented as a fact.
+**Base64 runs both ways, and the strictness is the interesting half.**
+`b64OfText` is the escape/encodeURIComponent sandwich, since `btoa` is a byte
+encoder and throws on the first smart quote; `b64OfBytes` is the chunked one, for
+a pasted screenshot, which is the case base64 exists for and the only action a
+byte flavor can answer. Coming back, `looksBase64` requires the alphabet
+(url-safe accepted), a length that is a multiple of four, at least 16 characters,
+and **an actual decode that yields text**: it calls `fromBase64` and reads its
+null, so the test and the conversion cannot disagree about what valid means and
+an offered item always produces something. A `data:...;base64,` URI is
+deliberately not recognized, since its payload is almost always an image and
+decoding it means staging bytes under a sniffed media type, which is a different
+intake.
 
 **The conversion is Turndown's, and the host loads it**, the same contract the
 transform workbench states: `StageIntake.mdOf` owns the options and the GFM
 plugin (which is what turns a pasted web-page TABLE into a table rather than a
 run of cells) and throws rather than fetching, since a lazy fetch inside a tap
 spends the gesture and then reports the loss as something else. Two files and
-31 KB, fetched the first time somebody asks for markdown and never on a paste
-where nobody does, which is also why the pill carries no size: knowing it would
-mean converting every paste to label a pill nobody may tap. Both derivations are
-named for their source (`2026-08-28-paste.html` gives `-links.md` and
-`-markdown.md`), and the tag is never dropped even where `-markdown.md` looks
-redundant, since a plain-text paste opening with a heading is already named
-`.md` by `nameForText`.
+31 KB, fetched the first time somebody chooses the item and never on a paste
+where nobody does.
+
+**And the markdown opens raw**, where every other `.md` in the app renders.
+`READ_MODE`'s rule is right for a document, whose question is what it SAYS; a
+conversion is a **payload**, and its question is what it IS, since the reason to
+make one is to copy the text somewhere else. Rendering it puts a mode switch
+between the reader and the thing they asked for, and strips the `[text](url)`
+that was the point. The override is `StageIntake.opensRaw`, keyed on the name
+`derivedName` mints, which is a closed loop: the intake is the only producer of
+that suffix and the stage's own reader the only consumer. Every derivation is
+named for its flavor (`-markdown.md`, `-base64.txt`, `-decoded.<sniffed>`), and
+the decode is named by what its bytes turned out to be rather than by the `.txt`
+they arrived as, which is what split `extForText` out of `nameForText`.
 
 Scoped to the paste's flavors, since the bar is about the paste. A staged file
-that arrived some other way keeps its route through the reader's header, which
-offers the same two.
+that arrived some other way keeps its markdown route through the reader's
+header.
 
 **The stage is also the transform workbench's door.** The workbench
 (`lib/alpineComponents/transform-workbench.js`) has shipped inside show-repo

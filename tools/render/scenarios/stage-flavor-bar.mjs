@@ -2,9 +2,9 @@
 // A copy off a page splits across two clipboard flavors: text/plain holds every
 // link's LABEL and not one of its addresses, text/html holds the addresses
 // inside markup nobody wants to read. The bar names both, ticks the one the
-// stage took, offers the whole-page conversion as a pill beside them, and
-// hovering any pill shows what is inside it, which is the only way to tell two
-// flavors apart before staging one.
+// stage took, and hovering any pill shows what is inside it, which is the only
+// way to tell two flavors apart before staging one. Each pill's ⋯ carries what
+// can be DONE with that flavor: copy it, convert it, encode or decode it.
 //
 //   npm run shot -- app/index.html --query "view=stage" \
 //     --script tools/render/scenarios/stage-flavor-bar.mjs --width 390
@@ -38,31 +38,26 @@ export default async (page) => {
     });
   });
   await page.waitForTimeout(600);
-  // The conversion's own peek, opened by a real hover. The card is the house one
-  // (kits/source-peek.js), so this shoots the kit's own placement and dwell
-  // rather than anything this view draws: 320 ms before it opens, left-aligned
-  // to the pill, flipped above when it does not fit below. The markdown pill
-  // rather than a flavor, for two reasons: its key appears only once the
-  // conversion exists, and it is the lowest pill, so the card lands over the
-  // staged list instead of over the pills this shot is also about.
-  await page.evaluate(async () => {
-    const el = document.querySelector('[x-data*="stager"]');
-    const d = window.Alpine.$data(el);
-    await d.mdFor(d.pasteMarkdown[0].flavor);
-  });
-  await page.waitForTimeout(400);
-  const pill = await page.evaluateHandle(() => {
+  // The html pill's menu, held open on the flavor that carries the most verbs.
+  // The menu is the subject of this shot; the peek below it is the kit's and is
+  // measured rather than drawn.
+  await page.evaluate(() => {
     const root = document.querySelector('[x-data*="stager"]');
-    return [...root.querySelectorAll('[data-peek]')].find(b => /markdown/.test(b.textContent));
+    const trigger = [...root.querySelectorAll('.dropdown button[tabindex]')]
+      .find(b => /html/.test(b.closest('.badge').textContent));
+    trigger.focus();
   });
-  await pill.asElement().hover();
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(500);
+
   const box = await page.evaluate(() => {
-    const c = document.getElementById('wt-source-peek');
-    if (!c || c.style.display === 'none') return null;
-    const r = c.getBoundingClientRect();
-    return [Math.round(r.left), Math.round(r.right), Math.round(r.top)];
+    // The OPEN one: a closed dropdown-content still answers with a zero rect,
+    // which reads as "on screen" and measures nothing.
+    const m = [...document.querySelectorAll('.dropdown-content')]
+      .find(el => el.getBoundingClientRect().height > 0);
+    if (!m) return [0, 0];
+    const r = m.getBoundingClientRect();
+    return [Math.round(r.left), Math.round(r.right)];
   });
-  console.log('peek card ' + JSON.stringify(box)
-    + (box && box[0] >= 0 && box[1] <= 390 ? ' on screen' : ' OFF-SCREEN or closed'));
+  console.log('menu box ' + JSON.stringify(box)
+    + (box[0] >= 0 && box[1] <= 390 ? ' on screen' : ' OFF-SCREEN'));
 };
