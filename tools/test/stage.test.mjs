@@ -891,6 +891,23 @@ test('a text flavor carries its own name as the key, and its bytes behind it', a
     'and the bytes are handed over, so a key that is not an address never reaches the network');
 });
 
+test('a conversion previews as source, not as the markdown its name implies', async () => {
+  reset();
+  stubTurndown();
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  await data.runAction(data.offers.find(o => data.flavorLabel(o) === 'html'),
+                       { id: 'markdown', label: 'Markdown' });
+  await tick(3);
+  const seeded = [];
+  window.SourcePeek = { seed: (k, text, kind) => seeded.push([k, kind]) };
+  data.seedPeeks();
+  const md = seeded.find(r => /-markdown\.md$/.test(r[0]));
+  assert.deepEqual(plain_(md && md[1]), 'source',
+    'the card previews what the reader is about to see, and a conversion opens raw');
+  assert.equal(seeded.find(r => /-paste\.html$/.test(r[0]))[1], undefined,
+    'a flavor the clipboard carried keeps the rendition its extension picks');
+});
+
 test('an image carries no peek, since the card reads text', async () => {
   reset();
   await paste(fakeCd({ types: ['Files'], files: [fakeFile('image.png', 'image/png', 4096)] }));

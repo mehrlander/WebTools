@@ -24,6 +24,18 @@ run('lib/kits/repo-address.js');   // the address grammar source-peek reads with
 run('lib/kits/source-peek.js');
 const SP = window.SourcePeek;
 
+test('a seeder can state the rendition the extension would not', () => {
+  // The stage converts markup to markdown and opens the result RAW, because a
+  // conversion is a payload to copy rather than a document to read. Without
+  // this the card would render what the reader is about to see as source.
+  const md = '# Head\n\n- [one](https://x/y)\n';
+  assert.equal(SP.body('x-markdown.md', md).kind, 'markdown',
+    'the extension still decides when nothing overrides it');
+  assert.equal(SP.body('x-markdown.md', md, 'source').kind, 'source');
+  assert.match(SP.body('x-markdown.md', md, 'source').text, /^# Head/,
+    'and source is the text as written, with no frontmatter fencing');
+});
+
 test('the rendition is chosen by extension, and code is the default', () => {
   assert.equal(SP.kindOf('docs/CONVENTIONS.md'), 'markdown');
   assert.equal(SP.kindOf('README.markdown'), 'markdown');

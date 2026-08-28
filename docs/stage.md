@@ -76,8 +76,9 @@ file's own name, `seed()` puts the bytes in its cache, and a key that is not an
 address never reaches the fetch, since the cache hit comes first; the card's
 head falls back to showing the key as the path, which is the file name wanted
 here. The extension decides the rendition, so an `.html` flavor
-shows as source and a `.md` one renders. An **image** carries no peek, since
-this card reads text; its menu is the whole of what it offers.
+shows as source and a `.md` one renders, unless the seeder overrules it (below).
+An **image** carries no peek, since this card reads text; its menu is the whole
+of what it offers.
 
 **Each pill carries a menu of what can be done with its flavor.** The pill is
 the subject and the menu is the verbs: **Copy**, **Markdown** on markup,
@@ -94,7 +95,10 @@ which is also what makes a conversion composable: the markdown that just landed
 carries its own Copy and its own Base64, so a second step is a tap rather than a
 trip through the staged list. A derived pill is labelled by the **tag** that made
 it rather than by its extension, since `md` says nothing next to a paste that
-sniffed `.md` and a decode can land on any extension at all.
+sniffed `.md` and a decode can land on any extension at all. It is also
+**dashed**, and stays dashed once it is staged: the border says where the thing
+came from, which does not change, while the tick says whether it is on the
+stage, which does.
 
 Conversions had a pill of their own for a day, which put a derivation beside the
 formats it is made from and could hold only the one anybody had asked for; the
@@ -150,6 +154,13 @@ between the reader and the thing they asked for, and strips the `[text](url)`
 that was the point. The override is `StageIntake.opensRaw`, keyed on the name
 `derivedName` mints, which is a closed loop: the intake is the only producer of
 that suffix and the stage's own reader the only consumer.
+
+**The card has to agree with the reader**, or a hover previews a different thing
+than the tap opens, so `seedPeeks` passes `'source'` for exactly the names
+`opensRaw` claims. That is the second widening the kit absorbed without changing:
+`seed(addr, text, kind)` lets a seeder that MADE the bytes state a rendition the
+name cannot say, and omitting it leaves the extension deciding as it always
+has.
 
 Every derivation is named for its flavor (`-markdown.md`, `-base64.txt`,
 `-decoded.<sniffed>`), and the decode is named by what its bytes turned out to be

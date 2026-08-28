@@ -50,6 +50,19 @@ export default async (page) => {
     await d.runAction(html, { id: 'markdown', label: 'Markdown' });
   });
   await page.waitForTimeout(600);
+  // The conversion's own peek, opened by a real hover. What has to be on screen
+  // is that it previews as SOURCE: the card renders a `.md` by extension, and a
+  // conversion opens raw, so seedPeeks overrides the rendition to match.
+  const pill = await page.evaluateHandle(() => {
+    const root = document.querySelector('[x-data*="stager"]');
+    const b = [...root.querySelectorAll('[data-peek]')]
+      .find(x => /markdown/.test(x.textContent));
+    if (!b) throw new Error('no markdown pill: the conversion did not land');
+    return b;
+  });
+  await pill.asElement().hover();
+  await page.waitForTimeout(900);
+
   // What the bar became, as facts rather than as pixels: the derived pill is
   // there, it is ticked, and the reader stayed shut.
   const state = await page.evaluate(() => {
