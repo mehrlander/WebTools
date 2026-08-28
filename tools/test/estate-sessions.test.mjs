@@ -444,13 +444,15 @@ test('a record with no replies says its text is a tail, rather than passing it o
   // 52 of the 224 records on file are schema 1 to 3, which never held the
   // assistant's prose: last_message is the recorder's 500-character tail of the
   // final turn. Same field, lower fidelity, and the LABEL is what says so,
-  // since the prose itself cannot.
+  // since the prose itself cannot. It names the FIDELITY only: dense mode keeps
+  // the role's icon beside the label and the indent under it, so a label
+  // carrying "Assistant · " too would say the role twice on one turn.
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 2, last_message: 'the tail of the last turn' }), 'x');
   assert.equal(row.replyCut, 'tail');
   const c = replyCard(row);
   assert.equal(c.turns.at(-1).md, 'the tail of the last turn');
-  assert.equal(c.turns.at(-1).label, 'Assistant · final turn, tail only');
+  assert.equal(c.turns.at(-1).label, 'final turn, tail only');
   assert.equal(c.turns.at(-1).ts, '', 'and no clock, because a schema-3 record kept none');
 });
 
@@ -462,8 +464,8 @@ test('the closing reply reaches the card whole, and claims no trim', () => {
   assert.equal(row.reply.length, 2000, 'byte for byte');
   const c = replyCard(row);
   assert.equal(c.label, 'closing reply', 'no "trimmed": nothing was');
-  assert.equal(c.turns.at(-1).label, 'Assistant · closing reply');
-  assert.ok(!c.turns.at(-1).dropped, 'and no note under it; the mount draws one off this');
+  assert.equal(c.turns.at(-1).label, 'closing reply');
+  assert.ok(!c.turns.at(-1).dropped, 'and no chip on its last line; the renderer draws one off this');
 });
 
 test('a row built by an older pass says so, rather than reading as current', () => {
