@@ -531,7 +531,24 @@ test('the two absences draw apart on the row, in the histogram\'s own symbols', 
   const V = window.RepoSessionsCache.ROW_V;
   assert.equal(data.sessionStateMark(statesRow([['ready', 'x', '1']])), '🟢');
   assert.equal(data.sessionStateMark(statesRow([])), '–', 'closed in no state');
-  assert.equal(data.sessionStateMark(statesRow([], { v: V - 1 })), '?', 'not read yet');
+  assert.equal(data.sessionStateMark(statesRow([], { v: V - 1 })), '◌', 'not read yet');
+  // ◌ rather than ?, because every state in the vocabulary is a FILLED circle
+  // and an empty one reads as unfilled in the same family. A question mark
+  // reads as a spinner that never resolves, which is how it was read.
+});
+
+test('a spinner only while a crawl is actually running', () => {
+  const V = window.RepoSessionsCache.ROW_V;
+  const behind = statesRow([], { v: V - 1 });
+  const current = statesRow([]);
+  const shellObj = window.__shell;
+  shellObj.sessionsRefreshing = false;
+  assert.equal(data.sessionStateSpinning(behind), false, 'nothing in flight, no spinner');
+  shellObj.sessionsRefreshing = true;
+  assert.equal(data.sessionStateSpinning(behind), true, 'a pass is reading the store');
+  assert.equal(data.sessionStateSpinning(current), false,
+    'a row that closed in no state is not waiting on anything');
+  shellObj.sessionsRefreshing = false;
 });
 
 test('a cut sequence says so in its own words, not the reply card\'s', () => {
