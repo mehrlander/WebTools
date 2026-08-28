@@ -138,11 +138,10 @@ test('a stream owns a colour, and the pair is locked', () => {
     // /60, which the estate already used, resolved. A tick nobody can see is
     // the failure this catches, and it looks identical to a quiet day.
     assert.ok(/\/(10|20|30|60|70)$/.test(t.tick), `${t.tick}: use a step the app generates`);
-    assert.ok(/\/(10|20|30|60|70)$/.test(t.band), `${t.band}: use a step the app generates`);
     // NOT GREEN. On this view green means one verb, bring this up to date, and
     // lives on the Refresh controls alone; spending it on a reading would spend
     // the one colour here that still carries meaning.
-    assert.doesNotMatch(t.tick + t.mark + t.band, /success/, 'green means refresh, and only that');
+    assert.doesNotMatch(t.tick + t.mark, /success/, 'green means refresh, and only that');
   }
 });
 
@@ -280,13 +279,28 @@ test('a day is said in hours, a week in days', () => {
   assert.equal(data.spanLabel(168), '7d');
 });
 
-test('the zoom band is the narrow rail\'s share of the wide one', () => {
-  // The band is what makes the pair one reading rather than two strips: it
-  // marks the stretch of the 7d rail that the 24h rail below it expands.
-  // Derived from the spans themselves, so a third span could not leave a
-  // hardcoded seventh behind to be wrong.
-  assert.ok(Math.abs(data.zoomPct(168) - 24 / 168 * 100) < 1e-9, 'a day is a seventh of a week');
-  assert.equal(data.zoomPct(24), 0, 'the narrowest rail zooms nothing, so it draws no band');
+test('the rails are tied by the calendar, not by a second fill', () => {
+  // The pair shipped with a tinted band marking the slice the 24h rail expands.
+  // It went on 2026-08-28: drawn in the stream's colour it shouted on Sessions
+  // (magenta) and vanished on Branches (blue on blue marks), and it put a
+  // second fill in the channel the workday band owns.
+  //
+  // What replaced it is the calendar both rails already carry, so the check is
+  // that they carry the SAME one: the day capsules are what a reader lines up.
+  const week = data.daySpans(168), day = data.daySpans(24);
+  assert.ok(week.length > day.length, 'the week holds more days, at the same grain');
+  assert.equal(week[0].letter, day[0].letter, 'and today is today on both');
+  assert.equal(week[0].k, 0);
+  // One fill in the fill channel, and it is the workday.
+  const src = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'state-view.js'), 'utf8');
+  const tmpl = src.slice(src.indexOf('const TICKS ='), src.indexOf('// THE CARD for the tick'));
+  // The rail box alone: the lane below it draws capsules the same way, and they
+  // are a different channel, which is the whole point of putting them there.
+  const rail = tmpl.slice(0, tmpl.indexOf('THE DAY LANE'));
+  assert.equal([...rail.matchAll(/absolute inset-y-0/g)].length, 1,
+    'exactly one full-height fill behind the marks, and it is the workday');
+  assert.match(rail, /workSpans\(s\)/, 'that one');
+  assert.doesNotMatch(tmpl, /zoomPct/, 'and no band left to draw');
 });
 
 // ── The tick under the pointer ─────────────────────────────────────────────
