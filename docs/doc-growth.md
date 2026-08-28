@@ -110,11 +110,14 @@ instrument over several subjects. A page a repo owns is a destination and
 belongs in the nav. A page pointed at a repo is a lens, and its subject belongs
 on a control.
 
-One thing the move sidesteps rather than fixes: **slug uniqueness is not
-enforced across repos.** A collision resolves to whichever entry sorts first
-rather than erroring, which is why the two promotions had to be named
-`doc-growth` and `home-growth` in the first place. That is still true of every
-other promoted page.
+The move also closed the trap that made the two promotions awkward in the first
+place. **A slug is an estate-wide address** (`?app=<slug>` resolves against the
+collected app views) declared per repo, and nothing enforced uniqueness: both
+promotions were first written as `doc-growth`, and the collision resolved to
+whichever sorted first rather than erroring. It was caught by hand and worked
+around by renaming one side to `home-growth`. `manifest-registry.test.mjs` now
+reads every manifest on disk and rejects a shared slug, which is the whole fix
+at this size, since a collision is a fact about that corpus.
 
 ## In the Map view
 

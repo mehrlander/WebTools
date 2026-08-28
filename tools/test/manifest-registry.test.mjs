@@ -140,3 +140,34 @@ test('a manifest value matches its declared type', () => {
   }
   assert.deepEqual(wrong, [], 'a manifest value disagrees with its registry row');
 });
+
+// A slug is an ADDRESS: ?app=<slug> resolves against the collected app views
+// across every repo, so the namespace is estate-wide even though each repo
+// declares into it alone. Nothing enforced that. Two repos gave the same page
+// the slug `doc-growth` on 2026-08-26 and the collision did not error; it
+// resolved to whichever entry sorted first, and was found by hand and worked
+// around by renaming one side. The estate is small enough that this check is
+// the whole fix: a collision is a fact about the corpus of manifests on disk,
+// which is exactly what this file already reads.
+//
+// Scoped to promoted pages, since a slug is inert without appView:true and a
+// repo parking one on an unpromoted entry is declaring an intention, not an
+// address.
+test('no two repos claim the same app-view slug', () => {
+  const claims = new Map();
+  for (const [repo, m] of manifests()) {
+    if (m.__unparsable) continue;
+    for (const pg of m.pages || []) {
+      if (!pg || pg.appView !== true) continue;
+      const slug = typeof pg.slug === 'string' ? pg.slug.trim() : '';
+      if (!slug) continue;
+      if (!claims.has(slug)) claims.set(slug, []);
+      claims.get(slug).push(`${repo}:${pg.path}`);
+    }
+  }
+  const collided = [...claims].filter(([, who]) => who.length > 1)
+    .map(([slug, who]) => `${slug} claimed by ${who.join(' and ')}`);
+  assert.deepEqual(collided, [],
+    'two promoted pages share one slug; ?app=<slug> resolves to whichever sorts ' +
+    'first rather than erroring, so rename one side');
+});
