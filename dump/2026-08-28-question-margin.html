@@ -4,20 +4,22 @@
 <title>The question each paragraph answers</title>
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/alpinejs@3/dist/cdn.min.js" defer></script>
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
-<script>window.R = {"at": "2026-08-27T02:50:09Z", "chars": 3012, "rows": [{"q": "Did the back-out and the merge both happen?", "flag": false, "html": "Backed out and merged."}, {"q": "Is Ask Grok gone everywhere it was?", "flag": false, "html": "<strong>Ask Grok is gone in both places.</strong> The chain, its README row and both mirrors are off the branch; <code class=\"bg-base-200 px-1 rounded\">main</code> has no file with &quot;grok&quot; in it. web-tools <u>#522</u> is closed unmerged with a comment saying why, and unsubscribed, since the whole PR was the row that called it. <code class=\"bg-base-200 px-1 rounded\">pages/dictate.html</code> on <code class=\"bg-base-200 px-1 rounded\">main</code> is untouched."}, {"q": "Did anything from that work survive?", "flag": false, "html": "One thing survives, and it is not the shortcut. I kept a short section in <code class=\"bg-base-200 px-1 rounded\">docs/shortcuts-format-notes.md</code> on why this one could not have been built blind: <code class=\"bg-base-200 px-1 rounded\">AskGrok</code> appears in no shortcut of the 605-name corpus, so its parameter names, whether <code class=\"bg-base-200 px-1 rounded\">ShowWhenRun: false</code> suppresses the app or the result, and whether it returns output at all were guesses dressed as a build, and neither the corpus nor the ToolKit catalog could check them (the catalog carries Apple&#x27;s metadata, not a third party&#x27;s). That is two paragraphs, and it exists so the next session reaches for a card configured in the app and read back out of a dump rather than assembling another one from inference. Say the word if you would rather it went too."}, {"q": "What went into the merge?", "flag": false, "html": "<strong>Merged.</strong> <u>#22</u> landed as <u>5d2f5f3</u> on <code class=\"bg-base-200 px-1 rounded\">main</code>: <code class=\"bg-base-200 px-1 rounded\">Back-DoubleTap</code> recovered into the repo at 59 actions, three dead by-name targets resolved from the corpus, the <code class=\"bg-base-200 px-1 rounded\">Get-FileInfo</code> list-shape bug fixed, the Show Web View sheet measured, and <code class=\"bg-base-200 px-1 rounded\">sketch.py</code>&#x27;s attachment-ordering bug fixed with a test. Preflight was clean, 221 tests pass, both mirrors verified current, and there are no CI checks on this repo to wait for."}, {"q": "Does --publish remove a mirror whose chain is gone?", "flag": true, "html": "One thing I noticed while pruning and did not fix: neither <code class=\"bg-base-200 px-1 rounded\">pack.py --publish</code> nor <code class=\"bg-base-200 px-1 rounded\">plist.py --publish</code> removes a mirror whose chain is gone, and the suite only checks the other direction, so an orphaned artifact would sit there serving a link that works and delivers something withdrawn. I deleted both stale <code class=\"bg-base-200 px-1 rounded\">Ask-Grok</code> files by hand and left the gap named in the PR body rather than widening a merge."}, {"q": "Does the phone need anything?", "flag": false, "html": "The device side is unchanged and worth one tap each when convenient, since the last install predates every dispatcher change:"}, {"q": null, "flag": false, "html": "- 📲 <u>Install Back-DoubleTap</u><br>- 📲 <u>Install Dictate</u>"}, {"q": "Where does the branch stand?", "flag": false, "html": "🟣 <strong>Merged: <code class=\"bg-base-200 px-1 rounded\">claude/double-back-tap-revision-ner91x</code> in shortcut-tools <u>#22</u>.</strong> The double back tap dispatcher now lives in the repo instead of only on the phone, with its dead shortcut names fixed and its dictation and pasted-HTML routes moved off Safari into the sheet."}]};</script>
+<script>window.R = {"at": "2026-08-27T02:50:09Z", "chars": 3012, "rows": [{"q": "Did the back-out and the merge both happen?", "a": "both, in that order", "flag": false, "html": "Backed out and merged."}, {"q": "Is Ask Grok gone everywhere it was?", "a": "chain, README row, both mirrors, PR closed", "flag": false, "html": "<strong>Ask Grok is gone in both places.</strong> The chain, its README row and both mirrors are off the branch; <code class=\"bg-base-200 px-1 rounded\">main</code> has no file with &quot;grok&quot; in it. web-tools <u>#522</u> is closed unmerged with a comment saying why, and unsubscribed, since the whole PR was the row that called it. <code class=\"bg-base-200 px-1 rounded\">pages/dictate.html</code> on <code class=\"bg-base-200 px-1 rounded\">main</code> is untouched."}, {"q": "Did anything from that work survive?", "a": "a note on why it could not be built blind", "flag": false, "html": "One thing survives, and it is not the shortcut. I kept a short section in <code class=\"bg-base-200 px-1 rounded\">docs/shortcuts-format-notes.md</code> on why this one could not have been built blind: <code class=\"bg-base-200 px-1 rounded\">AskGrok</code> appears in no shortcut of the 605-name corpus, so its parameter names, whether <code class=\"bg-base-200 px-1 rounded\">ShowWhenRun: false</code> suppresses the app or the result, and whether it returns output at all were guesses dressed as a build, and neither the corpus nor the ToolKit catalog could check them (the catalog carries Apple&#x27;s metadata, not a third party&#x27;s). That is two paragraphs, and it exists so the next session reaches for a card configured in the app and read back out of a dump rather than assembling another one from inference. Say the word if you would rather it went too."}, {"q": "What went into the merge?", "a": "#22 at 5d2f5f3: five fixes, 221 tests", "flag": false, "html": "<strong>Merged.</strong> <u>#22</u> landed as <u>5d2f5f3</u> on <code class=\"bg-base-200 px-1 rounded\">main</code>: <code class=\"bg-base-200 px-1 rounded\">Back-DoubleTap</code> recovered into the repo at 59 actions, three dead by-name targets resolved from the corpus, the <code class=\"bg-base-200 px-1 rounded\">Get-FileInfo</code> list-shape bug fixed, the Show Web View sheet measured, and <code class=\"bg-base-200 px-1 rounded\">sketch.py</code>&#x27;s attachment-ordering bug fixed with a test. Preflight was clean, 221 tests pass, both mirrors verified current, and there are no CI checks on this repo to wait for."}, {"q": "Does --publish remove a mirror whose chain is gone?", "a": "no, and I left it unfixed", "flag": true, "html": "One thing I noticed while pruning and did not fix: neither <code class=\"bg-base-200 px-1 rounded\">pack.py --publish</code> nor <code class=\"bg-base-200 px-1 rounded\">plist.py --publish</code> removes a mirror whose chain is gone, and the suite only checks the other direction, so an orphaned artifact would sit there serving a link that works and delivers something withdrawn. I deleted both stale <code class=\"bg-base-200 px-1 rounded\">Ask-Grok</code> files by hand and left the gap named in the PR body rather than widening a merge."}, {"q": "Does the phone need anything?", "a": "two installs, when convenient", "flag": false, "html": "The device side is unchanged and worth one tap each when convenient, since the last install predates every dispatcher change:"}, {"q": null, "a": null, "flag": false, "html": "- 📲 <u>Install Back-DoubleTap</u><br>- 📲 <u>Install Dictate</u>"}, {"q": "Where does the branch stand?", "a": "merged", "flag": false, "html": "🟣 <strong>Merged: <code class=\"bg-base-200 px-1 rounded\">claude/double-back-tap-revision-ner91x</code> in shortcut-tools <u>#22</u>.</strong> The double back tap dispatcher now lives in the repo instead of only on the phone, with its dead shortcut names fixed and its dictation and pasted-HTML routes moved off Safari into the sheet."}]};</script>
 </head>
 <body class="bg-base-200">
-<div x-data="{ R: window.R, only: false }" class="max-w-3xl mx-auto p-4 text-sm">
+<div x-data="{ R: window.R, mode: 'prose' }" class="max-w-3xl mx-auto p-4 text-sm">
 
   <div class="flex items-baseline gap-2 mb-1">
     <span class="font-semibold">One reply, one question a paragraph</span>
     <span class="opacity-40 text-xs tabular-nums"
           x-text="R.at.slice(5,16).replace('T',' ') + ' · ' + R.chars + ' chars'"></span>
     <span class="grow"></span>
-    <label class="label cursor-pointer gap-2 text-xs">
-      <input type="checkbox" class="toggle toggle-xs" x-model="only">
-      <span class="opacity-60">margin only</span>
-    </label>
+    <div class="join">
+      <template x-for="m in ['prose','answers','questions']" :key="m">
+        <button class="join-item btn btn-xs" :class="mode===m && 'btn-active'"
+                @click="mode=m" x-text="m"></button>
+      </template>
+    </div>
   </div>
   <p class="text-xs opacity-40 mb-3">
     Written as one block of prose. The fifth question is the one that cost 12h37m.
@@ -31,15 +33,18 @@
           <span x-text="r.q || ''"></span>
         </div>
         <div class="grow leading-relaxed" :class="r.flag && 'text-amber-900'"
-             x-show="!only" x-html="r.html"></div>
+             x-show="mode==='prose'" x-html="r.html"></div>
+        <div class="grow leading-snug" :class="r.flag ? 'text-amber-700' : 'opacity-70'"
+             x-show="mode==='answers'" x-text="r.a || ''"></div>
       </div>
     </template>
   </div>
 
   <p class="text-xs opacity-40 mt-3 leading-relaxed">
-    Rows are ragged on purpose: this is a reading view, not the scannable list.
-    The margin is the index; the prose is unchanged. Toggle to read the margin
-    alone and the reply becomes seven lines.
+    Three readings of one reply. <strong>Prose</strong> leaves it untouched and
+    puts the index beside it. <strong>Answers</strong> keeps the shape and drops
+    the argument. <strong>Questions</strong> is what the reply was for. The rows
+    are ragged on purpose: this is a reading view, not the scannable list.
   </p>
 </div>
 </body></html>

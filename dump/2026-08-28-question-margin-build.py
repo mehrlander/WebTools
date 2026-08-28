@@ -18,16 +18,16 @@ d = json.load(open(REC))
 reply = next(r for r in d['replies'] if r['at'].startswith('2026-08-27T02:50:09'))
 paras = [p.strip() for p in reply['text'].split('\n\n') if p.strip()]
 
-# question, and whether its answer is a no or a not-yet
+# question, the answer in one line, and whether that answer is a no or a not-yet
 Q = [
- ('Did the back-out and the merge both happen?',            False),
- ('Is Ask Grok gone everywhere it was?',                    False),
- ('Did anything from that work survive?',                   False),
- ('What went into the merge?',                              False),
- ('Does --publish remove a mirror whose chain is gone?',    True),
- ('Does the phone need anything?',                          False),
- (None,                                                     False),   # the links P6 promised
- ('Where does the branch stand?',                           False),
+ ('Did the back-out and the merge both happen?', 'both, in that order',                    False),
+ ('Is Ask Grok gone everywhere it was?',         'chain, README row, both mirrors, PR closed', False),
+ ('Did anything from that work survive?',        'a note on why it could not be built blind', False),
+ ('What went into the merge?',                   '#22 at 5d2f5f3: five fixes, 221 tests',   False),
+ ('Does --publish remove a mirror whose chain is gone?', 'no, and I left it unfixed',       True),
+ ('Does the phone need anything?',               'two installs, when convenient',           False),
+ (None,                                          None,                                      False),
+ ('Where does the branch stand?',                'merged',                                  False),
 ]
 
 def fmt(p):
@@ -37,7 +37,7 @@ def fmt(p):
     p = re.sub(r'`([^`]+)`', r'<code class="bg-base-200 px-1 rounded">\1</code>', p)
     return p.replace('\n', '<br>')
 
-rows = [dict(q=q, flag=f, html=fmt(p)) for p, (q, f) in zip(paras, Q)]
+rows = [dict(q=q, a=a, flag=f, html=fmt(p)) for p, (q, a, f) in zip(paras, Q)]
 payload = json.dumps(dict(at=reply['at'], chars=len(reply['text']), rows=rows), ensure_ascii=False)
 
 PAGE = r'''<!doctype html>
@@ -49,17 +49,19 @@ PAGE = r'''<!doctype html>
 <script>window.R = __PAYLOAD__;</script>
 </head>
 <body class="bg-base-200">
-<div x-data="{ R: window.R, only: false }" class="max-w-3xl mx-auto p-4 text-sm">
+<div x-data="{ R: window.R, mode: 'prose' }" class="max-w-3xl mx-auto p-4 text-sm">
 
   <div class="flex items-baseline gap-2 mb-1">
     <span class="font-semibold">One reply, one question a paragraph</span>
     <span class="opacity-40 text-xs tabular-nums"
           x-text="R.at.slice(5,16).replace('T',' ') + ' · ' + R.chars + ' chars'"></span>
     <span class="grow"></span>
-    <label class="label cursor-pointer gap-2 text-xs">
-      <input type="checkbox" class="toggle toggle-xs" x-model="only">
-      <span class="opacity-60">margin only</span>
-    </label>
+    <div class="join">
+      <template x-for="m in ['prose','answers','questions']" :key="m">
+        <button class="join-item btn btn-xs" :class="mode===m && 'btn-active'"
+                @click="mode=m" x-text="m"></button>
+      </template>
+    </div>
   </div>
   <p class="text-xs opacity-40 mb-3">
     Written as one block of prose. The fifth question is the one that cost 12h37m.
@@ -73,15 +75,18 @@ PAGE = r'''<!doctype html>
           <span x-text="r.q || ''"></span>
         </div>
         <div class="grow leading-relaxed" :class="r.flag && 'text-amber-900'"
-             x-show="!only" x-html="r.html"></div>
+             x-show="mode==='prose'" x-html="r.html"></div>
+        <div class="grow leading-snug" :class="r.flag ? 'text-amber-700' : 'opacity-70'"
+             x-show="mode==='answers'" x-text="r.a || ''"></div>
       </div>
     </template>
   </div>
 
   <p class="text-xs opacity-40 mt-3 leading-relaxed">
-    Rows are ragged on purpose: this is a reading view, not the scannable list.
-    The margin is the index; the prose is unchanged. Toggle to read the margin
-    alone and the reply becomes seven lines.
+    Three readings of one reply. <strong>Prose</strong> leaves it untouched and
+    puts the index beside it. <strong>Answers</strong> keeps the shape and drops
+    the argument. <strong>Questions</strong> is what the reply was for. The rows
+    are ragged on purpose: this is a reading view, not the scannable list.
   </p>
 </div>
 </body></html>
