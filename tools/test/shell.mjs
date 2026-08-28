@@ -37,7 +37,8 @@ export function makeShell({ browserStore, search = '', win = {} } = {}) {
   const listeners = { document: {}, window: {} };
   const on = (bag) => (type, fn) => { (bag[type] ||= []).push(fn); };
   const doc = { addEventListener: on(listeners.document), getElementById: () => null,
-                dispatchEvent: (e) => { events.push(e); return true; }, hidden: false };
+                dispatchEvent: (e) => { events.push(e); return true; }, hidden: false,
+                title: '', ...linkDom() };
   if (!win.addEventListener) win.addEventListener = on(listeners.window);
   // The 'toast' store is the function notify() prefers; recording it lets
   // tests assert that a code path SPOKE, not just that it declined to act.
@@ -61,4 +62,53 @@ export function makeShell({ browserStore, search = '', win = {} } = {}) {
     (listeners[target][type] || []).forEach(fn => fn({ type, ...ev }));
   return { shell: exports.app(), gallery: exports.gallery(), browserStore: store,
            win, toasts, history: hist, location: loc, doc, events, listeners, fire };
+}
+
+// The <link> half of a document, and deliberately nothing else. The shell
+// manages exactly two links (the favicon and the apple-touch icon), selects
+// them by `rel~=`, and replaces rather than appends; that is the whole surface
+// a test of the app view's mark needs. Anything broader would be a browser,
+// which this harness is not, and the canvas step it feeds is stubbed at the
+// method instead (see shell-app-view-mark.test.mjs).
+//
+// The base icon is read out of the page rather than written here, so the
+// harness cannot drift from what app/index.html actually ships and a test
+// asserting "the reset restores the hex nut" is asserting about the real one.
+export const BASE_ICON = (page.match(/<link rel="icon"[^>]*href="([^"]+)"/) || [])[1] || '';
+
+function linkDom() {
+  const links = [];
+  const matches = (el, sel) => {
+    const m = /^link\[rel~="([^"]+)"\]$/.exec(sel);
+    return !!m && String(el.rel || '').split(/\s+/).includes(m[1]);
+  };
+  // ANY OTHER TAG STILL THROWS, which is not an oversight: before this stub
+  // existed `document.createElement` was undefined, and the shell has a code
+  // path that depends on it failing. loadMarked() appends a <script> to the
+  // head and waits on its onload; under a harness that hands back an inert
+  // object and never fires either handler, that promise hangs forever and
+  // takes the board render's `finally` with it. Throwing keeps the old
+  // semantics ("this harness has no DOM") everywhere the new one is not
+  // deliberately wanted.
+  const make = (tag) => {
+    assert.equal(tag, 'link', 'the harness DOM holds <link> elements and nothing else');
+    return {
+      tag, rel: '', href: '',
+      getAttribute(n) { return this[n] === undefined ? null : this[n]; },
+      remove() { const i = links.indexOf(this); if (i >= 0) links.splice(i, 1); },
+    };
+  };
+  const dom = {
+    links,
+    head: { appendChild: (el) => { links.push(el); return el; } },
+    createElement: make,
+    querySelector: (sel) => links.find((el) => matches(el, sel)) || null,
+    querySelectorAll: (sel) => links.filter((el) => matches(el, sel)),
+  };
+  assert.ok(BASE_ICON, 'app/index.html must declare a <link rel="icon"> to capture');
+  const base = make('link');
+  base.rel = 'icon';
+  base.href = BASE_ICON;
+  links.push(base);
+  return dom;
 }

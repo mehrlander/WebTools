@@ -1811,9 +1811,28 @@ function app(){ return {
   // this stays the app's implementation and the fab's fallback (parking the
   // paste through kits/stage-handoff.js) is for everywhere else.
   //
-  // The `menu` contract itself stays. It has no user now, which is a fact
-  // worth stating rather than a reason to delete: the row it carried earned
-  // promotion by being built through it.
+  // ── What the contract carries now: the header ────────────────────────────
+  //
+  // The same argument that promoted the paste is what puts this here. An app
+  // view opens at `shell: none`, so there is no header on screen to reach for
+  // and the launcher is the only control that is always somewhere: a row
+  // BEFORE the drawer, found without knowing which tab to open.
+  //
+  // It is the second owner of one control, not a second control. `toggles`
+  // offers the same header switch on the Render tab, beside the ref and width
+  // bars, because which ref, what shape and how much shell are one question
+  // once you are already in the drawer. This is the same call for the reader
+  // who is not.
+  get menu(){
+    const on = this.shellMode !== 'none';
+    return [{
+      label: on ? 'Hide the header' : 'Show the header',
+      icon: on ? 'ph-arrows-out' : 'ph-layout',
+      title: on ? 'Show the view alone (?shell=none)'
+                : 'Bring the header back, and its sidebar toggle with it',
+      run: () => this.setHeader(!on),
+    }];
+  },
   view: 'landing',        // 'estate' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
   // Window-level drag counter for the app-wide drop (init wires the listeners;
   // nested enter/leave is why it counts rather than flips), and what the cue
@@ -1834,6 +1853,24 @@ function app(){ return {
   //   nav   header, sidebar closed at every width (open it from the header)
   //   none  neither; the view alone, which is what an unframed link wants
   //
+  // THE DEFAULT IS PER VIEW, not one constant. An app view opens at `none`:
+  // it is one page some repo promoted, framed whole, and a reader who
+  // addressed it by name asked for that page rather than for the app around
+  // it. A home-screen tile is the case that makes it obvious. Every other
+  // route IS the app and keeps its header.
+  //
+  // Derived per view rather than latched at boot, and that is the whole of why
+  // this is a getter. A latched default would follow the reader out of the app
+  // view and strand the estate dashboard with no nav, reachable only through
+  // the FAB. Deriving it means the shell leaves when you enter an app view and
+  // comes back when you leave, with nothing to remember or clear.
+  //
+  // It also keeps the ADDRESS minimal in both directions, since the stamp
+  // compares against this rather than against a constant: `?app=budget-drs`
+  // carries no `shell` key and opens bare, and turning the header on there
+  // stamps `shell=full`, which is the honest reading of a screen showing the
+  // app's chrome around a promoted page.
+  //
   // `none` is not a trap: the FAB's Render tab carries this as a bar (the
   // `modes` contract below), beside the ref and width bars, since which ref,
   // what width, and how much shell are three readings of one question. That is
@@ -1847,7 +1884,12 @@ function app(){ return {
   // `frame` was dropped too, since the Render tab's width bar already means a
   // frame, and two meanings in one tab is how a bar gets misread.
   SHELL_MODES: ['full', 'nav', 'none'],
-  shellMode: 'full',
+  // The reader's explicit choice, '' for none made. Held apart from the mode
+  // because the two answer different questions: what was asked for, and what
+  // this screen opens as when nothing was.
+  _shellChoice: '',
+  get defaultShellMode(){ return this.view === 'app' ? 'none' : 'full'; },
+  get shellMode(){ return this._shellChoice || this.defaultShellMode; },
 
   // Whether the sidebar is showing. One boolean at every width, which is the
   // whole of the mobile/desktop difference now: below lg it is an overlay with
@@ -2113,6 +2155,16 @@ function app(){ return {
     // estate: the all-repo view is the page's front door.
     else if (!url) this.goDashboard();
 
+    // THE BOOT ROUTE RUNS BEFORE THE WATCHERS BELOW ARE WIRED, so the mode this
+    // arrival settled on is the one change the shellMode watcher never sees.
+    // Re-derive once, here, where the view is final. Without it a cold `?app=`
+    // opened with the header correctly gone (x-show reads the mode live) and
+    // the sidebar still standing as a column beside it, a pairing no navigation
+    // inside the app can produce. Found in a browser, not by the suite, which
+    // is the shape of this bug: every unit was right and only the order was
+    // wrong.
+    this.sidebarOpen = this.defaultSidebarOpen;
+
     // A PASTE TAKEN SOMEWHERE ELSE, arriving. The fab's paste row runs on every
     // page carrying the launcher, and off this app there is no Stage to put
     // anything in and no way to keep a store array across the navigation that
@@ -2140,11 +2192,22 @@ function app(){ return {
     this.__installDeckPane();
     this.$watch('sidebarOpen', () => this.syncDeckFrame());
     this.$watch('showSidebar', () => this.syncDeckFrame());
-    this.$watch('shellMode', () => this.syncDeckFrame());
+    // The sidebar re-derives whenever the MODE changes, which is the half a
+    // per-view default cannot do on its own: entering an app view puts the
+    // sidebar away with the header, leaving brings back whatever that width
+    // opens with. Toggling it WITHIN a mode stays the reader's and is not
+    // touched here. Ordered before syncDeckFrame, which reads sidebarOpen.
+    this.$watch('shellMode', () => {
+      this.sidebarOpen = this.defaultSidebarOpen;
+      this.syncDeckFrame();
+    });
 
     // Browser Back/Forward restores state from the URL (syncUrl pushes an entry
     // per distinct URL, so the history has real steps to walk).
     window.addEventListener('popstate', () => this.restoreFromUrl());
+    // The framed page's mark, announced up by toss-render. Wired here rather
+    // than on the frame so it is registered before any app view can load.
+    window.addEventListener('toss-subject-mark', () => this.onSubjectMark());
     this.wireRevisit();
   },
 
@@ -4912,7 +4975,9 @@ function app(){ return {
   //   when   the address carries what open() needs; a miss falls through to the landing
   //   ready  the shell holds what stamp() needs; a miss stamps nothing
   //   stamp  the view's OWN keys. The caller has already set ?view=
-  //   self   this view names itself another way, so the caller sets no ?view=
+  //   self   this view names itself another way, so the caller sets no ?view=.
+  //          A function where the answer depends on WHICH spelling the view is
+  //          about to stamp: `app` names itself only in its short form.
   VIEWS: [
     // The landing names itself by naming its repo, not with a ?view=: a repo's
     // front page IS ?repo=owner/name, and stamping a view key beside it would
@@ -5029,6 +5094,14 @@ function app(){ return {
         if (v) this.goAppView(v); else this.goDashboard();
       },
       ready(){ return !!this.appView; },
+      // Self-naming in the SHORT form only. `?app=<slug>` is a whole address,
+      // since parseUrl reads the presence of `app` as view=app, so a `view=app`
+      // beside it is a key that says nothing and the reader has to look past.
+      // The five-key fallback writes no `app` at all, so there it is the only
+      // thing naming the route and dropping it would make the address inert.
+      // Hence a function: one row, two spellings, and only one of them answers
+      // yes.
+      self(){ return !!(this.appView && this.appView.slug); },
       stamp(p){
         // The short form is what gets WRITTEN, whenever the open view has a
         // slug to write. The alternative was to read it and stamp the long one
@@ -5121,7 +5194,8 @@ function app(){ return {
     // survives a view change and travels with the address the header's ref
     // switch mints (which starts from an empty base, where ?use= must not
     // survive but this must, or a ref switch would silently reframe the page).
-    if (this.shellMode !== 'full') p.set('shell', this.shellMode); else p.delete('shell');
+    if (this.shellMode !== this.defaultShellMode) p.set('shell', this.shellMode);
+    else p.delete('shell');
     for (const k of this.VIEW_KEYS) p.delete(k);
     // The browsed ref rides beside the repo, not on a view. It was the Files
     // view's key while the Files view was the only thing that read it; the
@@ -5133,7 +5207,8 @@ function app(){ return {
     // shell cannot yet describe.
     const r = this.routeFor(this.view);
     if (r && (!r.ready || r.ready.call(this))) {
-      if (!r.self) p.set('view', r.key);
+      const self = typeof r.self === 'function' ? r.self.call(this) : r.self;
+      if (!self) p.set('view', r.key);
       r.stamp?.call(this, p, s);
     }
     return p;
@@ -5186,9 +5261,47 @@ function app(){ return {
     // exactly when deepLinkParams stamps `repo` (off the default only), owner
     // dropped the way the sidebar crumb drops it. Stamped here rather than in
     // a watcher so the title and the address cannot disagree.
+    //
+    // AN APP VIEW NAMES ITSELF FIRST, which is the one place the order flips.
+    // Everywhere else the product leads, because the repo is context on a Web
+    // Tools screen. A promoted page is not a Web Tools screen: `?app=` is a
+    // whole address and the three surfaces that read this title (the tab strip,
+    // a bookmark, a home-screen tile) all truncate from the RIGHT, so leading
+    // with the product spends the visible characters saying which shell rather
+    // than which app. It takes the disambiguated `label` rather than
+    // `baseLabel`, so two repos promoting one page are still told apart here.
+    this.stampTitle();
+    // Every route change passes through here, so this is the one place that
+    // reliably sees an app view being LEFT. A watcher on `view` would miss the
+    // boot case, where the shell arrives on a route without ever changing it.
+    if (this.view !== 'app') { this._appTitle = ''; this.resetAppIcon(); }
+  },
+
+  // Its own method because the mark arrives LATE, after the address is
+  // already stamped, and re-running syncUrl for it would push a history entry
+  // for a tab caption.
+  stampTitle(){
+    const av = this.view === 'app' ? this.appView : null;
+    const name = this.appTabName(av);
+    if (name) { document.title = `${name} · Web Tools`; return; }
     const repo = Alpine.store('browser').repo;
     document.title = repo && repo !== this.DEFAULT_REPO
       ? `Web Tools · ${repo.split('/')[1] || repo}` : 'Web Tools';
+  },
+
+  // What an app view is called in a tab. THE DECLARED LABEL WINS wherever
+  // there is one, because that is the name the sidebar and the header nav
+  // render, and a tab disagreeing with them is worse than a plain tab.
+  //
+  // The exception is the one case that has no declared label: a cold deep link
+  // by address, before (or without) the crawl that carries the manifest, falls
+  // back to the filename and reads `app.html`, which names nothing. The framed
+  // page's own <title> answers exactly that case, and nothing else: it would
+  // otherwise overrule a name its own repo chose for it.
+  appTabName(av){
+    if (!av) return '';
+    if (av.labelFrom !== 'path') return av.label || '';
+    return this._appTitle || av.label || '';
   },
 
   // Browser Back/Forward: re-derive the shell state from the URL through the
@@ -6009,6 +6122,10 @@ function app(){ return {
   // Select an estate-level app view; the main area renders it live via
   // toss-render #gh= (appViewUrl).
   goAppView(v){
+    // Switching between two app views never passes through stamp()'s reset
+    // (both are `view === 'app'`), so the outgoing mark is dropped here or it
+    // sits on the tab naming the wrong app until the new frame resolves.
+    if (!v || !this.appView || v.key !== this.appView.key) this.resetAppIcon();
     this.appView = v;
     this.view = 'app';
     // The fragment is THIS view's address, not the shell's, so it moves with the
@@ -6051,9 +6168,14 @@ function app(){ return {
         return this.appViews.find(v => v.slug === url.app) || null;
       }
       const key = addr.repo + (addr.ref ? '@' + addr.ref : '') + ':' + addr.path;
+      // `labelFrom` says whether the name below is one somebody CHOSE or one
+      // this line invented from the path; the tab caption is the only reader,
+      // and it needs to know which so it can prefer the page's own title over
+      // a filename. See appTabName().
       return this.appViews.find(v => v.key === key) || {
         repo: addr.repo, ref: addr.ref, path: addr.path,
         label: addr.path.split('/').pop(), icon: 'ph-app-window', key,
+        labelFrom: 'path',
       };
     }
     // Prefer the loaded entry (its viewLabel/icon/slug), since the collection
@@ -6064,6 +6186,9 @@ function app(){ return {
       repo: url.appRepo, ref: url.appRef, path: url.appPath,
       label: url.appLabel || url.appPath.split('/').pop(),
       icon: url.appIcon || 'ph-app-window', key,
+      // The five-key form carries a label of its own, which is why it exists;
+      // only its absence falls back to the filename.
+      labelFrom: url.appLabel ? 'url' : 'path',
     };
   },
 
@@ -6137,6 +6262,124 @@ function app(){ return {
     const q = v.query || '';
     return '../pages/toss-render.html#gh=' + v.repo + ref + ':' + v.path + (q ? '?' + q : '');
   },
+  // ── The app view's mark: what the tab, the bookmark and the tile carry ────
+  //
+  // The shell ships one favicon for every route (lib/favicon.svg, the hex nut),
+  // so budget-drs, News and the estate dashboard all read as the same thing in
+  // a tab strip and in a bookmark list. An app view is a page some repo
+  // PROMOTED, and its address names it; the mark should too.
+  //
+  // THE MARK IS THE FRAMED PAGE'S OWN, not a reconstruction of it. toss-render
+  // resolves the real icon (a private repo's icon file is reachable no other
+  // way than through the token, at the subject's ref) and announces the
+  // undimmed result on `toss-subject-icon`; the dimming stays down there, since
+  // a toss says it is a rendering and a promoted view does not. The two
+  // alternatives both get the runtime cases wrong: drawing the Phosphor glyph
+  // from `.web-tools.json` shows a mark the page never chose, and parsing the
+  // page source misses an icon set after boot, which is most of them (gh-boot
+  // injects the default asynchronously).
+  //
+  // Keyed on the app view it belongs to, so a mark can never outlive the view
+  // that earned it: every apply re-checks the key it started with, and any
+  // route that is not an app view resets (see stamp()).
+  APP_ICON_PX: 180,        // apple-touch-icon's size; a tab renders it far smaller
+  _appIconKey: '',         // which app view the mark on screen belongs to
+  _appTitle: '',           // the framed page's own <title>, when it announced one
+  _baseIcon: '',           // the hex nut, captured before anything replaces it
+
+  // Lazy rather than read at init, but always called before the first
+  // replacement, which is what makes it safe: setFavicon REMOVES the link it
+  // is replacing, so a capture that ran afterwards would find nothing.
+  baseIcon(){
+    if (!this._baseIcon) {
+      const el = document.querySelector('link[rel~="icon"]');
+      this._baseIcon = (el && el.getAttribute('href')) || '';
+    }
+    return this._baseIcon;
+  },
+
+  // Replace rather than append. Two <link rel=icon> elements leave the choice
+  // to the browser, which is not a thing to bet a mark on; toss-render's
+  // setFavicon settled this the same way.
+  setFavicon(href, rel){
+    document.querySelectorAll(`link[rel~="${rel}"]`).forEach(el => el.remove());
+    if (!href) return;
+    const link = document.createElement('link');
+    link.rel = rel;
+    link.href = href;
+    document.head.appendChild(link);
+  },
+
+  resetAppIcon(){
+    if (!this._appIconKey) return;              // nothing of ours is on screen
+    this._appIconKey = '';
+    this.setFavicon(this.baseIcon(), 'icon');
+    this.setFavicon('', 'apple-touch-icon');    // there is no base one to restore
+  },
+
+  // One listener on THIS window, wired at init, because the announcement comes
+  // to us: an address-mode render is same-origin, so toss-render writes into
+  // its parent. Nothing hangs off the frame, so there is no per-load
+  // registration to leak and no handle to clear when the frame goes.
+  //
+  // A cleared mark is a real message, not an absence. toss-render clears on
+  // every setSubject, which is how the tab drops the old app the moment the
+  // frame starts on another one rather than at whatever later point the next
+  // mark resolves.
+  onSubjectMark(){
+    const mark = window.__tossSubjectMark || null;
+    if (!mark) {
+      this._appTitle = '';
+      this.resetAppIcon();
+      this.stampTitle();
+      return;
+    }
+    if (this.view !== 'app' || !this.appView) return;
+    this._appTitle = mark.title || '';
+    this.stampTitle();
+    if (mark.icon) this.applyAppIcon(this.appView.key, mark.icon);
+  },
+
+  // Rasterize before hanging it on either link, and the tile is the reason:
+  // iOS reads apple-touch-icon and will not take an SVG, which is what most of
+  // these pages declare. A canvas is also where a letterboxed square comes
+  // from, so one step answers both. Best-effort throughout: a mark is cosmetic
+  // and a failure here leaves the tab alone rather than drawing a broken one.
+  async applyAppIcon(key, src){
+    this.baseIcon();                            // capture before the first replace
+    const png = await this.iconPng(src);
+    // The reader may have moved on while the canvas was decoding.
+    if (this.view !== 'app' || !this.appView || this.appView.key !== key) return;
+    this._appIconKey = key;
+    this.setFavicon(png || src, 'icon');
+    if (png) this.setFavicon(png, 'apple-touch-icon');
+  },
+
+  iconPng(src){
+    return new Promise(resolve => {
+      try {
+        const img = new window.Image();
+        img.onload = () => {
+          try {
+            const px = this.APP_ICON_PX;
+            const c = document.createElement('canvas');
+            c.width = c.height = px;
+            const ctx = c.getContext('2d');
+            // An SVG carrying only a viewBox reports no intrinsic size in some
+            // engines; square is the honest fallback.
+            const iw = img.naturalWidth || px, ih = img.naturalHeight || px;
+            const s = Math.min(px / iw, px / ih);      // letterbox, never stretch
+            const w = iw * s, h = ih * s;
+            ctx.drawImage(img, (px - w) / 2, (px - h) / 2, w, h);
+            resolve(c.toDataURL('image/png'));
+          } catch (e) { resolve(null); }
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+      } catch (e) { resolve(null); }
+    });
+  },
+
   // The sidebar app-view list: the collected app views (from the config cache,
   // main-only), plus the app view currently open if it is not already among
   // them. Discovery is main-gated, so a deep link to an app view whose repo has
@@ -6154,9 +6397,15 @@ function app(){ return {
   // returns null when the address names no repo, file, or view: a bare
   // `?shell=none` on the estate is a real link and would otherwise be dropped
   // on the floor.
+  // Stores whatever valid mode arrived, WITHOUT setShellMode's agreement rule,
+  // because this runs before the route resolves: `this.view` is still the
+  // landing and every address would look like it agreed with `full`. So
+  // `?shell=full&app=budget-drs` would have its own request thrown away. A
+  // redundant incoming mode costs nothing instead: the stamp drops it at the
+  // next syncUrl and the address self-heals.
   readShellMode(){
     const v = (new URLSearchParams(location.search).get('shell') || '').trim();
-    this.shellMode = this.SHELL_MODES.includes(v) ? v : 'full';
+    this._shellChoice = this.SHELL_MODES.includes(v) ? v : '';
     this.sidebarOpen = this.defaultSidebarOpen;
   },
   // Desktop opens with the sidebar out, a phone with it away, and only the
@@ -6172,7 +6421,17 @@ function app(){ return {
   setShellMode(mode){
     if (!this.SHELL_MODES.includes(mode) || mode === this.shellMode) return;
     if (mode === 'none') this._shellReturn = this.shellMode;
-    this.shellMode = mode;
+    // A CHOICE THAT AGREES WITH THE VIEW'S DEFAULT IS NOT A CHOICE, and
+    // clearing it is what keeps a toggle local to the screen it was made on.
+    // Turning the header off on an app view says "this page, bare", which is
+    // already what that view does; latching it as a choice carried `shell=none`
+    // out to the dashboard and left the estate with no nav and only the fab as
+    // the way back. Measured in a browser: two taps on one app view and the
+    // whole app had lost its chrome.
+    //
+    // It also keeps the state and the address agreeing by construction, since
+    // deepLinkParams stamps against exactly this comparison.
+    this._shellChoice = mode === this.defaultShellMode ? '' : mode;
     this.sidebarOpen = this.defaultSidebarOpen;
     this.syncUrl();
   },
