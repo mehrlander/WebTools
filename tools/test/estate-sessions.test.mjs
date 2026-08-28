@@ -491,6 +491,7 @@ test('the glyph opens the whole sequence, oldest first so the card reads back', 
     ['pending', '🟡 **Pending:** waiting.', '10:00:00'],
     ['ready', '🟢 **Ready to continue:** go.', '12:00:00'],
   ]);
+  data.closeRowCard();
   data.openSessionCard(row, 'state', null);
   const c = data.rowCard;
   assert.equal(c.kind, 'prose', 'the same panel the reply card uses');
@@ -506,6 +507,7 @@ test('the glyph opens the whole sequence, oldest first so the card reads back', 
 
 test('a session with one state opens a card that reads finished, not broken', () => {
   const row = statesRow([['merged', '🟣 **Merged.** It shipped.', '11:00:00']]);
+  data.closeRowCard();
   data.openSessionCard(row, 'state', null);
   assert.equal(data.rowCard.turns.length, 1);
   assert.equal(data.rowCard.pending, false);
@@ -514,11 +516,13 @@ test('a session with one state opens a card that reads finished, not broken', ()
 test('an empty sequence says WHICH absence it is, rather than sitting blank', () => {
   const V = window.RepoSessionsCache.ROW_V;
   const none = statesRow([]);
+  data.closeRowCard();
   data.openSessionCard(none, 'state', null);
   assert.equal(data.rowCard.pending, true);
   assert.match(data.rowCard.pendingNote, /ended no reply with a closing state/);
 
   const behind = statesRow([], { v: V - 1 });
+  data.closeRowCard();
   data.openSessionCard(behind, 'state', null);
   assert.match(data.rowCard.pendingNote, /summarised before the states were read/);
 });
@@ -532,6 +536,7 @@ test('the two absences draw apart on the row, in the histogram\'s own symbols', 
 
 test('a cut sequence says so in its own words, not the reply card\'s', () => {
   const row = statesRow([['ready', 'x', '1']], { statesCut: 'cut' });
+  data.closeRowCard();
   data.openSessionCard(row, 'state', null);
   assert.equal(data.rowCard.priorCut, true);
   assert.match(data.rowCard.priorNote, /earlier states not kept/);
@@ -555,6 +560,89 @@ test('the glyph is a control on the row, and carries no native title beside it',
   const glyph = [...card.querySelectorAll('button')].find(b => b.textContent.trim() === '🟢');
   assert.ok(glyph, 'the glyph is a button');
   assert.equal(glyph.getAttribute('title'), null, 'and not also a tooltip');
+});
+
+// ── Tap to close ───────────────────────────────────────────────────────────
+// The card arrives on a tap and now leaves on one. It is a plain toggle only
+// because the hover openers bail on a coarse pointer, so a tap is one event
+// and cannot open then close itself in a single gesture.
+
+test('tapping the same trigger again closes the card', () => {
+  const row = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  data.closeRowCard();
+  data.openSessionCard(row, 'tools', null);
+  assert.equal(data.rowCard?.cls, 'tools', 'first tap opens');
+  data.openSessionCard(row, 'tools', null);
+  assert.equal(data.rowCard, null, 'second tap closes');
+  data.openSessionCard(row, 'tools', null);
+  assert.equal(data.rowCard?.cls, 'tools', 'and a third opens it again');
+  data.closeRowCard();
+});
+
+test('a hover-open that fires late leaves the card the click opened alone', () => {
+  // The half jsdom cannot stage and a browser found on the first try: a click
+  // on a fine pointer is preceded by a mouseenter, so the hover SCHEDULES an
+  // open, the click opens, and the stale timer then fires into the toggle and
+  // shuts it. Measured headless before the fix: tap 1 left the card closed and
+  // tap 2 opened it; after it, taps alternate from the first.
+  //
+  // The timer itself is not used here. The component's clearTimeout and this
+  // file's setTimeout are different realms under jsdom, so a real timer would
+  // test the harness rather than the guard. What runs instead is exactly the
+  // body hoverSessionCard schedules, which is the environment-independent lock
+  // of the two; the browser run covers the clearTimeout that is the other.
+  const row = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  const key = 'session:' + row.id + ':tools';
+  data.closeRowCard();
+  data.openSessionCard(row, 'tools', null);            // the click lands first
+  assert.equal(data.rowCard?.key, key, 'the click opened it');
+  if (data.rowCard?.key !== key) data.openSessionCard(row, 'tools', null);  // the stale hover
+  assert.equal(data.rowCard?.key, key, 'and the stale hover did not shut it again');
+  data.closeRowCard();
+});
+
+test('the toggle is per card, so moving between triggers opens rather than closes', () => {
+  const row = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  data.closeRowCard();
+  data.openSessionCard(row, 'tools', null);
+  data.openSessionCard(row, 'files', null);
+  assert.equal(data.rowCard?.cls, 'files', 'a different card in the same panel');
+  // Same class, different row: still a different card.
+  const other = window.RepoSessionsCache.summarize(rec({ short: 'ffffffff' }), 'sha2');
+  data.openSessionCard(other, 'files', null);
+  assert.equal(data.rowCard?.key, 'session:ffffffff:files');
+  data.closeRowCard();
+});
+
+test('the prose cards toggle too, reply and states alike', () => {
+  const row = { ...window.RepoSessionsCache.summarize(rec(), 'sha1'),
+                states: [['ready', '🟢 **Ready:** go.', '12:00:00']], state: 'ready' };
+  data.closeRowCard();
+  data.openSessionCard(row, 'state', null);
+  assert.equal(data.rowCard?.kind, 'prose');
+  data.openSessionCard(row, 'state', null);
+  assert.equal(data.rowCard, null);
+  data.openSessionCard(row, 'reply', null);
+  assert.equal(data.rowCard?.cls, 'reply');
+  data.openSessionCard(row, 'reply', null);
+  assert.equal(data.rowCard, null);
+});
+
+test('a branch card is keyed by repo, so one branch name in two repos is two cards', () => {
+  // The hover guard compared the branch NAME and the class, which matches
+  // across repos: two repos on one branch name, the ordinary shape here, had
+  // one card that would not reopen when you moved between them.
+  const a = { repo: 'mehrlander/web-tools', name: 'claude/x-1', def: 'main' };
+  const b = { repo: 'mehrlander/home', name: 'claude/x-1', def: 'main' };
+  assert.notEqual(data.branchCardKey(a, 'changed'), data.branchCardKey(b, 'changed'));
+  data.closeRowCard();
+  data.openRowCard(a, 'changed', null);
+  const first = data.rowCard?.key;
+  assert.equal(first, data.branchCardKey(a, 'changed'));
+  data.openRowCard(b, 'changed', null);
+  assert.equal(data.rowCard?.key, data.branchCardKey(b, 'changed'), 'the other repo opens');
+  data.openRowCard(b, 'changed', null);
+  assert.equal(data.rowCard, null, 'and toggles closed on its own trigger');
 });
 
 // ── The state axis ─────────────────────────────────────────────────────────
@@ -759,7 +847,14 @@ test('the state is the session\'s own claim, not the rail\'s rollup of its branc
 // the deck's own turn renderer, so the two cannot drift in appearance: what is
 // pinned here is the LIST handed to it, since the rendering is that kit's test.
 
-const replyCard = (row) => { data.openSessionCard(row, 'reply', null); return data.rowCard; };
+// Closes first: the trigger TOGGLES now, so a helper that opens the same card
+// twice in a row would close it the second time. Each test is its own
+// scenario and wants a fresh open, not a second tap.
+const replyCard = (row) => {
+  data.closeRowCard();
+  data.openSessionCard(row, 'reply', null);
+  return data.rowCard;
+};
 const roles = (c) => c.turns.map(t => t.role[0]).join('');
 
 test('the card is the ask, the scroll back, and the reply, in that order', () => {

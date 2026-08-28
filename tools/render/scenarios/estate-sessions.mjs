@@ -74,12 +74,11 @@ const SESSIONS = [
     // fixture has to be able to show it.
     state: 'ready',
     // And the sequence behind it, in the shape closingStates emits: [key,
-    // passage, clock] chronological, newest last, the newest carried long and
-    // the priors cut to TURN_HEAD. A session closes at the end of every
-    // stretch of work (median 12 across the store), and the states CHANGE,
-    // which is what makes the card worth opening rather than a tooltip. This
-    // one walks pending → assess → clean → ready, so the shot shows a history
-    // rather than four of the same glyph.
+    // passage, clock] chronological, newest last, every passage whole. A
+    // session closes at the end of every stretch of work (median 12 across the
+    // store), and the states CHANGE, which is what makes the card worth
+    // opening rather than a tooltip. This one walks pending → assess → clean →
+    // ready, so the shot shows a history rather than four of the same glyph.
     states: [
       ['pending', '🟡 **Pending:** the Map view needs `docs/showing-mechanisms.csv` to exist before the tab can read it, and the CSV is still being derived from the prose. Nothing to look at yet.', '14:31:07'],
       ['assess', '❇️ **Ready to assess:** whether the render line should be printed rather than remembered. The section that was meant to stop the wrong link is the longest one in the file, so reading it is evidently not what fixes this.', '15:02:44'],

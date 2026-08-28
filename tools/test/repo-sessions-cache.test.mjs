@@ -701,17 +701,29 @@ test('the message is the passage from the marker down, not the whole reply', () 
   assert.ok(!st[0][1].includes('rebuilt'), 'the work above it is not the message');
 });
 
-test('the newest is carried long and the priors are cut, as reply and turns are', () => {
-  const long = (lead) => lead + ' ' + 'This sentence is here to run the passage past the head cap. '.repeat(12);
+test('every passage is carried whole, priors included', () => {
+  // Heading the priors cut 68% of them: measured over the 1,703 passages the
+  // cap keeps, median 333 characters and p90 622. Two thirds of the card was a
+  // teaser for text that would have fit, and whole costs 675 KB across the
+  // store against 431 KB headed.
+  const body = 'A sentence of the kind a closing state is made of. '.repeat(9);
   const st = S.closingStates({ replies: [
-    reply('1', long('🟡 **Pending:**')),
-    reply('2', long('🟢 **Ready to continue:**')),
+    reply('1', '🟡 **Pending:** ' + body),
+    reply('2', '🟢 **Ready to continue:** short.'),
   ] });
-  const [prior, newest] = st;
-  assert.ok(prior[1].length < newest[1].length,
-    'the prior is cut to the turn head and the newest is not');
-  assert.ok(prior[3] > 0, 'and it says how much it dropped');
-  assert.ok(newest[1].length > 600, 'the newest is the one the row stands for');
+  const [prior] = st;
+  assert.ok(prior[1].length > 400, 'the prior is not cut to a turn head: ' + prior[1].length);
+  assert.equal(prior[3], undefined, 'and reports no drop, because there was none');
+});
+
+test('one safety cap for the tail, and it says what it cut', () => {
+  // A bound rather than a head: it leaves 99% untouched and exists so a single
+  // 5,000-character entry is not a wall inside a card of twelve.
+  const huge = '🟠 **Attention:** ' + 'A sentence that goes on. '.repeat(200);
+  const [e] = S.closingStates({ replies: [reply('1', huge)] });
+  assert.ok(e[1].length <= 2000, 'bounded');
+  assert.ok(e[3] > 0, 'and the turn carries how much is missing');
+  assert.ok(huge.length > 2000, 'the fixture actually exceeds the bound');
 });
 
 test('only the newest STATES_KEPT survive, and the row says the front was cut', () => {
