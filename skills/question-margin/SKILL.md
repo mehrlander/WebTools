@@ -22,6 +22,8 @@ This is the one choice that cannot be deferred, because the two grains attach to
 
 Measured across the 192 session records in `mehrlander/web-tools-private` that carry both halves: a substantive reply (400+ characters) runs a median of 11 paragraphs, 9 of them prose, and a session runs a median of 10 exchanges. **A session at paragraph grain is about 204 rows, which is a corpus rather than a view.** So paragraph grain annotates a reply and never a whole session; exchange grain indexes a session and is too coarse for one reply. Do not mix them in one artifact.
 
+**Where the source has no paragraph breaks, the paragraph is not the unit.** Dictated prose arrives as one block and carries its boundaries in discourse markers instead of whitespace: *"And then in addition to that"*, *"So it's possible that"*, *"Maybe the natural thought is"*, *"Anyway"*. Segment on the shift of subject and take those phrases as the cue. Measured on one 2,075-character spoken prompt in the store: paragraph grain gives **one** row, subject grain gives **five**, and the five are all real. Never report a wall of dictation as a single question.
+
 Non-prose blocks get no question of their own, and **which way they attach depends on what they are**. A list, table or code fence attaches **upward**, to the paragraph that introduced it. A heading, and any bare transition sentence under it (*"The landing turned up things my checks could not see:"*), attaches **downward**, to the section it opens. Attaching a heading upward is the mistake this rule exists to stop: it lands the heading on the block above and orphans the section it was announcing.
 
 ## The question is what the unit answers, asked or not
@@ -55,15 +57,23 @@ So `No. An orphaned artifact keeps serving a withdrawn link, and I did not fix i
 
 **Brevity was never the constraint.** "Merged into shortcut-tools main" is four words and complete; "both, in that order" is four words and useless. A short answer is right where the fact is short, and nowhere else.
 
-## Mood sorts report from finding
+## Mood sorts the kinds apart
 
-Questions in the interrogative-about-the-world mood (*does this work*, *is this true*) separate themselves from questions about events (*did this happen*, *what went in*). On the page every paragraph is the same shape and a finding buried among status reports is camouflaged. In the margin, the one question in a different mood stands out with no colour, status field or convention doing the work.
+Three moods, and they separate themselves without help:
+
+| mood | shape | what a turn full of them is |
+| --- | --- | --- |
+| **report** | *did this happen*, *what went in* | a wrap-up |
+| **finding** | *does this work*, *is this true* | a self-audit |
+| **proposal** | *can we*, *should we* | a design conversation |
+
+The first two separate on the page. On the page every paragraph is the same shape and a finding buried among status reports is camouflaged. In the margin, the one question in a different mood stands out with no colour, status field or convention doing the work.
 
 Do not add a status column to encode this. The grammar already carries it, and a column would invite you to write the mood rather than let it fall out.
 
-**The mix characterizes the reply.** A wrap-up runs mostly reports with one finding hiding among them, which is the case the margin rescues. A self-audit inverts it: run on a reply reporting four defects, the split came out five findings to five reports, four of the findings answered "No." So the ratio is worth stating alongside the table, since it says what kind of turn you are reading before you read it.
+**State the mix alongside the table**, since it says what kind of turn you are reading before you read it. Three measured so far: a wrap-up reply ran six reports to one finding, and rescuing that finding is the whole case for the margin; a defects reply ran five findings to five reports with four findings answered "No"; a spoken prompt ran five proposals and nothing else.
 
-**Two replies, both Claude-side.** The separation held on the second, unseen one. Nothing here is tested on a user's prose, on a document, or across authors.
+**Three units, and only one of them a user's.** Nothing here is tested on a document, or across authors.
 
 ## The open-loop filter (exchange grain only)
 
@@ -74,6 +84,8 @@ At exchange grain a question can outlive the turn that raised it. Count how many
 On the worked session this cuts 42 rows to 12, and the 30 it drops are the ones asked and answered in one breath, which is exactly the population a list was never needed for. Show the count as `×N` and let a zero render as nothing.
 
 The full list and the filtered one are **one structure with two masks**, never two artifacts. Deriving the second from the first is what keeps them from drifting.
+
+**Withdrawn is not settled, and the filter cannot see the difference.** A question can be raised and parked in the same breath: *"I kinda want it to be a little bit like Wikipedia where you can go in and edit the section. But maybe that's not really feasible there for now."* That closes inside its turn, so the open-loop filter drops it, but it closed by abandonment rather than by an answer. Mark it `~` and give it the asker's own reason as its answer. It is usually the one item in a turn that nobody will ever come back to, which is exactly why it is worth a row.
 
 ## Output
 
