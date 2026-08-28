@@ -20,6 +20,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
+import { makeShell } from './shell.mjs';
 
 const shell = readFileSync(path.join(repoRoot, 'app/index.html'), 'utf8');
 const kit = readFileSync(path.join(repoRoot, 'lib/kits/url-params.js'), 'utf8');
@@ -38,6 +39,37 @@ test('the short form opens the route, and the five-key form still does', () => {
   // link that resolves to nothing.
   assert.match(appRoute, /when: u => !!\(u\.app \|\| \(u\.appRepo && u\.appPath\)\)/,
     'the app route must accept ?app= and the five-key form alike');
+});
+
+test('the short form names the route on its own, so no view= rides beside it', async () => {
+  // `?view=app&app=budget-drs` is what the stamp used to write back: a key
+  // that says nothing, because parseUrl already reads the presence of `app`
+  // as the view. The five-key form is the opposite case and still needs it.
+  const { shell: app } = makeShell({ browserStore: { repo: '' } });
+  app.view = 'app';
+
+  app.appView = { key: 'me/home:a.html', slug: 'budget-drs', repo: 'me/home', path: 'a.html' };
+  const short = app.deepLinkParams(new URLSearchParams());
+  assert.equal(short.get('app'), 'budget-drs');
+  assert.equal(short.has('view'), false, 'the slug is the whole address; view= is redundant');
+  assert.equal(short.toString(), 'app=budget-drs', 'and nothing else rides along');
+
+  // No slug: the stamp writes appRepo/appPath and no `app`, so view= is the
+  // only thing naming the route and dropping it would make the link inert.
+  app.appView = { key: 'me/home:a.html', repo: 'me/home', path: 'a.html', label: 'News' };
+  const long = app.deepLinkParams(new URLSearchParams());
+  assert.equal(long.get('view'), 'app', 'nothing else names this spelling');
+  assert.equal(long.get('appRepo'), 'me/home');
+});
+
+test('a self that is a function is read as one, and a boolean still works', () => {
+  // The landing row carries `self: true` and predates this; the app row is the
+  // first conditional one. A reader of the table must handle both or one of
+  // the two silently stops naming itself.
+  assert.match(shell, /const self = typeof r\.self === 'function' \? r\.self\.call\(this\) : r\.self;/,
+    'deepLinkParams must resolve a function self, not treat it as truthy');
+  assert.match(appRoute, /self\(\)\{ return !!\(this\.appView && this\.appView\.slug\); \}/,
+    'the app row answers yes only for the spelling that names itself');
 });
 
 test('?app= implies its own view, or it would never dispatch', () => {
