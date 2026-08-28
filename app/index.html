@@ -6056,6 +6056,16 @@ function app(){ return {
         return;
       }
       e.preventDefault();
+      // AN ADDRESS IS A DESTINATION, NOT CONTENT. Tried before the intake, and
+      // only ever declined into it: pasteRoute answers false for everything it
+      // does not recognise, so the staging path below is unchanged for every
+      // paste that is not one of the four shapes it names.
+      //
+      // Reading text/plain here does not break the one-reader contract above.
+      // That contract is about who TAKES the flavors and owns the offer bar;
+      // getData on a DataTransfer consumes nothing, and this path ends in a
+      // navigation with no bar to populate.
+      if (await this.pasteRoute(cd)) return;
       const { added } = await window.StageIntake.takePaste(cd);
       if (!added.length || onStage) return;
       // Off the Stage the paste is also a navigation, the way a drop is: it
@@ -6064,6 +6074,65 @@ function app(){ return {
       this.goStage();
       if (added.length === 1) window.StageIntake.focus(added[0]);
     });
+  },
+
+  // ── A PASTED ADDRESS OPENS WHAT IT NAMES ──────────────────────────────────
+  //
+  // Until 2026-08-28 this app had exactly one paste behavior, unconditional:
+  // everything went to the Stage as content, so an address pasted here became a
+  // staged text file. toss-render has routed a paste by shape since it was
+  // written (looksLikeAddress -> showAddress), and the estate, the one surface
+  // that can actually OPEN what an address names, was the one that could not.
+  //
+  // Three shapes route; everything else declines into the intake unchanged.
+  // Two of them are RepoAddress.fromPaste's job (the bare grammar and a toss
+  // link, whose subject is what pasting it means), and it is the whole of the
+  // recognition so that the same answer is available to any other surface. The
+  // third is this app's own address, which only this app can recognise, since
+  // "my own page" is a location read and the kit is pure.
+  //
+  // A FILE IN THE CLIPBOARD ALWAYS WINS. A screenshot is content whatever text
+  // rides beside it, and pasting one is the gesture the Stage exists for.
+  async pasteRoute(cd){
+    if (!window.RepoAddress) return false;
+    if ([...(cd.items || [])].some(i => i.kind === 'file')) return false;
+    const text = (cd.getData('text/plain') || '').trim();
+    if (!text) return false;
+
+    const addr = window.RepoAddress.fromPaste(text);
+    if (addr) return this.openAddress(addr);
+
+    // THIS APP'S OWN ADDRESS, replayed rather than reloaded. Writing it and
+    // re-running the boot route keeps the shell's invariant true (the address
+    // bar names what is on screen) without dropping the Stage, the token, or
+    // anything else a real navigation would take with it. Pathname-exact, so a
+    // link to some other page on this origin is content rather than a route
+    // this app can honour.
+    let u;
+    try { u = new URL(text); } catch (e) { return false; }
+    if (u.origin !== location.origin || u.pathname !== location.pathname) return false;
+    history.replaceState(null, '', u.href);
+    const url = this.parseUrl();
+    await this.ensureBrowser(url?.repo, url?.ref);
+    await this.routeFromUrl(url);
+    return true;
+  },
+
+  // Open what an address names: an app view where the estate promotes one at
+  // that path, the file otherwise. The app-view check comes first because a
+  // promoted page has a rendered face, and handing back its SOURCE for an
+  // address that names the app itself is the one answer nobody pasting it wants.
+  // The address's `?query` tail rides along as that view's query, which is what
+  // carries a deep link like ?data=<table> through to the framed page.
+  async openAddress(addr){
+    await this.appViewsReady;
+    const key = addr.repo + (addr.ref ? '@' + addr.ref : '') + ':' + addr.path;
+    const v = this.appViews.find(x => x.key === key);
+    if (v) { this.goAppView(addr.query ? { ...v, query: addr.query } : v); return true; }
+    await this.ensureBrowser(addr.repo, addr.ref || undefined);
+    if (Alpine.store('browser').repo !== addr.repo) return false;
+    this.openFile(addr.path);
+    return true;
   },
 
   // A dragged file's MIME as a short label. An empty type is common and is
