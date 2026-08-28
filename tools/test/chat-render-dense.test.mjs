@@ -179,7 +179,7 @@ test('the reply hangs off the ask on the indent alone: no rail on either', () =>
   const sys = dense({ role: 'system', md: 'a note' });
   for (const [name, el] of [['ask', u], ['reply', a], ['system turn', sys]])
     assert.ok(!/border-l/.test(el.className), `the ${name} carries no rail`);
-  assert.equal(u.className.trim(), '', 'the ask is flush, which the indent is measured against');
+  assert.ok(!/\bml-/.test(u.className), 'the ask is flush, which the indent is measured against');
   assert.ok(a.className.includes('ml-5'), 'the reply indents under it');
   assert.ok(sys.className.includes('ml-5'), 'and so does every turn that is not the ask');
   const prose = a.querySelector('[data-flow="prose"]');
@@ -196,4 +196,36 @@ test('a raw user turn folds its head into the <pre>, where the text is', () => {
   const pre = el.querySelector('pre');
   assert.equal(pre.firstElementChild?.querySelector('i.ph')?.tagName, 'I', 'the lead is the pre\'s first child');
   assert.ok(pre.textContent.includes('why do only three'), 'and the typed text runs on from it');
+});
+
+test('the lead is tinted for the two conversation roles, and only those', () => {
+  // What the rail used to say, in one glyph. The ask takes the theme's primary,
+  // which is the hue its rail carried; the reply takes clay, this house's
+  // Claude colour. The other three stay neutral because this theme's warning
+  // and info sit at 88 to 89% lightness: fine as a 2px rail, unreadable as an
+  // 11px glyph, and a colour that cannot be seen is worse than none.
+  const icon = m => dense(m).querySelector('i.ph');
+  assert.equal(icon({ role: 'user', md: 'x' }).style.color, 'var(--color-primary, currentColor)');
+  assert.equal(icon({ role: 'assistant', md: 'x' }).style.color, 'rgb(217, 119, 87)', 'clay');
+  for (const role of ['system', 'tool', 'meta']) {
+    assert.equal(icon({ role, md: 'x' }).style.color, '', `${role} takes no tint`);
+    assert.ok(icon({ role, md: 'x' }).className.includes('opacity-50'), 'and stays at the neutral weight');
+  }
+  // Full size is a page and keeps its rails, so it needs no tint.
+  assert.equal(cr.message({ role: 'user', md: 'x' }, { collapse: 0 })
+    .querySelector('i.ph').style.color, '');
+});
+
+test('the ask is banded and the reply is not, so exchanges are found without reading', () => {
+  // A band on every turn is stripes. On the half that OPENS each exchange it
+  // turns the card's structure into something the eye finds at a tenth of the
+  // ink the rail was spending to fail at it.
+  const u = dense({ role: 'user', md: 'the ask' });
+  assert.ok(u.className.includes('bg-primary/10'), 'the ask carries the band');
+  assert.ok(u.className.includes('-mx-2') && u.className.includes('px-2'),
+    'and bleeds past the text, so the text\'s own left edge is unmoved');
+  for (const role of ['assistant', 'system', 'tool', 'meta'])
+    assert.ok(!/\bbg-/.test(dense({ role, md: 'x' }).className), `a ${role} turn takes none`);
+  assert.ok(!/\bbg-/.test(cr.message({ role: 'user', md: 'x' }, { collapse: 0 }).className),
+    'and full size takes none either');
 });
