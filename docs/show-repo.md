@@ -111,21 +111,35 @@ repos opt into.
 ### The shell mode: how much of the app surrounds the view
 
 `?shell=` decides how much of show-repo is drawn around whichever view the rest
-of the address names. Three values, and `full` is the default and stays out of
-the URL, so nothing written before this existed changed shape:
+of the address names. Three values:
 
 | Value | Header | Sidebar |
 | --- | --- | --- |
-| `full` (default) | yes | out on a wide screen, away on a phone |
+| `full` | yes | out on a wide screen, away on a phone |
 | `nav` | yes | away at every width; the header's hamburger opens it |
-| `none` | no | away; the FAB's Render tab is the way back |
+| `none` | no | away; the launcher's menu and the FAB's Render tab are the way back |
+
+**The default is per view, not one constant.** An app view opens at `none`,
+every other route at `full`, and whichever applies stays out of the URL. So
+`?app=budget-drs` is already "that page, bare", and turning the header on there
+is what gets recorded (`&shell=full`), which is the honest reading of a screen
+showing the app's chrome around a promoted page. A promoted page is one page
+some repo published, framed whole; the reader who addressed it by name asked
+for the page, not for the app around it, and a home-screen tile is the case
+that makes it obvious.
+
+It is derived per view rather than latched at boot, and a toggle back to a
+view's own default clears itself rather than latching. Both exist for one
+failure: a mode that follows the reader out of an app view leaves the estate
+dashboard with no nav at all, reachable only through the FAB.
 
 **It exists because most of these views have no page behind them.** Four do: a
 custom landing, a project landing, an app view, and the atlas are all iframes
 over a real standalone page, so the FAB offers a **bust-out** that leaves the
 embed and opens that page full-viewport. Files, Branches, Map, Search, State,
 Activity, and a repo's default overview are the shell's own, with nothing to
-bust out to. `?shell=none` is the address that shows one of them alone.
+bust out to. `?shell=none` is the address that shows one of them alone, and it
+is what an app view does without being asked.
 
 **An app view names and pictures itself.** The tab, the bookmark and the iOS
 home-screen tile all read the shell's `<title>` and its icon links, and one

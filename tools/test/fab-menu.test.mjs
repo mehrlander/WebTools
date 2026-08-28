@@ -279,3 +279,37 @@ test('a malformed row is a no-op, not a crash', async () => {
   const d = await mountFab();
   assert.doesNotThrow(() => { d.runMenuRow(null); d.runMenuRow({ label: 'x' }); });
 });
+
+// ── Raising the menu spends the gesture that raised it ───────────────────────
+//
+// Both routes to the menu sit on the launcher, and the launcher's other job is
+// the drawer. A right-click still delivers pointerdown and pointerup around the
+// contextmenu event, so the menu opened and the pointerup behind it read an
+// ordinary tap: `fabMenu = false; toggle()`, which closed the menu it had just
+// raised and left the drawer open instead. The long press already set a flag
+// for exactly this; only the right-click did not.
+
+test('a right-click raises the menu and does not also toggle the drawer', async () => {
+  const d = await mountFab();
+  d.open = false;
+  d.onDown({ clientX: 0, clientY: 0, pointerId: 1, currentTarget: { setPointerCapture(){} } });
+  d.onContextMenu();
+  assert.equal(d.fabMenu, true, 'the menu is up');
+  d.onUp({});
+  assert.equal(d.fabMenu, true, 'and the pointerup behind it must not close it');
+  assert.equal(d.open, false, 'nor open the drawer under it');
+});
+
+test('the press it consumed does not eat the NEXT ordinary tap', async () => {
+  // The flag is per gesture. onDown clears it, so a contextmenu whose pointerup
+  // never arrives (a platform that swallows it) cannot leave the launcher inert.
+  const d = await mountFab();
+  d.onDown({ clientX: 0, clientY: 0, pointerId: 1, currentTarget: { setPointerCapture(){} } });
+  d.onContextMenu();
+  // no onUp: the gesture is abandoned
+  d.onDown({ clientX: 0, clientY: 0, pointerId: 2, currentTarget: { setPointerCapture(){} } });
+  assert.equal(d._lpFired, false, 'a fresh press starts unspent');
+  d._clearLongPress();
+  d.onUp({});
+  assert.equal(d.open, true, 'so the next tap still opens the drawer');
+});

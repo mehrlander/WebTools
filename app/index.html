@@ -1811,9 +1811,28 @@ function app(){ return {
   // this stays the app's implementation and the fab's fallback (parking the
   // paste through kits/stage-handoff.js) is for everywhere else.
   //
-  // The `menu` contract itself stays. It has no user now, which is a fact
-  // worth stating rather than a reason to delete: the row it carried earned
-  // promotion by being built through it.
+  // ── What the contract carries now: the header ────────────────────────────
+  //
+  // The same argument that promoted the paste is what puts this here. An app
+  // view opens at `shell: none`, so there is no header on screen to reach for
+  // and the launcher is the only control that is always somewhere: a row
+  // BEFORE the drawer, found without knowing which tab to open.
+  //
+  // It is the second owner of one control, not a second control. `toggles`
+  // offers the same header switch on the Render tab, beside the ref and width
+  // bars, because which ref, what shape and how much shell are one question
+  // once you are already in the drawer. This is the same call for the reader
+  // who is not.
+  get menu(){
+    const on = this.shellMode !== 'none';
+    return [{
+      label: on ? 'Hide the header' : 'Show the header',
+      icon: on ? 'ph-arrows-out' : 'ph-layout',
+      title: on ? 'Show the view alone (?shell=none)'
+                : 'Bring the header back, and its sidebar toggle with it',
+      run: () => this.setHeader(!on),
+    }];
+  },
   view: 'landing',        // 'estate' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
   // Window-level drag counter for the app-wide drop (init wires the listeners;
   // nested enter/leave is why it counts rather than flips), and what the cue
@@ -1834,6 +1853,24 @@ function app(){ return {
   //   nav   header, sidebar closed at every width (open it from the header)
   //   none  neither; the view alone, which is what an unframed link wants
   //
+  // THE DEFAULT IS PER VIEW, not one constant. An app view opens at `none`:
+  // it is one page some repo promoted, framed whole, and a reader who
+  // addressed it by name asked for that page rather than for the app around
+  // it. A home-screen tile is the case that makes it obvious. Every other
+  // route IS the app and keeps its header.
+  //
+  // Derived per view rather than latched at boot, and that is the whole of why
+  // this is a getter. A latched default would follow the reader out of the app
+  // view and strand the estate dashboard with no nav, reachable only through
+  // the FAB. Deriving it means the shell leaves when you enter an app view and
+  // comes back when you leave, with nothing to remember or clear.
+  //
+  // It also keeps the ADDRESS minimal in both directions, since the stamp
+  // compares against this rather than against a constant: `?app=budget-drs`
+  // carries no `shell` key and opens bare, and turning the header on there
+  // stamps `shell=full`, which is the honest reading of a screen showing the
+  // app's chrome around a promoted page.
+  //
   // `none` is not a trap: the FAB's Render tab carries this as a bar (the
   // `modes` contract below), beside the ref and width bars, since which ref,
   // what width, and how much shell are three readings of one question. That is
@@ -1847,7 +1884,12 @@ function app(){ return {
   // `frame` was dropped too, since the Render tab's width bar already means a
   // frame, and two meanings in one tab is how a bar gets misread.
   SHELL_MODES: ['full', 'nav', 'none'],
-  shellMode: 'full',
+  // The reader's explicit choice, '' for none made. Held apart from the mode
+  // because the two answer different questions: what was asked for, and what
+  // this screen opens as when nothing was.
+  _shellChoice: '',
+  get defaultShellMode(){ return this.view === 'app' ? 'none' : 'full'; },
+  get shellMode(){ return this._shellChoice || this.defaultShellMode; },
 
   // Whether the sidebar is showing. One boolean at every width, which is the
   // whole of the mobile/desktop difference now: below lg it is an overlay with
@@ -2113,6 +2155,16 @@ function app(){ return {
     // estate: the all-repo view is the page's front door.
     else if (!url) this.goDashboard();
 
+    // THE BOOT ROUTE RUNS BEFORE THE WATCHERS BELOW ARE WIRED, so the mode this
+    // arrival settled on is the one change the shellMode watcher never sees.
+    // Re-derive once, here, where the view is final. Without it a cold `?app=`
+    // opened with the header correctly gone (x-show reads the mode live) and
+    // the sidebar still standing as a column beside it, a pairing no navigation
+    // inside the app can produce. Found in a browser, not by the suite, which
+    // is the shape of this bug: every unit was right and only the order was
+    // wrong.
+    this.sidebarOpen = this.defaultSidebarOpen;
+
     // A PASTE TAKEN SOMEWHERE ELSE, arriving. The fab's paste row runs on every
     // page carrying the launcher, and off this app there is no Stage to put
     // anything in and no way to keep a store array across the navigation that
@@ -2140,7 +2192,15 @@ function app(){ return {
     this.__installDeckPane();
     this.$watch('sidebarOpen', () => this.syncDeckFrame());
     this.$watch('showSidebar', () => this.syncDeckFrame());
-    this.$watch('shellMode', () => this.syncDeckFrame());
+    // The sidebar re-derives whenever the MODE changes, which is the half a
+    // per-view default cannot do on its own: entering an app view puts the
+    // sidebar away with the header, leaving brings back whatever that width
+    // opens with. Toggling it WITHIN a mode stays the reader's and is not
+    // touched here. Ordered before syncDeckFrame, which reads sidebarOpen.
+    this.$watch('shellMode', () => {
+      this.sidebarOpen = this.defaultSidebarOpen;
+      this.syncDeckFrame();
+    });
 
     // Browser Back/Forward restores state from the URL (syncUrl pushes an entry
     // per distinct URL, so the history has real steps to walk).
@@ -4915,7 +4975,9 @@ function app(){ return {
   //   when   the address carries what open() needs; a miss falls through to the landing
   //   ready  the shell holds what stamp() needs; a miss stamps nothing
   //   stamp  the view's OWN keys. The caller has already set ?view=
-  //   self   this view names itself another way, so the caller sets no ?view=
+  //   self   this view names itself another way, so the caller sets no ?view=.
+  //          A function where the answer depends on WHICH spelling the view is
+  //          about to stamp: `app` names itself only in its short form.
   VIEWS: [
     // The landing names itself by naming its repo, not with a ?view=: a repo's
     // front page IS ?repo=owner/name, and stamping a view key beside it would
@@ -5032,6 +5094,14 @@ function app(){ return {
         if (v) this.goAppView(v); else this.goDashboard();
       },
       ready(){ return !!this.appView; },
+      // Self-naming in the SHORT form only. `?app=<slug>` is a whole address,
+      // since parseUrl reads the presence of `app` as view=app, so a `view=app`
+      // beside it is a key that says nothing and the reader has to look past.
+      // The five-key fallback writes no `app` at all, so there it is the only
+      // thing naming the route and dropping it would make the address inert.
+      // Hence a function: one row, two spellings, and only one of them answers
+      // yes.
+      self(){ return !!(this.appView && this.appView.slug); },
       stamp(p){
         // The short form is what gets WRITTEN, whenever the open view has a
         // slug to write. The alternative was to read it and stamp the long one
@@ -5124,7 +5194,8 @@ function app(){ return {
     // survives a view change and travels with the address the header's ref
     // switch mints (which starts from an empty base, where ?use= must not
     // survive but this must, or a ref switch would silently reframe the page).
-    if (this.shellMode !== 'full') p.set('shell', this.shellMode); else p.delete('shell');
+    if (this.shellMode !== this.defaultShellMode) p.set('shell', this.shellMode);
+    else p.delete('shell');
     for (const k of this.VIEW_KEYS) p.delete(k);
     // The browsed ref rides beside the repo, not on a view. It was the Files
     // view's key while the Files view was the only thing that read it; the
@@ -5136,7 +5207,8 @@ function app(){ return {
     // shell cannot yet describe.
     const r = this.routeFor(this.view);
     if (r && (!r.ready || r.ready.call(this))) {
-      if (!r.self) p.set('view', r.key);
+      const self = typeof r.self === 'function' ? r.self.call(this) : r.self;
+      if (!self) p.set('view', r.key);
       r.stamp?.call(this, p, s);
     }
     return p;
@@ -6325,9 +6397,15 @@ function app(){ return {
   // returns null when the address names no repo, file, or view: a bare
   // `?shell=none` on the estate is a real link and would otherwise be dropped
   // on the floor.
+  // Stores whatever valid mode arrived, WITHOUT setShellMode's agreement rule,
+  // because this runs before the route resolves: `this.view` is still the
+  // landing and every address would look like it agreed with `full`. So
+  // `?shell=full&app=budget-drs` would have its own request thrown away. A
+  // redundant incoming mode costs nothing instead: the stamp drops it at the
+  // next syncUrl and the address self-heals.
   readShellMode(){
     const v = (new URLSearchParams(location.search).get('shell') || '').trim();
-    this.shellMode = this.SHELL_MODES.includes(v) ? v : 'full';
+    this._shellChoice = this.SHELL_MODES.includes(v) ? v : '';
     this.sidebarOpen = this.defaultSidebarOpen;
   },
   // Desktop opens with the sidebar out, a phone with it away, and only the
@@ -6343,7 +6421,17 @@ function app(){ return {
   setShellMode(mode){
     if (!this.SHELL_MODES.includes(mode) || mode === this.shellMode) return;
     if (mode === 'none') this._shellReturn = this.shellMode;
-    this.shellMode = mode;
+    // A CHOICE THAT AGREES WITH THE VIEW'S DEFAULT IS NOT A CHOICE, and
+    // clearing it is what keeps a toggle local to the screen it was made on.
+    // Turning the header off on an app view says "this page, bare", which is
+    // already what that view does; latching it as a choice carried `shell=none`
+    // out to the dashboard and left the estate with no nav and only the fab as
+    // the way back. Measured in a browser: two taps on one app view and the
+    // whole app had lost its chrome.
+    //
+    // It also keeps the state and the address agreeing by construction, since
+    // deepLinkParams stamps against exactly this comparison.
+    this._shellChoice = mode === this.defaultShellMode ? '' : mode;
     this.sidebarOpen = this.defaultSidebarOpen;
     this.syncUrl();
   },
