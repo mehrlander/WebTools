@@ -9,6 +9,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Persist FAB captures, the write path to state/captures/](tasks/fab-capture-button-f6q38m.md) · S
 - 🎫 [Let the Files pane find and the deck read, and stop it doing both](tasks/files-pane-finds-deck-reads-ubu13s.md) · M
 - 🎫 [Find a way to focus attention on one piece of a page's UI](tasks/focus-a-ui-component-f0awt7.md)
+- 🎫 [Read a document's growth against its readership, on the Docs tab](tasks/growth-vs-reads-quadrant-ng3c97.md) · M
 - 🎫 [Live-confirm the BranchSessions query](tasks/live-confirm-graphql-queries-7maacy.md) · XS
 - 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md)
 - 🎫 [Audit the app's views for viewport breakpoints inside the content pane](tasks/pane-width-not-window-width-wnabwo.md) · S
