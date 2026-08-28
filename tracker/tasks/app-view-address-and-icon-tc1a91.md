@@ -1,8 +1,10 @@
 ---
 id: app-view-address-and-icon-tc1a91
 title: Give an app view one address key and an identity of its own
-status: backlog
+status: done
 opened: 2026-08-20
+closed: 2026-08-28
+session: claude/budget-drs-web-tools-tcpcq6
 size: M
 ---
 # Give an app view one address key and an identity of its own
@@ -65,3 +67,30 @@ task is a convenience rather than a fix. Worth knowing before claiming it.
 - 2026-08-20: filed while adding a favicon to the budget-drs app in home
   (PR #483). Not claimed; the bookmark test above should run first, since it
   decides whether this is the fix or a convenience.
+- 2026-08-25: the address half done on `claude/toss-url-shorthand-dz0xpt`;
+  landed in PR #505. `?app=<slug>` and `?app=owner/repo[@ref]:path` both
+  resolve, the five-key form still does, `stamp()` writes the short form, and
+  `docs/app-routes.csv` carries the row. Two of the three done-when bullets, and
+  two of the four decisions (the key's name, and whether stamp emits it). The
+  identity half was left.
+- 2026-08-28: the identity half done on `claude/budget-drs-web-tools-tcpcq6`;
+  lands via PR #541. Raised by Marcus from the other end: a home-screen shortcut
+  to `?app=budget-drs` showed the web-tools hex nut. The remaining decision
+  ("how does a Phosphor class become a favicon?") took the second option it
+  named, mirroring the framed page's own icon, and for the reason the task
+  guessed: a glyph from `.web-tools.json` shows a mark the page never chose.
+  `toss-render` announces the resolved icon up UNDIMMED on `toss-subject-mark`,
+  since a toss is a rendering and a promoted view is a destination; the shell
+  rasterizes it to 180px so it can also fill the `apple-touch-icon` iOS requires
+  and will not take an SVG for.
+  Two of the task's unknowns are now answered. The Chrome bookmark question
+  ("whether Chrome keeps a separate favicon mapping per fragment") never had to
+  be settled: `?app=` is a query, so this route keys on a distinct URL either
+  way, which is what the task predicted when it chose a query-keyed address. And
+  "where do `appLabel` and `appIcon` go" had a third answer beyond keeping or
+  dropping them: a cold address link falls back to the filename and read
+  `app.html`, so `labelFrom` marks that case and the framed page's own `<title>`
+  fills it, leaving a declared label untouched.
+  One thing genuinely open, carried in the PR rather than here: whether iOS
+  honours a JS-injected `apple-touch-icon` at "Add to Home Screen" time. Only a
+  phone can answer it, and the fallback if not is a static link in the head.
