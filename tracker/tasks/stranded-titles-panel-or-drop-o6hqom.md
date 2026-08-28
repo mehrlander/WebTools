@@ -8,7 +8,7 @@ priority: low
 ---
 # Decide the remaining stranded title attributes, panel or leave
 
-`npm run title-survey` reports 89 **stranded** titles across the app: places
+`npm run stranded-titles` reports 89 **stranded** titles across the app: places
 where a `title` attribute is the only route to a fact, so a phone reader never
 reaches it at all. PR #447 fixed the worst cases on the branch row and the
 sessions row and left the rest, because HTML-STYLE.md's rule turns on judgment
@@ -56,3 +56,10 @@ not the total.
   and its survey comment; the reasoning about why three hand passes got this
   wrong is recorded in home `chron/2026/08/2026-08-19-the-hand-audit-was-wrong-three-times.md`.
   Next step is a component at a time, `map.js` first as the largest untouched one.
+- 2026-08-28: Command name corrected here; it is `npm run stranded-titles`, and
+  `npm run title-survey` never shipped. The count has moved 89 to 110, and the
+  three largest components have all grown: estate.js 24 to 29, map.js 20 to 27,
+  state-view.js 15 to 16. The rule this task decides against now carries the
+  replacement it was missing (web-tools PR #543): HTML-STYLE.md states the four
+  behaviours a built panel owes, and daisy-alpine carries it as house-style rule
+  7, which is what should stop the total climbing while the backlog is worked.
