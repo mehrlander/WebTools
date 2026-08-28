@@ -947,51 +947,46 @@ test('a derived option appears only where there is something to read out', async
 // want: `html 4.1 KB` against `txt 192 B` is a size, and the only thing
 // separating them was a title attribute, which is nothing at all on a phone.
 
-test('the tooltip carries the bytes, which is what a title could not', async () => {
+// ---- the preview, which is the house hover card ----------------------------
+//
+// kits/source-peek.js draws it; what this component owns is the KEY on each pill
+// and the bytes behind it. The card itself (its look, its dwell, where it lands)
+// is the kit's and is tested there.
+
+const peeks = () => {
+  const seeded = new Map();
+  window.SourcePeek = { seed: (k, t) => seeded.set(k, t) };
+  data.seedPeeks();
+  return seeded;
+};
+
+test('a text flavor carries its own name as the key, and its bytes behind it', async () => {
   reset();
   await paste(fakeCd({
     types: ['text/plain', 'text/html'],
     data: { 'text/plain': 'the first a relative one someone', 'text/html': PAGE },
   }));
   const html = data.offers.find(o => data.flavorLabel(o) === 'html');
-  const tip = data.tipFor('flavor', html);
-  assert.equal(tip.name, html.name);
-  assert.match(tip.text, /<a href="https:\/\/example\.com\/a">/,
-    'the markup itself, which is what tells this flavor from its plain-text twin');
-  assert.match(data.tipHtml(tip), /&lt;a href=/,
-    'and it is escaped, since this is the one place pasted markup is written INTO a document');
+  assert.equal(data.peekKey('flavor', html), html.name,
+    'the key is the file name, so the card head says what it is without an address');
+  assert.equal(peeks().get(html.name), PAGE,
+    'and the bytes are handed over, so a key that is not an address never reaches the network');
 });
 
-test('a long flavor is cut, and says so rather than filling the screen', async () => {
+test('an image carries no peek, since the card reads text', async () => {
   reset();
-  const long = 'x'.repeat(5000);
-  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': long } }));
-  const tip = data.tipFor('flavor', data.offers[0]);
-  assert.equal(tip.text.length, data.TIP_CHARS + 2, 'the cut plus a newline and an ellipsis');
-  assert.ok(tip.text.endsWith('…'));
-});
-
-test('an image previews as an image, since describing a screenshot is not a preview', async () => {
-  reset();
-  const made = [];
-  window.URL.createObjectURL = (f) => { made.push(f); return 'blob:test/' + made.length; };
-  window.URL.revokeObjectURL = () => {};
   await paste(fakeCd({ types: ['Files'], files: [fakeFile('image.png', 'image/png', 4096)] }));
-  const tip = data.tipFor('flavor', data.offers[0]);
-  assert.equal(tip.img, 'blob:test/1');
-  assert.equal(tip.text, undefined, 'the bytes are drawn, not printed');
-  assert.match(data.tipHtml(tip), /<img src="blob:test\/1"/);
-  data.tipFor('flavor', data.offers[0]);
-  assert.equal(made.length, 1, 'the URL is cached, so re-rendering the tooltip does not mint another');
+  assert.equal(data.peekKey('flavor', data.offers[0]), '');
+  assert.equal(peeks().size, 0);
 });
 
-test('the links option previews the list it would make', async () => {
+test('the links pill previews the list it would make, under the name it would make', async () => {
   reset();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  const tip = data.tipFor('links', data.pasteLinks[0]);
-  assert.equal(tip.name, data.pasteLinks[0].dest);
-  assert.match(tip.text, /^- \[/, 'the markdown itself, so it can be read before staging it');
-  assert.equal(tip.note, '3 links');
+  const t = data.pasteLinks[0];
+  assert.equal(data.peekKey('links', t), t.dest);
+  assert.match(peeks().get(t.dest), /^- \[the first\]/,
+    'a .md key renders in the card as the tappable list it will become');
 });
 
 // ---- the general case: markup to markdown ---------------------------------
@@ -1037,11 +1032,12 @@ test('the pill converts once and stages the result under its own name', async ()
   const opts = stubTurndown();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
   const t = data.pasteMarkdown[0];
-  assert.equal(data.tipFor('md', t).note, 'converting…',
-    'the tooltip says so rather than showing the markup it is not');
+  assert.equal(data.peekKey('md', t), '',
+    'no peek until the conversion exists, since a key with nothing behind it is an error card');
   data.primeMd(t);
   await tick(3);
-  assert.match(data.tipFor('md', t).text, /^MD</, 'and fills in when the conversion lands');
+  assert.equal(data.peekKey('md', t), t.dest, 'and the key appears when it lands');
+  assert.match(peeks().get(t.dest), /^MD</);
   await data.stageMd(t);
   await tick(3);
   assert.equal(opts.length, 1, 'peeking then staging is the ordinary sequence, so it converts once');
@@ -1073,16 +1069,14 @@ test('a converter that will not load is reported, not swallowed', async () => {
   Alpine.store('toast', realToast);
 });
 
-test('a new paste drops the previews the old one minted', async () => {
+test('a new paste drops the conversions the old one made', async () => {
   reset();
-  const revoked = [];
-  window.URL.createObjectURL = () => 'blob:test/x';
-  window.URL.revokeObjectURL = (u) => revoked.push(u);
-  await paste(fakeCd({ types: ['Files'], files: [fakeFile('image.png', 'image/png', 4096)] }));
-  data.tipFor('flavor', data.offers[0]);
+  stubTurndown();
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  await data.mdFor(data.pasteMarkdown[0].flavor);
+  assert.ok(data._mdText.size);
   data.offers = [];
-  assert.deepEqual(revoked, ['blob:test/x'], 'a preview is a reading of a paste that is gone');
-  assert.equal(data._mdText, null, 'and so is a conversion of it');
+  assert.equal(data._mdText, null, 'a conversion is a reading of a paste that is gone');
 });
 
 test('the reader\'s header reads out of a staged file, however it arrived', () => {

@@ -38,35 +38,22 @@ export default async (page) => {
     });
   });
   await page.waitForTimeout(600);
-  // The markdown pill's tooltip, held open. It is the one preview that has to
-  // be shot rather than asserted twice over: the conversion is Turndown's,
-  // fetched on the hover, and the tooltip is CSS a logic test cannot see.
-  await page.evaluate(async () => {
-    const el = document.querySelector('[x-data*="stager"]');
-    const d = window.Alpine.$data(el);
-    await d.mdFor(d.pasteMarkdown[0].flavor);
-  });
-  await page.waitForTimeout(400);
-  // Every box measured, because the one thing a CSS tooltip cannot do is flip:
-  // daisyUI centres it on its anchor, so a 224px box over the first pill in the
-  // row hung 85px off the left edge of a phone until the content was pinned to
-  // the pill's left edge instead. The log is where that stays checked.
-  const boxes = await page.evaluate(() => {
+  // The html flavor's peek, opened by a real hover. The card is the house one
+  // (kits/source-peek.js), so this shoots the kit's own placement and dwell
+  // rather than anything this view draws: 320 ms before it opens, left-aligned
+  // to the pill, flipped above when it does not fit below.
+  const pill = await page.evaluateHandle(() => {
     const root = document.querySelector('[x-data*="stager"]');
-    return [...root.querySelectorAll('.tooltip')].map(t => {
-      t.classList.add('tooltip-open');
-      const r = t.querySelector('.tooltip-content').getBoundingClientRect();
-      t.classList.remove('tooltip-open');
-      return [Math.round(r.left), Math.round(r.right)];
-    });
+    return [...root.querySelectorAll('[data-peek]')].find(b => /html/.test(b.textContent));
   });
-  const off = boxes.filter(([l, r]) => l < 0 || r > 390);
-  console.log('tooltip boxes ' + JSON.stringify(boxes) + (off.length ? ' OFF-SCREEN' : ' all on screen'));
-
-  await page.evaluate(() => {
-    const root = document.querySelector('[x-data*="stager"]');
-    [...root.querySelectorAll('.tooltip')]
-      .find(t => /markdown/.test(t.textContent)).classList.add('tooltip-open');
+  await pill.asElement().hover();
+  await page.waitForTimeout(900);
+  const box = await page.evaluate(() => {
+    const c = document.getElementById('wt-source-peek');
+    if (!c || c.style.display === 'none') return null;
+    const r = c.getBoundingClientRect();
+    return [Math.round(r.left), Math.round(r.right), Math.round(r.top)];
   });
-  await page.waitForTimeout(600);
+  console.log('peek card ' + JSON.stringify(box)
+    + (box && box[0] >= 0 && box[1] <= 390 ? ' on screen' : ' OFF-SCREEN or closed'));
 };
