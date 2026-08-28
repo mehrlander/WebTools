@@ -169,11 +169,11 @@ test('a body that opens on a code fence keeps the standalone head', () => {
   assert.ok(head.textContent.includes('09:00:00'));
 });
 
-test('every dense turn sits on one left edge, and only the ask is tinted in it', () => {
-  // The rail went, then this band, then the reply's indent, and the band came
-  // back once the indent was gone: the two were saying the same thing, so with
-  // the indent in place the band was a second voice for one fact and now it is
-  // the only one. Nothing MOVES a turn any more.
+test('the ask is filled on its BODY, so the icon stays out of the tint', () => {
+  // The band used to sit on the FRAME and bleed 8px past the text with
+  // -mx-2/px-2, which put the glyph inside its own fill and made the ask read
+  // as a panel. It is on the body now, starting at USER_FILL_X, so the fill
+  // hugs the text and the icon sits in a gutter beside it.
   const u = dense({ role: 'user', md: 'the ask' });
   const a = dense({ role: 'assistant', md: 'the answer' });
   const sys = dense({ role: 'system', md: 'a note' });
@@ -181,12 +181,15 @@ test('every dense turn sits on one left edge, and only the ask is tinted in it',
     assert.ok(!/border-l|\bml-/.test(el.className), `the ${name} is neither railed nor moved`);
   assert.equal(a.className, '', 'the reply carries no frame at all');
   assert.equal(sys.className, '', 'nor does any other turn that is not the ask');
-  assert.ok(u.className.includes('bg-primary/10'), 'the ask carries the fill');
-  assert.ok(u.className.includes('-mx-2') && u.className.includes('px-2'),
-    'which bleeds past the text, so the two text columns still line up');
+  assert.equal(u.className, '', 'and the ask no longer carries one either');
+  const fill = u.querySelector('.relative');
+  assert.ok(/color-mix/.test(fill.style.background), 'the fill is on the body');
+  assert.equal(fill.style.marginLeft, '10px', 'starting right of the gutter the icon sits in');
+  assert.ok(!/bg-primary/.test(u.className), 'and no longer on the frame');
   const prose = a.querySelector('[data-flow="prose"]');
   assert.equal(prose.style.fontSize, '13px', 'the size step, as a style: it has to beat prose-sm on the same element');
-  assert.equal(u.querySelector('pre').tagName, 'PRE', 'and mono against prose');
+  assert.equal(u.querySelector('pre').style.fontSize, '11px',
+    'and the ask is smaller than the reply, which is what says which is which');
   // Full size is untouched: a deck slide is a page, not a panel.
   assert.ok(/border-l-2/.test(cr.message({ role: 'assistant', md: 'x' }, { collapse: 0 }).className));
 });
@@ -227,20 +230,34 @@ test('the fill is the ask\'s alone, and full size takes none', () => {
     'and full size has its rails instead');
 });
 
-test('the turn hangs on its lead: the icon in the margin, every other line on one edge', () => {
-  // The body is pushed in by the lead's width and the first line pulled back
-  // out by the same amount, so the glyph sits outside the text column and lines
-  // two onward, and every later paragraph, share one edge with line one's text.
-  for (const role of ['user', 'assistant']) {
-    const el = dense({ role, md: 'a turn' });
-    const host = el.querySelector('.relative');
-    const blk = el.querySelector('pre, p');
-    assert.equal(host.style.paddingLeft, '17px', `${role}: the body clears the lead`);
-    assert.equal(blk.style.textIndent, '-17px', `${role}: and line one comes back out`);
-  }
+test('a reply hangs on its lead; the ask puts the lead in a gutter instead', () => {
+  // The hang pushes the body in by the lead's width and pulls the first line
+  // back out by the same amount, so the glyph sits outside the text column and
+  // every other line shares one edge with line one's text. Every role but the
+  // ask still works that way.
+  const a = dense({ role: 'assistant', md: 'a turn' });
+  assert.equal(a.querySelector('.relative').style.paddingLeft, '17px', 'the body clears the lead');
+  assert.equal(a.querySelector('pre, p').style.textIndent, '-17px', 'and line one comes back out');
+
+  // The ask cannot hang, because its fill would then start right of a first
+  // line that had been pulled left of it: the opening words sat outside their
+  // own shade. Positioning the lead removes the thing the hang exists to
+  // clear, so every line, first included, starts at the fill's edge.
+  const u = dense({ role: 'user', md: 'a turn' });
+  const lead = u.querySelector('i.ph').parentElement;
+  assert.equal(lead.style.position, 'absolute', 'the ask\'s icon leaves the flow');
+  assert.equal(lead.style.left, '-10px', 'into the gutter, offset by the fill\'s own margin');
+  // The body's padding is the fill's HUG now, not the hang: 5px of breathing
+  // room inside the tint rather than 17px of clearance for a glyph that is no
+  // longer in the flow.
+  assert.equal(u.querySelector('.relative').style.paddingLeft, '5px', 'the hug, not the hang');
+  assert.equal(u.querySelector('pre').style.textIndent, '0px', 'and no pull-back');
+
   // Full size hangs nothing: its head is its own row.
   const full = cr.message({ role: 'user', md: 'a turn' }, { collapse: 0 });
   assert.equal(full.querySelector('.relative').style.paddingLeft, '');
+  assert.equal(full.querySelector('i.ph').parentElement.style.position, '',
+    'and its icon is not positioned either');
 });
 
 test('the lead stops the indent inheriting, or a label lands on the icon', () => {
@@ -261,4 +278,22 @@ test('a turn whose lead could not fold hangs nothing', () => {
   const el = dense({ role: 'assistant', md: '```js\nconst x = 1;\n```\n\nafter.' });
   assert.ok(standaloneHead(el), 'the fallback head is in play');
   assert.equal(el.querySelector('.relative').style.paddingLeft, '');
+});
+
+test('an ask keeps its fill even where the lead could not fold', () => {
+  // The fill hung off `leadAt` once, which reads as one condition and is two:
+  // whether the turn is an ask, and whether its first block could take an
+  // inline lead-in. A body that opens on something textEdge will not descend
+  // into falls back to a standalone head, and lost its tint with it, so the one
+  // ask on the card that could not fold was also the one that stopped looking
+  // like an ask. Reachable only through `raw: false`, which is why it shipped.
+  const el = cr.message({ role: 'user', md: '```js\nconst x = 1;\n```\n\nafter.' },
+    { dense: true, collapse: 0, raw: false });
+  assert.ok(standaloneHead(el), 'the fallback head is in play');
+  const fill = el.querySelector('.relative');
+  assert.ok(/color-mix/.test(fill.style.background), 'and the ask is still tinted');
+  assert.equal(fill.style.marginLeft, '10px');
+  // The gutter is the half that needs a lead, so it stays gated.
+  assert.equal(el.querySelector('i.ph').parentElement.style.position, '',
+    'with no lead to fold, nothing is positioned into the gutter');
 });

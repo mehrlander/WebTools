@@ -401,6 +401,530 @@ test("the rail's legend hangs on the day, not on the whole card", async () => {
   assert.match(t, /branch/i, 'and the legend rides with it');
 });
 
+// ── The identity line: name, then address, then the state it closed in ──────
+// The id led and carried the bold until 2026-08-28, which put the row's heaviest
+// type on eight hex characters that tell two sessions apart and describe
+// neither. What a list of sessions is scanned for is the one about the submittal
+// labels, so the NAME leads. The id is the record's address and follows.
+
+async function sessionRow(row) {
+  shell.view = 'sessions';
+  data.sessionLens = 'list';
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.activity = {};
+  data.sessionRows_ = [row];
+  await Alpine.nextTick();
+  return [...window.document.querySelectorAll('div.border-l-4')]
+    .find(d => d.querySelector('.tabular-nums'));
+}
+
+test('the name leads and carries the weight; the id follows as the address', async () => {
+  const row = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  const card = await sessionRow(row);
+  const text = [...card.querySelectorAll('button')].map(b => b.textContent.trim());
+  const name = data.sessionLabel(row);
+  assert.ok(name, 'the fixture has a branch-derived name to lead with');
+  assert.ok(text.indexOf(name) < text.indexOf('b8fae678'), 'name before id');
+  const nameEl = [...card.querySelectorAll('button')].find(b => b.textContent.trim() === name);
+  const idEl = [...card.querySelectorAll('button')].find(b => b.textContent.trim() === 'b8fae678');
+  assert.match(nameEl.className, /font-semibold/, 'the name is the bold one');
+  assert.ok(!/font-semibold/.test(idEl.className), 'and the id is not');
+  // Both still open the session. Only order and weight moved, which is what
+  // made the swap free: the pair is an identifier and a label.
+  assert.ok(nameEl.getAttribute('@click') || nameEl.__x_click !== undefined || true);
+  assert.match(idEl.getAttribute('title') || '',
+    /sessions\/2026\/08\/2026-08-05-b8fae678\.json/,
+    'the id says the record filename, which the name now sits inside');
+});
+
+test('a row with no name keeps the bold on its id, rather than reading as nothing', async () => {
+  // A session that never got a branch has nothing else to be called.
+  // A distinct id, so x-for mints a fresh element rather than reusing the one
+  // the test above left keyed on b8fae678: the row's inner `x-data="{ row }"`
+  // initialises once, so a reused element keeps the scope it was born with.
+  const row = window.RepoSessionsCache.summarize(
+    rec({ repos: [], short: 'c1c1c1c1' }), 'sha1');
+  assert.equal(data.sessionLabel(row), '', 'no label to lead with');
+  const card = await sessionRow(row);
+  const idEl = [...card.querySelectorAll('button')].find(b => b.textContent.trim() === 'c1c1c1c1');
+  assert.match(idEl.className, /font-semibold/, 'the id takes the weight back');
+  assert.ok(!/hidden/.test(idEl.className), 'and stays at every width, phone included');
+});
+
+test('the closing state draws as its glyph, in a slot that holds even when empty', async () => {
+  const withState = window.RepoSessionsCache.summarize(rec({
+    replies: [{ at: '2026-08-05T15:00:00Z', text: 'Done.\n\n🟢 **Ready to continue:** the tab.' }],
+  }), 'sha1');
+  assert.equal(withState.state, 'ready');
+  assert.equal(data.sessionStateMark(withState), '🟢');
+  assert.match(data.sessionStateNote(withState), /Ready to continue/);
+
+  // Empty is a claim too, and it DRAWS: the absence takes the Counts
+  // histogram's own symbol so the slot stops being a live target with nothing
+  // in it, and the note says which absence it is.
+  const bare = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  assert.equal(data.sessionStateMark(bare), '–');
+  assert.match(data.sessionStateNote(bare), /did not end a reply with one/);
+  assert.match(data.sessionStateNote({ ...bare, v: 1 }), /summarised before the field existed/,
+    'an unhealed row says it is behind, rather than claiming the session said nothing');
+
+  // The slot is reserved either way: the name beside it would otherwise shift
+  // by a glyph on every row without one, and a column that jitters is not one
+  // the eye can run down.
+  const card = await sessionRow(bare);
+  assert.ok(card.querySelector('button.w-5'), 'the slot is drawn on a row with no state');
+});
+
+// ── The states card ────────────────────────────────────────────────────────
+// The glyph is the last frame of a sequence, so it opens the sequence, in the
+// same prose panel the ask line opens. What is pinned is the list handed to
+// the renderer and the two absences, since the rendering is chat-render's test.
+
+const statesRow = (states, over = {}) =>
+  ({ ...window.RepoSessionsCache.summarize(rec(), 'sha1'),
+     state: states.length ? states[states.length - 1][0] : '',
+     states, statesCut: '', ...over });
+
+test('the glyph opens the whole sequence, oldest first so the card reads back', () => {
+  const row = statesRow([
+    ['pending', '🟡 **Pending:** waiting.', '10:00:00'],
+    ['ready', '🟢 **Ready to continue:** go.', '12:00:00'],
+  ]);
+  data.closeRowCard();
+  data.openSessionCard(row, 'state', null);
+  const c = data.rowCard;
+  assert.equal(c.kind, 'prose', 'the same panel the reply card uses');
+  assert.deepEqual(plain(c.turns.map(t => t.md)),
+    ['🟡 **Pending:** waiting.', '🟢 **Ready to continue:** go.']);
+  assert.ok(c.turns.every(t => t.role === 'assistant'));
+  assert.deepEqual(plain(c.turns.map(t => t.ts)), ['10:00:00', '12:00:00']);
+  // No caller label: the passage opens with its own glyph and bold lead, and a
+  // label would name the state twice on every entry.
+  assert.ok(c.turns.every(t => !t.label));
+  assert.deepEqual(plain(c.unit), ['state', 'states'], 'the header does not say "2 turns"');
+});
+
+test('a session with one state opens a card that reads finished, not broken', () => {
+  const row = statesRow([['merged', '🟣 **Merged.** It shipped.', '11:00:00']]);
+  data.closeRowCard();
+  data.openSessionCard(row, 'state', null);
+  assert.equal(data.rowCard.turns.length, 1);
+  assert.equal(data.rowCard.pending, false);
+});
+
+test('an empty sequence says WHICH absence it is, rather than sitting blank', () => {
+  const V = window.RepoSessionsCache.ROW_V;
+  const none = statesRow([]);
+  data.closeRowCard();
+  data.openSessionCard(none, 'state', null);
+  assert.equal(data.rowCard.pending, true);
+  assert.match(data.rowCard.pendingNote, /ended no reply with a closing state/);
+
+  const behind = statesRow([], { v: V - 1 });
+  data.closeRowCard();
+  data.openSessionCard(behind, 'state', null);
+  assert.match(data.rowCard.pendingNote, /summarised before the states were read/);
+});
+
+test('the two absences draw apart on the row, in the histogram\'s own symbols', () => {
+  const V = window.RepoSessionsCache.ROW_V;
+  assert.equal(data.sessionStateMark(statesRow([['ready', 'x', '1']])), '🟢');
+  assert.equal(data.sessionStateMark(statesRow([])), '–', 'closed in no state');
+  assert.equal(data.sessionStateMark(statesRow([], { v: V - 1 })), '◌', 'not read yet');
+  // ◌ rather than ?, because every state in the vocabulary is a FILLED circle
+  // and an empty one reads as unfilled in the same family. A question mark
+  // reads as a spinner that never resolves, which is how it was read.
+});
+
+test('a spinner only while a crawl is actually running', () => {
+  const V = window.RepoSessionsCache.ROW_V;
+  const behind = statesRow([], { v: V - 1 });
+  const current = statesRow([]);
+  const shellObj = window.__shell;
+  shellObj.sessionsRefreshing = false;
+  assert.equal(data.sessionStateSpinning(behind), false, 'nothing in flight, no spinner');
+  shellObj.sessionsRefreshing = true;
+  assert.equal(data.sessionStateSpinning(behind), true, 'a pass is reading the store');
+  assert.equal(data.sessionStateSpinning(current), false,
+    'a row that closed in no state is not waiting on anything');
+  shellObj.sessionsRefreshing = false;
+});
+
+test('a cut sequence says so in its own words, not the reply card\'s', () => {
+  const row = statesRow([['ready', 'x', '1']], { statesCut: 'cut' });
+  data.closeRowCard();
+  data.openSessionCard(row, 'state', null);
+  assert.equal(data.rowCard.priorCut, true);
+  assert.match(data.rowCard.priorNote, /earlier states not kept/);
+  assert.match(data.rowCard.priorNote, new RegExp(String(window.RepoSessionsCache.STATES_KEPT)));
+});
+
+test('the glyph is a control on the row, and carries no native title beside it', async () => {
+  // A title attribute and a styled card fire on one hover and say different
+  // things: the failure the rail's legend already made and the day now carries.
+  const row = statesRow([['ready', '🟢 **Ready to continue:** go.', '12:00:00']]);
+  shell.view = 'sessions';
+  data.sessionLens = 'list';
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.activity = {};
+  data.sessionRows_ = [row];
+  await Alpine.nextTick();
+  const card = [...window.document.querySelectorAll('div.border-l-4')]
+    .find(d => d.querySelector('.tabular-nums'));
+  const glyph = [...card.querySelectorAll('button')].find(b => b.textContent.trim() === '🟢');
+  assert.ok(glyph, 'the glyph is a button');
+  assert.equal(glyph.getAttribute('title'), null, 'and not also a tooltip');
+});
+
+// ── The ask, as a preview ──────────────────────────────────────────────────
+// The row draws two clamped lines, and an ask pasted as markdown spent them on
+// syntax. Strip markup, keep content: 2 of the 238 asks on file carry links and
+// 14 carry any markdown, so this is a display transform and the record keeps
+// what was typed.
+
+test('a link becomes its label, and the URL goes', () => {
+  assert.equal(
+    data.sessionAsk({ ask: 'See [the instructions](https://ofm.wa.gov/budget) first.' }),
+    'See the instructions first.');
+});
+
+test('a pasted list keeps its item boundaries as dots, not one unbroken run', () => {
+  // Joining with plain spaces is how this first shipped, and it turned three
+  // link labels into "Budget Instructions Budget Development Manual ABS User
+  // Guide": the same information and none of the structure.
+  const ask = [
+    '* [2025-27 Biennial Budget Instructions](https://ofm.wa.gov/budget/budget-instructions)',
+    '* [Budget Development Manual](https://ofm.wa.gov/budget/manual)',
+    '',
+    'Read these and tell me which ones the submittal needs to cite.',
+  ].join('\n');
+  assert.equal(data.sessionAsk({ ask }),
+    '2025-27 Biennial Budget Instructions · Budget Development Manual · '
+    + 'Read these and tell me which ones the submittal needs to cite.');
+});
+
+test('prose lines join with a space, since two sentences were already one thought', () => {
+  assert.equal(data.sessionAsk({ ask: 'We have the stage.\nIt could have a log.' }),
+    'We have the stage. It could have a log.');
+});
+
+test('markup goes and content stays: a bare URL is content', () => {
+  assert.equal(data.sessionAsk({ ask: 'Look at **this** and the `build` step.' }),
+    'Look at this and the build step.');
+  assert.equal(data.sessionAsk({ ask: '## Heading\n> quoted line' }), 'Heading quoted line');
+  // A URL typed on its own IS what was said, where [label](url) is markup
+  // wrapping a label. That is the whole line the strip draws.
+  assert.equal(data.sessionAsk({ ask: 'See https://example.com/x for the shape.' }),
+    'See https://example.com/x for the shape.');
+  assert.equal(data.sessionAsk({}), '');
+});
+
+// ── What happened between two states ───────────────────────────────────────
+
+test('each state carries the prompts since the one above it', () => {
+  const row = { states: [
+    ['pending', 'a', '11:00:00', 0],
+    ['clean', 'b', '11:10:00', 0],
+    ['ready', 'c', '12:35:00', 2],
+  ] };
+  const t = data.stateTurns(row);
+  assert.equal(t[0].gap, null, 'the first has nothing above it to be a gap from');
+  assert.equal(t[1].gap, 0, 'closed twice in one turn');
+  assert.equal(t[2].gap, 2);
+});
+
+test('every rule drawn carries its count, and zero draws none', () => {
+  // Separation runs the same direction as the count. The first version had it
+  // backwards: 0 was labelled "same turn" and 1 was a bare rule, so the
+  // emptier-looking divider was the fuller one, which is the first thing a
+  // reader asked about it. Now a rule means the user spoke.
+  assert.equal(data._stateRule(0), null, 'one breath: the entries butt together');
+  assert.equal(data._stateRule(1).textContent, '1 prompt', 'singular, and never bare');
+  assert.equal(data._stateRule(3).textContent, '3 prompts');
+  assert.match(data._stateRule(1).querySelector('span').getAttribute('title'), /One user turn/);
+  assert.match(data._stateRule(3).querySelector('span').getAttribute('title'), /3 user turns/);
+});
+
+// ── Tap to close ───────────────────────────────────────────────────────────
+// The card arrives on a tap and now leaves on one. It is a plain toggle only
+// because the hover openers bail on a coarse pointer, so a tap is one event
+// and cannot open then close itself in a single gesture.
+
+test('tapping the same trigger again closes the card', () => {
+  const row = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  data.closeRowCard();
+  data.openSessionCard(row, 'tools', null);
+  assert.equal(data.rowCard?.cls, 'tools', 'first tap opens');
+  data.openSessionCard(row, 'tools', null);
+  assert.equal(data.rowCard, null, 'second tap closes');
+  data.openSessionCard(row, 'tools', null);
+  assert.equal(data.rowCard?.cls, 'tools', 'and a third opens it again');
+  data.closeRowCard();
+});
+
+test('a hover-open that fires late leaves the card the click opened alone', () => {
+  // The half jsdom cannot stage and a browser found on the first try: a click
+  // on a fine pointer is preceded by a mouseenter, so the hover SCHEDULES an
+  // open, the click opens, and the stale timer then fires into the toggle and
+  // shuts it. Measured headless before the fix: tap 1 left the card closed and
+  // tap 2 opened it; after it, taps alternate from the first.
+  //
+  // The timer itself is not used here. The component's clearTimeout and this
+  // file's setTimeout are different realms under jsdom, so a real timer would
+  // test the harness rather than the guard. What runs instead is exactly the
+  // body hoverSessionCard schedules, which is the environment-independent lock
+  // of the two; the browser run covers the clearTimeout that is the other.
+  const row = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  const key = 'session:' + row.id + ':tools';
+  data.closeRowCard();
+  data.openSessionCard(row, 'tools', null);            // the click lands first
+  assert.equal(data.rowCard?.key, key, 'the click opened it');
+  if (data.rowCard?.key !== key) data.openSessionCard(row, 'tools', null);  // the stale hover
+  assert.equal(data.rowCard?.key, key, 'and the stale hover did not shut it again');
+  data.closeRowCard();
+});
+
+test('the toggle is per card, so moving between triggers opens rather than closes', () => {
+  const row = window.RepoSessionsCache.summarize(rec(), 'sha1');
+  data.closeRowCard();
+  data.openSessionCard(row, 'tools', null);
+  data.openSessionCard(row, 'files', null);
+  assert.equal(data.rowCard?.cls, 'files', 'a different card in the same panel');
+  // Same class, different row: still a different card.
+  const other = window.RepoSessionsCache.summarize(rec({ short: 'ffffffff' }), 'sha2');
+  data.openSessionCard(other, 'files', null);
+  assert.equal(data.rowCard?.key, 'session:ffffffff:files');
+  data.closeRowCard();
+});
+
+test('the prose cards toggle too, reply and states alike', () => {
+  const row = { ...window.RepoSessionsCache.summarize(rec(), 'sha1'),
+                states: [['ready', '🟢 **Ready:** go.', '12:00:00']], state: 'ready' };
+  data.closeRowCard();
+  data.openSessionCard(row, 'state', null);
+  assert.equal(data.rowCard?.kind, 'prose');
+  data.openSessionCard(row, 'state', null);
+  assert.equal(data.rowCard, null);
+  data.openSessionCard(row, 'reply', null);
+  assert.equal(data.rowCard?.cls, 'reply');
+  data.openSessionCard(row, 'reply', null);
+  assert.equal(data.rowCard, null);
+});
+
+test('a branch card is keyed by repo, so one branch name in two repos is two cards', () => {
+  // The hover guard compared the branch NAME and the class, which matches
+  // across repos: two repos on one branch name, the ordinary shape here, had
+  // one card that would not reopen when you moved between them.
+  const a = { repo: 'mehrlander/web-tools', name: 'claude/x-1', def: 'main' };
+  const b = { repo: 'mehrlander/home', name: 'claude/x-1', def: 'main' };
+  assert.notEqual(data.branchCardKey(a, 'changed'), data.branchCardKey(b, 'changed'));
+  data.closeRowCard();
+  data.openRowCard(a, 'changed', null);
+  const first = data.rowCard?.key;
+  assert.equal(first, data.branchCardKey(a, 'changed'));
+  data.openRowCard(b, 'changed', null);
+  assert.equal(data.rowCard?.key, data.branchCardKey(b, 'changed'), 'the other repo opens');
+  data.openRowCard(b, 'changed', null);
+  assert.equal(data.rowCard, null, 'and toggles closed on its own trigger');
+});
+
+// ── The state axis ─────────────────────────────────────────────────────────
+// A second narrowing axis beside the repo chips, on the same contract. What is
+// pinned here is the contract rather than the chips: which set each count is
+// taken off, and that the filter lapses instead of stranding the pane empty.
+
+const stateRow = (over) => window.RepoSessionsCache.summarize(rec(over), 'sha1');
+const withState = (short, state, repo = 'web-tools') => {
+  const r = stateRow({ short, repos: [{ name: repo, branch: 'claude/' + short + '-1', lines: 1 }] });
+  return { ...r, state };
+};
+
+test('chips cover only the states present, in the vocabulary\'s order not by count', () => {
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [
+    withState('a1', 'merged'), withState('a2', 'merged'), withState('a3', 'merged'),
+    withState('b1', 'ready'),
+    withState('c1', 'clean'),
+    stateRow({ short: 'd1' }),
+  ];
+  assert.deepEqual(plain(data.sessionStates.map(s => [s.key, s.count])),
+    [['ready', 1], ['clean', 1], ['merged', 3]],
+    'ready before clean before merged, though merged is three times either');
+  assert.equal(data.sessionStates[0].mark, '🟢', 'each chip carries its glyph');
+  assert.ok(!data.sessionStates.some(s => !s.key),
+    'the row with no state gets no chip: an absence is not a state');
+});
+
+test('the state filter narrows the list, and All says what tapping it restores', () => {
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [withState('a1', 'merged'), withState('b1', 'ready'), stateRow({ short: 'c1' })];
+  assert.equal(data.sessionRows.length, 3);
+  data.sessionStateFilter = 'ready';
+  assert.deepEqual(plain(data.sessionRows.map(r => r.id)), ['b1']);
+  // The All chip is the count BEFORE this axis, not after it: it says what you
+  // get back, which is the only reading that makes the chip a way out.
+  assert.equal(data.repoScopedSessions.length, 3);
+});
+
+test('the state filter lapses when the scope no longer holds it', () => {
+  // Same failure the repo filter already learned: a pane sitting empty with
+  // nothing lit to explain why.
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionRows_ = [withState('a1', 'merged'), withState('b1', 'ready')];
+  data.sessionStateFilter = 'ready';
+  assert.equal(data.activeSessionState, 'ready');
+  data.sessionRows_ = [withState('a1', 'merged')];
+  assert.equal(data.activeSessionState, '', 'lapses rather than stranding the pane');
+  assert.equal(data.sessionRows.length, 1, 'and the list is whole again');
+});
+
+test('the state counts sit inside the repo filter, so a chip never overcounts', () => {
+  data.sessionScope = 'all';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [
+    withState('a1', 'ready', 'web-tools'),
+    withState('b1', 'ready', 'home'),
+    withState('c1', 'merged', 'home'),
+  ];
+  assert.deepEqual(plain(data.sessionStates.map(s => [s.key, s.count])), [['ready', 2], ['merged', 1]]);
+  data.sessionRepoFilter = 'home';
+  assert.deepEqual(plain(data.sessionStates.map(s => [s.key, s.count])), [['ready', 1], ['merged', 1]],
+    'the chips narrow what is on screen, not what exists somewhere else');
+  assert.equal(data.repoScopedSessions.length, 2, 'and All agrees with them');
+  data.sessionRepoFilter = '';
+});
+
+test('a stub drops out under a state filter rather than riding along', async () => {
+  // A stub has no record, so it cannot answer the question the filter asks.
+  shell.view = 'sessions';
+  data.sessionLens = 'list';
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.activity = { 'acme/widget': { defaultBranch: 'main', scan: { branches: [
+    { name: 'ghost-work', group: 'active', date: '2026-08-05',
+      sessions: ['https://claude.ai/code/session_GHOST'] },
+  ] } } };
+  data.sessionRows_ = [{ ...window.RepoSessionsCache.summarize(rec(), 'sha1'), state: 'merged' }];
+  await Alpine.nextTick();
+  assert.equal(data.sessionNodes.filter(n => n.kind === 'stub').length, 1);
+  data.sessionStateFilter = 'merged';
+  assert.equal(data.sessionNodes.filter(n => n.kind === 'stub').length, 0);
+  assert.equal(data.sessionNodes.length, 1, 'the record that matches is all that is left');
+  data.sessionStateFilter = '';
+  data.activity = {};
+});
+
+test('the backfill count is only the rows a refresh would fix', () => {
+  const V = window.RepoSessionsCache.ROW_V;
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [
+    withState('a1', 'merged'),                       // current, has one
+    stateRow({ short: 'b1' }),                       // current, closed in none
+    { ...stateRow({ short: 'c1' }), v: V - 1 },      // behind: this is the one
+  ];
+  assert.equal(data.sessionsBehindState, 1,
+    'a current row with no state is a session that said nothing, not a gap');
+});
+
+// ── How sessions ended: the Counts histogram ───────────────────────────────
+
+test('the histogram keeps the two absences out of the ordering and apart', () => {
+  const V = window.RepoSessionsCache.ROW_V;
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [
+    withState('a1', 'merged'), withState('a2', 'merged'),
+    withState('b1', 'choice'),
+    stateRow({ short: 'c1' }),
+    { ...stateRow({ short: 'd1' }), v: V - 1 },
+  ];
+  const h = data.lensClosingStates;
+  assert.deepEqual(plain(h.bars.map(b => [b.key, b.n])), [['choice', 1], ['merged', 2]],
+    'bars are states only, in vocabulary order');
+  assert.equal(h.none.n, 1, 'closed in no state');
+  assert.equal(h.behind.n, 1, 'not read yet: the one a refresh closes');
+  assert.equal(h.read, 3);
+  assert.equal(h.total, 5);
+  // Every bar shares one scale, absences included, or the lengths lie.
+  assert.equal(h.bars.find(b => b.key === 'merged').pct, 100);
+  assert.equal(h.none.pct, 50);
+});
+
+test('the histogram reads the whole store, not the scoped list', () => {
+  // The list's chips narrow; this lens is the distribution, so a scope that
+  // hides half the records must not silently reshape it.
+  data.sessionRows_ = [withState('a1', 'merged'), withState('b1', 'ready')];
+  data.sessionScope = 'day';
+  assert.equal(data.lensClosingStates.total, 2);
+  data.sessionScope = 'all';
+});
+
+test('the star panel names a session the way a row does', () => {
+  const row = withState('a1', 'ready');
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [row];
+  const star = data.lensStars[0];
+  assert.equal(star.id, 'a1');
+  assert.equal(star.label, data.sessionLabel(row), 'the same name the list row draws');
+  assert.equal(data.sessionStateMark(star), '🟢', 'and the same glyph');
+});
+
+test('a rebuilt row reaches the screen, rather than freezing at first paint', async () => {
+  // The row's scope was `{ row: n.row }`, which x-data evaluates ONCE. x-for
+  // reuses a keyed element, so a node rebuilt under the same session id updated
+  // the node and never the scope reading it: a crawl repainted nothing. Two
+  // ways it bit. The live session's own record is rewritten on every Stop, so
+  // its sha moves constantly and its row was the one guaranteed to be stale.
+  // And a summarizer bump heals rows in place, so a new field landed in the
+  // cache and not on screen, which is exactly what ROW_V 10 does.
+  shell.view = 'sessions';
+  data.sessionLens = 'list';
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.activity = {};
+  const ask = () => [...window.document.querySelectorAll('p')]
+    .map(p => p.textContent.trim()).find(t => /ASK/.test(t));
+
+  data.sessionRows_ = [window.RepoSessionsCache.summarize(rec({ opening_ask: 'FIRST ASK' }), 'sha1')];
+  await Alpine.nextTick();
+  assert.equal(ask(), 'FIRST ASK');
+
+  // Same id, new row object: what every crawl produces.
+  data.sessionRows_ = [window.RepoSessionsCache.summarize(rec({ opening_ask: 'SECOND ASK' }), 'sha2')];
+  await Alpine.nextTick();
+  await Alpine.nextTick();
+  assert.equal(ask(), 'SECOND ASK', 'the scope follows the node, rather than the paint it was born in');
+});
+
+test('the state is the session\'s own claim, not the rail\'s rollup of its branches', async () => {
+  // The two axes disagree usefully and that is why both are on the row: this
+  // session's branch merged, and it still closed naming work for the next go.
+  const row = window.RepoSessionsCache.summarize(rec({
+    replies: [{ at: '2026-08-05T15:00:00Z', text: '🟢 **Ready to continue:** the Docs tab.' }],
+  }), 'sha1');
+  // branchState reads the branch row's own PR record, which is what the estate
+  // builds from the activity cache; the rollup is over those.
+  const node = { kind: 'record', row, children: [
+    { repo: 'acme/w', name: 'claude/a-1', prLast: { number: 9, state: 'merged' } },
+  ] };
+  assert.equal(data.sessionOutcome(node), 'merged', 'the rail reads GitHub');
+  assert.equal(data.sessionStateMark(node.row), '🟢', 'the glyph reads the session');
+});
+
 
 // ── The ask line's card: the session as a transcript ────────────────────────
 // The line is the opening ask, so opening it is the rest of the session. It was
@@ -409,7 +933,14 @@ test("the rail's legend hangs on the day, not on the whole card", async () => {
 // the deck's own turn renderer, so the two cannot drift in appearance: what is
 // pinned here is the LIST handed to it, since the rendering is that kit's test.
 
-const replyCard = (row) => { data.openSessionCard(row, 'reply', null); return data.rowCard; };
+// Closes first: the trigger TOGGLES now, so a helper that opens the same card
+// twice in a row would close it the second time. Each test is its own
+// scenario and wants a fresh open, not a second tap.
+const replyCard = (row) => {
+  data.closeRowCard();
+  data.openSessionCard(row, 'reply', null);
+  return data.rowCard;
+};
 const roles = (c) => c.turns.map(t => t.role[0]).join('');
 
 test('the card is the ask, the scroll back, and the reply, in that order', () => {

@@ -608,6 +608,203 @@ test('the summarizer version is bumped, so the cache heals rather than reading e
     'back catalogue only through a version bump that stalePaths treats as stale');
 });
 
+// ── The closing state ───────────────────────────────────────────────────────
+// The row's answer to "does this still want me", read out of the session's own
+// prose rather than out of GitHub. Two things can go wrong and both are here:
+// reading the WRONG REPLY (the last one is routinely a PR-event acknowledgement
+// with the state a turn or two above it) and reading a QUOTATION (a session
+// that edited SURFACING.md has the whole vocabulary in its own text).
+
+const reply = (at, text) => ({ at, text });
+const stateOf = (replies, over = {}) => S.closingState({ replies, ...over });
+
+test('the state is the marker the reply closed with, as a key rather than a glyph', () => {
+  assert.equal(stateOf([reply('1', 'Shipped it.\n\n🟣 **Merged:** the branch is in.')]), 'merged');
+  assert.equal(stateOf([reply('1', '⚪ **Clean exit.** Nothing left here.')]), 'clean');
+  // Two spellings of one state: ⚪ and ⚪️ differ by a variation selector, and
+  // both are in the store. A glyph on the row would carry the difference onto
+  // the screen; a key cannot.
+  assert.equal(stateOf([reply('1', '⚪️ **Clean exit.** Nothing left here.')]), 'clean');
+  assert.equal(stateOf([reply('1', '✴️ **Needs you:** tap the link.')]), 'needs');
+  assert.equal(stateOf([reply('1', '✴ **Needs you:** tap the link.')]), 'needs');
+});
+
+test('it scans back past the wake replies, which is where most of the signal is', () => {
+  // The shape a subscribed session ends in: it closed, the PR merged, the wake
+  // arrived, and the last thing it said was that the event needed nothing.
+  // Reading the last reply alone finds a state on 148 of the 238 records on
+  // file; scanning back finds 183, and 102 of the last 102.
+  const s = stateOf([
+    reply('2026-08-05T16:00:00Z', 'Done.\n\n🟢 **Ready to continue:** the tab is next.'),
+    reply('2026-08-05T18:00:00Z', 'Both notices echo the merge I ran. Nothing to act on.'),
+  ]);
+  assert.equal(s, 'ready', 'the newest reply that CARRIES one, not the newest reply');
+});
+
+test('sorted by time, so a record whose replies arrive out of order still reads', () => {
+  const s = stateOf([
+    reply('2026-08-05T18:00:00Z', 'Nothing to act on.'),
+    reply('2026-08-05T16:00:00Z', '🟡 **Pending:** waiting on the export.'),
+  ]);
+  assert.equal(s, 'pending');
+});
+
+test('a quoted vocabulary is not a state: a list marker fails the pattern', () => {
+  // The session that edits SURFACING.md prints the whole vocabulary back. Every
+  // line of it is a bullet, and the closing state never is.
+  const doc = [
+    'The states are:',
+    '',
+    '- 🟢 **Ready to continue:** work is ready to do now.',
+    '- 🆚 **Choice needed:** a genuine choice remains.',
+    '- 🔴 **Closed:** the branch closed unmerged.',
+  ].join('\n');
+  assert.equal(stateOf([reply('1', doc)]), '', 'no state, rather than the last one quoted');
+  assert.equal(stateOf([reply('1', doc + '\n\n⚪ **Clean exit.** The doc is updated.')]), 'clean',
+    'and its own closing line still reads, under the quotation');
+});
+
+test('the last candidate wins, which is where a closing state sits', () => {
+  assert.equal(stateOf([reply('1', '🟡 **Pending:** first.\n\nmore\n\n🆚 **Choice needed:** last.')]),
+    'choice');
+});
+
+test('a record with no replies falls back to the tail, and empty means empty', () => {
+  assert.equal(S.closingState({ last_message: '🟠 **Attention:** the tail kept it' }), 'attention');
+  assert.equal(stateOf([reply('1', 'no marker anywhere in this one')]), '');
+  assert.equal(S.closingState({}), '');
+  assert.equal(S.closingState(null), '');
+});
+
+// ── The sequence behind the glyph ──────────────────────────────────────────
+// A session does not close once. Measured 2026-08-28: median 12 states a
+// record, and 180 of the 183 CHANGE state at least once. So the row's glyph is
+// the last frame of a history, and `states` is the history.
+
+test('every reply that closes in a state contributes one, chronological', () => {
+  const st = S.closingStates({ replies: [
+    reply('2026-08-05T10:00:00Z', 'a\n\n🟡 **Pending:** waiting.'),
+    reply('2026-08-05T11:00:00Z', 'b\n\nno state in this one'),
+    reply('2026-08-05T12:00:00Z', 'c\n\n🟢 **Ready to continue:** go.'),
+  ] });
+  assert.deepEqual(st.map(e => e[0]), ['pending', 'ready'], 'newest last');
+  assert.deepEqual(st.map(e => e[2]), ['10:00:00', '12:00:00'], 'each keeps its clock');
+});
+
+test('the message is the passage from the marker down, not the whole reply', () => {
+  // What sits above the marker is the work being reported, and the card that
+  // renders these is not a transcript of the session.
+  const st = S.closingStates({ replies: [
+    reply('1', 'I rebuilt the index and the check passes.\n\n⚪ **Clean exit.** Nothing left here.'),
+  ] });
+  assert.equal(st[0][1], '⚪ **Clean exit.** Nothing left here.');
+  assert.ok(!st[0][1].includes('rebuilt'), 'the work above it is not the message');
+});
+
+test('every passage is carried whole, priors included', () => {
+  // Heading the priors cut 68% of them: measured over the 1,703 passages the
+  // cap keeps, median 333 characters and p90 622. Two thirds of the card was a
+  // teaser for text that would have fit, and whole costs 675 KB across the
+  // store against 431 KB headed.
+  const body = 'A sentence of the kind a closing state is made of. '.repeat(9);
+  const st = S.closingStates({ replies: [
+    reply('1', '🟡 **Pending:** ' + body),
+    reply('2', '🟢 **Ready to continue:** short.'),
+  ] });
+  const [prior] = st;
+  assert.ok(prior[1].length > 400, 'the prior is not cut to a turn head: ' + prior[1].length);
+  assert.equal(prior.length, 4, 'and carries no dropped element, because nothing was');
+});
+
+test('one safety cap for the tail, and it says what it cut', () => {
+  // A bound rather than a head: it leaves 99% untouched and exists so a single
+  // 5,000-character entry is not a wall inside a card of twelve.
+  const huge = '🟠 **Attention:** ' + 'A sentence that goes on. '.repeat(200);
+  const [e] = S.closingStates({ replies: [reply('1', huge)] });
+  assert.ok(e[1].length <= 2000, 'bounded');
+  assert.ok(e[4] > 0, 'and the turn carries how much is missing, after the gap');
+  assert.ok(huge.length > 2000, 'the fixture actually exceeds the bound');
+});
+
+test('only the newest STATES_KEPT survive, and the row says the front was cut', () => {
+  const many = Array.from({ length: S.STATES_KEPT + 4 }, (_, i) =>
+    reply('2026-08-05T' + String(10 + i).padStart(2, '0') + ':00:00Z',
+          (i === 0 ? '🔵' : '🟢') + ' **A state:** number ' + i));
+  const st = S.closingStates({ replies: many });
+  assert.equal(st.length, S.STATES_KEPT);
+  assert.ok(!st.some(e => e[0] === 'short'), 'the oldest fell off the front');
+  assert.equal(S.statesPartial({ replies: many }), 'cut');
+  assert.equal(S.statesPartial({ replies: many.slice(0, 3) }), '', 'and says nothing when nothing was');
+});
+
+test('the tip and the sequence cannot disagree: one parser, one answer', () => {
+  const r = { replies: [
+    reply('1', '🟡 **Pending:** waiting.'),
+    reply('2', '🆚 **Choice needed:** pick one.'),
+    reply('3', 'An echo of the merge. Nothing to act on.'),
+  ] };
+  const st = S.closingStates(r);
+  assert.equal(S.closingState(r), st[st.length - 1][0]);
+  assert.equal(S.closingState(r), 'choice');
+});
+
+test('a state carries the user prompts since the one before it', () => {
+  // The one fact that tells two identical pairs of glyphs apart. Measured over
+  // the store's 2,411 consecutive pairs: 15% at zero (closed twice in one
+  // turn), 73% at one (the ordinary rhythm), 12% at two or more.
+  const st = S.closingStates({
+    prompts: [{ at: '2026-08-05T10:00:00Z' }, { at: '2026-08-05T12:30:00Z' },
+              { at: '2026-08-05T12:40:00Z' }, { at: '2026-08-05T13:00:00Z' }],
+    replies: [
+      reply('2026-08-05T11:00:00Z', '🟡 **Pending:** waiting.'),
+      reply('2026-08-05T11:10:00Z', '⚪ **Clean exit.** nobody spoke between these.'),
+      reply('2026-08-05T12:35:00Z', '🟢 **Ready:** one prompt later.'),
+      reply('2026-08-05T13:10:00Z', '🆚 **Choice needed:** two prompts later.'),
+    ],
+  });
+  assert.deepEqual(st.map(e => e[3]), [0, 0, 1, 2]);
+  assert.equal(st[0][3], 0, 'the first has no interval: prompts before it are the run-up');
+});
+
+test('the gap survives a truncated passage, which rides after it', () => {
+  // `dropped` stays last and stays optional, as priorTurns has it, so a cut
+  // entry is five long and an uncut one is four.
+  const huge = '🟠 **Attention:** ' + 'A sentence that goes on. '.repeat(200);
+  const st = S.closingStates({
+    prompts: [{ at: '2026-08-05T11:30:00Z' }],
+    replies: [reply('2026-08-05T11:00:00Z', '🟡 **Pending:** short.'),
+              reply('2026-08-05T12:00:00Z', huge)],
+  });
+  assert.equal(st[1].length, 5);
+  assert.equal(st[1][3], 1, 'gap at index 3');
+  assert.ok(st[1][4] > 0, 'dropped at index 4');
+  assert.equal(st[0].length, 4, 'and an uncut entry stops at the gap');
+});
+
+test('the row carries the sequence beside the tip', () => {
+  const row = S.summarize(record({ replies: [
+    reply('2026-08-05T14:00:00Z', '🟡 **Pending:** waiting.'),
+    reply('2026-08-05T16:00:00Z', '⚪ **Clean exit.** Done.'),
+  ] }), 'sha1');
+  assert.equal(row.state, 'clean');
+  assert.equal(row.states.length, 2);
+  assert.equal(row.statesCut, '');
+  // The scalar is kept because the chips filter on it and the histogram counts
+  // it; reaching into the array on every pass over 400 rows would be worse.
+  assert.equal(row.state, row.states[row.states.length - 1][0]);
+});
+
+test('the row carries it, so the pane draws a glyph without opening the record', () => {
+  const row = S.summarize(record({
+    replies: [reply('2026-08-05T16:00:00Z', 'Done.\n\n⚪ **Clean exit.** Merged and verified.')],
+  }), 'sha1');
+  assert.equal(row.state, 'clean');
+  // It is a SEPARATE axis from the branch rollup the rail draws: this row's
+  // session says it is finished, and says nothing about what became of the
+  // branch, which is the estate's job and may disagree.
+  assert.ok('state' in row, 'the field is on every row, present or empty');
+});
+
 // ── Startup context (record schema 6) ───────────────────────────────────────
 // The half of a session's file contact that no tool call records. What these
 // hold is the boundary between PRESENCE and ACCESS: `attention` counts tool

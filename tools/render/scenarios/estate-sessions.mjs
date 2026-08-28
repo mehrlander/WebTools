@@ -23,7 +23,10 @@ const SESSIONS = [
   {
     id: 'b8fae678', agent: 'https://claude.ai/code/session_01SXuNTt', day: '2026-08-05',
     started: '2026-08-05T13:51:08Z', ended: '2026-08-05T16:49:16Z', mins: 178,
-    ask: 'We recently done some significant work on surfacing our documentation in the show repo app. Discuss where we are at with that.',
+    // A markdown ask, which is the case the row's preview strip exists for:
+    // 2 of the 238 on file open with a pasted list of links, and unstripped
+    // the two clamped lines are an asterisk, a bracketed title and a URL.
+    ask: '* [2025-27 Biennial Budget Instructions](https://ofm.wa.gov/budget/budget-instructions)\n* [Budget Development Manual](https://ofm.wa.gov/budget/manual)\n* [ABS User Guide](https://ofm.wa.gov/abs/guide)\n\nRead these and tell me which ones the submittal needs to cite.',
     repos: [{ name: 'web-tools', branch: 'claude/show-repo-docs-surfacing-3sr7ab', lines: 572 },
             { name: 'home', branch: 'claude/show-repo-docs-surfacing-3sr7ab', lines: 3 }],
     branches: ['claude/show-repo-docs-surfacing-3sr7ab'],
@@ -68,6 +71,29 @@ const SESSIONS = [
     turnsCut: 'cut',
     askAt: '13:51:08',
     replyAt: '16:49:16',
+    // The closing state, and it deliberately DISAGREES with the rail above it:
+    // this session's branches shipped, and it still closed naming work for the
+    // next go. That pair is the whole reason the glyph is on the row, so the
+    // fixture has to be able to show it.
+    state: 'ready',
+    // And the sequence behind it, in the shape closingStates emits: [key,
+    // passage, clock] chronological, newest last, every passage whole. A
+    // session closes at the end of every stretch of work (median 12 across the
+    // store), and the states CHANGE, which is what makes the card worth
+    // opening rather than a tooltip. This one walks pending → assess → clean →
+    // ready, so the shot shows a history rather than four of the same glyph.
+    // Fourth element is the GAP: user prompts since the state above it. All
+    // three shapes are here on purpose, since the divider exists to tell them
+    // apart. 0 = closed twice in one turn and no rule at all (15% of the
+    // store's pairs), 1 = the ordinary rhythm (73%), 2+ = a stretch that ran
+    // long (12%). Every rule drawn carries its count.
+    states: [
+      ['pending', '🟡 **Pending:** the Map view needs `docs/showing-mechanisms.csv` to exist before the tab can read it, and the CSV is still being derived from the prose. Nothing to look at yet.', '14:31:07', 0],
+      ['assess', '❇️ **Ready to assess:** whether the render line should be printed rather than remembered. The section that was meant to stop the wrong link is the longest one in the file, so reading it is evidently not what fixes this.', '15:02:44', 0],
+      ['clean', '⚪ **Clean exit.** The Showing tab reads the CSV directly, so a new mechanism is a row rather than a paragraph. `npm run showing` prints the line to paste.', '16:10:22', 1],
+      ['ready', '🟢 **Ready to continue.** Available on "go": (1) the Docs tab\'s growth-versus-readership quadrant, which the registry already has both axes for; (2) folding `docs/showing.md` down now that the app holds the mechanisms; (3) a gate on the honesty rule, which is the one part no script can supply.', '16:48:51', 3],
+    ],
+    statesCut: '',
     schema: 4, sha: 'a',
   },
   {
@@ -82,6 +108,13 @@ const SESSIONS = [
     filesTotal: 6, files: [['web-tools/tools/build/tracker-board.mjs', 9]],
     reply: 'Found it: the board sorted on a Map iteration order that follows insertion, so two tasks closed in one commit swapped places on every regeneration. Sorting by id inside the group makes it byte-deterministic and the lockstep test now catches a relapse.',
     replyCut: '',
+    state: 'merged',
+    // The other end of the range: one state and nothing to scroll back
+    // through. The card has to read as finished rather than as broken.
+    states: [
+      ['merged', '🟣 **Merged.** The board sorts by id inside each group, so two tasks closed in one commit no longer swap places on every regeneration. The lockstep test catches a relapse.', '11:38:02', 0],
+    ],
+    statesCut: '',
     schema: 4, sha: 'b',
   },
   {
@@ -96,7 +129,62 @@ const SESSIONS = [
     filesTotal: 0, files: [],
     reply: 'Nine crosswalk CSVs, and the verify suite passes.',
     replyCut: 'tail',
+    // No `state`, and that is the schema-2 case: the record kept a tail of the
+    // final turn and no replies, so there is nothing to read a marker out of.
+    // Its slot draws empty, which is what holds the column straight.
     schema: 2, sha: 'c',
+  },
+  // Three more, for the two surfaces the state axis added: the chip row needs
+  // more than one state to appear at all, and the Counts histogram needs a
+  // distribution rather than a pair. Deliberately thin otherwise, since what
+  // they exist to draw is one field.
+  {
+    id: '7c4a1e02', agent: '', day: '2026-08-04',
+    started: '2026-08-04T10:00:00Z', ended: '2026-08-04T11:12:00Z', mins: 72,
+    ask: 'The wsl-fetch cron has not landed its errand in three days. Work out whether it is the schedule or the runner.',
+    repos: [{ name: 'web-tools', branch: 'claude/wsl-fetch-cron-8dk2mq', lines: 41 }],
+    branches: ['claude/wsl-fetch-cron-8dk2mq'],
+    exchanges: 5, messages: 88, calls: 63, failures: 0,
+    tools: [['Bash', 44], ['Read', 11]],
+    tokens: { input: 300, output: 71000, cache_read: 19000000, cache_write: 1200000 },
+    filesTotal: 3, files: [['web-tools/.github/workflows/wsl-fetch.yml', 5]],
+    reply: 'The schedule is fine and the runner is asleep: the cron fires while the machine is off, and a hosted runner cannot reach the share. It needs the self-hosted runner, which is yours to start.',
+    replyCut: '', state: 'pending',
+    states: [['pending', "🟡 **Pending:** the schedule is fine and the runner is asleep. The cron fires while the machine is off, and a hosted runner cannot reach the share, so this needs the self-hosted runner started.", '11:10:40', 0]], statesCut: '',
+    schema: 4, sha: 'd',
+  },
+  {
+    id: '2f81b9dd', agent: '', day: '2026-08-04',
+    started: '2026-08-04T08:00:00Z', ended: '2026-08-04T09:05:00Z', mins: 65,
+    ask: 'Should the snags log get a projector or stay hand-appended? Assess both and recommend.',
+    repos: [{ name: 'web-tools', branch: 'claude/snags-projector-p91xzr', lines: 18 }],
+    branches: ['claude/snags-projector-p91xzr'],
+    exchanges: 4, messages: 51, calls: 29, failures: 0,
+    tools: [['Read', 16], ['Bash', 9]],
+    tokens: { input: 220, output: 44000, cache_read: 11000000, cache_write: 800000 },
+    filesTotal: 2, files: [['web-tools/docs/SNAGS.md', 6]],
+    reply: 'Both work and they cost differently. A projector keeps the index honest and adds a generator to the hook chain; hand-appending stays free and drifts. The call is yours.',
+    replyCut: '', state: 'choice',
+    states: [['choice', "🆚 **Choice needed.** A projector keeps the index honest and adds a generator to the hook chain; hand-appending stays free and drifts. I lean projector, since the index is already wrong twice. Your call.", '09:03:15', 0]], statesCut: '',
+    schema: 4, sha: 'e',
+  },
+  // The unhealed row: a record the crawl has not re-read since the field
+  // landed. It is the case the backfill line exists for, and the one absence
+  // a Refresh can actually close. Its `v` is set in the page, off the live
+  // ROW_V, so this fixture never hardcodes a version that drifts.
+  {
+    id: '5b0d33af', agent: '', day: '2026-08-02', behindV: true,
+    started: '2026-08-02T13:00:00Z', ended: '2026-08-02T14:30:00Z', mins: 90,
+    ask: 'Walk the docs registry and tell me which rows have gone orphan since the last skill rename.',
+    repos: [{ name: 'web-tools', branch: 'claude/docs-reach-orphans-4mq7wz', lines: 96 }],
+    branches: ['claude/docs-reach-orphans-4mq7wz'],
+    exchanges: 7, messages: 120, calls: 84, failures: 0,
+    tools: [['Bash', 58], ['Read', 14]],
+    tokens: { input: 410, output: 96000, cache_read: 24000000, cache_write: 1500000 },
+    filesTotal: 5, files: [['web-tools/docs/docs.csv', 7]],
+    reply: 'Seventeen orphans, and the count is the smaller half of the story: they are 11% of the folder by words.',
+    replyCut: '',
+    schema: 4, sha: 'f',
   },
 ];
 
@@ -209,7 +297,14 @@ export default async function (page) {
     st.authed = true;
     st.loading = false;
     st.sessionsLoading = false;
-    st.sessionRows_ = SESSIONS;
+    // Every row at the CURRENT summarizer version except the one flagged
+    // behindV, so the pane's backfill line and the Counts histogram's
+    // "not read yet" bar have exactly one row to speak for.
+    const V = window.RepoSessionsCache.ROW_V;
+    st.sessionRows_ = SESSIONS.map(r => {
+      const { behindV, ...row } = r;
+      return { ...row, v: behindV ? V - 1 : V };
+    });
     st.sessionAttention = ATTENTION;
     st.activity = ACTIVITY;
     // The estate's own membership, which is the only place a checkout name
@@ -281,14 +376,18 @@ export default async function (page) {
     // Anchored off the real trigger, so the panel lands where a reader's tap
     // would put it rather than at an invented coordinate.
     const sel = { turns: 'ph-chats-circle', tools: 'ph-wrench',
-                  files: 'ph-files', tokens: null, reply: null }[card];
+                  files: 'ph-files', tokens: null, reply: null, state: null }[card];
     await page.evaluate(({ card, sel }) => {
       const host = document.querySelector('[x-data^="estate"]');
       const st = window.Alpine.$data(host);
       const row = st.sessionRows[0];
       // The reply card opens off the ask LINE, which is a <p> and not a
       // button: that is the whole point of it staying prose.
-      const btn = card === 'reply'
+      // The states card opens off the GLYPH, the row's first control, which
+      // is the one button on the line carrying no text of its own.
+      const btn = card === 'state'
+        ? document.querySelector('button.w-5')
+        : card === 'reply'
         ? document.querySelector('p.truncate.mt-0\\.5')
         : sel
         ? document.querySelector(`.ph.${sel}`)?.closest('button')
