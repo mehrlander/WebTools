@@ -142,6 +142,30 @@ test('the row links the export where it lives, not into the registry', () => {
     'https://github.com/mehrlander/chat-histories/blob/main/' + SESSIONS.titlesFrom);
 });
 
+test('the row sits with Sessions, which is where the hand-off lands', async () => {
+  // THE ROUTE THIS ORDER EXISTS FOR. The Sessions pane no longer carries the
+  // export's date; it carries an age pill that calls goState('sessions'), and
+  // aim() scrolls that card to the middle of the screen. So the titles reading
+  // has to be in the screen the pill lands in, which means directly under the
+  // Sessions card rather than past a cache about something else.
+  //
+  // Held on the rendered order rather than on a constant, because the order a
+  // reader gets is the order the template emits, and the two rows are written
+  // as separate blocks with nothing but their position tying them together.
+  const { readFileSync } = await import('node:fs');
+  const path = (await import('node:path')).default;
+  const { repoRoot } = await import('./bootstrap.mjs');
+  const src = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'state-view.js'), 'utf8');
+  const groups = src.indexOf('x-for="g in rowGroups"');
+  const titles = src.indexOf('x-if="titles"');
+  const offline = src.indexOf('x-if="offline"');
+  assert.ok(groups > -1 && titles > -1 && offline > -1, 'all three blocks render');
+  assert.ok(groups < titles, 'the crawled rows come first; Sessions is the last of them');
+  assert.ok(titles < offline,
+    'the titles row must follow Sessions directly: the pane aims at sessions and ' +
+    'the export reading has to be in that screen, not past the entity index');
+});
+
 test('it says who reads it, and answers to the deep link like any row', () => {
   assert.deepEqual([...data.titles.feeds], ['sessions', 'search']);
   data.aim('titles');
