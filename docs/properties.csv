@@ -75,6 +75,11 @@ showing-mechanisms,reaches,recorded,,none,column,yes,,what it does show
 showing-mechanisms,misses,recorded,,value,column,yes,,"what it does NOT show, which is the field the picker turns on"
 showing-mechanisms,trap,recorded,,none,column,yes,,"the failure mode, where one has bitten; carried on 1 of 7"
 showing-mechanisms,use,recorded,,value,column,yes,,when to pick it
+routes-paste,path,recorded,,none,column,yes,,"the file that implements the behavior; absent on the form-field row, which names a browser behavior rather than one of ours"
+routes-paste,recognizes,recorded,,value,column,yes,,what the surface reads out of the clipboard and acts on
+routes-paste,becomes,recorded,,value,column,yes,,what a recognized paste turns into there
+routes-paste,declines_to,recorded,,value,column,yes,,"where everything it does not recognize goes. The load-bearing field: a surface that routes some pastes has to say what happens to the rest, or the routing is a silent swallow"
+routes-paste,gate,recorded,,none,column,yes,,the check holding the behavior; absent where nothing does
 surfacing,lead,recorded,,value,column,yes,,"the bullet lead-in, held two-way against SURFACING.md's prose"
 surfacing,title,recorded,,value,column,yes,,the short name
 surfacing,glyph,recorded,,counted,column,yes,,"the caption marker; blank on 9 of 20, which have no marker of their own"

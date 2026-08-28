@@ -163,3 +163,71 @@ test('the pre-build boots url-params.js and repo-address.js before the component
   assert.ok(stage !== -1 && grammar < stage, 'the built bundle boots the grammar before stage.js');
   assert.ok(params < stage, 'the built bundle boots the param read before stage.js');
 });
+
+// ── fromPaste: what a pasted string names ───────────────────────────────────
+//
+// The question a paste asks is one step wider than "is this an address", and
+// the widening is deliberate rather than lenient. A toss link is the shape most
+// likely to be in a clipboard, since it is what gets handed over in chat, and
+// the renderer wrapping the file is never what pasting it means. Everything
+// else must decline, because a caller's fallback is to treat the text as
+// content and a false positive silently swallows it.
+
+test('fromPaste reads the bare grammar, splitting the query tail off the path', () => {
+  const { fromPaste } = window.RepoAddress;
+  assert.deepEqual({...fromPaste('mehrlander/home:projects/budget-drs/submittal/packages.csv')},
+    { repo: 'mehrlander/home', ref: '', path: 'projects/budget-drs/submittal/packages.csv', query: '' });
+  assert.deepEqual({...fromPaste('  mehrlander/home@feat/x:a/b.md  ')},
+    { repo: 'mehrlander/home', ref: 'feat/x', path: 'a/b.md', query: '' });
+  // The tail is split rather than left on the path: a caller opening the result
+  // has a filename, and toss-render hands that tail to the page as its query.
+  assert.deepEqual({...fromPaste('mehrlander/home:projects/budget-drs/app/view/app.html?data=sub_packages')},
+    { repo: 'mehrlander/home', ref: '', path: 'projects/budget-drs/app/view/app.html', query: 'data=sub_packages' });
+  // A '#frag' belongs to the rendered page, not to the file being named.
+  assert.equal(fromPaste('a/b:c/d.html?x=1#top').path, 'c/d.html');
+  assert.equal(fromPaste('a/b:c/d.html?x=1#top').query, 'x=1');
+  assert.equal(fromPaste('a/b:c/d.html#top').path, 'c/d.html');
+});
+
+test('fromPaste reads a toss link as its subject, on any route key', () => {
+  const { fromPaste } = window.RepoAddress;
+  const toss = 'https://mehrlander.github.io/web-tools/pages/toss-render.html#gh=';
+  assert.deepEqual({...fromPaste(toss + 'mehrlander/home@abc123:projects/budget-drs/app/view/app.html?data=sub_packages')},
+    { repo: 'mehrlander/home', ref: 'abc123', path: 'projects/budget-drs/app/view/app.html', query: 'data=sub_packages' });
+  // A typed toss is read the same way. No route-key list here on purpose:
+  // toss-render is itself schema-blind about which page a key names, so a list
+  // would be a second registry to keep in step with docs/routes-routes.csv.
+  assert.equal(fromPaste(toss.replace('#gh=', '#data=') + 'mehrlander/home:a/rows.csv').path, 'a/rows.csv');
+  assert.equal(fromPaste(toss.replace('#gh=', '#shorter=') + 'mehrlander/home:a/doc.md').repo, 'mehrlander/home');
+  // Only the first fragment segment carries the subject.
+  assert.equal(fromPaste(toss + 'a/b:c.html&w=390').path, 'c.html');
+});
+
+test('fromPaste declines everything a caller should treat as content', () => {
+  const { fromPaste } = window.RepoAddress;
+  for (const s of [
+    '', '   ', null, undefined,
+    'just some prose',
+    'a/b:c.md\nd/e:f.md',                       // multi-line is a block of refs
+    'mehrlander/home',                          // a repo names no file
+    'https://github.com/mehrlander/home/blob/main/a.md',   // not a toss
+    'https://mehrlander.github.io/web-tools/app/?app=budget-drs#data=sub_packages',
+    'https://mehrlander.github.io/web-tools/pages/toss-render.html#gz=H4sIA',
+    'https://mehrlander.github.io/web-tools/pages/toss-render.html',
+    'https://mehrlander.github.io/web-tools/pages/toss-render.html#gh=',
+  ]) assert.equal(fromPaste(s), null, `should not read as an address: ${JSON.stringify(s)}`);
+});
+
+test('the shell routes a paste through fromPaste rather than its own matcher', () => {
+  // The recognition has one owner. A second copy in the shell is how the two
+  // would come to disagree about what an address is, which presents as "the
+  // paste opened the wrong thing" and is invisible from either side.
+  const shell = readFileSync(path.join(repoRoot, 'app/index.html'), 'utf8');
+  assert.match(shell, /window\.RepoAddress\.fromPaste\(text\)/,
+    'app/index.html no longer routes a pasted address through RepoAddress.fromPaste');
+  assert.match(shell, /if \(await this\.pasteRoute\(cd\)\) return;/,
+    'the app paste handler no longer tries a route before staging');
+  // A file in the clipboard is content whatever text rides beside it.
+  assert.match(shell, /if \(\[\.\.\.\(cd\.items \|\| \[\]\)\]\.some\(i => i\.kind === 'file'\)\) return false;/,
+    'pasteRoute no longer yields a file-carrying clipboard to the Stage');
+});
