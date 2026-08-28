@@ -3,7 +3,6 @@
 _Generated from tasks/. Do not hand-edit._
 
 ## On deck
-- 🎫 [Give an app view one address key and an identity of its own](tasks/app-view-address-and-icon-tc1a91.md) · M
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 [Read estate.js's commentary the way show-repo.html's was read](tasks/estate-js-commentary-read-mymt4u.md) · M
 - 🎫 [Persist FAB captures, the write path to state/captures/](tasks/fab-capture-button-f6q38m.md) · S
@@ -37,6 +36,7 @@ _Generated from tasks/. Do not hand-edit._
 ## Done
 - 🎫 [Add a task-tracker skill](tasks/add-task-tracker-skill-iwr1ay.md) (`claude/agent-file-retrieval-skill-tv4can`)
 - 🎫 [Build an agent-assisted file-retrieval skill](tasks/agent-file-retrieval-skill-c5u2jy.md) (`claude/agent-file-retrieval-skill-tv4can`)
+- 🎫 [Give an app view one address key and an identity of its own](tasks/app-view-address-and-icon-tc1a91.md) (`claude/budget-drs-web-tools-tcpcq6`)
 - 🎫 [The FAB drawer should let you pick which layer it describes](tasks/app-view-fab-subject-1evnwv.md) (`claude/toss-url-shorthand-dz0xpt`)
 - 🎫 [App views - designate a page as an estate-level view](tasks/app-views-estate-level-btp6m4.md) (`claude/web-tools-app-views-m3pkyo`)
 - 🎫 [Automate the merge guide from PR bodies](tasks/automate-merge-guide-from-pr-bodies-uaect4.md) (`claude/task-tracker-discussion-wg27xv`)

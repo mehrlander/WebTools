@@ -619,7 +619,11 @@ test('a handed document lands without a read', async () => {
     attention: [{ path: 'a.js', count: 1, sessions: 1, last: '' }],
   });
   assert.equal(data.sessionsGeneratedAt, '2026-08-05T18:30:00Z');
-  assert.equal(data.sessionsTitlesAt, '2026-08-05');
+  // `titlesAt` rides the document above and is deliberately NOT landed here.
+  // The pane held it until 2026-08-28 to date one row's tooltip; the export's
+  // age belongs with its coverage and source on the State view, so the pane
+  // reads the document's rows and leaves the column's freshness alone.
+  assert.equal(data.sessionsTitlesAt, undefined, 'the pane no longer holds the export date');
   assert.equal(data.sessionRows_.length, 1);
   assert.equal(data.sessionRows_[0].id, 'newone');
   assert.deepEqual(GETS, [], 'the crawl was holding the document; re-reading it is the bug');

@@ -253,10 +253,16 @@ test('a second tap while the first is still reading is dropped', async () => {
 //   THE FAR END OF THE HANDOFF IS HERE. A paste taken anywhere else arrives as
 //   parked flavors, and nothing else on this page reads them.
 
-test('the shell no longer contributes a menu row', () => {
+test('the contributed row is the header, and never a second copy of the paste', () => {
+  // The contract carries a row again since 2026-08-28, and the claim that
+  // matters here is unchanged: the PASTE is not it. A contributed copy would
+  // show twice on any page already rendering a Stage, which is what promoting
+  // it into the fab was for.
   const { shell } = makeShell({ browserStore: { repo: '' } });
-  assert.equal(shell.menu, undefined,
-    'the paste is built into the fab now; a contributed copy would show twice');
+  const labels = shell.menu.map(m => m.label.toLowerCase());
+  assert.equal(labels.some(l => l.includes('paste')), false,
+    'the paste is built into the fab; a contributed copy would show twice');
+  assert.deepEqual(labels, ['hide the header']);
 });
 
 test('pasteAnywhere survives as the fab handle, since it is what the scan looks for', async () => {
