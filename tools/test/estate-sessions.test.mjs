@@ -636,13 +636,16 @@ test('each state carries the prompts since the one above it', () => {
   assert.equal(t[2].gap, 2);
 });
 
-test('the rule labels only what says something', () => {
-  // 73% of the store's 2,411 consecutive pairs are one prompt apart, so a
-  // "1 prompt" on three dividers in four is the page-of-green-rails failure.
-  assert.equal(data._stateRule(1).textContent, '', 'the ordinary rhythm is a bare rule');
-  assert.equal(data._stateRule(0).textContent, 'same turn');
+test('every rule drawn carries its count, and zero draws none', () => {
+  // Separation runs the same direction as the count. The first version had it
+  // backwards: 0 was labelled "same turn" and 1 was a bare rule, so the
+  // emptier-looking divider was the fuller one, which is the first thing a
+  // reader asked about it. Now a rule means the user spoke.
+  assert.equal(data._stateRule(0), null, 'one breath: the entries butt together');
+  assert.equal(data._stateRule(1).textContent, '1 prompt', 'singular, and never bare');
   assert.equal(data._stateRule(3).textContent, '3 prompts');
-  assert.match(data._stateRule(0).querySelector('span').getAttribute('title'), /No user turn/);
+  assert.match(data._stateRule(1).querySelector('span').getAttribute('title'), /One user turn/);
+  assert.match(data._stateRule(3).querySelector('span').getAttribute('title'), /3 user turns/);
 });
 
 // ── Tap to close ───────────────────────────────────────────────────────────

@@ -84,8 +84,9 @@ const SESSIONS = [
     // ready, so the shot shows a history rather than four of the same glyph.
     // Fourth element is the GAP: user prompts since the state above it. All
     // three shapes are here on purpose, since the divider exists to tell them
-    // apart. 0 = closed twice in one turn (15% of the store's pairs), 1 = the
-    // ordinary rhythm and a bare rule (73%), 2+ = a stretch that ran long (12%).
+    // apart. 0 = closed twice in one turn and no rule at all (15% of the
+    // store's pairs), 1 = the ordinary rhythm (73%), 2+ = a stretch that ran
+    // long (12%). Every rule drawn carries its count.
     states: [
       ['pending', '🟡 **Pending:** the Map view needs `docs/showing-mechanisms.csv` to exist before the tab can read it, and the CSV is still being derived from the prose. Nothing to look at yet.', '14:31:07', 0],
       ['assess', '❇️ **Ready to assess:** whether the render line should be printed rather than remembered. The section that was meant to stop the wrong link is the longest one in the file, so reading it is evidently not what fixes this.', '15:02:44', 0],
