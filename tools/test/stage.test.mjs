@@ -881,13 +881,27 @@ test('only the four text kinds are read for links, so a script is left alone', (
     'a CSV is the transform chip\'s, and reading it twice would be two answers to one item');
 });
 
-test('the artifact is named for its source and quotes what CSV must quote', () => {
-  assert.equal(IN().linksName('2026-08-28-paste.html'), '2026-08-28-paste-links.csv');
-  assert.equal(IN().linksName('noext'), 'noext-links.csv');
-  const csv = IN().linksCsv([{ text: 'Budget, revised', url: 'https://x/y' },
-                             { text: 'He said "no"', url: 'https://x/z' }]);
-  assert.equal(csv, 'text,url\n"Budget, revised",https://x/y\n"He said ""no""",https://x/z',
-    'link text is prose, and an unquoted comma turns two columns into a ragged three');
+test('a derivation is named for its source, and always carries its tag', () => {
+  assert.equal(IN().derivedName('2026-08-28-paste.html', 'links'), '2026-08-28-paste-links.md');
+  assert.equal(IN().derivedName('2026-08-28-paste.html', 'markdown'), '2026-08-28-paste-markdown.md');
+  assert.equal(IN().derivedName('noext', 'links'), 'noext-links.md');
+  assert.notEqual(IN().derivedName('2026-08-28-paste.md', 'markdown'), '2026-08-28-paste.md',
+    'a plain-text paste opening with a heading is already named .md, and two items '
+    + 'under one name is worse than a long one');
+});
+
+test('links come out as a markdown list, which is what pastes anywhere', () => {
+  const md = IN().linksMd([
+    { text: 'Budget, revised', url: 'https://x/y' },
+    { text: 'Bracket [in] text', url: 'https://x/z' },
+    { text: '', url: 'https://x/bare' },
+    { text: 'spaced', url: 'https://x/a b(c)' },
+  ]);
+  assert.equal(md,
+    '- [Budget, revised](https://x/y)\n'
+    + '- [Bracket \\[in\\] text](https://x/z)\n'
+    + '- <https://x/bare>\n'
+    + '- [spaced](<https://x/a b(c)>)\n');
 });
 
 test('the links menu reads the html the paste did not stage', async () => {
@@ -902,8 +916,8 @@ test('the links menu reads the html the paste did not stage', async () => {
   const rows = data.pasteLinks;
   assert.equal(rows.length, 1, 'the flavor is the source, so no tap is spent staging markup nobody wanted');
   assert.equal(rows[0].n, 3);
-  assert.equal(rows[0].from, 'html', 'the row says which flavor it read');
-  assert.match(rows[0].dest, /-links\.csv$/);
+  assert.equal(rows[0].from, 'html', 'the pill says which flavor it read');
+  assert.match(rows[0].dest, /-links\.md$/);
 });
 
 test('the extraction stages a table and opens the reader on it', async () => {
@@ -913,10 +927,11 @@ test('the extraction stages a table and opens the reader on it', async () => {
   data.extractLinks(row);
   await tick(3);
   const made = data.localItems.find(it => it.name === row.dest);
-  assert.ok(made, 'the table is staged under the name the row named');
-  assert.equal(made.text.split('\n').length, 4, 'a header and three links');
+  assert.ok(made, 'the list is staged under the name the pill named');
+  assert.match(made.text, /^- \[the first\]\(https:\/\/example\.com\/a\)\n/);
+  assert.equal(made.text.trim().split('\n').length, 3, 'three links, no header row');
   assert.equal(made.sniffed, false, 'the name is authored, not the sniff\'s opinion');
-  assert.ok(data.reader, 'the table is what was asked for, not a row to go and find');
+  assert.ok(data.reader, 'the list is what was asked for, not a row to go and find');
 });
 
 test('a derived option appears only where there is something to read out', async () => {
@@ -983,16 +998,92 @@ test('an image previews as an image, since describing a screenshot is not a prev
   assert.equal(made.length, 1, 'the URL is cached, so re-reading the panel does not mint another');
 });
 
-test('the links option previews the table it would make', async () => {
+test('the links option previews the list it would make', async () => {
   reset();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
   const t = data.pasteLinks[0];
   data.peek('links', t);
   assert.equal(data.peeked.name, t.dest);
-  assert.match(data.peeked.text, /^text,url\n/, 'the csv itself, so the rows can be read before staging them');
+  assert.match(data.peeked.text, /^- \[/, 'the markdown itself, so it can be read before staging it');
   data.extractLinks(t);
   await tick(3);
   assert.equal(data.peeked, null, 'making it closes the panel: the answer is on the stage now');
+});
+
+// ---- the general case: markup to markdown ---------------------------------
+//
+// The links pill is a REDUCTION of one thing markup carries; this is what is
+// behind it. The conversion itself is Turndown's and is asserted in the browser
+// (tools/render/scenarios/stage-flavor-bar.mjs); what these hold is the part
+// this component owns: which flavors qualify, what the result is called, and
+// that nothing is fetched or converted until somebody asks.
+
+const stubTurndown = () => {
+  const seen = [];
+  window.TurndownService = class {
+    constructor(opts) { seen.push(opts); }
+    use() {}
+    turndown(html) { return 'MD<' + String(html).length + '>'; }
+  };
+  window.turndownPluginGfm = { gfm: {} };
+  return seen;
+};
+
+test('only markup offers a markdown conversion', async () => {
+  reset();
+  await paste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': 'plain words here', 'text/html': PAGE },
+  }));
+  assert.deepEqual(plain_(data.pasteMarkdown.map(t => t.from)), ['html'],
+    'plain text is already what it is, so converting it is not an offer');
+  assert.match(data.pasteMarkdown[0].dest, /-markdown\.md$/);
+});
+
+test('nothing is loaded or converted until the pill is tapped', async () => {
+  reset();
+  delete window.TurndownService;
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  assert.equal(data.pasteMarkdown.length, 1, 'the pill draws from the flavor alone');
+  assert.equal(data._mdText, null, 'and 31 KB is not fetched to label it');
+});
+
+test('the pill converts once and stages the result under its own name', async () => {
+  reset();
+  const opts = stubTurndown();
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  const t = data.pasteMarkdown[0];
+  await data.peekMd(t);
+  assert.match(data.peeked.text, /^MD</, 'the eye shows the conversion, not the markup');
+  await data.stageMd(t);
+  await tick(3);
+  assert.equal(opts.length, 1, 'peeking then staging is the ordinary sequence, so it converts once');
+  assert.equal(opts[0].headingStyle, 'atx');
+  const made = data.localItems.find(it => it.name === t.dest);
+  assert.ok(made, 'staged under the name the pill named');
+  assert.ok(data.reader, 'and the reader opens on it');
+});
+
+test('a converter that will not load is reported, not swallowed', async () => {
+  reset();
+  delete window.TurndownService;
+  const said = [];
+  const realToast = Alpine.store('toast');
+  const realDeps = data.loadMarkdownDeps.bind(data);
+  Alpine.store('toast', (kind, msg) => said.push(msg));
+  // A load that resolves without the global arriving, which is what a blocked
+  // host or a bad pin actually looks like: the script tag settles and the
+  // window is still missing what it was fetched for. mdOf's own guard is what
+  // has to catch that, since a converter it cannot see would otherwise throw
+  // deeper and less legibly.
+  data.loadMarkdownDeps = async () => {};
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  await data.stageMd(data.pasteMarkdown[0]);
+  assert.equal(data.localItems.length, 1, 'nothing half-made is staged');
+  assert.match(said[0] || '', /^Markdown: the markdown converter is not loaded/);
+  assert.equal(data.mdBusy, false, 'and the pill stops spinning');
+  data.loadMarkdownDeps = realDeps;
+  Alpine.store('toast', realToast);
 });
 
 test('a new paste closes the panel it opened over the old one', async () => {
@@ -1004,12 +1095,14 @@ test('a new paste closes the panel it opened over the old one', async () => {
   assert.equal(data.peekKey, '', 'a key left standing would point at a paste that is gone');
 });
 
-test('the reader\'s header reads links out of a staged file, however it arrived', () => {
+test('the reader\'s header reads out of a staged file, however it arrived', () => {
   reset();
   IN().take({ text: PAGE, name: 'page.html' });
   assert.equal(IN().linksIn(data.localItems[0]).length, 3,
     'the bar is about the paste; a dropped or fetched file keeps its route through the reader');
-  assert.equal(IN().linksName('page.html'), 'page-links.csv');
+  assert.equal(IN().derivedName('page.html', 'links'), 'page-links.md');
+  assert.equal(IN().isMarkup('page.html'), true, 'so the markdown action is offered beside it');
+  assert.equal(IN().isMarkup('notes.md'), false);
 });
 
 test('a ref is never a source, since it has no text until it is fetched', () => {

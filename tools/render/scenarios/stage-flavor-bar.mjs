@@ -37,12 +37,13 @@ export default async (page) => {
     });
   });
   await page.waitForTimeout(600);
-  // The html's own preview: the flavor that carries the addresses, which reads
-  // as markup and is exactly what a title attribute could never have told you.
-  await page.evaluate(() => {
+  // The markdown preview, which is the one that has to be shot rather than
+  // asserted: the conversion is Turndown's, fetched on this tap, and a unit
+  // test stubbing it proves the wiring and nothing about the output.
+  await page.evaluate(async () => {
     const el = document.querySelector('[x-data*="stager"]');
     const d = window.Alpine.$data(el);
-    d.peek('flavor', d.offers.find(o => d.flavorLabel(o) === 'html'));
+    await d.peekMd(d.pasteMarkdown[0]);
   });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1200);
 };

@@ -169,44 +169,56 @@ JSON array of records now opens as a table rather than a tree, which is what
 this policy's sibling on the data-view page (`AUTO_VIEW`) always did by reading
 the content.
 
-**The bar's menu reads the links out.** A copy off a web page splits across the
-same two flavors and the split is unhelpful in both directions: `text/plain`
-carries every link's label and not one of its addresses, and `text/html` carries
-the addresses inside markup nobody wants to read. Both were stageable and neither
-answered "just give me the links", which is a common thing to want and took
-several steps to get.
+**Two derivations ride the bar, and both land as markdown.** A copy off a web
+page splits across the same two flavors and the split is unhelpful in both
+directions: `text/plain` carries every link's label and not one of its
+addresses, and `text/html` carries the addresses inside markup nobody wants to
+read. Both were stageable and neither answered "just give me the links", which
+is a common thing to want and took several steps to get.
 
-It shipped that day as a coloured row of its own, and then as a `⋯` menu, and
-both lasted hours. Reading links out is a **derivation**, not a fourth format and
-not another tool, which is what a second coloured band got wrong; but an option
-you have to open something to find out about is one nobody reaches for, which is
-what the menu got wrong, and there is at most one of these. It is a pill in the
-same row as the flavors, dashed and un-monospaced so it does not read as a
-format, drawn only when there is something in it, and carrying the same eye. Its
-preview is the CSV it would make. Scoped to the paste's flavors, since the bar is
-about the paste; a staged file that arrived some other way keeps its route
-through the reader's header.
+The pills are `<n> links` and `markdown`, dashed and un-monospaced so they do
+not read as a fourth format, drawn only where there is something in them, each
+carrying the flavor bar's own eye. The shape took three tries in a day: a
+coloured row of its own read as clutter over one paste, then a `⋯` menu, which
+is an option nobody reaches for because finding out it exists costs a tap.
 
-The reading is `StageIntake.linksOf(text, name)`, keyed on the name the intake
-already chose for the reason `transformKindOf` is. Markup (`.html`, `.xml`) goes
-through `DOMParser` and `a[href]`; the other two text kinds (`.md`, `.txt`) are
-scanned for markdown links, angle autolinks, and bare addresses, with the
-markdown spans blanked first so one link is one row. `.csv` and `.js` are not
-sources: the first is the transform chip's, and a URL in a comment is not a link
-anybody asked for. An in-page `#anchor` and a `javascript:` handler are dropped,
+**The links were a `.csv` for a day, and that was the wrong reading of the
+errand.** A csv opens as a filterable table and `transformKindOf` calls it rows,
+which is reasoning from the machinery; what a csv is not is a thing you can copy
+out and paste somewhere, and copying out is the whole job. Markdown renders the
+same links as a tappable list (`READ_MODE` sends `.md` to preview), its raw mode
+is `- [text](url)` lines, and unlike the csv it generalizes: markdown is what
+ANY markup is worth converting into, which is what the second pill is.
+
+`StageIntake.linksOf(text, name)` is keyed on the name the intake already chose,
+for the reason `transformKindOf` is. Markup (`.html`, `.xml`) goes through
+`DOMParser` and `a[href]`; the other two text kinds (`.md`, `.txt`) are scanned
+for markdown links, angle autolinks, and bare addresses, with the markdown spans
+blanked first so one link is one row. `.csv` and `.js` are not sources: the
+first is the transform chip's, and a URL in a comment is not a link anybody
+asked for. An in-page `#anchor` and a `javascript:` handler are dropped,
 `mailto:` is kept, and one address appears once however often the page repeats
 it, first label winning, since a masthead included in the copy is not forty
 findings. A relative href stays relative: a paste carries the markup and not the
 page it came off, so there is no base to resolve against and inventing an origin
 would be a guess presented as a fact.
 
-**The artifact is a `.csv`, and that is the one choice here worth defending.**
-It opens as a table with a per-column filter (`READ_MODE`), its raw mode is the
-pasteable `text,url` lines, and `transformKindOf` calls it rows, so the
-extraction lands ON the machinery that already exists rather than beside it. A
-rendered markdown list would be tappable and be a dead end. It is named for its
-source (`2026-08-28-paste.html` gives `2026-08-28-paste-links.csv`) so the pair
-reads as a pair.
+**The conversion is Turndown's, and the host loads it**, the same contract the
+transform workbench states: `StageIntake.mdOf` owns the options and the GFM
+plugin (which is what turns a pasted web-page TABLE into a table rather than a
+run of cells) and throws rather than fetching, since a lazy fetch inside a tap
+spends the gesture and then reports the loss as something else. Two files and
+31 KB, fetched the first time somebody asks for markdown and never on a paste
+where nobody does, which is also why the pill carries no size: knowing it would
+mean converting every paste to label a pill nobody may tap. Both derivations are
+named for their source (`2026-08-28-paste.html` gives `-links.md` and
+`-markdown.md`), and the tag is never dropped even where `-markdown.md` looks
+redundant, since a plain-text paste opening with a heading is already named
+`.md` by `nameForText`.
+
+Scoped to the paste's flavors, since the bar is about the paste. A staged file
+that arrived some other way keeps its route through the reader's header, which
+offers the same two.
 
 **The stage is also the transform workbench's door.** The workbench
 (`lib/alpineComponents/transform-workbench.js`) has shipped inside show-repo
