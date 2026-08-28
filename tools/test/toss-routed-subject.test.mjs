@@ -44,7 +44,7 @@ const splitAddr = new Function(splitAddrSrc + '\n  return splitAddr;')();
 // under test: the module-level `let`s (tossLinkFn, cancelIconWatch) are
 // redeclared because a lifted function cannot reach the page's.
 function harness({ routes, fail } = {}) {
-  const log = { subjects: [], titles: [], addresses: [], empty: [], events: [] };
+  const log = { subjects: [], titles: [], addresses: [], empty: [], events: [], marks: [] };
   // Every setSubject fires this, so listening is how the harness sees each
   // stamp land, the page's own re-stamp included. Recording inside the
   // showAddress stub would only ever see the stub's.
@@ -56,6 +56,7 @@ function harness({ routes, fail } = {}) {
   const build = new Function(
     'window', 'document', 'history', 'frame', 'TOSS_ROUTES', 'CustomEvent',
     'showAddress', 'showEmpty', 'splitFrag', 'absUrl', 'setFavicon', 'adoptSubjectIcon', 'baseIcon',
+    'clearMark',
     `let tossLinkFn = null, cancelIconWatch = null;
      ${splitAddrSrc}
      ${setSubjectSrc}
@@ -87,6 +88,9 @@ function harness({ routes, fail } = {}) {
       (v) => { const i = v.indexOf('#'); return i === -1 ? [v, ''] : [v.slice(0, i), v.slice(i + 1)]; },
       (frag) => 'https://mehrlander.github.io/web-tools/pages/toss-render.html' + frag,
       () => {}, () => {}, null,
+      // setSubject clears the host's mark alongside its own; recorded so the
+      // reset is visible here rather than merely tolerated.
+      () => log.marks.push('cleared'),
     ),
   };
 }

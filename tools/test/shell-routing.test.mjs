@@ -172,6 +172,108 @@ test('the shell mode round-trips, and only when it is not the default', () => {
     'the default mode stamped itself, so it would appear on every address');
 });
 
+// ── The default is per view, and an app view opens without the shell ────────
+//
+// A promoted page is one page framed whole, and the reader who addressed it by
+// name asked for the page rather than the app around it. Derived per view
+// rather than latched at boot, which is the part with a failure behind it: a
+// latched default follows the reader OUT of the app view and leaves the estate
+// dashboard with no nav and only the fab as the way back.
+
+test('an app view opens bare and every other route keeps its header', () => {
+  const { shell: s } = makeShell({ browserStore: { repo: '' } });
+  for (const v of ['map', 'estate', 'landing', 'search']) {
+    s.view = v;
+    assert.equal(s.shellMode, 'full', `?view=${v} must keep the app's own chrome`);
+  }
+  s.view = 'app';
+  assert.equal(s.shellMode, 'none', 'a promoted page is the page, not the app around it');
+});
+
+test('the shell comes back on leaving the app view, with nothing to clear', () => {
+  const { shell: s } = makeShell({ browserStore: { repo: '' } });
+  s.view = 'app';
+  assert.equal(s.shellMode, 'none');
+  s.view = 'estate';
+  assert.equal(s.shellMode, 'full',
+    'a latched default would strand the dashboard with no nav');
+});
+
+test('the address carries the mode only where it differs from the view default', () => {
+  const store = () => ({ repo: '', ref: '', defaultRef: 'main', activeFile: null, path: '' });
+  const { shell: s } = makeShell({ browserStore: store() });
+  s.view = 'app';
+  s.appView = { key: 'me/home:a.html', slug: 'budget-drs', repo: 'me/home', path: 'a.html' };
+
+  assert.equal(s.deepLinkParams(new URLSearchParams()).toString(), 'app=budget-drs',
+    'the bare address already means "no shell"; stamping it would say it twice');
+
+  // Turning the header ON is now the departure from the default, so THAT is
+  // what the address records.
+  s.setShellMode('full');
+  const qs = s.deepLinkParams(new URLSearchParams());
+  assert.equal(qs.get('shell'), 'full', 'the app view with chrome is the linkable exception');
+
+  // And back: the address self-heals to the short form rather than keeping a
+  // key that now agrees with the default.
+  s.setShellMode('none');
+  assert.equal(s.deepLinkParams(new URLSearchParams()).has('shell'), false);
+});
+
+test('an explicit choice outranks the view default, on any view', () => {
+  const { shell: s } = makeShell({ search: '?shell=full&app=budget-drs', browserStore: { repo: '' } });
+  s.readShellMode();
+  s.view = 'app';
+  assert.equal(s.shellMode, 'full', 'a reader who asked for the header keeps it');
+});
+
+test('toggling back to the default is not a choice, so it does not follow you out', () => {
+  // Two taps on one app view used to leave `shell=none` latched, and the estate
+  // then opened with no nav and only the fab as the way back. Found in a
+  // browser: every unit agreed with itself and the sequence was still wrong.
+  const { shell: s } = makeShell({ browserStore: { repo: '' } });
+  s.syncUrl = () => {};
+  s.view = 'app';
+
+  s.setShellMode('full');
+  assert.equal(s.shellMode, 'full', 'the header is on, which IS a choice here');
+  s.setShellMode('none');
+  assert.equal(s._shellChoice, '', 'and turning it off again agrees with the default');
+
+  s.view = 'estate';
+  assert.equal(s.shellMode, 'full', 'so the dashboard gets its nav back');
+});
+
+test('a choice that differs from the default still latches, on any view', () => {
+  const { shell: s } = makeShell({ browserStore: { repo: '' } });
+  s.syncUrl = () => {};
+  s.view = 'estate';
+  s.setShellMode('none');
+  assert.equal(s._shellChoice, 'none', 'a bare dashboard is a real request');
+  s.view = 'app';
+  assert.equal(s.shellMode, 'none');
+  s.view = 'map';
+  assert.equal(s.shellMode, 'none', 'and it survives navigation, as a reading parameter should');
+});
+
+test('boot re-derives the sidebar after routing, since the watcher is not wired yet', () => {
+  // Source-level: init() runs against a browser this harness does not build.
+  // The claim is the ORDER. routeFromUrl settles the view before the $watch
+  // below exists, so the boot's own mode change is the one nothing observes.
+  const init = page.match(/await this\.routeFromUrl\(url\);[\s\S]*?this\.\$watch\('shellMode'/);
+  assert.ok(init, 'the boot route and the shellMode watcher were not found in one block');
+  assert.ok(init[0].indexOf('this.sidebarOpen = this.defaultSidebarOpen;') > 0,
+    'nothing re-derives the sidebar between the boot route and the watcher');
+});
+
+test('the sidebar re-derives with the mode, or it outlives the header', () => {
+  // The header hides by class, the sidebar does not: it is `sidebarOpen` that
+  // puts it away. Without this the aside stays a column at lg after the header
+  // has gone, which is the state nothing else in the app produces.
+  assert.match(page, /this\.\$watch\('shellMode', \(\) => \{\n\s+this\.sidebarOpen = this\.defaultSidebarOpen;/,
+    'a mode change must re-derive the sidebar before anything reads it');
+});
+
 test('an unknown shell mode reads as the default rather than blanking the app', () => {
   // A hand-edited or truncated ?shell= must not hide the header with no way
   // back: an unrecognized value is not a fourth mode, it is no mode.
