@@ -4684,7 +4684,16 @@ function app(){ return {
     const b = el?.getBoundingClientRect?.();
     if (!b) return null;
     const w = opts.width || this.MENU_W;
-    const h = Math.min(rows * this.MENU_ROW + 8, Math.round(innerHeight * 0.6));
+    // How tall the panel will BE, which decides whether it fits below the
+    // trigger. `rows * MENU_ROW` estimates that for a list of menu rows, which
+    // every caller here was until the session pane's reply card became a
+    // scrolling transcript: it is 60vh whatever its row count, and estimating
+    // it at nine rows put 210px of an 800px-tall phone's card below the fold,
+    // where the part you would touch to scroll it is not on screen. A caller
+    // whose panel is not a list of rows passes its own height.
+    const h = opts.height
+      ? Math.min(opts.height, Math.round(innerHeight * 0.6))
+      : Math.min(rows * this.MENU_ROW + 8, Math.round(innerHeight * 0.6));
     if (opts.side === 'right' && b.right + 2 + w <= innerWidth - 8)
       return { x: b.right + 2, y: Math.max(8, Math.min(b.top, innerHeight - h - 8)) };
     const below = innerHeight - b.bottom > h + 8;

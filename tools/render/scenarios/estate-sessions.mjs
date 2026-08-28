@@ -13,8 +13,11 @@
 // CARD=turns|tools|files|tokens opens that pair's card on the first row. Those
 // four numbers said what they counted only in a title, so the card is the only
 // way a phone reader learns that 206 is tool calls and which tools they were.
-// CARD=reply opens the ask line's card, which renders its markdown through
-// kits/guide-render.js and so needs the network the other four do not.
+// CARD=reply opens the ask line's card, which renders the session as a
+// transcript through kits/chat-render.js and so needs the network the other
+// four do not.
+// CARDTOP=1 scrolls that card back to its first entry (it opens at the last).
+// STALE=1 puts the first row a summarizer version behind.
 
 const SESSIONS = [
   {
@@ -44,7 +47,24 @@ const SESSIONS = [
       '',
       'So the choice is executable rather than remembered.',
     ].join('\n'),
-    replyCut: 'cut',
+    replyCut: '',
+    // The scroll back, in the shape repo-sessions-cache's priorTurns emits:
+    // [role, head] pairs, chronological, asks at PROMPT_HEAD and turns at
+    // TURN_HEAD, the closing reply excluded because `reply` above carries it.
+    // Sentence-shaped heads at TURN_HEAD, the way priorTurns emits them: an
+    // entry ends where a thought does. Narration turns are absent because the
+    // card drops anything followed by tool calls, which the deck keeps.
+    turns: [
+      ['a', 'Here is where it stands. The mechanisms live as data in `docs/showing-mechanisms.csv`, and the Map view renders that file directly rather than restating it in prose.', '14:02:11', 2264],
+      ['u', 'Can we get the render line printed rather than remembered?', '14:19:40'],
+      ['a', '`npm run showing` now reads the branch\'s changed files and prints the line to paste, or an honest no-link with the reason. The rule the section stated in prose is executable.', '14:31:07'],
+      ['u', '[3 images]', '15:12:44'],
+      ['u', 'Good. Please proceed with the Map view tab.', '15:20:03'],
+      ['a', 'The Showing tab is up. It reads the CSV directly, so a new mechanism is a row rather than a paragraph, and the honesty gate survives because no script can supply it.', '15:44:29', 891],
+    ],
+    turnsCut: 'cut',
+    askAt: '13:51:08',
+    replyAt: '16:49:16',
     schema: 4, sha: 'a',
   },
   {
@@ -232,10 +252,23 @@ export default async function (page) {
   // PENDING=1 strips the reply from the first row, which is the state most of
   // the store is in until the crawl has run twice against row version 5. It is
   // the case the reply card was invisible on when it first shipped.
+  // STALE=1 sets the first row a version behind, which is what most of a
+  // half-healed store looks like: current text on some rows, older and shorter
+  // text on the rest, with nothing on screen to tell them apart until now.
+  if (process.env.STALE) {
+    await page.evaluate(() => {
+      const st = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
+      const behind = window.RepoSessionsCache.ROW_V - 2;
+      st.sessionRows_ = st.sessionRows_.map((r, i) => (i ? r : { ...r, v: behind }));
+    });
+    await page.waitForTimeout(200);
+  }
+
   if (process.env.PENDING) {
     await page.evaluate(() => {
       const st = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
-      st.sessionRows_ = st.sessionRows_.map((r, i) => (i ? r : { ...r, reply: '', replyCut: '' }));
+      st.sessionRows_ = st.sessionRows_.map((r, i) =>
+        (i ? r : { ...r, reply: '', replyCut: '', turns: [], turnsCut: '', replyAt: '' }));
     });
     await page.waitForTimeout(200);
   }
@@ -260,5 +293,16 @@ export default async function (page) {
       st.openSessionCard(row, card, btn || null);
     }, { card, sel });
     await page.waitForTimeout(400);
+    // CARDTOP=1 scrolls the reply card back to its first entry. The card opens
+    // at the BOTTOM, on the closing reply, so the head of the scroll back and
+    // the truncation note are otherwise unshootable.
+    if (process.env.CARDTOP) {
+      await page.evaluate(() => {
+        const el = [...document.querySelectorAll('div.fixed.overflow-y-auto')]
+          .find(d => d.scrollHeight > d.clientHeight);
+        if (el) el.scrollTop = 0;
+      });
+      await page.waitForTimeout(150);
+    }
   }
 }
