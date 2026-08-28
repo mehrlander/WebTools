@@ -216,18 +216,16 @@ test('the lead is tinted for the two conversation roles, and only those', () => 
     .querySelector('i.ph').style.color, '');
 });
 
-test('the ask is banded and the reply is not, so exchanges are found without reading', () => {
-  // A band on every turn is stripes. On the half that OPENS each exchange it
-  // turns the card's structure into something the eye finds at a tenth of the
-  // ink the rail was spending to fail at it.
-  const u = dense({ role: 'user', md: 'the ask' });
-  assert.ok(u.className.includes('bg-primary/10'), 'the ask carries the band');
-  assert.ok(u.className.includes('-mx-2') && u.className.includes('px-2'),
-    'and bleeds past the text, so the text\'s own left edge is unmoved');
-  for (const role of ['assistant', 'system', 'tool', 'meta'])
-    assert.ok(!/\bbg-/.test(dense({ role, md: 'x' }).className), `a ${role} turn takes none`);
-  assert.ok(!/\bbg-/.test(cr.message({ role: 'user', md: 'x' }, { collapse: 0 }).className),
-    'and full size takes none either');
+test('no fill on any dense turn, so the whole frame is where the turn sits', () => {
+  // The ask carried a band for one round and it did find the exchanges, but the
+  // way a rail did: by drawing a shape around the text rather than letting the
+  // text make one. What is left says the same thing with no ink, so the only
+  // class a dense turn carries is its indent.
+  for (const role of ['user', 'assistant', 'system', 'tool', 'meta'])
+    assert.ok(!/\bbg-|\bborder|rounded/.test(dense({ role, md: 'x' }).className),
+      `a ${role} turn carries no fill, rail or corner`);
+  assert.equal(dense({ role: 'user', md: 'x' }).className, '', 'the ask is the bare edge');
+  assert.equal(dense({ role: 'assistant', md: 'x' }).className, 'ml-5', 'and the reply is one word');
 });
 
 test('the turn hangs on its lead: the icon in the margin, every other line on one edge', () => {
