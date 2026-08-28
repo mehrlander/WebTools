@@ -17,6 +17,7 @@
 // transcript through kits/chat-render.js and so needs the network the other
 // four do not.
 // CARDTOP=1 scrolls that card back to its first entry (it opens at the last).
+// STALE=1 puts the first row a summarizer version behind.
 
 const SESSIONS = [
   {
@@ -251,6 +252,18 @@ export default async function (page) {
   // PENDING=1 strips the reply from the first row, which is the state most of
   // the store is in until the crawl has run twice against row version 5. It is
   // the case the reply card was invisible on when it first shipped.
+  // STALE=1 sets the first row a version behind, which is what most of a
+  // half-healed store looks like: current text on some rows, older and shorter
+  // text on the rest, with nothing on screen to tell them apart until now.
+  if (process.env.STALE) {
+    await page.evaluate(() => {
+      const st = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
+      const behind = window.RepoSessionsCache.ROW_V - 2;
+      st.sessionRows_ = st.sessionRows_.map((r, i) => (i ? r : { ...r, v: behind }));
+    });
+    await page.waitForTimeout(200);
+  }
+
   if (process.env.PENDING) {
     await page.evaluate(() => {
       const st = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));

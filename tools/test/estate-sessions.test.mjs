@@ -466,6 +466,20 @@ test('the closing reply reaches the card whole, and claims no trim', () => {
   assert.ok(!c.turns.at(-1).dropped, 'and no note under it; the mount draws one off this');
 });
 
+test('a row built by an older pass says so, rather than reading as current', () => {
+  // The gap three separate reports walked into. A stale row carries older
+  // text (shorter turns, a reply the old cap cut at 600) and on screen looks
+  // exactly like a current one, so the cut reads as the whole answer. The
+  // crawl heals 120 records a pass, so a store of 233 spends real time half
+  // healed: measured on the live cache 2026-08-28, 120 rows at the current
+  // version and 113 behind it.
+  const S = window.RepoSessionsCache;
+  const row = S.summarize(rec({ schema: 4, replies: [{ at: 'z', text: 'the answer' }] }), 'x');
+  assert.equal(replyCard(row).staleV, 0, 'a fresh row claims nothing');
+  const old = { ...row, v: S.ROW_V - 2 };
+  assert.equal(replyCard(old).staleV, S.ROW_V - 2, 'and a stale one names the version it is on');
+});
+
 test('a row with no reply yet still opens, on the ask, and says why', () => {
   // How this first shipped: gated on `row.reply`, so a hover on an unhealed row
   // did NOTHING and a reader could not tell a missing feature from a missing
