@@ -23,7 +23,10 @@ const SESSIONS = [
   {
     id: 'b8fae678', agent: 'https://claude.ai/code/session_01SXuNTt', day: '2026-08-05',
     started: '2026-08-05T13:51:08Z', ended: '2026-08-05T16:49:16Z', mins: 178,
-    ask: 'We recently done some significant work on surfacing our documentation in the show repo app. Discuss where we are at with that.',
+    // A markdown ask, which is the case the row's preview strip exists for:
+    // 2 of the 238 on file open with a pasted list of links, and unstripped
+    // the two clamped lines are an asterisk, a bracketed title and a URL.
+    ask: '* [2025-27 Biennial Budget Instructions](https://ofm.wa.gov/budget/budget-instructions)\n* [Budget Development Manual](https://ofm.wa.gov/budget/manual)\n* [ABS User Guide](https://ofm.wa.gov/abs/guide)\n\nRead these and tell me which ones the submittal needs to cite.',
     repos: [{ name: 'web-tools', branch: 'claude/show-repo-docs-surfacing-3sr7ab', lines: 572 },
             { name: 'home', branch: 'claude/show-repo-docs-surfacing-3sr7ab', lines: 3 }],
     branches: ['claude/show-repo-docs-surfacing-3sr7ab'],
@@ -79,11 +82,15 @@ const SESSIONS = [
     // store), and the states CHANGE, which is what makes the card worth
     // opening rather than a tooltip. This one walks pending → assess → clean →
     // ready, so the shot shows a history rather than four of the same glyph.
+    // Fourth element is the GAP: user prompts since the state above it. All
+    // three shapes are here on purpose, since the divider exists to tell them
+    // apart. 0 = closed twice in one turn (15% of the store's pairs), 1 = the
+    // ordinary rhythm and a bare rule (73%), 2+ = a stretch that ran long (12%).
     states: [
-      ['pending', '🟡 **Pending:** the Map view needs `docs/showing-mechanisms.csv` to exist before the tab can read it, and the CSV is still being derived from the prose. Nothing to look at yet.', '14:31:07'],
-      ['assess', '❇️ **Ready to assess:** whether the render line should be printed rather than remembered. The section that was meant to stop the wrong link is the longest one in the file, so reading it is evidently not what fixes this.', '15:02:44'],
-      ['clean', '⚪ **Clean exit.** The Showing tab reads the CSV directly, so a new mechanism is a row rather than a paragraph. `npm run showing` prints the line to paste.', '16:10:22'],
-      ['ready', '🟢 **Ready to continue.** Available on "go": (1) the Docs tab\'s growth-versus-readership quadrant, which the registry already has both axes for; (2) folding `docs/showing.md` down now that the app holds the mechanisms; (3) a gate on the honesty rule, which is the one part no script can supply.', '16:48:51'],
+      ['pending', '🟡 **Pending:** the Map view needs `docs/showing-mechanisms.csv` to exist before the tab can read it, and the CSV is still being derived from the prose. Nothing to look at yet.', '14:31:07', 0],
+      ['assess', '❇️ **Ready to assess:** whether the render line should be printed rather than remembered. The section that was meant to stop the wrong link is the longest one in the file, so reading it is evidently not what fixes this.', '15:02:44', 0],
+      ['clean', '⚪ **Clean exit.** The Showing tab reads the CSV directly, so a new mechanism is a row rather than a paragraph. `npm run showing` prints the line to paste.', '16:10:22', 1],
+      ['ready', '🟢 **Ready to continue.** Available on "go": (1) the Docs tab\'s growth-versus-readership quadrant, which the registry already has both axes for; (2) folding `docs/showing.md` down now that the app holds the mechanisms; (3) a gate on the honesty rule, which is the one part no script can supply.', '16:48:51', 3],
     ],
     statesCut: '',
     schema: 4, sha: 'a',
@@ -104,7 +111,7 @@ const SESSIONS = [
     // The other end of the range: one state and nothing to scroll back
     // through. The card has to read as finished rather than as broken.
     states: [
-      ['merged', '🟣 **Merged.** The board sorts by id inside each group, so two tasks closed in one commit no longer swap places on every regeneration. The lockstep test catches a relapse.', '11:38:02'],
+      ['merged', '🟣 **Merged.** The board sorts by id inside each group, so two tasks closed in one commit no longer swap places on every regeneration. The lockstep test catches a relapse.', '11:38:02', 0],
     ],
     statesCut: '',
     schema: 4, sha: 'b',
@@ -142,7 +149,7 @@ const SESSIONS = [
     filesTotal: 3, files: [['web-tools/.github/workflows/wsl-fetch.yml', 5]],
     reply: 'The schedule is fine and the runner is asleep: the cron fires while the machine is off, and a hosted runner cannot reach the share. It needs the self-hosted runner, which is yours to start.',
     replyCut: '', state: 'pending',
-    states: [['pending', "🟡 **Pending:** the schedule is fine and the runner is asleep. The cron fires while the machine is off, and a hosted runner cannot reach the share, so this needs the self-hosted runner started.", '11:10:40']], statesCut: '',
+    states: [['pending', "🟡 **Pending:** the schedule is fine and the runner is asleep. The cron fires while the machine is off, and a hosted runner cannot reach the share, so this needs the self-hosted runner started.", '11:10:40', 0]], statesCut: '',
     schema: 4, sha: 'd',
   },
   {
@@ -157,7 +164,7 @@ const SESSIONS = [
     filesTotal: 2, files: [['web-tools/docs/SNAGS.md', 6]],
     reply: 'Both work and they cost differently. A projector keeps the index honest and adds a generator to the hook chain; hand-appending stays free and drifts. The call is yours.',
     replyCut: '', state: 'choice',
-    states: [['choice', "🆚 **Choice needed.** A projector keeps the index honest and adds a generator to the hook chain; hand-appending stays free and drifts. I lean projector, since the index is already wrong twice. Your call.", '09:03:15']], statesCut: '',
+    states: [['choice', "🆚 **Choice needed.** A projector keeps the index honest and adds a generator to the hook chain; hand-appending stays free and drifts. I lean projector, since the index is already wrong twice. Your call.", '09:03:15', 0]], statesCut: '',
     schema: 4, sha: 'e',
   },
   // The unhealed row: a record the crawl has not re-read since the field

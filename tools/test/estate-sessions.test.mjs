@@ -579,6 +579,72 @@ test('the glyph is a control on the row, and carries no native title beside it',
   assert.equal(glyph.getAttribute('title'), null, 'and not also a tooltip');
 });
 
+// ── The ask, as a preview ──────────────────────────────────────────────────
+// The row draws two clamped lines, and an ask pasted as markdown spent them on
+// syntax. Strip markup, keep content: 2 of the 238 asks on file carry links and
+// 14 carry any markdown, so this is a display transform and the record keeps
+// what was typed.
+
+test('a link becomes its label, and the URL goes', () => {
+  assert.equal(
+    data.sessionAsk({ ask: 'See [the instructions](https://ofm.wa.gov/budget) first.' }),
+    'See the instructions first.');
+});
+
+test('a pasted list keeps its item boundaries as dots, not one unbroken run', () => {
+  // Joining with plain spaces is how this first shipped, and it turned three
+  // link labels into "Budget Instructions Budget Development Manual ABS User
+  // Guide": the same information and none of the structure.
+  const ask = [
+    '* [2025-27 Biennial Budget Instructions](https://ofm.wa.gov/budget/budget-instructions)',
+    '* [Budget Development Manual](https://ofm.wa.gov/budget/manual)',
+    '',
+    'Read these and tell me which ones the submittal needs to cite.',
+  ].join('\n');
+  assert.equal(data.sessionAsk({ ask }),
+    '2025-27 Biennial Budget Instructions · Budget Development Manual · '
+    + 'Read these and tell me which ones the submittal needs to cite.');
+});
+
+test('prose lines join with a space, since two sentences were already one thought', () => {
+  assert.equal(data.sessionAsk({ ask: 'We have the stage.\nIt could have a log.' }),
+    'We have the stage. It could have a log.');
+});
+
+test('markup goes and content stays: a bare URL is content', () => {
+  assert.equal(data.sessionAsk({ ask: 'Look at **this** and the `build` step.' }),
+    'Look at this and the build step.');
+  assert.equal(data.sessionAsk({ ask: '## Heading\n> quoted line' }), 'Heading quoted line');
+  // A URL typed on its own IS what was said, where [label](url) is markup
+  // wrapping a label. That is the whole line the strip draws.
+  assert.equal(data.sessionAsk({ ask: 'See https://example.com/x for the shape.' }),
+    'See https://example.com/x for the shape.');
+  assert.equal(data.sessionAsk({}), '');
+});
+
+// ── What happened between two states ───────────────────────────────────────
+
+test('each state carries the prompts since the one above it', () => {
+  const row = { states: [
+    ['pending', 'a', '11:00:00', 0],
+    ['clean', 'b', '11:10:00', 0],
+    ['ready', 'c', '12:35:00', 2],
+  ] };
+  const t = data.stateTurns(row);
+  assert.equal(t[0].gap, null, 'the first has nothing above it to be a gap from');
+  assert.equal(t[1].gap, 0, 'closed twice in one turn');
+  assert.equal(t[2].gap, 2);
+});
+
+test('the rule labels only what says something', () => {
+  // 73% of the store's 2,411 consecutive pairs are one prompt apart, so a
+  // "1 prompt" on three dividers in four is the page-of-green-rails failure.
+  assert.equal(data._stateRule(1).textContent, '', 'the ordinary rhythm is a bare rule');
+  assert.equal(data._stateRule(0).textContent, 'same turn');
+  assert.equal(data._stateRule(3).textContent, '3 prompts');
+  assert.match(data._stateRule(0).querySelector('span').getAttribute('title'), /No user turn/);
+});
+
 // ── Tap to close ───────────────────────────────────────────────────────────
 // The card arrives on a tap and now leaves on one. It is a plain toggle only
 // because the hover openers bail on a coarse pointer, so a tap is one event

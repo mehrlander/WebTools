@@ -713,7 +713,7 @@ test('every passage is carried whole, priors included', () => {
   ] });
   const [prior] = st;
   assert.ok(prior[1].length > 400, 'the prior is not cut to a turn head: ' + prior[1].length);
-  assert.equal(prior[3], undefined, 'and reports no drop, because there was none');
+  assert.equal(prior.length, 4, 'and carries no dropped element, because nothing was');
 });
 
 test('one safety cap for the tail, and it says what it cut', () => {
@@ -722,7 +722,7 @@ test('one safety cap for the tail, and it says what it cut', () => {
   const huge = '🟠 **Attention:** ' + 'A sentence that goes on. '.repeat(200);
   const [e] = S.closingStates({ replies: [reply('1', huge)] });
   assert.ok(e[1].length <= 2000, 'bounded');
-  assert.ok(e[3] > 0, 'and the turn carries how much is missing');
+  assert.ok(e[4] > 0, 'and the turn carries how much is missing, after the gap');
   assert.ok(huge.length > 2000, 'the fixture actually exceeds the bound');
 });
 
@@ -746,6 +746,39 @@ test('the tip and the sequence cannot disagree: one parser, one answer', () => {
   const st = S.closingStates(r);
   assert.equal(S.closingState(r), st[st.length - 1][0]);
   assert.equal(S.closingState(r), 'choice');
+});
+
+test('a state carries the user prompts since the one before it', () => {
+  // The one fact that tells two identical pairs of glyphs apart. Measured over
+  // the store's 2,411 consecutive pairs: 15% at zero (closed twice in one
+  // turn), 73% at one (the ordinary rhythm), 12% at two or more.
+  const st = S.closingStates({
+    prompts: [{ at: '2026-08-05T10:00:00Z' }, { at: '2026-08-05T12:30:00Z' },
+              { at: '2026-08-05T12:40:00Z' }, { at: '2026-08-05T13:00:00Z' }],
+    replies: [
+      reply('2026-08-05T11:00:00Z', '🟡 **Pending:** waiting.'),
+      reply('2026-08-05T11:10:00Z', '⚪ **Clean exit.** nobody spoke between these.'),
+      reply('2026-08-05T12:35:00Z', '🟢 **Ready:** one prompt later.'),
+      reply('2026-08-05T13:10:00Z', '🆚 **Choice needed:** two prompts later.'),
+    ],
+  });
+  assert.deepEqual(st.map(e => e[3]), [0, 0, 1, 2]);
+  assert.equal(st[0][3], 0, 'the first has no interval: prompts before it are the run-up');
+});
+
+test('the gap survives a truncated passage, which rides after it', () => {
+  // `dropped` stays last and stays optional, as priorTurns has it, so a cut
+  // entry is five long and an uncut one is four.
+  const huge = '🟠 **Attention:** ' + 'A sentence that goes on. '.repeat(200);
+  const st = S.closingStates({
+    prompts: [{ at: '2026-08-05T11:30:00Z' }],
+    replies: [reply('2026-08-05T11:00:00Z', '🟡 **Pending:** short.'),
+              reply('2026-08-05T12:00:00Z', huge)],
+  });
+  assert.equal(st[1].length, 5);
+  assert.equal(st[1][3], 1, 'gap at index 3');
+  assert.ok(st[1][4] > 0, 'dropped at index 4');
+  assert.equal(st[0].length, 4, 'and an uncut entry stops at the gap');
 });
 
 test('the row carries the sequence beside the tip', () => {
