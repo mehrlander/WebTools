@@ -107,6 +107,56 @@ const SESSIONS = [
     // Its slot draws empty, which is what holds the column straight.
     schema: 2, sha: 'c',
   },
+  // Three more, for the two surfaces the state axis added: the chip row needs
+  // more than one state to appear at all, and the Counts histogram needs a
+  // distribution rather than a pair. Deliberately thin otherwise, since what
+  // they exist to draw is one field.
+  {
+    id: '7c4a1e02', agent: '', day: '2026-08-04',
+    started: '2026-08-04T10:00:00Z', ended: '2026-08-04T11:12:00Z', mins: 72,
+    ask: 'The wsl-fetch cron has not landed its errand in three days. Work out whether it is the schedule or the runner.',
+    repos: [{ name: 'web-tools', branch: 'claude/wsl-fetch-cron-8dk2mq', lines: 41 }],
+    branches: ['claude/wsl-fetch-cron-8dk2mq'],
+    exchanges: 5, messages: 88, calls: 63, failures: 0,
+    tools: [['Bash', 44], ['Read', 11]],
+    tokens: { input: 300, output: 71000, cache_read: 19000000, cache_write: 1200000 },
+    filesTotal: 3, files: [['web-tools/.github/workflows/wsl-fetch.yml', 5]],
+    reply: 'The schedule is fine and the runner is asleep: the cron fires while the machine is off, and a hosted runner cannot reach the share. It needs the self-hosted runner, which is yours to start.',
+    replyCut: '', state: 'pending',
+    schema: 4, sha: 'd',
+  },
+  {
+    id: '2f81b9dd', agent: '', day: '2026-08-04',
+    started: '2026-08-04T08:00:00Z', ended: '2026-08-04T09:05:00Z', mins: 65,
+    ask: 'Should the snags log get a projector or stay hand-appended? Assess both and recommend.',
+    repos: [{ name: 'web-tools', branch: 'claude/snags-projector-p91xzr', lines: 18 }],
+    branches: ['claude/snags-projector-p91xzr'],
+    exchanges: 4, messages: 51, calls: 29, failures: 0,
+    tools: [['Read', 16], ['Bash', 9]],
+    tokens: { input: 220, output: 44000, cache_read: 11000000, cache_write: 800000 },
+    filesTotal: 2, files: [['web-tools/docs/SNAGS.md', 6]],
+    reply: 'Both work and they cost differently. A projector keeps the index honest and adds a generator to the hook chain; hand-appending stays free and drifts. The call is yours.',
+    replyCut: '', state: 'choice',
+    schema: 4, sha: 'e',
+  },
+  // The unhealed row: a record the crawl has not re-read since the field
+  // landed. It is the case the backfill line exists for, and the one absence
+  // a Refresh can actually close. Its `v` is set in the page, off the live
+  // ROW_V, so this fixture never hardcodes a version that drifts.
+  {
+    id: '5b0d33af', agent: '', day: '2026-08-02', behindV: true,
+    started: '2026-08-02T13:00:00Z', ended: '2026-08-02T14:30:00Z', mins: 90,
+    ask: 'Walk the docs registry and tell me which rows have gone orphan since the last skill rename.',
+    repos: [{ name: 'web-tools', branch: 'claude/docs-reach-orphans-4mq7wz', lines: 96 }],
+    branches: ['claude/docs-reach-orphans-4mq7wz'],
+    exchanges: 7, messages: 120, calls: 84, failures: 0,
+    tools: [['Bash', 58], ['Read', 14]],
+    tokens: { input: 410, output: 96000, cache_read: 24000000, cache_write: 1500000 },
+    filesTotal: 5, files: [['web-tools/docs/docs.csv', 7]],
+    reply: 'Seventeen orphans, and the count is the smaller half of the story: they are 11% of the folder by words.',
+    replyCut: '',
+    schema: 4, sha: 'f',
+  },
 ];
 
 const ATTENTION = [
@@ -218,7 +268,14 @@ export default async function (page) {
     st.authed = true;
     st.loading = false;
     st.sessionsLoading = false;
-    st.sessionRows_ = SESSIONS;
+    // Every row at the CURRENT summarizer version except the one flagged
+    // behindV, so the pane's backfill line and the Counts histogram's
+    // "not read yet" bar have exactly one row to speak for.
+    const V = window.RepoSessionsCache.ROW_V;
+    st.sessionRows_ = SESSIONS.map(r => {
+      const { behindV, ...row } = r;
+      return { ...row, v: behindV ? V - 1 : V };
+    });
     st.sessionAttention = ATTENTION;
     st.activity = ACTIVITY;
     // The estate's own membership, which is the only place a checkout name

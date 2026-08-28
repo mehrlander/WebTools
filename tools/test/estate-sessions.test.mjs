@@ -475,6 +475,158 @@ test('the closing state draws as its glyph, in a slot that holds even when empty
   assert.ok(card.querySelector('span.w-5'), 'the slot is drawn on a row with no state');
 });
 
+// ── The state axis ─────────────────────────────────────────────────────────
+// A second narrowing axis beside the repo chips, on the same contract. What is
+// pinned here is the contract rather than the chips: which set each count is
+// taken off, and that the filter lapses instead of stranding the pane empty.
+
+const stateRow = (over) => window.RepoSessionsCache.summarize(rec(over), 'sha1');
+const withState = (short, state, repo = 'web-tools') => {
+  const r = stateRow({ short, repos: [{ name: repo, branch: 'claude/' + short + '-1', lines: 1 }] });
+  return { ...r, state };
+};
+
+test('chips cover only the states present, in the vocabulary\'s order not by count', () => {
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [
+    withState('a1', 'merged'), withState('a2', 'merged'), withState('a3', 'merged'),
+    withState('b1', 'ready'),
+    withState('c1', 'clean'),
+    stateRow({ short: 'd1' }),
+  ];
+  assert.deepEqual(plain(data.sessionStates.map(s => [s.key, s.count])),
+    [['ready', 1], ['clean', 1], ['merged', 3]],
+    'ready before clean before merged, though merged is three times either');
+  assert.equal(data.sessionStates[0].mark, '🟢', 'each chip carries its glyph');
+  assert.ok(!data.sessionStates.some(s => !s.key),
+    'the row with no state gets no chip: an absence is not a state');
+});
+
+test('the state filter narrows the list, and All says what tapping it restores', () => {
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [withState('a1', 'merged'), withState('b1', 'ready'), stateRow({ short: 'c1' })];
+  assert.equal(data.sessionRows.length, 3);
+  data.sessionStateFilter = 'ready';
+  assert.deepEqual(plain(data.sessionRows.map(r => r.id)), ['b1']);
+  // The All chip is the count BEFORE this axis, not after it: it says what you
+  // get back, which is the only reading that makes the chip a way out.
+  assert.equal(data.repoScopedSessions.length, 3);
+});
+
+test('the state filter lapses when the scope no longer holds it', () => {
+  // Same failure the repo filter already learned: a pane sitting empty with
+  // nothing lit to explain why.
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionRows_ = [withState('a1', 'merged'), withState('b1', 'ready')];
+  data.sessionStateFilter = 'ready';
+  assert.equal(data.activeSessionState, 'ready');
+  data.sessionRows_ = [withState('a1', 'merged')];
+  assert.equal(data.activeSessionState, '', 'lapses rather than stranding the pane');
+  assert.equal(data.sessionRows.length, 1, 'and the list is whole again');
+});
+
+test('the state counts sit inside the repo filter, so a chip never overcounts', () => {
+  data.sessionScope = 'all';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [
+    withState('a1', 'ready', 'web-tools'),
+    withState('b1', 'ready', 'home'),
+    withState('c1', 'merged', 'home'),
+  ];
+  assert.deepEqual(plain(data.sessionStates.map(s => [s.key, s.count])), [['ready', 2], ['merged', 1]]);
+  data.sessionRepoFilter = 'home';
+  assert.deepEqual(plain(data.sessionStates.map(s => [s.key, s.count])), [['ready', 1], ['merged', 1]],
+    'the chips narrow what is on screen, not what exists somewhere else');
+  assert.equal(data.repoScopedSessions.length, 2, 'and All agrees with them');
+  data.sessionRepoFilter = '';
+});
+
+test('a stub drops out under a state filter rather than riding along', async () => {
+  // A stub has no record, so it cannot answer the question the filter asks.
+  shell.view = 'sessions';
+  data.sessionLens = 'list';
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.activity = { 'acme/widget': { defaultBranch: 'main', scan: { branches: [
+    { name: 'ghost-work', group: 'active', date: '2026-08-05',
+      sessions: ['https://claude.ai/code/session_GHOST'] },
+  ] } } };
+  data.sessionRows_ = [{ ...window.RepoSessionsCache.summarize(rec(), 'sha1'), state: 'merged' }];
+  await Alpine.nextTick();
+  assert.equal(data.sessionNodes.filter(n => n.kind === 'stub').length, 1);
+  data.sessionStateFilter = 'merged';
+  assert.equal(data.sessionNodes.filter(n => n.kind === 'stub').length, 0);
+  assert.equal(data.sessionNodes.length, 1, 'the record that matches is all that is left');
+  data.sessionStateFilter = '';
+  data.activity = {};
+});
+
+test('the backfill count is only the rows a refresh would fix', () => {
+  const V = window.RepoSessionsCache.ROW_V;
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [
+    withState('a1', 'merged'),                       // current, has one
+    stateRow({ short: 'b1' }),                       // current, closed in none
+    { ...stateRow({ short: 'c1' }), v: V - 1 },      // behind: this is the one
+  ];
+  assert.equal(data.sessionsBehindState, 1,
+    'a current row with no state is a session that said nothing, not a gap');
+});
+
+// ── How sessions ended: the Counts histogram ───────────────────────────────
+
+test('the histogram keeps the two absences out of the ordering and apart', () => {
+  const V = window.RepoSessionsCache.ROW_V;
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [
+    withState('a1', 'merged'), withState('a2', 'merged'),
+    withState('b1', 'choice'),
+    stateRow({ short: 'c1' }),
+    { ...stateRow({ short: 'd1' }), v: V - 1 },
+  ];
+  const h = data.lensClosingStates;
+  assert.deepEqual(plain(h.bars.map(b => [b.key, b.n])), [['choice', 1], ['merged', 2]],
+    'bars are states only, in vocabulary order');
+  assert.equal(h.none.n, 1, 'closed in no state');
+  assert.equal(h.behind.n, 1, 'not read yet: the one a refresh closes');
+  assert.equal(h.read, 3);
+  assert.equal(h.total, 5);
+  // Every bar shares one scale, absences included, or the lengths lie.
+  assert.equal(h.bars.find(b => b.key === 'merged').pct, 100);
+  assert.equal(h.none.pct, 50);
+});
+
+test('the histogram reads the whole store, not the scoped list', () => {
+  // The list's chips narrow; this lens is the distribution, so a scope that
+  // hides half the records must not silently reshape it.
+  data.sessionRows_ = [withState('a1', 'merged'), withState('b1', 'ready')];
+  data.sessionScope = 'day';
+  assert.equal(data.lensClosingStates.total, 2);
+  data.sessionScope = 'all';
+});
+
+test('the star panel names a session the way a row does', () => {
+  const row = withState('a1', 'ready');
+  data.sessionScope = 'all';
+  data.sessionRepoFilter = '';
+  data.sessionStateFilter = '';
+  data.sessionRows_ = [row];
+  const star = data.lensStars[0];
+  assert.equal(star.id, 'a1');
+  assert.equal(star.label, data.sessionLabel(row), 'the same name the list row draws');
+  assert.equal(data.sessionStateMark(star), '🟢', 'and the same glyph');
+});
+
 test('a rebuilt row reaches the screen, rather than freezing at first paint', async () => {
   // The row's scope was `{ row: n.row }`, which x-data evaluates ONCE. x-for
   // reuses a keyed element, so a node rebuilt under the same session id updated
