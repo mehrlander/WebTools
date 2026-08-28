@@ -152,6 +152,47 @@ JSON array of records now opens as a table rather than a tree, which is what
 this policy's sibling on the data-view page (`AUTO_VIEW`) always did by reading
 the content.
 
+**A third kind of offer reads the links out.** A copy off a web page splits
+across two clipboard flavors and the split is unhelpful in both directions:
+`text/plain` carries every link's label and not one of its addresses, and
+`text/html` carries the addresses inside markup nobody wants to read. Both were
+stageable and neither answered "just give me the links", which is a common thing
+to want and took several steps to get.
+
+So the **Inside** row, a sibling of the two chip rows above and deliberately a
+third thing rather than a third meaning for either. The flavors bar offers
+another ENCODING the platform already made; the transform chip offers another
+TOOL for what was read; this makes a NEW ARTIFACT by reading structure out of
+one. It runs over the pending OFFERS as well as the staged items, and that is
+what makes the case it exists for one tap: an extraction that only saw the stage
+would charge a tap on the html offer first, to stage a document nobody wanted.
+
+The reading is `StageIntake.linksOf(text, name)`, keyed on the name the intake
+already chose for the reason `transformKindOf` is. Markup (`.html`, `.xml`) goes
+through `DOMParser` and `a[href]`; the other three text kinds (`.md`, `.txt`)
+are scanned for markdown links, angle autolinks, and bare addresses, with the
+markdown spans blanked first so one link is one row. `.csv` and `.js` are not
+sources: the first is the transform chip's, and a URL in a comment is not a link
+anybody asked for. An in-page `#anchor` and a `javascript:` handler are dropped,
+`mailto:` is kept, and one address appears once however often the page repeats
+it, first label winning, since a masthead included in the copy is not forty
+findings. A relative href stays relative: a paste carries the markup and not the
+page it came off, so there is no base to resolve against and inventing an origin
+would be a guess presented as a fact.
+
+**The artifact is a `.csv`, and that is the one choice here worth defending.**
+It opens as a table with a per-column filter (`READ_MODE`), its raw mode is the
+pasteable `text,url` lines, and `transformKindOf` calls it rows, so the
+extraction lands ON the machinery that already exists rather than beside it. A
+rendered markdown list would be tappable and be a dead end. It is named for its
+source (`2026-08-28-paste.html` gives `2026-08-28-paste-links.csv`) so the pair
+reads as a pair, and an extraction already on the stage is not offered again,
+the flavors bar's own dedupe rule and needed for the same reason: the sources
+survive being extracted, so a second tap would otherwise stage a second
+identical table. The offer rides the reader's header too, since a single arrival
+opens on itself and the reader is then looking at the markup rather than at the
+row that carries the chip.
+
 **The stage is also the transform workbench's door.** The workbench
 (`lib/alpineComponents/transform-workbench.js`) has shipped inside show-repo
 since the pre-build began globbing `lib/alpineComponents`, booting on every load

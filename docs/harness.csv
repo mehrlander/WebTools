@@ -158,6 +158,8 @@ tools/render/scenarios/stage-diff-longrefs.mjs,the Diff tab's A/B selects clippi
 tools/render/scenarios/stage-diff-review.mjs,"the Stage's Diff lens run on two local items, with the review-prompts panel",tools/render/scenarios,29,driver,no,yes,no
 tools/render/scenarios/stage-image-preview.mjs,,tools/render/scenarios,32,driver,no,no,no
 tools/render/scenarios/stage-keyboard-mode.mjs,"the stage's dictation card with the keyboard open, which is where the recording misreading was reported",tools/render/scenarios,53,driver,no,no,no
+tools/render/scenarios/stage-links-inside.mjs,,tools/render/scenarios,40,driver,no,no,no
+tools/render/scenarios/stage-links-table.mjs,,tools/render/scenarios,22,driver,no,no,no
 tools/render/scenarios/stage-paste-flavors.mjs,,tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/stage-reader-subject.mjs,"the stage reader announcing which staged file is on screen, so the FAB drawer names the file being read rather than the app shell hosting it",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/stage-rename-local.mjs,,tools/render/scenarios,23,driver,no,no,no

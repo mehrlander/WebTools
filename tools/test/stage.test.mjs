@@ -818,6 +818,133 @@ test('the chip row names one item per qualifying local, and skips the rest', () 
     'each chip carries a stable key and says what it would open');
 });
 
+// ── What is inside: the links ──────────────────────────────────────────────
+//
+// The third kind of offer, and the reason it exists: a copy off a web page
+// splits across two clipboard flavors, with every link's LABEL in text/plain
+// and every link's ADDRESS in text/html, so both were stageable and neither
+// answered "just give me the links". These cover the reading (what counts as a
+// link, and what the same address twice counts as), the source set (the offers
+// as well as the stage, which is what makes the case one tap), and the artifact
+// it stages.
+
+const IN = () => window.StageIntake;
+
+const PAGE = `<p>Read <a href="https://example.com/a">the first</a> and
+  <a href="/docs/b">a relative one</a>, skip <a href="#top">this anchor</a>
+  and <a href="javascript:void(0)">this handler</a>, mail
+  <a href="mailto:x@y.z">someone</a>.</p>`;
+
+test('an html paste gives up its hrefs, and the noise stays behind', () => {
+  const links = IN().linksOf(PAGE, 'p.html');
+  assert.deepEqual(plain_(links), [
+    { text: 'the first', url: 'https://example.com/a' },
+    { text: 'a relative one', url: '/docs/b' },
+    { text: 'someone', url: 'mailto:x@y.z' },
+  ], 'an in-page anchor and a javascript: handler are not addresses worth carrying out');
+});
+
+test('a relative href stays relative, since a paste carries no page to resolve against', () => {
+  const links = IN().linksOf('<a href="/docs/b">b</a>', 'p.html');
+  assert.equal(links[0].url, '/docs/b', 'inventing an origin here would be a guess presented as a fact');
+});
+
+test('one row per address, and the first label wins', () => {
+  const html = '<a href="/x">Home</a><a href="/x"><img></a><a href="/y">Y</a>';
+  const links = IN().linksOf(html, 'p.html');
+  assert.equal(links.length, 2, 'a masthead repeated on every copy is not two findings');
+  assert.equal(links[0].text, 'Home', 'the repeat is often an icon with no text at all');
+});
+
+test('an address seen first without a label takes one from a later repeat', () => {
+  const links = IN().linksOf('<a href="/x"><img></a><a href="/x">Home</a>', 'p.html');
+  assert.deepEqual(plain_(links), [{ text: 'Home', url: '/x' }]);
+});
+
+test('text that is not markup is read as markdown and prose', () => {
+  const md = 'See [the docs](https://example.com/d) and https://example.com/bare, then\n<https://example.com/angle>.';
+  assert.deepEqual(plain_(IN().linksOf(md, 'notes.md')), [
+    { text: 'the docs', url: 'https://example.com/d' },
+    { text: '', url: 'https://example.com/bare' },
+    { text: '', url: 'https://example.com/angle' },
+  ], 'a markdown link is one row, not a labelled one plus a bare one for the same address');
+});
+
+test('only the four text kinds are read for links, so a script is left alone', () => {
+  const s = 'const u = "https://example.com/x"';
+  assert.deepEqual(plain_(IN().linksOf(s, 'a.js')), [], 'a URL in a comment is not a link somebody asked for');
+  assert.deepEqual(plain_(IN().linksOf('a,b\nhttps://example.com/x,2', 'a.csv')), [],
+    'a CSV is the transform chip\'s, and reading it twice would be two answers to one item');
+});
+
+test('the artifact is named for its source and quotes what CSV must quote', () => {
+  assert.equal(IN().linksName('2026-08-28-paste.html'), '2026-08-28-paste-links.csv');
+  assert.equal(IN().linksName('noext'), 'noext-links.csv');
+  const csv = IN().linksCsv([{ text: 'Budget, revised', url: 'https://x/y' },
+                             { text: 'He said "no"', url: 'https://x/z' }]);
+  assert.equal(csv, 'text,url\n"Budget, revised",https://x/y\n"He said ""no""",https://x/z',
+    'link text is prose, and an unquoted comma turns two columns into a ragged three');
+});
+
+test('a web-page paste offers the links off the html it did not stage', async () => {
+  reset();
+  await paste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': 'the first a relative one someone', 'text/html': PAGE },
+  }));
+  assert.match(data.localItems[0].name, /\.txt$/, 'text/plain is still what a paste stages');
+  assert.deepEqual(plain_(IN().linksIn(data.localItems[0])), [],
+    'and it carries every label and not one address, which is the whole complaint');
+  const chips = data.extractables;
+  assert.equal(chips.length, 1, 'the offer is the source, so no tap is spent staging markup nobody wanted');
+  assert.equal(chips[0].label, '3 links');
+  assert.match(chips[0].dest, /-links\.csv$/);
+});
+
+test('the extraction stages a table and opens the reader on it', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  const chip = data.extractables[0];
+  data.extractLinks(chip);
+  await tick(3);
+  const made = data.localItems.find(it => it.name === chip.dest);
+  assert.ok(made, 'the table is staged under the name the chip named');
+  assert.equal(made.text.split('\n').length, 4, 'a header and three links');
+  assert.equal(made.sniffed, false, 'the name is authored, not the sniff\'s opinion');
+  assert.ok(data.reader, 'the table is what was asked for, not a row to go and find');
+});
+
+test('an extraction already on the stage is not offered again', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  data.extractLinks(data.extractables[0]);
+  await tick(3);
+  assert.deepEqual(plain_(data.extractables), [],
+    'the source survives being extracted, so without the dedupe a second tap stages a second identical table');
+});
+
+test('a staged html file is a source too, however it arrived', () => {
+  reset();
+  IN().take({ text: PAGE, name: 'page.html' });
+  const chips = data.extractables;
+  assert.equal(chips.length, 1);
+  assert.equal(chips[0].name, 'page.html');
+  assert.ok(chips[0].title.includes('page-links.csv'), 'the chip says what it would make');
+});
+
+test('a ref is never a source, since it has no text until it is fetched', () => {
+  reset();
+  IN().take({ text: 'me/a:docs/page.html', size: 18 });
+  assert.equal(data.refItems.length, 1);
+  assert.deepEqual(plain_(data.extractables), []);
+});
+
+test('prose with no addresses in it offers nothing', () => {
+  reset();
+  IN().take({ text: '# A note\n\nJust some prose.', size: 26 });
+  assert.deepEqual(plain_(data.extractables), []);
+});
+
 test('prose with a stray tab is not a grid', async () => {
   reset();
   await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': 'a note\twith a tab\nand a second line' } }));
