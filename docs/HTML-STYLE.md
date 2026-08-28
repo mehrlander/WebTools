@@ -15,7 +15,41 @@ relitigating it per page
 
 **No explanatory prose.** GitHub doesn't explain and neither should we. Use structure, labels, and controls to show relationships. A range control starting at 2015 says the data starts in 2015. Explanatory prose is unfinished work: unused ideas, loitering.
 
-**A tooltip worth having is worth building.** A native `title` never reaches a phone and nothing in it can be opened, so do the work of a real panel: styled, tappable, carrying the list or the link the fact needs.
+**A tooltip worth having is worth building.** Three things are not one. A native
+`title` reaches no phone and opens nothing. daisyUI's `tooltip` is CSS `:hover`,
+so on a touch screen the first tap sticks it open and only a tap somewhere else
+clears it. `cursor-help` puts a question mark over a control that already reads
+as one; a hover colour says the same thing without one.
+
+**Try the page first.** A mark whose meaning lives in a hover is a caveat nobody
+can reach, and spelling it out usually costs less than the panel does: `no merge
+base` replaced an amber asterisk for thirteen characters of row width
+([show-repo.md](show-repo.md)). Where the fact is a list, a link, or longer than
+the line, build the panel. Styled, tappable, and answering to four rules:
+
+- **A fine pointer hovers.** Gate on `(hover: hover) and (pointer: fine)`
+  together, or a hybrid that reports hover opens panels on a stray finger. Open
+  after ~140 ms and close ~220 ms after leaving the trigger or the panel, so
+  crossing a row opens nothing and crossing the gap between the two closes
+  nothing.
+- **A coarse pointer taps**, and the panel is never gated off on a small
+  screen. Withholding it there is the `title` failure in a nicer box.
+- **The second tap on the trigger closes it.** Ask the panel whether it is on
+  screen rather than trusting a state flag: a `mouseleave` a narrow desktop
+  window can still send hides the panel while the flag says open, and the next
+  tap then closes what is already closed.
+- **Dismiss on a capture-phase `pointerdown` outside it, and on Escape.**
+  Capture, so a tap on another control closes the panel before that control
+  acts. `@click.outside` alone will not do it: Alpine binds that on `document`
+  in the bubble phase, so a trigger carrying `@click.stop` never reaches the
+  listener and the panel reopens instead of closing.
+
+The complete implementation is `window.__tip` in home's budget-drs app; the
+placement and hover halves are `anchorMenu` and `finePointer` in `app/index.html`
+with the row card in `lib/alpineComponents/estate.js` over them. Counted by
+`npm run stranded-titles` (`scripts/stranded-titles.py`), which reports the facts
+still parked in a `title` and is advisory, since which ones are worth a panel is
+judgment it cannot supply.
 
 **Don't narrow text to a reading column.** The pattern is `max-w-*` plus `mx-auto`, usually
 `max-w-2xl` through `max-w-4xl`, or `max-w-prose` at 65ch; `container mx-auto` is the same

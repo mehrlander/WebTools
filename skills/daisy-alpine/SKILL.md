@@ -43,6 +43,20 @@ by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-t
    balanced when short; across a deck it moves the first line on every card.
 6. **One accent, and it means something.** Colour carries information, not decoration.
    In a comparison, each side keeps a fixed treatment across every view.
+7. **A tooltip is built, not borrowed**, and three defaults are wrong here. A native
+   `title` reaches no phone and opens nothing. daisyUI's `tooltip`/`data-tip` is CSS
+   `:hover`, so on a touch screen the first tap sticks it open and only a tap
+   somewhere else clears it; the entry in `references/daisyui.md` is upstream's and
+   this rule overrides it. `cursor-help` puts a question mark over a control that
+   already reads as one. First ask whether the fact belongs on the page as words,
+   which is usually cheaper than the panel. If it needs a panel, build one and give
+   it all four behaviours: hover to open where `(hover: hover) and (pointer: fine)`
+   both match, roughly 140 ms in and 220 ms out; tap to open otherwise, never gated
+   off on a phone; **a second tap on the trigger closes it**, deciding from the
+   panel's real visibility rather than a state flag; and dismissal on a
+   capture-phase `pointerdown` outside plus Escape. `@click.outside` alone will not
+   close it, because Alpine binds that on `document` in the bubble phase and a
+   trigger carrying `@click.stop` never reaches the listener.
 
 ## References
 
