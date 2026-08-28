@@ -144,6 +144,32 @@ test('a stream owns a colour, and the pair is locked', () => {
     // the one colour here that still carries meaning.
     assert.doesNotMatch(t.tick + t.mark + t.band, /success/, 'green means refresh, and only that');
   }
+});
+
+test('a stream tone cannot reuse a colour the estate spends on branch state', () => {
+  // THE BUG THIS CAUGHT, on itself. Sessions shipped in `secondary`, which
+  // reads clean on the State view and is already taken one pane over:
+  // `branchTileAccent` fills a MERGED branch tile with it and
+  // BRANCH_STATE_MARK gives the merge glyph text-secondary/70. Every session
+  // card in the Sessions pane nests those tiles, so a pair meant to travel
+  // would have arrived on a colour that already meant something else there.
+  //
+  // Read out of estate.js rather than listed here, so a state palette that
+  // grows a colour fails this instead of silently outdating a copy of it.
+  const estate = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'estate.js'), 'utf8');
+  const palette = estate.slice(estate.indexOf('branchTileAccent(row)'),
+                               estate.indexOf('branchShort(name)'));
+  const spent = new Set([...palette.matchAll(/(?:text|bg|border)-(\w+)\//g)].map(m => m[1])
+    .filter(c => !['base', 'base-content', 'base-200', 'base-300'].includes(c)));
+  assert.ok(spent.has('secondary'), 'the branch-state palette still spends secondary (merged)');
+  // Both streams, with no exemption: the palette spends error, secondary,
+  // success and warning, and primary is not among them, so the rail's own
+  // long-standing colour passes this on its merits rather than by grandfather.
+  for (const stream of ['commits', 'sessions']) {
+    const hue = data.tone({ stream }).tick.replace(/^bg-|\/\d+$/g, '');
+    assert.ok(!spent.has(hue),
+      `${stream} draws in ${hue}, which the branch-state palette already spends`);
+  }
   // Whole class strings, never assembled: a name built from fragments is
   // invisible to a text scan, which is what the bake-page compiler reads.
   const src = readFileSync(path.join(repoRoot, 'lib', 'alpineComponents', 'state-view.js'), 'utf8');
