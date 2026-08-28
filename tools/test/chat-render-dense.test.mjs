@@ -57,11 +57,39 @@ const dense = m => cr.message(m, { dense: true, collapse: 0 });
 const standaloneHead = el => [...el.children].find(n => n.className.includes('items-center'));
 
 test('the head folds into the turn\'s first line, so a turn costs no chrome row', () => {
-  const el = dense({ role: 'assistant', md: 'Not a bug. The badge renders a kind.', ts: '22:58:30' });
+  const el = dense({ role: 'user', md: 'why do three tables carry a label?', ts: '22:56:11' });
   assert.equal(standaloneHead(el), undefined, 'no chrome row above the text');
-  const p = el.querySelector('p');
-  assert.ok(p.textContent.startsWith('22:58:30'), 'the clock opens the first paragraph');
-  assert.ok(p.textContent.includes('Not a bug.'), 'and the text follows it in the same block');
+  const pre = el.querySelector('pre');
+  assert.ok(pre.textContent.startsWith('22:56:11'), 'the clock opens the first line');
+  assert.ok(pre.textContent.includes('why do three'), 'and the text follows it in the same block');
+  const a = dense({ role: 'assistant', md: 'Not a bug. The badge renders a kind.', ts: '22:58:30' });
+  assert.equal(standaloneHead(a), undefined);
+  assert.ok(a.querySelector('p').textContent.startsWith('Not a bug.'), 'a reply opens on its own sentence');
+});
+
+test('the clock belongs to the ask, and a reply keeps its own on the icon', () => {
+  // Two numbers down the left edge where one is the landmark: a reply lands a
+  // minute or two after the ask it answers, so its clock restates rather than
+  // locates. Dropped from the line, kept where it costs nothing.
+  const a = dense({ role: 'assistant', md: 'the answer', ts: '22:58:30' });
+  assert.ok(!a.textContent.includes('22:58:30'), 'not on the line');
+  assert.equal(a.querySelector('i.ph').getAttribute('title'), '22:58:30', 'but not lost either');
+  const u = dense({ role: 'user', md: 'the ask', ts: '22:56:11' });
+  assert.ok(u.textContent.includes('22:56:11'), 'the ask opens the exchange, so it prints one');
+  assert.equal(u.querySelector('i.ph').getAttribute('title'), null, 'and needs no title for it');
+});
+
+test('a dense reply carries typography\'s paragraph rhythm halved, edges included', () => {
+  // prose-sm spends 1.14em above and below every block, which is a page's
+  // spacing. Here it has to stay UNDER the gap between turns or the grouping
+  // inverts and a reply reads as two turns.
+  const el = dense({ role: 'assistant', md: 'One here.\n\nTwo here.\n\nThree here.' });
+  const ps = [...el.querySelectorAll('p')];
+  assert.equal(ps.length, 3);
+  assert.equal(ps[0].style.marginTop, '0px', 'the first block keeps typography\'s zero');
+  assert.equal(ps[1].style.marginTop, '0.6em');
+  assert.equal(ps[1].style.marginBottom, '0.6em');
+  assert.equal(ps[2].style.marginBottom, '0px', 'and so does the last');
 });
 
 test('the role WORD goes for the two chat roles and stays for every other', () => {
@@ -112,16 +140,23 @@ test('a body that opens on a code fence keeps the standalone head', () => {
   assert.ok(head.textContent.includes('09:00:00'));
 });
 
-test('the assistant turn hangs off the ask: indented, hairline rail, one size down', () => {
+test('the reply hangs off the ask on the indent alone: no rail on either', () => {
+  // A rail binds a wrapped line to its turn and colours the role. Dense does
+  // both without it (the indent, mono against prose, the gap before each ask),
+  // so kept it was the one vertical line on the card, drawing the eye to
+  // chrome. The ask sits flush and everything answering it hangs off that edge.
   const u = dense({ role: 'user', md: 'the ask' });
   const a = dense({ role: 'assistant', md: 'the answer' });
-  assert.ok(u.className.includes('border-l-2'), 'the ask keeps the full rail');
-  assert.ok(!u.className.includes('ml-'), 'flush left, which the indent is measured against');
+  const sys = dense({ role: 'system', md: 'a note' });
+  for (const [name, el] of [['ask', u], ['reply', a], ['system turn', sys]])
+    assert.ok(!/border-l/.test(el.className), `the ${name} carries no rail`);
+  assert.equal(u.className.trim(), '', 'the ask is flush, which the indent is measured against');
   assert.ok(a.className.includes('ml-5'), 'the reply indents under it');
-  assert.ok(a.className.includes('border-l ') || /border-l$/.test(a.className.trim()),
-    'and its rail is a hairline, not the 2px the ask carries');
+  assert.ok(sys.className.includes('ml-5'), 'and so does every turn that is not the ask');
   const prose = a.querySelector('[data-flow="prose"]');
   assert.equal(prose.style.fontSize, '13px', 'one step under prose-sm, as a style: it has to beat prose-sm on the same element');
+  // Full size is untouched: a deck slide is a page, not a panel.
+  assert.ok(/border-l-2/.test(cr.message({ role: 'assistant', md: 'x' }, { collapse: 0 }).className));
 });
 
 test('a raw user turn folds its head into the <pre>, where the text is', () => {
