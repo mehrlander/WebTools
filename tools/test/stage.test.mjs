@@ -90,6 +90,9 @@ const reset = () => {
   if (data._rDeck) { data._rDeck.drop(); data._rDeck = null; }
   if (data._tfDeck) { data._tfDeck.drop?.(); data._tfDeck = null; }
   data._rNotes = {};
+  // The conversion cache is keyed by source text now rather than cleared on a
+  // new bar, so a fresh stage in a test has to say so itself.
+  data._mdText = null;
   store.stage = []; store.stageFocus = ''; store.stageOffers = []; data.reader = null;
   data.diffA = 0; data.diffB = 0; data._diffTouched = false; data.diffRows = null;
 };
@@ -950,17 +953,54 @@ test('prose is not base64, however long it runs', () => {
 
 test('base64 round-trips text past the byte range btoa refuses', () => {
   const IN = window.StageIntake;
-  const text = 'a smart quote \u2019 and an accent \u00e9';
-  const b64 = IN.b64OfText(text);
-  assert.equal(IN.fromBase64(b64), text,
+  const text = 'a smart quote \u2019 and an accent \u00e9 with enough length to pass the floor';
+  assert.equal(IN.base64Info(IN.b64OfText(text)).text, text,
     'btoa alone throws on either of those, which is what the utf-8 sandwich is for');
+});
+
+// ---- what a decode LANDS as, which is not always text ----------------------
+
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+                            0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1]);
+
+test('bytes are named by their first four, and unknown binary is refused', () => {
+  const IN = window.StageIntake;
+  const b64 = IN.b64OfBytes(PNG);
+  assert.equal(IN.base64Info(b64).ext, 'png');
+  assert.equal(IN.base64Info(b64).text, null, 'a png is not text, however it arrived');
+  const junk = IN.b64OfBytes(new Uint8Array([0xde, 0xad, 0xbe, 0xef, 0, 1, 2, 3,
+                                             4, 5, 6, 7, 8, 9, 10, 11]));
+  assert.equal(IN.base64Info(junk), null,
+    '"here are some bytes" is not an answer the menu was asked for');
+});
+
+test('a data: URI is read, and its own media type beats the sniff', () => {
+  const IN = window.StageIntake;
+  const png = 'data:image/png;base64,' + IN.b64OfBytes(PNG);
+  assert.equal(IN.base64Info(png).ext, 'png');
+  assert.equal(IN.base64Info(png).mime, 'image/png');
+  const svg = 'data:image/svg+xml;base64,' + IN.b64OfText('<svg xmlns="http://www.w3.org/2000/svg"/>');
+  assert.equal(IN.base64Info(svg).ext, 'xml',
+    'text wins where the bytes are text: the decode reads as markup and is named for it');
+});
+
+test('the decode of a data: URI lands as a staged file, not as mojibake', async () => {
+  reset();
+  const uri = 'data:image/png;base64,' + window.StageIntake.b64OfBytes(PNG);
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': uri } }));
+  await data.runAction(data.offers[0], { id: 'unbase64', label: 'Decoded' });
+  await tick(3);
+  const made = data.localItems.find(it => /-decoded\.png$/.test(it.name));
+  assert.ok(made, 'named for its flavor and for what the bytes turned out to be');
+  assert.equal(made.isText, false, 'a png stays bytes');
+  assert.equal(made.bytes.length, PNG.length);
 });
 
 test('to base64 stages a .txt named for its flavor, and back again sniffs what it was', async () => {
   reset();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
   const html = data.offers[0];
-  await data.runAction(html, { id: 'base64', label: 'To base64' });
+  await data.runAction(html, { id: 'base64', label: 'Base64' });
   await tick(3);
   const enc = data.localItems.find(it => /-base64\.txt$/.test(it.name));
   assert.ok(enc, 'named for its source, so the pair reads as a pair');
@@ -970,7 +1010,7 @@ test('to base64 stages a .txt named for its flavor, and back again sniffs what i
   // Now the inverse, from a paste of that encoding.
   reset();
   await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': enc.text } }));
-  await data.runAction(data.offers[0], { id: 'unbase64', label: 'From base64' });
+  await data.runAction(data.offers[0], { id: 'unbase64', label: 'Decoded' });
   await tick(3);
   const dec = data.localItems.find(it => /-decoded\./.test(it.name));
   assert.ok(dec, 'the decode lands');
@@ -1003,13 +1043,19 @@ test('the markdown action converts once and stages the result under its own name
   const opts = stubTurndown();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
   const html = data.offers[0];
-  await data.runAction(html, { id: 'markdown', label: 'To markdown' });
+  await data.runAction(html, { id: 'markdown', label: 'Markdown' });
   await tick(3);
   assert.equal(opts.length, 1);
   assert.equal(opts[0].headingStyle, 'atx');
   const made = data.localItems.find(it => /-markdown\.md$/.test(it.name));
   assert.ok(made, 'staged under the name derivedName mints');
-  assert.ok(data.reader, 'and the reader opens on it');
+  assert.equal(data.reader, null,
+    'and the reader does NOT open: the ask was for this version, not for a look at it');
+  const pill = data.offers.find(o => o.name === made.name);
+  assert.ok(pill, 'the bar says what the paste has produced, not only what the clipboard held');
+  assert.equal(data.flavorStaged(pill), true, 'ticked, since it is on the stage');
+  assert.deepEqual(ids(pill), ['copy', 'base64'],
+    'and it is composable: the markdown has its own copy without a trip through the list');
 });
 
 test('nothing is loaded or converted until the action is chosen', async () => {
@@ -1018,6 +1064,7 @@ test('nothing is loaded or converted until the action is chosen', async () => {
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
   assert.ok(ids(data.offers[0]).includes('markdown'), 'the menu draws from the flavor alone');
   assert.equal(data._mdText, null, 'and 31 KB is not fetched to fill it in');
+  assert.equal(data.localItems.length, 1, 'nor is anything converted');
 });
 
 test('a converter that will not load is reported, not swallowed', async () => {
@@ -1033,22 +1080,26 @@ test('a converter that will not load is reported, not swallowed', async () => {
   // that, and runAction turns it into the menu item's name plus the reason.
   data.loadMarkdownDeps = async () => {};
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  await data.runAction(data.offers[0], { id: 'markdown', label: 'To markdown' });
+  await data.runAction(data.offers[0], { id: 'markdown', label: 'Markdown' });
   assert.equal(data.localItems.length, 1, 'nothing half-made is staged');
-  assert.match(said[0] || '', /^To markdown: the markdown converter is not loaded/);
+  assert.match(said[0] || '', /^Markdown: the markdown converter is not loaded/);
   assert.equal(data.mdBusy, false, 'and the pill stops spinning');
   data.loadMarkdownDeps = realDeps;
   Alpine.store('toast', realToast);
 });
 
-test('a new paste drops the conversions the old one made', async () => {
+test('a second paste under the same sniffed name is converted again', async () => {
   reset();
   stubTurndown();
+  const OTHER = PAGE + '<p>and a second document entirely</p>';
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  await data.mdFor(data.offers[0]);
-  assert.ok(data._mdText.size);
-  data.offers = [];
-  assert.equal(data._mdText, null, 'a conversion is a reading of a paste that is gone');
+  const first = await data.mdFor(data.offers[0]);
+  reset();
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': OTHER } }));
+  const second = await data.mdFor(data.offers[0]);
+  assert.notEqual(second, first,
+    'two pastes on one day carry the same sniffed name, so a name-keyed cache '
+    + 'would hand the second the first one\'s markdown');
 });
 
 test('the reader\'s header converts a staged file, however it arrived', () => {

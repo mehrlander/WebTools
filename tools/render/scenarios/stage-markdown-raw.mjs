@@ -16,7 +16,10 @@ export default async (page) => {
     const el = document.querySelector('[x-data*="stager"]');
     const d = window.Alpine.$data(el);
     const html = d.offers.find(o => d.flavorLabel(o) === 'html');
-    await d.runAction(html, { id: 'markdown', label: 'To markdown' });
+    await d.runAction(html, { id: 'markdown', label: 'Markdown' });
+    // The conversion no longer opens the reader, so this scenario opens it: the
+    // claim being shot is the MODE it opens in, not the route to it.
+    d.view(d.localItems.find(it => /-markdown\.md$/.test(it.name)));
   });
   await page.waitForTimeout(2500);
 };

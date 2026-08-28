@@ -80,18 +80,28 @@ shows as source and a `.md` one renders. An **image** carries no peek, since
 this card reads text; its menu is the whole of what it offers.
 
 **Each pill carries a menu of what can be done with its flavor.** The pill is
-the subject and the menu is the verbs: **Copy**, **To markdown** on markup, **To
-base64**, and **From base64** where the text decodes. The tap still stages and
-unstages, which is what is wanted most and the one thing that should not cost a
-menu.
+the subject and the menu is the verbs: **Copy**, **Markdown** on markup,
+**Base64**, and **Decoded** where the text decodes. Each label names the
+**version you get**, not the trip to it. The tap still stages and unstages,
+which is what is wanted most and the one thing that should not cost a menu.
+
+**A conversion lands as a pill, and does not open the reader.** Opening it was
+the first shape and it was wrong twice over: it takes the screen away from the
+bar you are working in, and it answers a question ("what does this look like")
+that was not the one asked ("give me this version"). So the bar stops meaning
+"what the clipboard held" and starts meaning **what this paste has produced**,
+which is also what makes a conversion composable: the markdown that just landed
+carries its own Copy and its own Base64, so a second step is a tap rather than a
+trip through the staged list. A derived pill is labelled by the **tag** that made
+it rather than by its extension, since `md` says nothing next to a paste that
+sniffed `.md` and a decode can land on any extension at all.
 
 Conversions had a pill of their own for a day, which put a derivation beside the
 formats it is made from and could hold only the one anybody had asked for; the
 row would have grown by a pill per verb. The shape before that was a links
 extractor, as a csv and then as a markdown list, and it is gone entirely:
 converting the markup carries every link as `[text](url)` already, in its own
-context, so the reduction was a second reader of html earning its keep by being
-shorter. What is lost is that reduction, a bare list with the prose stripped
+context. What is lost is that reduction, a bare list with the prose stripped
 out.
 
 **Copy is the reason the menu exists at all.** The stage is where a paste lands,
@@ -101,18 +111,26 @@ of a page. It goes through `window.io.copy`, which owns the focus wait, the
 insecure-context fallback and the legacy DOM path, rather than
 `navigator.clipboard` directly.
 
-**Base64 runs both ways, and the strictness is the interesting half.**
-`b64OfText` is the escape/encodeURIComponent sandwich, since `btoa` is a byte
-encoder and throws on the first smart quote; `b64OfBytes` is the chunked one, for
-a pasted screenshot, which is the case base64 exists for and the only action a
-byte flavor can answer. Coming back, `looksBase64` requires the alphabet
-(url-safe accepted), a length that is a multiple of four, at least 16 characters,
-and **an actual decode that yields text**: it calls `fromBase64` and reads its
-null, so the test and the conversion cannot disagree about what valid means and
-an offered item always produces something. A `data:...;base64,` URI is
-deliberately not recognized, since its payload is almost always an image and
-decoding it means staging bytes under a sniffed media type, which is a different
-intake.
+**Base64 runs both ways, and `base64Info` is one function rather than a test and
+a converter**, so the two cannot disagree about what valid means: an item the
+menu offers has already been decoded. Three gates, each paying down a false
+positive. The **alphabet** (url-safe accepted) and a **length** that is a
+multiple of four, which is what the padding is for and what rules out most
+prose; a floor of 16 characters, below which a word like `deadbeef` qualifies on
+arithmetic alone; and a decode that lands on something **nameable**, meaning
+text, or bytes whose first four say what file they are (png, jpg, gif, pdf, zip,
+webp). Unknown binary is refused rather than staged as `.bin`, since "here are
+some bytes" is not an answer anybody asked the menu for.
+
+A `data:<mime>;base64,` URI is read too, and **its own media type beats the
+sniff**, since it is what the encoder said the bytes were. That is the whole
+reason the prefix is worth recognizing rather than the arithmetic, which the
+payload passes on its own. Text still wins where the bytes are text, so a
+base64'd `image/svg+xml` lands as markup rather than as an opaque file.
+Encoding is `b64OfText` (the escape/encodeURIComponent sandwich, since `btoa` is
+a byte encoder and throws on the first smart quote) or `b64OfBytes` (chunked, for
+a pasted screenshot, which is the case base64 exists for and the only verb a byte
+flavor can answer).
 
 **The conversion is Turndown's, and the host loads it**, the same contract the
 transform workbench states: `StageIntake.mdOf` owns the options and the GFM
@@ -120,7 +138,9 @@ plugin (which is what turns a pasted web-page TABLE into a table rather than a
 run of cells) and throws rather than fetching, since a lazy fetch inside a tap
 spends the gesture and then reports the loss as something else. Two files and
 31 KB, fetched the first time somebody chooses the item and never on a paste
-where nobody does.
+where nobody does. Cached against the **source text**, not the name: two pastes
+on one day carry the same sniffed name, so a name-keyed cache hands the second
+one the first one's markdown.
 
 **And the markdown opens raw**, where every other `.md` in the app renders.
 `READ_MODE`'s rule is right for a document, whose question is what it SAYS; a
@@ -129,14 +149,15 @@ make one is to copy the text somewhere else. Rendering it puts a mode switch
 between the reader and the thing they asked for, and strips the `[text](url)`
 that was the point. The override is `StageIntake.opensRaw`, keyed on the name
 `derivedName` mints, which is a closed loop: the intake is the only producer of
-that suffix and the stage's own reader the only consumer. Every derivation is
-named for its flavor (`-markdown.md`, `-base64.txt`, `-decoded.<sniffed>`), and
-the decode is named by what its bytes turned out to be rather than by the `.txt`
-they arrived as, which is what split `extForText` out of `nameForText`.
+that suffix and the stage's own reader the only consumer.
 
-Scoped to the paste's flavors, since the bar is about the paste. A staged file
-that arrived some other way keeps its markdown route through the reader's
-header.
+Every derivation is named for its flavor (`-markdown.md`, `-base64.txt`,
+`-decoded.<sniffed>`), and the decode is named by what its bytes turned out to be
+rather than by the `.txt` they arrived as, which is what split `extForText` out
+of `nameForText`. Scoped to the paste's flavors, since the bar is about the
+paste; a staged file that arrived some other way keeps its markdown route through
+the reader's header, which **focuses instead of adding a pill**, since its
+subject is a staged file rather than a flavor of the paste on the bar.
 
 **The stage is also the transform workbench's door.** The workbench
 (`lib/alpineComponents/transform-workbench.js`) has shipped inside show-repo

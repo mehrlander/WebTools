@@ -4,7 +4,10 @@
 // inside markup nobody wants to read. The bar names both, ticks the one the
 // stage took, and hovering any pill shows what is inside it, which is the only
 // way to tell two flavors apart before staging one. Each pill's ⋯ carries what
-// can be DONE with that flavor: copy it, convert it, encode or decode it.
+// can be DONE with that flavor: copy it, convert it, encode or decode it. A
+// conversion lands as a PILL rather than opening the reader, which is what this
+// shot is mostly about: the markdown here was made from the html beside it, is
+// ticked because it is staged, and carries its own menu.
 //
 //   npm run shot -- app/index.html --query "view=stage" \
 //     --script tools/render/scenarios/stage-flavor-bar.mjs --width 390
@@ -38,26 +41,22 @@ export default async (page) => {
     });
   });
   await page.waitForTimeout(600);
-  // The html pill's menu, held open on the flavor that carries the most verbs.
-  // The menu is the subject of this shot; the peek below it is the kit's and is
-  // measured rather than drawn.
-  await page.evaluate(() => {
-    const root = document.querySelector('[x-data*="stager"]');
-    const trigger = [...root.querySelectorAll('.dropdown button[tabindex]')]
-      .find(b => /html/.test(b.closest('.badge').textContent));
-    trigger.focus();
+  // Convert first, so the bar shows what the paste has PRODUCED and not only
+  // what the clipboard held, then hold that pill's own menu open.
+  await page.evaluate(async () => {
+    const el = document.querySelector('[x-data*="stager"]');
+    const d = window.Alpine.$data(el);
+    const html = d.offers.find(o => d.flavorLabel(o) === 'html');
+    await d.runAction(html, { id: 'markdown', label: 'Markdown' });
   });
-  await page.waitForTimeout(500);
-
-  const box = await page.evaluate(() => {
-    // The OPEN one: a closed dropdown-content still answers with a zero rect,
-    // which reads as "on screen" and measures nothing.
-    const m = [...document.querySelectorAll('.dropdown-content')]
-      .find(el => el.getBoundingClientRect().height > 0);
-    if (!m) return [0, 0];
-    const r = m.getBoundingClientRect();
-    return [Math.round(r.left), Math.round(r.right)];
+  await page.waitForTimeout(600);
+  // What the bar became, as facts rather than as pixels: the derived pill is
+  // there, it is ticked, and the reader stayed shut.
+  const state = await page.evaluate(() => {
+    const el = document.querySelector('[x-data*="stager"]');
+    const d = window.Alpine.$data(el);
+    return { pills: d.offers.map(o => d.flavorLabel(o) + (d.flavorStaged(o) ? '\u2713' : '')),
+             reader: !!d.reader };
   });
-  console.log('menu box ' + JSON.stringify(box)
-    + (box[0] >= 0 && box[1] <= 390 ? ' on screen' : ' OFF-SCREEN'));
+  console.log('bar ' + JSON.stringify(state));
 };
