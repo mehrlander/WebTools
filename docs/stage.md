@@ -55,7 +55,18 @@ text was a tap plus hunting the text down in the list below, and choosing
 between two readings of one copy is the commoner want. A tick that toggles says
 both in one control, and the chip's state is read off the stage rather than held
 on the chip, so removing the row below un-ticks it. A form field keeps its native
-paste untouched, ticks nothing, and still names what it could not hold. Each
+paste untouched, ticks nothing, and still names what it could not hold.
+
+**Each pill is two controls, and the second one is the whole answer to "which
+of these do I want".** The label toggles; an eye beside it opens one panel under
+the row showing the bytes, an image drawn rather than described and text cut at
+`PEEK_CHARS` so the staged list stays on screen. One panel at a time, since two
+open previews is a comparison this bar was not asked for. A title attribute was
+the only thing separating `html 4.1 KB` from `txt 192 B`, and a title is nothing
+at all on a phone, which is where the bar mostly gets read: the flavor with the
+addresses in it was unopenable until you had committed to staging it.
+
+Each
 flavor is named for what it is, which is load-bearing rather than cosmetic:
 tab-separated text is detected and named `.tsv` (at least two lines, every line
 carrying the same nonzero number of tabs, so prose with a stray tab is not a
@@ -165,14 +176,16 @@ the addresses inside markup nobody wants to read. Both were stageable and neithe
 answered "just give me the links", which is a common thing to want and took
 several steps to get.
 
-It shipped that day as a coloured row of its own and lasted hours. Reading links
-out is a **derivation**, not a fourth format and not another tool, so it does not
-belong among the chips; it is also not wanted often enough to spend a band of a
-phone screen on, and two coloured bands over one paste read as clutter. It is a
-menu behind one discreet control on the bar's own header, which draws only when
-there is something in it. Scoped to the paste's flavors, since the bar is about
-the paste; a staged file that arrived some other way keeps its route through the
-reader's header.
+It shipped that day as a coloured row of its own, and then as a `⋯` menu, and
+both lasted hours. Reading links out is a **derivation**, not a fourth format and
+not another tool, which is what a second coloured band got wrong; but an option
+you have to open something to find out about is one nobody reaches for, which is
+what the menu got wrong, and there is at most one of these. It is a pill in the
+same row as the flavors, dashed and un-monospaced so it does not read as a
+format, drawn only when there is something in it, and carrying the same eye. Its
+preview is the CSV it would make. Scoped to the paste's flavors, since the bar is
+about the paste; a staged file that arrived some other way keeps its route
+through the reader's header.
 
 The reading is `StageIntake.linksOf(text, name)`, keyed on the name the intake
 already chose for the reason `transformKindOf` is. Markup (`.html`, `.xml`) goes

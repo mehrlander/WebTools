@@ -1,8 +1,9 @@
-// Shoot the flavors bar after a web-page paste. A copy off a page splits across
-// two clipboard flavors: text/plain holds every link's LABEL and not one of its
-// addresses, text/html holds the addresses inside markup nobody wants to read.
-// The bar names both, ticks the one the stage took, and its menu reads the links
-// out of the html WITHOUT staging it.
+// Shoot the flavors bar after a web-page paste, with one flavor's preview open.
+// A copy off a page splits across two clipboard flavors: text/plain holds every
+// link's LABEL and not one of its addresses, text/html holds the addresses
+// inside markup nobody wants to read. The bar names both, ticks the one the
+// stage took, offers the links as a pill beside them, and each pill's eye shows
+// the bytes, which is the only way to tell those two apart before staging one.
 //
 //   npm run shot -- app/index.html --query "view=stage" \
 //     --script tools/render/scenarios/stage-flavor-bar.mjs --width 390
@@ -35,5 +36,13 @@ export default async (page) => {
       getData: (t) => (t === 'text/plain' ? text : t === 'text/html' ? html : ''),
     });
   });
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(600);
+  // The html's own preview: the flavor that carries the addresses, which reads
+  // as markup and is exactly what a title attribute could never have told you.
+  await page.evaluate(() => {
+    const el = document.querySelector('[x-data*="stager"]');
+    const d = window.Alpine.$data(el);
+    d.peek('flavor', d.offers.find(o => d.flavorLabel(o) === 'html'));
+  });
+  await page.waitForTimeout(500);
 };

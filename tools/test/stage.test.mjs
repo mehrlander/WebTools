@@ -919,11 +919,89 @@ test('the extraction stages a table and opens the reader on it', async () => {
   assert.ok(data.reader, 'the table is what was asked for, not a row to go and find');
 });
 
-test('a menu row appears only where there is something to read out', async () => {
+test('a derived option appears only where there is something to read out', async () => {
   reset();
   await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': 'Just some prose, no addresses.' } }));
   assert.deepEqual(plain_(data.pasteLinks), [],
-    'an empty menu is furniture, so the control does not draw at all');
+    'an empty option is furniture, so the pill does not draw at all');
+});
+
+// ---- looking inside a flavor before you take it ----------------------------
+//
+// The pills said which formats a copy held and could not say which one you
+// want: `html 4.1 KB` against `txt 192 B` is a size, and the only thing
+// separating them was a title attribute, which is nothing at all on a phone.
+
+test('the eye shows the bytes, and a second tap closes it', async () => {
+  reset();
+  await paste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': 'the first a relative one someone', 'text/html': PAGE },
+  }));
+  const html = data.offers.find(o => data.flavorLabel(o) === 'html');
+  assert.equal(data.peeked, null, 'nothing is open until asked');
+  data.peek('flavor', html);
+  assert.equal(data.peeked.name, html.name);
+  assert.match(data.peeked.text, /<a href="https:\/\/example\.com\/a">/,
+    'the markup itself, which is what tells this flavor from its plain-text twin');
+  assert.equal(data.peeking('flavor', html), true);
+  data.peek('flavor', html);
+  assert.equal(data.peeked, null, 'the same eye is the way out');
+});
+
+test('one panel at a time, since two open previews is a comparison nobody asked for', async () => {
+  reset();
+  await paste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': 'plain words', 'text/html': PAGE },
+  }));
+  data.peek('flavor', data.offers.find(o => data.flavorLabel(o) === 'html'));
+  data.peek('flavor', data.offers.find(o => data.flavorLabel(o) === 'txt'));
+  assert.match(data.peeked.name, /\.txt$/, 'the second open replaces the first');
+  assert.equal(data.offers.filter(o => data.peeking('flavor', o)).length, 1);
+});
+
+test('a long flavor is cut, and says so rather than running past the staged list', async () => {
+  reset();
+  const long = 'x'.repeat(5000);
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': long } }));
+  data.peek('flavor', data.offers[0]);
+  assert.equal(data.peeked.text.length, data.PEEK_CHARS + 2, 'the cut plus a newline and an ellipsis');
+  assert.ok(data.peeked.text.endsWith('…'));
+});
+
+test('an image previews as an image, since describing a screenshot is not a preview', async () => {
+  reset();
+  const made = [];
+  window.URL.createObjectURL = (f) => { made.push(f); return 'blob:test/' + made.length; };
+  window.URL.revokeObjectURL = () => {};
+  await paste(fakeCd({ types: ['Files'], files: [fakeFile('image.png', 'image/png', 4096)] }));
+  data.peek('flavor', data.offers[0]);
+  assert.equal(data.peeked.img, 'blob:test/1');
+  assert.equal(data.peeked.text, undefined, 'the bytes are drawn, not printed');
+  data.peeked; data.peeked;
+  assert.equal(made.length, 1, 'the URL is cached, so re-reading the panel does not mint another');
+});
+
+test('the links option previews the table it would make', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  const t = data.pasteLinks[0];
+  data.peek('links', t);
+  assert.equal(data.peeked.name, t.dest);
+  assert.match(data.peeked.text, /^text,url\n/, 'the csv itself, so the rows can be read before staging them');
+  data.extractLinks(t);
+  await tick(3);
+  assert.equal(data.peeked, null, 'making it closes the panel: the answer is on the stage now');
+});
+
+test('a new paste closes the panel it opened over the old one', async () => {
+  reset();
+  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
+  data.peek('flavor', data.offers[0]);
+  assert.ok(data.peeked);
+  data.offers = [];
+  assert.equal(data.peekKey, '', 'a key left standing would point at a paste that is gone');
 });
 
 test('the reader\'s header reads links out of a staged file, however it arrived', () => {
