@@ -85,15 +85,39 @@ rather than an error. The request list is fed from a thread.
 
 ## In the app
 
-Both web-tools and home promote this page as an app view through their
-`.web-tools.json` manifests, and they differ only in which payload it reads:
-`?app=doc-growth` opens web-tools' own, `?app=home-growth` opens home's. That
-needed `pages[].query` on a promoted page, since a manifest could previously
-name a page but not its subject, and the query is part of the view's identity
-key so the two promotions are two entries rather than one.
+A repo joins the chart by declaring where its payload sits:
 
-The slugs differ on purpose. Slug uniqueness is not enforced across repos, and
-a collision resolves to whichever entry sorts first rather than erroring.
+```json
+{ "growth": "data/doc-growth.json" }
+```
+
+The path is per repo, since the hub keeps its own under `data/doc-growth/` and
+home keeps a single file at the root of `data/`. The estate crawl collects every
+declaration into the Map view's **Growth** tab, where the repo is a control and
+this page is framed with `?src=` pointed at whichever corpus is selected. The
+hub's own payload is the page's built-in default, so it needs no `?src=` and no
+token; every other corpus is read through the viewer's stored token, which is
+why the selector is absent for a signed-out reader while the chart is not.
+
+**It was two app views until 2026-08-28, and that is the reason it is one tab
+now.** web-tools and home each promoted this page with `appView: true` and a
+different `pages[].query`, which is a correct pair of entries: the query joins a
+view's identity key, so two repos pointing one page at two payloads are two
+views and not one. The sidebar renders a promoted page as its label and its
+icon, so both arrived in the nav as the words "Doc Growth" with nothing to
+choose between them. Nothing was broken; the model had no slot for one
+instrument over several subjects. A page a repo owns is a destination and
+belongs in the nav. A page pointed at a repo is a lens, and its subject belongs
+on a control.
+
+The move also closed the trap that made the two promotions awkward in the first
+place. **A slug is an estate-wide address** (`?app=<slug>` resolves against the
+collected app views) declared per repo, and nothing enforced uniqueness: both
+promotions were first written as `doc-growth`, and the collision resolved to
+whichever sorted first rather than erroring. It was caught by hand and worked
+around by renaming one side to `home-growth`. `manifest-registry.test.mjs` now
+reads every manifest on disk and rejects a shared slug, which is the whole fix
+at this size, since a collision is a fact about that corpus.
 
 ## In the Map view
 
