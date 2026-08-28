@@ -2,8 +2,9 @@
 // A copy off a page splits across two clipboard flavors: text/plain holds every
 // link's LABEL and not one of its addresses, text/html holds the addresses
 // inside markup nobody wants to read. The bar names both, ticks the one the
-// stage took, offers the links as a pill beside them, and each pill's eye shows
-// the bytes, which is the only way to tell those two apart before staging one.
+// stage took, offers the links and the whole-page conversion as pills beside
+// them, and hovering any pill shows what is inside it, which is the only way to
+// tell two flavors apart before staging one.
 //
 //   npm run shot -- app/index.html --query "view=stage" \
 //     --script tools/render/scenarios/stage-flavor-bar.mjs --width 390
@@ -37,13 +38,35 @@ export default async (page) => {
     });
   });
   await page.waitForTimeout(600);
-  // The markdown preview, which is the one that has to be shot rather than
-  // asserted: the conversion is Turndown's, fetched on this tap, and a unit
-  // test stubbing it proves the wiring and nothing about the output.
+  // The markdown pill's tooltip, held open. It is the one preview that has to
+  // be shot rather than asserted twice over: the conversion is Turndown's,
+  // fetched on the hover, and the tooltip is CSS a logic test cannot see.
   await page.evaluate(async () => {
     const el = document.querySelector('[x-data*="stager"]');
     const d = window.Alpine.$data(el);
-    await d.peekMd(d.pasteMarkdown[0]);
+    await d.mdFor(d.pasteMarkdown[0].flavor);
   });
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(400);
+  // Every box measured, because the one thing a CSS tooltip cannot do is flip:
+  // daisyUI centres it on its anchor, so a 224px box over the first pill in the
+  // row hung 85px off the left edge of a phone until the content was pinned to
+  // the pill's left edge instead. The log is where that stays checked.
+  const boxes = await page.evaluate(() => {
+    const root = document.querySelector('[x-data*="stager"]');
+    return [...root.querySelectorAll('.tooltip')].map(t => {
+      t.classList.add('tooltip-open');
+      const r = t.querySelector('.tooltip-content').getBoundingClientRect();
+      t.classList.remove('tooltip-open');
+      return [Math.round(r.left), Math.round(r.right)];
+    });
+  });
+  const off = boxes.filter(([l, r]) => l < 0 || r > 390);
+  console.log('tooltip boxes ' + JSON.stringify(boxes) + (off.length ? ' OFF-SCREEN' : ' all on screen'));
+
+  await page.evaluate(() => {
+    const root = document.querySelector('[x-data*="stager"]');
+    [...root.querySelectorAll('.tooltip')]
+      .find(t => /markdown/.test(t.textContent)).classList.add('tooltip-open');
+  });
+  await page.waitForTimeout(600);
 };

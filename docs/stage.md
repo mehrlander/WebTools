@@ -57,14 +57,25 @@ both in one control, and the chip's state is read off the stage rather than held
 on the chip, so removing the row below un-ticks it. A form field keeps its native
 paste untouched, ticks nothing, and still names what it could not hold.
 
-**Each pill is two controls, and the second one is the whole answer to "which
-of these do I want".** The label toggles; an eye beside it opens one panel under
-the row showing the bytes, an image drawn rather than described and text cut at
-`PEEK_CHARS` so the staged list stays on screen. One panel at a time, since two
-open previews is a comparison this bar was not asked for. A title attribute was
-the only thing separating `html 4.1 KB` from `txt 192 B`, and a title is nothing
-at all on a phone, which is where the bar mostly gets read: the flavor with the
-addresses in it was unopenable until you had committed to staging it.
+**Hovering a pill shows what is inside it**, an image drawn rather than
+described and text cut at `TIP_CHARS`. What separated `html 4.1 KB` from
+`txt 192 B` was a title attribute reading "Stage 2026-08-28-paste.html", which
+is the pill's own label again, so the flavor with the addresses in it was
+unopenable until you had committed to staging it.
+
+This was a split pill with an eye and a panel below the row for an afternoon,
+and the eye was the mistake: two tap targets inside one badge, the second of
+which had to be learned. **One pill, one tap**, and a preview that costs nothing
+to ignore because it is a hover. What that trades away is the phone, where
+nothing hovers; the panel reached there and was confusing everywhere, and a
+confusing control on every device is the worse half of that trade.
+
+The one thing a CSS tooltip cannot do is flip. daisyUI centres the box on its
+anchor, so 224px over the first pill in the row hung 85px off the left edge of a
+phone; the content is pinned to the pill's **left** edge instead, which fits
+every position, since a pill's left edge is never left of the bar's. Measured on
+every pill by [`stage-flavor-bar.mjs`](../tools/render/scenarios/stage-flavor-bar.mjs),
+which writes the boxes into the shot log.
 
 Each
 flavor is named for what it is, which is load-bearing rather than cosmetic:

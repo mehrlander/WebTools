@@ -947,42 +947,28 @@ test('a derived option appears only where there is something to read out', async
 // want: `html 4.1 KB` against `txt 192 B` is a size, and the only thing
 // separating them was a title attribute, which is nothing at all on a phone.
 
-test('the eye shows the bytes, and a second tap closes it', async () => {
+test('the tooltip carries the bytes, which is what a title could not', async () => {
   reset();
   await paste(fakeCd({
     types: ['text/plain', 'text/html'],
     data: { 'text/plain': 'the first a relative one someone', 'text/html': PAGE },
   }));
   const html = data.offers.find(o => data.flavorLabel(o) === 'html');
-  assert.equal(data.peeked, null, 'nothing is open until asked');
-  data.peek('flavor', html);
-  assert.equal(data.peeked.name, html.name);
-  assert.match(data.peeked.text, /<a href="https:\/\/example\.com\/a">/,
+  const tip = data.tipFor('flavor', html);
+  assert.equal(tip.name, html.name);
+  assert.match(tip.text, /<a href="https:\/\/example\.com\/a">/,
     'the markup itself, which is what tells this flavor from its plain-text twin');
-  assert.equal(data.peeking('flavor', html), true);
-  data.peek('flavor', html);
-  assert.equal(data.peeked, null, 'the same eye is the way out');
+  assert.match(data.tipHtml(tip), /&lt;a href=/,
+    'and it is escaped, since this is the one place pasted markup is written INTO a document');
 });
 
-test('one panel at a time, since two open previews is a comparison nobody asked for', async () => {
-  reset();
-  await paste(fakeCd({
-    types: ['text/plain', 'text/html'],
-    data: { 'text/plain': 'plain words', 'text/html': PAGE },
-  }));
-  data.peek('flavor', data.offers.find(o => data.flavorLabel(o) === 'html'));
-  data.peek('flavor', data.offers.find(o => data.flavorLabel(o) === 'txt'));
-  assert.match(data.peeked.name, /\.txt$/, 'the second open replaces the first');
-  assert.equal(data.offers.filter(o => data.peeking('flavor', o)).length, 1);
-});
-
-test('a long flavor is cut, and says so rather than running past the staged list', async () => {
+test('a long flavor is cut, and says so rather than filling the screen', async () => {
   reset();
   const long = 'x'.repeat(5000);
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': long } }));
-  data.peek('flavor', data.offers[0]);
-  assert.equal(data.peeked.text.length, data.PEEK_CHARS + 2, 'the cut plus a newline and an ellipsis');
-  assert.ok(data.peeked.text.endsWith('…'));
+  const tip = data.tipFor('flavor', data.offers[0]);
+  assert.equal(tip.text.length, data.TIP_CHARS + 2, 'the cut plus a newline and an ellipsis');
+  assert.ok(tip.text.endsWith('…'));
 });
 
 test('an image previews as an image, since describing a screenshot is not a preview', async () => {
@@ -991,23 +977,21 @@ test('an image previews as an image, since describing a screenshot is not a prev
   window.URL.createObjectURL = (f) => { made.push(f); return 'blob:test/' + made.length; };
   window.URL.revokeObjectURL = () => {};
   await paste(fakeCd({ types: ['Files'], files: [fakeFile('image.png', 'image/png', 4096)] }));
-  data.peek('flavor', data.offers[0]);
-  assert.equal(data.peeked.img, 'blob:test/1');
-  assert.equal(data.peeked.text, undefined, 'the bytes are drawn, not printed');
-  data.peeked; data.peeked;
-  assert.equal(made.length, 1, 'the URL is cached, so re-reading the panel does not mint another');
+  const tip = data.tipFor('flavor', data.offers[0]);
+  assert.equal(tip.img, 'blob:test/1');
+  assert.equal(tip.text, undefined, 'the bytes are drawn, not printed');
+  assert.match(data.tipHtml(tip), /<img src="blob:test\/1"/);
+  data.tipFor('flavor', data.offers[0]);
+  assert.equal(made.length, 1, 'the URL is cached, so re-rendering the tooltip does not mint another');
 });
 
 test('the links option previews the list it would make', async () => {
   reset();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  const t = data.pasteLinks[0];
-  data.peek('links', t);
-  assert.equal(data.peeked.name, t.dest);
-  assert.match(data.peeked.text, /^- \[/, 'the markdown itself, so it can be read before staging it');
-  data.extractLinks(t);
-  await tick(3);
-  assert.equal(data.peeked, null, 'making it closes the panel: the answer is on the stage now');
+  const tip = data.tipFor('links', data.pasteLinks[0]);
+  assert.equal(tip.name, data.pasteLinks[0].dest);
+  assert.match(tip.text, /^- \[/, 'the markdown itself, so it can be read before staging it');
+  assert.equal(tip.note, '3 links');
 });
 
 // ---- the general case: markup to markdown ---------------------------------
@@ -1053,8 +1037,11 @@ test('the pill converts once and stages the result under its own name', async ()
   const opts = stubTurndown();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
   const t = data.pasteMarkdown[0];
-  await data.peekMd(t);
-  assert.match(data.peeked.text, /^MD</, 'the eye shows the conversion, not the markup');
+  assert.equal(data.tipFor('md', t).note, 'converting…',
+    'the tooltip says so rather than showing the markup it is not');
+  data.primeMd(t);
+  await tick(3);
+  assert.match(data.tipFor('md', t).text, /^MD</, 'and fills in when the conversion lands');
   await data.stageMd(t);
   await tick(3);
   assert.equal(opts.length, 1, 'peeking then staging is the ordinary sequence, so it converts once');
@@ -1086,13 +1073,16 @@ test('a converter that will not load is reported, not swallowed', async () => {
   Alpine.store('toast', realToast);
 });
 
-test('a new paste closes the panel it opened over the old one', async () => {
+test('a new paste drops the previews the old one minted', async () => {
   reset();
-  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  data.peek('flavor', data.offers[0]);
-  assert.ok(data.peeked);
+  const revoked = [];
+  window.URL.createObjectURL = () => 'blob:test/x';
+  window.URL.revokeObjectURL = (u) => revoked.push(u);
+  await paste(fakeCd({ types: ['Files'], files: [fakeFile('image.png', 'image/png', 4096)] }));
+  data.tipFor('flavor', data.offers[0]);
   data.offers = [];
-  assert.equal(data.peekKey, '', 'a key left standing would point at a paste that is gone');
+  assert.deepEqual(revoked, ['blob:test/x'], 'a preview is a reading of a paste that is gone');
+  assert.equal(data._mdText, null, 'and so is a conversion of it');
 });
 
 test('the reader\'s header reads out of a staged file, however it arrived', () => {
