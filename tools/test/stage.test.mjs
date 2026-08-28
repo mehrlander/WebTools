@@ -822,15 +822,15 @@ test('the chip row names one item per qualifying local, and skips the rest', () 
     'each chip carries a stable key and says what it would open');
 });
 
-// ── What is inside: the links ──────────────────────────────────────────────
+// ── What can be read out of markup ─────────────────────────────────────────
 //
-// The third kind of offer, and the reason it exists: a copy off a web page
-// splits across two clipboard flavors, with every link's LABEL in text/plain
-// and every link's ADDRESS in text/html, so both were stageable and neither
-// answered "just give me the links". These cover the reading (what counts as a
-// link, and what the same address twice counts as), the source set (the offers
-// as well as the stage, which is what makes the case one tap), and the artifact
-// it stages.
+// One derivation, and the reason there is only one: a copy off a web page puts
+// every link's LABEL in text/plain and every link's ADDRESS in text/html, so
+// both were stageable and neither answered "just give me the links". A links
+// extractor answered it for a day, as a csv and then as a markdown list, and
+// went: converting the markup carries every link as `[text](url)` already, in
+// its own context, so the reduction was a second reader of html earning its
+// keep by being shorter and nothing else.
 
 const IN = () => window.StageIntake;
 
@@ -839,113 +839,28 @@ const PAGE = `<p>Read <a href="https://example.com/a">the first</a> and
   and <a href="javascript:void(0)">this handler</a>, mail
   <a href="mailto:x@y.z">someone</a>.</p>`;
 
-test('an html paste gives up its hrefs, and the noise stays behind', () => {
-  const links = IN().linksOf(PAGE, 'p.html');
-  assert.deepEqual(plain_(links), [
-    { text: 'the first', url: 'https://example.com/a' },
-    { text: 'a relative one', url: '/docs/b' },
-    { text: 'someone', url: 'mailto:x@y.z' },
-  ], 'an in-page anchor and a javascript: handler are not addresses worth carrying out');
-});
-
-test('a relative href stays relative, since a paste carries no page to resolve against', () => {
-  const links = IN().linksOf('<a href="/docs/b">b</a>', 'p.html');
-  assert.equal(links[0].url, '/docs/b', 'inventing an origin here would be a guess presented as a fact');
-});
-
-test('one row per address, and the first label wins', () => {
-  const html = '<a href="/x">Home</a><a href="/x"><img></a><a href="/y">Y</a>';
-  const links = IN().linksOf(html, 'p.html');
-  assert.equal(links.length, 2, 'a masthead repeated on every copy is not two findings');
-  assert.equal(links[0].text, 'Home', 'the repeat is often an icon with no text at all');
-});
-
-test('an address seen first without a label takes one from a later repeat', () => {
-  const links = IN().linksOf('<a href="/x"><img></a><a href="/x">Home</a>', 'p.html');
-  assert.deepEqual(plain_(links), [{ text: 'Home', url: '/x' }]);
-});
-
-test('text that is not markup is read as markdown and prose', () => {
-  const md = 'See [the docs](https://example.com/d) and https://example.com/bare, then\n<https://example.com/angle>.';
-  assert.deepEqual(plain_(IN().linksOf(md, 'notes.md')), [
-    { text: 'the docs', url: 'https://example.com/d' },
-    { text: '', url: 'https://example.com/bare' },
-    { text: '', url: 'https://example.com/angle' },
-  ], 'a markdown link is one row, not a labelled one plus a bare one for the same address');
-});
-
-test('only the four text kinds are read for links, so a script is left alone', () => {
-  const s = 'const u = "https://example.com/x"';
-  assert.deepEqual(plain_(IN().linksOf(s, 'a.js')), [], 'a URL in a comment is not a link somebody asked for');
-  assert.deepEqual(plain_(IN().linksOf('a,b\nhttps://example.com/x,2', 'a.csv')), [],
-    'a CSV is the transform chip\'s, and reading it twice would be two answers to one item');
-});
-
 test('a derivation is named for its source, and always carries its tag', () => {
-  assert.equal(IN().derivedName('2026-08-28-paste.html', 'links'), '2026-08-28-paste-links.md');
   assert.equal(IN().derivedName('2026-08-28-paste.html', 'markdown'), '2026-08-28-paste-markdown.md');
-  assert.equal(IN().derivedName('noext', 'links'), 'noext-links.md');
+  assert.equal(IN().derivedName('noext', 'markdown'), 'noext-markdown.md');
   assert.notEqual(IN().derivedName('2026-08-28-paste.md', 'markdown'), '2026-08-28-paste.md',
     'a plain-text paste opening with a heading is already named .md, and two items '
     + 'under one name is worse than a long one');
 });
 
-test('links come out as a markdown list, which is what pastes anywhere', () => {
-  const md = IN().linksMd([
-    { text: 'Budget, revised', url: 'https://x/y' },
-    { text: 'Bracket [in] text', url: 'https://x/z' },
-    { text: '', url: 'https://x/bare' },
-    { text: 'spaced', url: 'https://x/a b(c)' },
-  ]);
-  assert.equal(md,
-    '- [Budget, revised](https://x/y)\n'
-    + '- [Bracket \\[in\\] text](https://x/z)\n'
-    + '- <https://x/bare>\n'
-    + '- [spaced](<https://x/a b(c)>)\n');
+test('a conversion opens raw, where every other markdown in the app renders', () => {
+  assert.equal(IN().opensRaw('2026-08-28-paste-markdown.md'), true,
+    'a conversion is a payload to copy, so its question is what it IS');
+  assert.equal(IN().opensRaw('README.md'), false,
+    'and a document is a document: READ_MODE still sends that to preview');
+  assert.equal(IN().opensRaw('notes-markdown.txt'), false);
 });
 
-test('the links menu reads the html the paste did not stage', async () => {
-  reset();
-  await paste(fakeCd({
-    types: ['text/plain', 'text/html'],
-    data: { 'text/plain': 'the first a relative one someone', 'text/html': PAGE },
-  }));
-  assert.match(data.localItems[0].name, /\.txt$/, 'text/plain is still what a paste stages');
-  assert.deepEqual(plain_(IN().linksIn(data.localItems[0])), [],
-    'and it carries every label and not one address, which is the whole complaint');
-  const rows = data.pasteLinks;
-  assert.equal(rows.length, 1, 'the flavor is the source, so no tap is spent staging markup nobody wanted');
-  assert.equal(rows[0].n, 3);
-  assert.equal(rows[0].from, 'html', 'the pill says which flavor it read');
-  assert.match(rows[0].dest, /-links\.md$/);
+test('only markup is a source, since text is already what it is', () => {
+  assert.equal(IN().isMarkup('page.html'), true);
+  assert.equal(IN().isMarkup('feed.xml'), true);
+  assert.equal(IN().isMarkup('notes.md'), false);
+  assert.equal(IN().isMarkup('rows.csv'), false);
 });
-
-test('the extraction stages a table and opens the reader on it', async () => {
-  reset();
-  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  const row = data.pasteLinks[0];
-  data.extractLinks(row);
-  await tick(3);
-  const made = data.localItems.find(it => it.name === row.dest);
-  assert.ok(made, 'the list is staged under the name the pill named');
-  assert.match(made.text, /^- \[the first\]\(https:\/\/example\.com\/a\)\n/);
-  assert.equal(made.text.trim().split('\n').length, 3, 'three links, no header row');
-  assert.equal(made.sniffed, false, 'the name is authored, not the sniff\'s opinion');
-  assert.ok(data.reader, 'the list is what was asked for, not a row to go and find');
-});
-
-test('a derived option appears only where there is something to read out', async () => {
-  reset();
-  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': 'Just some prose, no addresses.' } }));
-  assert.deepEqual(plain_(data.pasteLinks), [],
-    'an empty option is furniture, so the pill does not draw at all');
-});
-
-// ---- looking inside a flavor before you take it ----------------------------
-//
-// The pills said which formats a copy held and could not say which one you
-// want: `html 4.1 KB` against `txt 192 B` is a size, and the only thing
-// separating them was a title attribute, which is nothing at all on a phone.
 
 // ---- the preview, which is the house hover card ----------------------------
 //
@@ -980,13 +895,17 @@ test('an image carries no peek, since the card reads text', async () => {
   assert.equal(peeks().size, 0);
 });
 
-test('the links pill previews the list it would make, under the name it would make', async () => {
+test('the conversion is seeded as source, not as the markdown its name implies', async () => {
   reset();
+  stubTurndown();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  const t = data.pasteLinks[0];
-  assert.equal(data.peekKey('links', t), t.dest);
-  assert.match(peeks().get(t.dest), /^- \[the first\]/,
-    'a .md key renders in the card as the tappable list it will become');
+  const t = data.pasteMarkdown[0];
+  await data.mdFor(t.flavor);
+  const seeded = [];
+  window.SourcePeek = { seed: (k, text, kind) => seeded.push([k, kind]) };
+  data.seedPeeks();
+  assert.deepEqual(plain_(seeded.find(r => r[0] === t.dest)), [t.dest, 'source'],
+    'the card previews what the reader is about to see, and that opens raw');
 });
 
 // ---- the general case: markup to markdown ---------------------------------
@@ -1079,21 +998,20 @@ test('a new paste drops the conversions the old one made', async () => {
   assert.equal(data._mdText, null, 'a conversion is a reading of a paste that is gone');
 });
 
-test('the reader\'s header reads out of a staged file, however it arrived', () => {
+test('the reader\'s header converts a staged file, however it arrived', () => {
   reset();
   IN().take({ text: PAGE, name: 'page.html' });
-  assert.equal(IN().linksIn(data.localItems[0]).length, 3,
+  const it = data.localItems[0];
+  assert.equal(it.local && it.isText && IN().isMarkup(it.name), true,
     'the bar is about the paste; a dropped or fetched file keeps its route through the reader');
-  assert.equal(IN().derivedName('page.html', 'links'), 'page-links.md');
-  assert.equal(IN().isMarkup('page.html'), true, 'so the markdown action is offered beside it');
-  assert.equal(IN().isMarkup('notes.md'), false);
+  assert.equal(IN().derivedName(it.name, 'markdown'), 'page-markdown.md');
 });
 
 test('a ref is never a source, since it has no text until it is fetched', () => {
   reset();
   IN().take({ text: 'me/a:docs/page.html', size: 18 });
   assert.equal(data.refItems.length, 1);
-  assert.deepEqual(plain_(IN().linksIn(data.refItems[0])), []);
+  assert.deepEqual(plain_(data.pasteMarkdown), []);
 });
 
 test('prose with a stray tab is not a grid', async () => {

@@ -2,9 +2,9 @@
 // A copy off a page splits across two clipboard flavors: text/plain holds every
 // link's LABEL and not one of its addresses, text/html holds the addresses
 // inside markup nobody wants to read. The bar names both, ticks the one the
-// stage took, offers the links and the whole-page conversion as pills beside
-// them, and hovering any pill shows what is inside it, which is the only way to
-// tell two flavors apart before staging one.
+// stage took, offers the whole-page conversion as a pill beside them, and
+// hovering any pill shows what is inside it, which is the only way to tell two
+// flavors apart before staging one.
 //
 //   npm run shot -- app/index.html --query "view=stage" \
 //     --script tools/render/scenarios/stage-flavor-bar.mjs --width 390
@@ -38,13 +38,22 @@ export default async (page) => {
     });
   });
   await page.waitForTimeout(600);
-  // The html flavor's peek, opened by a real hover. The card is the house one
+  // The conversion's own peek, opened by a real hover. The card is the house one
   // (kits/source-peek.js), so this shoots the kit's own placement and dwell
   // rather than anything this view draws: 320 ms before it opens, left-aligned
-  // to the pill, flipped above when it does not fit below.
+  // to the pill, flipped above when it does not fit below. The markdown pill
+  // rather than a flavor, for two reasons: its key appears only once the
+  // conversion exists, and it is the lowest pill, so the card lands over the
+  // staged list instead of over the pills this shot is also about.
+  await page.evaluate(async () => {
+    const el = document.querySelector('[x-data*="stager"]');
+    const d = window.Alpine.$data(el);
+    await d.mdFor(d.pasteMarkdown[0].flavor);
+  });
+  await page.waitForTimeout(400);
   const pill = await page.evaluateHandle(() => {
     const root = document.querySelector('[x-data*="stager"]');
-    return [...root.querySelectorAll('[data-peek]')].find(b => /html/.test(b.textContent));
+    return [...root.querySelectorAll('[data-peek]')].find(b => /markdown/.test(b.textContent));
   });
   await pill.asElement().hover();
   await page.waitForTimeout(900);

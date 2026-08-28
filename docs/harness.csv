@@ -156,10 +156,10 @@ tools/render/scenarios/stage-compare-pick.mjs,"the reader's compare picker: the 
 tools/render/scenarios/stage-dictate.mjs,"the stage's dictation intake: the mic beside Paste, committed text with a live interim, and the mark pad",tools/render/scenarios,33,driver,no,no,no
 tools/render/scenarios/stage-diff-longrefs.mjs,the Diff tab's A/B selects clipping long repo@ref:path labels,tools/render/scenarios,18,driver,no,no,no
 tools/render/scenarios/stage-diff-review.mjs,"the Stage's Diff lens run on two local items, with the review-prompts panel",tools/render/scenarios,29,driver,no,yes,no
-tools/render/scenarios/stage-flavor-bar.mjs,"the flavors bar after a web-page paste: every flavor named, the staged one ticked, the links pill beside them, and one flavor's preview open",tools/render/scenarios,60,driver,no,no,yes
+tools/render/scenarios/stage-flavor-bar.mjs,"the flavors bar after a web-page paste: every flavor named, the staged one ticked, the links pill beside them, and one flavor's preview open",tools/render/scenarios,69,driver,no,no,yes
 tools/render/scenarios/stage-image-preview.mjs,,tools/render/scenarios,32,driver,no,no,no
 tools/render/scenarios/stage-keyboard-mode.mjs,"the stage's dictation card with the keyboard open, which is where the recording misreading was reported",tools/render/scenarios,53,driver,no,no,no
-tools/render/scenarios/stage-links-list.mjs,"the links pill's payoff: the extracted links as a rendered, tappable markdown list",tools/render/scenarios,22,driver,no,no,no
+tools/render/scenarios/stage-markdown-raw.mjs,"the markdown pill's payoff: the converted page opened RAW, where every other .md in the app renders",tools/render/scenarios,22,driver,no,no,no
 tools/render/scenarios/stage-paste-flavors.mjs,,tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/stage-reader-subject.mjs,"the stage reader announcing which staged file is on screen, so the FAB drawer names the file being read rather than the app shell hosting it",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/stage-rename-local.mjs,,tools/render/scenarios,23,driver,no,no,no
