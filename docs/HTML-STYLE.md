@@ -15,28 +15,13 @@ relitigating it per page
 
 **No explanatory prose.** GitHub doesn't explain and neither should we. Use structure, labels, and controls to show relationships. A range control starting at 2015 says the data starts in 2015. Explanatory prose is unfinished work: unused ideas, loitering.
 
-**A tooltip worth having is worth building.**
-
-- **Never `cursor-help`.** A hover colour already says the element does
-  something.
-- **Never daisyUI's `tooltip` or `data-tip`.** It is CSS `:hover`: a tap sticks
-  it open until the reader taps elsewhere, and nothing in it can be tapped.
-- **Use `title` only as a convenience label** on something already tappable,
-  never as the only carrier of a fact, since it reaches no phone.
-  `npm run stranded-titles` lists the facts parked in one.
-- **A tap that opens the panel closes it**, and the panel is never withheld on a
-  small screen.
-
-Say it on the page before you build anything. A mark whose meaning lives in a
-hover is a caveat nobody can reach, and words usually cost less than a panel:
-`no merge base` replaced an amber asterisk for thirteen characters of row width
-([show-repo.md](show-repo.md)). Build the panel where the fact is a list, a link,
-or longer than the line.
-
-How to build one is house-style rule 7 in the
-[daisy-alpine skill](../skills/daisy-alpine/SKILL.md): the hover gate and its
-delays, the tap toggle, and the two traps that make a panel look finished and
-strand it open on a phone.
+**A tooltip worth having is worth building.** Do not use `cursor-help`, daisyUI's
+`tooltip`, or `data-tip`. Use `title` only as a redundant label on something
+already tappable, never as the only carrier of a fact; the accessible name is
+`aria-label`. Tooltip panels must open and close by tapping the same control, and
+must stay available on small screens. Build one by house-style rule 7 in the
+[daisy-alpine skill](../skills/daisy-alpine/SKILL.md); `npm run stranded-titles`
+lists the facts already parked in a `title`.
 
 **Don't narrow text to a reading column.** The pattern is `max-w-*` plus `mx-auto`, usually
 `max-w-2xl` through `max-w-4xl`, or `max-w-prose` at 65ch; `container mx-auto` is the same

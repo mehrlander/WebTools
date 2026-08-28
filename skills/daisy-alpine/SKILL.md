@@ -47,9 +47,11 @@ by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-t
    says the element does something. Never daisyUI's `tooltip` or `data-tip`: it is
    CSS `:hover`, so a tap sticks it open until the reader taps elsewhere and nothing
    in it can be tapped (the entry in `references/daisyui.md` is upstream's; this
-   overrides it). Use `title` only as a convenience label on something already
-   tappable, never as the only carrier of a fact, since it reaches no phone. Say it
-   on the page before you build anything; words usually cost less than a panel.
+   overrides it). Use `title` only as a redundant label on something already
+   tappable, never as the only carrier of a fact, since it reaches no phone; an
+   icon-only control gets its accessible name from `aria-label`, not from `title`.
+   Say it on the page before you build anything; words usually cost less than a
+   panel.
    Where a panel is right, it owes four behaviours, and shipping three of them looks
    finished on the machine you built it on:
    - Hover to open only where `(hover: hover) and (pointer: fine)` both match, about
