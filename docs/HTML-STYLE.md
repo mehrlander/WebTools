@@ -15,12 +15,9 @@ relitigating it per page
 
 **No explanatory prose.** GitHub doesn't explain and neither should we. Use structure, labels, and controls to show relationships. A range control starting at 2015 says the data starts in 2015. Explanatory prose is unfinished work: unused ideas, loitering.
 
-**A tooltip worth having is worth building.** Do not use `cursor-help`, daisyUI's
-`tooltip`, or `data-tip`. Use `title` only as a redundant label on something
-already tappable, never as the only carrier of a fact; the accessible name is
-`aria-label`. Tooltip panels must open and close by tapping the same control, and
-must stay available on small screens. More on tooltips: the
-[daisy-alpine skill](https://github.com/mehrlander/web-tools/blob/main/skills/daisy-alpine/SKILL.md).
+**A tooltip worth having is worth building.** Prefer text on the page. Everything
+else is in the
+[daisy-alpine skill](https://github.com/mehrlander/web-tools/blob/main/skills/daisy-alpine/SKILL.md);
 `npm run stranded-titles` lists facts parked in a `title`.
 
 **Don't narrow text to a reading column.** The pattern is `max-w-*` plus `mx-auto`, usually

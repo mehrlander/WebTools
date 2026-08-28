@@ -43,29 +43,17 @@ by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-t
    balanced when short; across a deck it moves the first line on every card.
 6. **One accent, and it means something.** Colour carries information, not decoration.
    In a comparison, each side keeps a fixed treatment across every view.
-7. **A tooltip is built, not borrowed.** Never `cursor-help`: a hover colour already
-   says the element does something. Never daisyUI's `tooltip` or `data-tip`: it is
-   CSS `:hover`, so a tap sticks it open until the reader taps elsewhere and nothing
-   in it can be tapped (the entry in `references/daisyui.md` is upstream's; this
-   overrides it). Use `title` only as a redundant label on something already
-   tappable, never as the only carrier of a fact, since it reaches no phone; an
-   icon-only control gets its accessible name from `aria-label`, not from `title`.
-   Say it on the page before you build anything; words usually cost less than a
-   panel.
-   Where a panel is right, it owes four behaviours, and shipping three of them looks
-   finished on the machine you built it on:
-   - Hover to open only where `(hover: hover) and (pointer: fine)` both match, about
-     140 ms to open and 220 ms to close after leaving the trigger or the panel.
-   - Tap to open otherwise. Never withhold the panel on a small screen; that is the
-     `title` failure in a nicer box.
-   - **A second tap on the trigger closes it.** Decide from the panel's real
-     visibility, not a state flag: a `mouseleave` a narrow window can still send
-     hides the panel while the flag says open, and the next tap then closes nothing.
-   - Dismiss on a capture-phase `pointerdown` outside it, plus Escape. Capture, so a
-     tap on another control closes the panel before that control acts.
-     `@click.outside` alone will not do it: Alpine binds it on `document` in the
-     bubble phase, so a trigger carrying `@click.stop` never reaches the listener and
-     the panel reopens instead of closing.
+7. **A tooltip worth having is worth building.** Prefer text on the page. Do not use
+   `cursor-help`, daisyUI's `tooltip`, or `data-tip`; this overrides
+   `references/daisyui.md`. Use `title` only for simple, nonessential labels, like a
+   word in a mockup. Give icon-only controls an `aria-label`.
+
+   Custom tooltips must work on every screen size. Enable hover only when
+   `(hover: hover) and (pointer: fine)` match: open after about 140 ms and close
+   about 220 ms after leaving both the control and tooltip. Tapping the control must
+   toggle the tooltip using its actual visibility, not a separate state flag.
+   Dismiss on Escape or a capture-phase `pointerdown` outside the control and
+   tooltip; do not rely on `@click.outside` alone.
 
 ## References
 
