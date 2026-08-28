@@ -279,3 +279,21 @@ test('a turn whose lead could not fold hangs nothing', () => {
   assert.ok(standaloneHead(el), 'the fallback head is in play');
   assert.equal(el.querySelector('.relative').style.paddingLeft, '');
 });
+
+test('an ask keeps its fill even where the lead could not fold', () => {
+  // The fill hung off `leadAt` once, which reads as one condition and is two:
+  // whether the turn is an ask, and whether its first block could take an
+  // inline lead-in. A body that opens on something textEdge will not descend
+  // into falls back to a standalone head, and lost its tint with it, so the one
+  // ask on the card that could not fold was also the one that stopped looking
+  // like an ask. Reachable only through `raw: false`, which is why it shipped.
+  const el = cr.message({ role: 'user', md: '```js\nconst x = 1;\n```\n\nafter.' },
+    { dense: true, collapse: 0, raw: false });
+  assert.ok(standaloneHead(el), 'the fallback head is in play');
+  const fill = el.querySelector('.relative');
+  assert.ok(/color-mix/.test(fill.style.background), 'and the ask is still tinted');
+  assert.equal(fill.style.marginLeft, '10px');
+  // The gutter is the half that needs a lead, so it stays gated.
+  assert.equal(el.querySelector('i.ph').parentElement.style.position, '',
+    'with no lead to fold, nothing is positioned into the gutter');
+});
