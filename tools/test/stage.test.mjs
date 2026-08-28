@@ -490,7 +490,7 @@ const paste = async (cd, target) => {
   return r;
 };
 
-test('a spreadsheet paste stages one flavor and offers the rest', async () => {
+test('a spreadsheet paste stages one flavor and lists all three', async () => {
   reset();
   await paste(fakeCd({
     types: ['text/plain', 'text/html', 'Files'],
@@ -499,15 +499,19 @@ test('a spreadsheet paste stages one flavor and offers the rest', async () => {
   }));
   assert.equal(data.localItems.length, 1, 'one flavor is staged, not three');
   assert.match(data.localItems[0].name, /\.png$/, 'the image, which is what this handler always took');
-  assert.deepEqual(plain_(data.offers.map(o => data.flavorLabel(o)).sort()), ['html', 'tsv'],
-    'the two it could not take are offered, not discarded');
+  assert.deepEqual(plain_(data.offers.map(o => data.flavorLabel(o)).sort()), ['html', 'png', 'tsv'],
+    'the bar says what the copy held, which is all of it');
+  const ticked = data.offers.filter(o => data.flavorStaged(o)).map(o => data.flavorLabel(o));
+  assert.deepEqual(plain_(ticked), ['png'],
+    'and marks the one it took, so the bar is a choice rather than an add list');
 });
 
 test('a text/plain grid is named .tsv, so it opens as a table', async () => {
   reset();
   await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': TSV } }));
   assert.match(data.localItems[0].name, /\.tsv$/);
-  assert.equal(data.offers.length, 0, 'one flavor offers nothing');
+  assert.equal(data.offers.length, 1, 'one flavor is still worth naming: it is what the copy held');
+  assert.equal(data.flavorStaged(data.offers[0]), true, 'and it is on the stage');
 });
 
 // ---- what a paste is NAMED is what it routes to ----------------------------
@@ -886,7 +890,7 @@ test('the artifact is named for its source and quotes what CSV must quote', () =
     'link text is prose, and an unquoted comma turns two columns into a ragged three');
 });
 
-test('a web-page paste offers the links off the html it did not stage', async () => {
+test('the links menu reads the html the paste did not stage', async () => {
   reset();
   await paste(fakeCd({
     types: ['text/plain', 'text/html'],
@@ -895,54 +899,46 @@ test('a web-page paste offers the links off the html it did not stage', async ()
   assert.match(data.localItems[0].name, /\.txt$/, 'text/plain is still what a paste stages');
   assert.deepEqual(plain_(IN().linksIn(data.localItems[0])), [],
     'and it carries every label and not one address, which is the whole complaint');
-  const chips = data.extractables;
-  assert.equal(chips.length, 1, 'the offer is the source, so no tap is spent staging markup nobody wanted');
-  assert.equal(chips[0].label, '3 links');
-  assert.match(chips[0].dest, /-links\.csv$/);
+  const rows = data.pasteLinks;
+  assert.equal(rows.length, 1, 'the flavor is the source, so no tap is spent staging markup nobody wanted');
+  assert.equal(rows[0].n, 3);
+  assert.equal(rows[0].from, 'html', 'the row says which flavor it read');
+  assert.match(rows[0].dest, /-links\.csv$/);
 });
 
 test('the extraction stages a table and opens the reader on it', async () => {
   reset();
   await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  const chip = data.extractables[0];
-  data.extractLinks(chip);
+  const row = data.pasteLinks[0];
+  data.extractLinks(row);
   await tick(3);
-  const made = data.localItems.find(it => it.name === chip.dest);
-  assert.ok(made, 'the table is staged under the name the chip named');
+  const made = data.localItems.find(it => it.name === row.dest);
+  assert.ok(made, 'the table is staged under the name the row named');
   assert.equal(made.text.split('\n').length, 4, 'a header and three links');
   assert.equal(made.sniffed, false, 'the name is authored, not the sniff\'s opinion');
   assert.ok(data.reader, 'the table is what was asked for, not a row to go and find');
 });
 
-test('an extraction already on the stage is not offered again', async () => {
+test('a menu row appears only where there is something to read out', async () => {
   reset();
-  await paste(fakeCd({ types: ['text/html'], data: { 'text/html': PAGE } }));
-  data.extractLinks(data.extractables[0]);
-  await tick(3);
-  assert.deepEqual(plain_(data.extractables), [],
-    'the source survives being extracted, so without the dedupe a second tap stages a second identical table');
+  await paste(fakeCd({ types: ['text/plain'], data: { 'text/plain': 'Just some prose, no addresses.' } }));
+  assert.deepEqual(plain_(data.pasteLinks), [],
+    'an empty menu is furniture, so the control does not draw at all');
 });
 
-test('a staged html file is a source too, however it arrived', () => {
+test('the reader\'s header reads links out of a staged file, however it arrived', () => {
   reset();
   IN().take({ text: PAGE, name: 'page.html' });
-  const chips = data.extractables;
-  assert.equal(chips.length, 1);
-  assert.equal(chips[0].name, 'page.html');
-  assert.ok(chips[0].title.includes('page-links.csv'), 'the chip says what it would make');
+  assert.equal(IN().linksIn(data.localItems[0]).length, 3,
+    'the bar is about the paste; a dropped or fetched file keeps its route through the reader');
+  assert.equal(IN().linksName('page.html'), 'page-links.csv');
 });
 
 test('a ref is never a source, since it has no text until it is fetched', () => {
   reset();
   IN().take({ text: 'me/a:docs/page.html', size: 18 });
   assert.equal(data.refItems.length, 1);
-  assert.deepEqual(plain_(data.extractables), []);
-});
-
-test('prose with no addresses in it offers nothing', () => {
-  reset();
-  IN().take({ text: '# A note\n\nJust some prose.', size: 26 });
-  assert.deepEqual(plain_(data.extractables), []);
+  assert.deepEqual(plain_(IN().linksIn(data.refItems[0])), []);
 });
 
 test('prose with a stray tab is not a grid', async () => {
@@ -951,19 +947,34 @@ test('prose with a stray tab is not a grid', async () => {
   assert.match(data.localItems[0].name, /\.txt$/, 'the tab counts differ, so it is text');
 });
 
-test('staging an offered flavor moves it onto the stage and off the bar', async () => {
+test('tapping an unticked flavor stages it, and the chip ticks', async () => {
   reset();
   await paste(fakeCd({
     types: ['text/plain', 'text/html'],
     data: { 'text/plain': TSV, 'text/html': HTML },
   }));
   assert.equal(data.localItems.length, 1);
-  assert.equal(data.offers.length, 1);
-  await data.stageFlavor(data.offers[0]);
+  const html = data.offers.find(o => data.flavorLabel(o) === 'html');
+  await data.toggleFlavor(html);
   assert.equal(data.localItems.length, 2);
-  assert.equal(data.offers.length, 0);
-  const html = data.localItems.find(it => /\.html$/.test(it.name));
-  assert.equal(html.text, HTML, 'the html flavor is staged as html, not sniffed from its first characters');
+  assert.equal(data.flavorStaged(html), true, 'the chip is read off the stage, so it follows on its own');
+  assert.equal(data.localItems.find(it => /\.html$/.test(it.name)).text, HTML,
+    'the html flavor is staged as html, not sniffed from its first characters');
+});
+
+test('tapping a ticked flavor takes it off, which is how you choose the other one', async () => {
+  reset();
+  await paste(fakeCd({
+    types: ['text/plain', 'text/html'],
+    data: { 'text/plain': TSV, 'text/html': HTML },
+  }));
+  const tsv = data.offers.find(o => data.flavorLabel(o) === 'tsv');
+  await data.toggleFlavor(data.offers.find(o => data.flavorLabel(o) === 'html'));
+  await data.toggleFlavor(tsv);
+  assert.deepEqual(plain_(data.localItems.map(it => it.name.split('.').pop())), ['html'],
+    'the html instead of the text, which used to mean staging both and hunting one down');
+  assert.equal(data.offers.length, 2, 'both stay on the bar: the paste still carried them');
+  assert.equal(data.flavorStaged(tsv), false);
 });
 
 test('a paste into a form field keeps its native paste, and offers the rest', async () => {
@@ -974,8 +985,10 @@ test('a paste into a form field keeps its native paste, and offers the rest', as
     files: [fakeFile('image.png', 'image/png', 4096)],
   }), { tagName: 'INPUT' });
   assert.equal(data.localItems.length, 0, 'the field pastes its own text; nothing is stolen');
-  assert.deepEqual(plain_(data.offers.map(o => data.flavorLabel(o)).sort()), ['html', 'png'],
-    'what a text field cannot hold is offered instead of lost');
+  assert.deepEqual(plain_(data.offers.map(o => data.flavorLabel(o)).sort()), ['html', 'png', 'tsv'],
+    'what a text field cannot hold is offered, and what it took is still named');
+  assert.equal(data.offers.every(o => !data.flavorStaged(o)), true,
+    'nothing is ticked, because the field took the text and the stage took nothing');
 });
 
 test('ref lines still stage as refs, through the flavor path', async () => {
@@ -985,13 +998,17 @@ test('ref lines still stage as refs, through the flavor path', async () => {
   assert.equal(data.localItems.length, 0);
 });
 
-test('an offer already on the stage under that name is not offered again', async () => {
+test('the same paste twice is quiet, because the chips just show as ticked', async () => {
   reset();
   const cd = fakeCd({ types: ['text/plain', 'text/html'], data: { 'text/plain': TSV, 'text/html': HTML } });
   await paste(cd);
-  await data.stageFlavor(data.offers[0]);
+  await data.toggleFlavor(data.offers.find(o => data.flavorLabel(o) === 'html'));
   await paste(cd);
-  assert.equal(data.offers.length, 0, 'the same paste twice is quiet, not cumulative');
+  assert.equal(data.offers.every(o => data.flavorStaged(o)), true,
+    'the bar says both are on the stage rather than going blank, which read as "nothing here"');
+  assert.equal(data.localItems.length, 3,
+    'the primary is re-staged, which every repeated paste has always done: the old bar filter '
+    + 'kept only the BAR quiet, never the stage');
 });
 
 // ---- the paste fold is the intake's, so it works with no bench mounted ----
@@ -1009,8 +1026,9 @@ test('takePaste reports what landed and what the paste also carried', async () =
   }));
   assert.equal(r.added.length, 1, 'the primary flavor lands');
   assert.match(r.added[0].name, /\.tsv$/);
-  assert.equal(r.offers.length, 1, 'and the caller learns what it did not take');
-  assert.match(r.offers[0].name, /\.html$/, 'an offer is named on the way out, not by the bench');
+  assert.equal(r.offers.length, 2, 'and the caller learns everything the copy held');
+  assert.deepEqual(plain_(r.offers.map(o => o.name.split('.').pop()).sort()), ['html', 'tsv'],
+    'a flavor is named on the way out, not by the bench');
 });
 
 test('the offers a paste leaves ride the store, so a bench that mounts later finds them', async () => {
@@ -1019,8 +1037,8 @@ test('the offers a paste leaves ride the store, so a bench that mounts later fin
     types: ['text/plain', 'text/html'],
     data: { 'text/plain': TSV, 'text/html': HTML },
   }));
-  assert.equal(store.stageOffers.length, 1, 'the store holds the bar, not the component');
-  assert.equal(data.offers.length, 1, 'and the component reads it through');
+  assert.equal(store.stageOffers.length, 2, 'the store holds the bar, not the component');
+  assert.equal(data.offers.length, 2, 'and the component reads it through');
   data.dismissOffers();
   assert.equal(store.stageOffers.length, 0, 'clearing the bar clears the store');
 });
@@ -1033,8 +1051,8 @@ test('a paste into a field stages nothing, and says so rather than silently taki
   }), { editable: true });
   assert.equal(r.added.length, 0, 'the field keeps its own paste');
   assert.equal(r.native, true, 'and the caller is told to leave the event alone');
-  assert.equal(r.offers.length, 1, 'only what the field cannot hold is offered');
-  assert.match(r.offers[0].name, /\.html$/, 'text/plain is what the field just pasted, so it is not offered back');
+  assert.equal(r.offers.length, 2, 'the bar still says what the copy held');
+  assert.equal(r.offers.some(o => /\.html$/.test(o.name)), true, 'including what the field could not hold');
 });
 
 test('offer: false reads the clipboard without touching the bar', async () => {
@@ -1044,7 +1062,7 @@ test('offer: false reads the clipboard without touching the bar', async () => {
     types: ['text/plain', 'text/html'],
     data: { 'text/plain': TSV, 'text/html': HTML },
   }), { offer: false });
-  assert.equal(r.offers.length, 1, 'the caller still learns what was carried');
+  assert.equal(r.offers.length, 2, 'the caller still learns what was carried');
   assert.equal(store.stageOffers.length, 0, 'but nothing was written where a bar would draw it');
 });
 

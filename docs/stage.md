@@ -45,11 +45,17 @@ the caret was (the page took the image, a form field took the text) and the rest
 was gone. Neither behavior was the platform's: `clipboardData.types` had always
 listed all three.
 
-Now the flavor that was always taken is still taken, and the rest appear on an
-**offer bar** above the staged list, one tap each. A bar rather than a dialog,
-since the common case is "take the obvious one and carry on," and the bar is
-also the only place that says what a copy actually put on your clipboard. A form
-field keeps its native paste untouched and contributes what it cannot hold. Each
+Now the flavor that was always taken is still taken, and **every** flavor appears
+on a **flavor bar** above the staged list, the taken one ticked, one tap each
+way. A bar rather than a dialog, since the common case is "take the obvious one
+and carry on," and the bar is also the only place that says what a copy actually
+put on your clipboard. Until 2026-08-28 it listed only the LEFTOVERS, which made
+it an add list: bringing the html in was one tap and choosing it INSTEAD of the
+text was a tap plus hunting the text down in the list below, and choosing
+between two readings of one copy is the commoner want. A tick that toggles says
+both in one control, and the chip's state is read off the stage rather than held
+on the chip, so removing the row below un-ticks it. A form field keeps its native
+paste untouched, ticks nothing, and still names what it could not hold. Each
 flavor is named for what it is, which is load-bearing rather than cosmetic:
 tab-separated text is detected and named `.tsv` (at least two lines, every line
 carrying the same nonzero number of tabs, so prose with a stray tab is not a
@@ -152,25 +158,26 @@ JSON array of records now opens as a table rather than a tree, which is what
 this policy's sibling on the data-view page (`AUTO_VIEW`) always did by reading
 the content.
 
-**A third kind of offer reads the links out.** A copy off a web page splits
-across two clipboard flavors and the split is unhelpful in both directions:
-`text/plain` carries every link's label and not one of its addresses, and
-`text/html` carries the addresses inside markup nobody wants to read. Both were
-stageable and neither answered "just give me the links", which is a common thing
-to want and took several steps to get.
+**The bar's menu reads the links out.** A copy off a web page splits across the
+same two flavors and the split is unhelpful in both directions: `text/plain`
+carries every link's label and not one of its addresses, and `text/html` carries
+the addresses inside markup nobody wants to read. Both were stageable and neither
+answered "just give me the links", which is a common thing to want and took
+several steps to get.
 
-So the **Inside** row, a sibling of the two chip rows above and deliberately a
-third thing rather than a third meaning for either. The flavors bar offers
-another ENCODING the platform already made; the transform chip offers another
-TOOL for what was read; this makes a NEW ARTIFACT by reading structure out of
-one. It runs over the pending OFFERS as well as the staged items, and that is
-what makes the case it exists for one tap: an extraction that only saw the stage
-would charge a tap on the html offer first, to stage a document nobody wanted.
+It shipped that day as a coloured row of its own and lasted hours. Reading links
+out is a **derivation**, not a fourth format and not another tool, so it does not
+belong among the chips; it is also not wanted often enough to spend a band of a
+phone screen on, and two coloured bands over one paste read as clutter. It is a
+menu behind one discreet control on the bar's own header, which draws only when
+there is something in it. Scoped to the paste's flavors, since the bar is about
+the paste; a staged file that arrived some other way keeps its route through the
+reader's header.
 
 The reading is `StageIntake.linksOf(text, name)`, keyed on the name the intake
 already chose for the reason `transformKindOf` is. Markup (`.html`, `.xml`) goes
-through `DOMParser` and `a[href]`; the other three text kinds (`.md`, `.txt`)
-are scanned for markdown links, angle autolinks, and bare addresses, with the
+through `DOMParser` and `a[href]`; the other two text kinds (`.md`, `.txt`) are
+scanned for markdown links, angle autolinks, and bare addresses, with the
 markdown spans blanked first so one link is one row. `.csv` and `.js` are not
 sources: the first is the transform chip's, and a URL in a comment is not a link
 anybody asked for. An in-page `#anchor` and a `javascript:` handler are dropped,
@@ -186,12 +193,7 @@ pasteable `text,url` lines, and `transformKindOf` calls it rows, so the
 extraction lands ON the machinery that already exists rather than beside it. A
 rendered markdown list would be tappable and be a dead end. It is named for its
 source (`2026-08-28-paste.html` gives `2026-08-28-paste-links.csv`) so the pair
-reads as a pair, and an extraction already on the stage is not offered again,
-the flavors bar's own dedupe rule and needed for the same reason: the sources
-survive being extracted, so a second tap would otherwise stage a second
-identical table. The offer rides the reader's header too, since a single arrival
-opens on itself and the reader is then looking at the markup rather than at the
-row that carries the chip.
+reads as a pair.
 
 **The stage is also the transform workbench's door.** The workbench
 (`lib/alpineComponents/transform-workbench.js`) has shipped inside show-repo

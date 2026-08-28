@@ -1,11 +1,11 @@
-// Shoot the Inside row after a web-page paste. A copy off a page splits across
+// Shoot the flavors bar after a web-page paste. A copy off a page splits across
 // two clipboard flavors: text/plain holds every link's LABEL and not one of its
 // addresses, text/html holds the addresses inside markup nobody wants to read.
-// The stage takes the text, offers the html, and this row reads the links out
-// of the html WITHOUT staging it, which is what makes the case one tap.
+// The bar names both, ticks the one the stage took, and its menu reads the links
+// out of the html WITHOUT staging it.
 //
 //   npm run shot -- app/index.html --query "view=stage" \
-//     --script tools/render/scenarios/stage-links-inside.mjs --width 390
+//     --script tools/render/scenarios/stage-flavor-bar.mjs --width 390
 //
 // The event is synthesized for the reason stage-paste-flavors.mjs gives: the
 // sandbox has no clipboard, and what is under test is the reading of a
