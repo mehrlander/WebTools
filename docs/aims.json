@@ -1,0 +1,10 @@
+{
+  "mission": "Build powerful and elegant models that represent the material and its relationships.",
+  "goals": [
+    { "key": "traceable", "name": "Traceable", "text": "A reader walks back to source one visible stop at a time." },
+    { "key": "mechanical", "name": "Mechanical", "text": "A process can be improved if it is reproducible and interpretable." },
+    { "key": "attributable", "name": "Attributable", "text": "Judgment is declared where it is applied." },
+    { "key": "compact", "name": "Compact", "text": "Focused ideas are modular and preserve context." },
+    { "key": "connected", "name": "Connected", "text": "We see the relationships between ideas." }
+  ]
+}
