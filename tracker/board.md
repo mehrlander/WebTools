@@ -12,6 +12,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Live-confirm the BranchSessions query](tasks/live-confirm-graphql-queries-7maacy.md) · XS
 - 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md)
 - 🎫 [Audit the app's views for viewport breakpoints inside the content pane](tasks/pane-width-not-window-width-wnabwo.md) · S
+- 🎫 [pdf.flow's `start` does not survive the column's own layout](tasks/pdf-flow-start-does-not-hold-461ldz.md) · S
 - 🎫 [Pinch-zoom and pan for pdf-inspect's page view](tasks/pdf-inspect-pinch-zoom-5wz3kt.md)
 - 🎫 [Close open table perimeters in the pdf kit's lattice](tasks/pdf-lattice-open-perimeter-h4kx9r.md)
 - 🎫 [Draggable column boundaries with live reassignment, in pdf-inspect](tasks/pdf-table-splitter-page-q7vm2d.md) · S
