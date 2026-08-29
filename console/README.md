@@ -34,6 +34,12 @@ and survive the tab.
 - [`to-canvas.js`](to-canvas.js): unrelated one-off; renders the page into a
   scrollable canvas.
 
+[`LINEAGE.md`](LINEAGE.md) is where each mod came from: the bookmarklet or
+console tool it descends from, first seen 2023-10 onward, and the approach that
+was tried and dropped on the way. Read it before reworking a mod, since most of
+these are the third or fourth answer to their question and the earlier ones
+failed for reasons that have not changed.
+
 Adding a mod: create `mods/<name>.js`, add it to `MODS` in
 [`tools/build/console-suite.mjs`](../tools/build/console-suite.mjs) (the
 build fails if the manifest and directory disagree), cover it in
