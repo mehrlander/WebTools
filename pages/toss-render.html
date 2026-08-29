@@ -42,7 +42,11 @@
   alpineComponents/fab.js).
   Same-origin rendering means the page could read the stored token — which
   is exactly why this mode only accepts repos owned by the OWNERS allowlist
-  below. A crafted link to someone else's repo is refused outright, so the
+  below. Read the other way, that is what makes this mode the preview route
+  for a page that NEEDS the token: an un-deployed branch copy reaches the same
+  localStorage the deployed page will, so it can be handed over and used for
+  real before its merge lands, which a #gz= payload cannot do (opaque origin,
+  no storage). Measured 2026-08-29 against pages/shortcut-log.html. A crafted link to someone else's repo is refused outright, so the
   token can neither fetch it nor be exposed to it. The ':' before <path> is
   unambiguous because git forbids ':' in ref names. No @ref means the
   repo's default branch (and no ?use shim). The on-page field and a pasted

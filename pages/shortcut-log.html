@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Shortcut Log</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🧾</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  shortcut-log.html — what the device reported, read live, on the device.
+
+  THE PROBLEM THIS REPLACES. A shortcut that logs already returns itself, but the
+  only thing the person tapping sees is Show Result, which clips a long payload
+  to a few lines and does not scroll. So the useful half of a run, the result,
+  was visible to the session (which reads the log from git) and invisible to the
+  person who ran it. That asymmetry is backwards: they did the work.
+
+  ONE SURFACE, BOTH READERS. This renders the same log the session reads, from
+  the same source, so a run can be compared rather than described. Handed to
+  Show Web View it comes up as a sheet over Shortcuts, scrollable, with the run
+  that just happened at the top.
+
+  WHY A HOSTED URL AND NOT AN HTML PAYLOAD. Show Web View takes either, and the
+  difference decides whether this works at all: HTML text lands at a file://
+  origin, a different storage partition, where localStorage.ghToken is not. A
+  plain https URL keeps the page on its own origin and the stored token with it.
+  Measured 2026-08-26 by Probe-WebViewCaps; Dictate already takes this route.
+
+  THE BUILD CHIP IS THE POINT. Every install logs the ref it came from and every
+  stamped chain logs its own build id, so a row answers "is the copy that ran the
+  copy that was pushed" without anyone reasoning from silence. That question cost
+  this session hours before the stamp existed.
+
+  Payloads come in two shapes and both are rendered: JSON, which installs write,
+  and a `verb key=value` header line followed by a free payload, which runs write
+  because a result full of quotes broke the JSON form.
+
+  AND THE VERDICT, WHICH IS THE HALF THE STAMP COULD NOT SUPPLY. A logged build
+  id says which copy ran; it takes a second number to say whether that copy is
+  the current one, and getting it meant a checkout and a hand-run hash. So a run
+  is scored against shortcut-tools' published plists/builds.json: `current`, or
+  `stale -> <id>`. Silent while the manifest is unfetched, because an unknown
+  answer must never render as a good one.
+-->
+</head>
+<body class="min-h-dvh bg-base-200">
+<div class="max-w-3xl mx-auto p-3 flex flex-col gap-3">
+
+  <div class="flex items-center gap-2 flex-wrap">
+    <h1 class="text-xl font-bold">Shortcut Log</h1>
+    <span id="status" class="badge badge-ghost badge-sm">loading</span>
+    <button id="refresh" class="btn btn-xs ml-auto"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
+  </div>
+
+  <div id="signin" class="card bg-base-100 shadow-sm hidden">
+    <div class="card-body gap-2 p-4">
+      <h2 class="card-title text-base">Sign in</h2>
+      <p class="text-sm opacity-70">The log lives in a private repo, so this needs your GitHub token.
+        It is stored in this browser only, as <code>localStorage.ghToken</code>.</p>
+      <input id="tok" type="password" class="input input-bordered input-sm" placeholder="ghp_…">
+      <button id="save" class="btn btn-sm btn-primary self-start">Save</button>
+    </div>
+  </div>
+
+  <div id="rows" class="flex flex-col gap-2"></div>
+</div>
+
+<script>
+const REPO = 'mehrlander/web-tools-private';
+const DIR  = 'shortcuts/log';
+const SHOW = 25;
+// name -> build id for every installable chain, published by tools/plist.py.
+// A run logs which copy ran; this is the only thing that says whether that
+// copy is the current one, which is the question the stamp was added to answer
+// and could not answer alone.
+const BUILDS = 'https://cdn.jsdelivr.net/gh/mehrlander/shortcut-tools@main/plists/builds.json';
+
+const el = id => document.getElementById(id);
+const ls = {
+  get(k) { try { return localStorage.getItem(k) } catch { return null } },
+  set(k, v) { try { localStorage.setItem(k, v) } catch {} },
+};
+const token = () => ls.get('ghToken') || '';
+const headers = () => token() ? { Authorization: 'Bearer ' + token() } : {};
+
+const node = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;   // never innerHTML: payloads are arbitrary
+  return n;
+};
+
+// A `verb key=value …` first line with the payload on the lines after. Runs use
+// this because a result carrying quotes broke the JSON form it replaced.
+function header(text) {
+  const nl = text.indexOf('\n');
+  const first = nl < 0 ? text : text.slice(0, nl);
+  const rest = nl < 0 ? '' : text.slice(nl + 1);
+  if (!/^\w+(\s+\w+=\S*)+\s*$/.test(first)) return null;
+  const [verb, ...pairs] = first.trim().split(/\s+/);
+  const fields = {};
+  for (const p of pairs) { const i = p.indexOf('='); fields[p.slice(0, i)] = p.slice(i + 1); }
+  return { verb, fields, rest: rest.trim() };
+}
+
+function shape(raw) {
+  try {
+    const j = JSON.parse(raw);
+    if (j && typeof j === 'object') {
+      const { op = '?', name = '', ...rest } = j;
+      const from = rest.from ? (String(rest.from).match(/\/shortcut-tools\/(.+?)\/plists\//) || [])[1] : null;
+      if (from) rest.from = /^[0-9a-f]{40}$/.test(from) ? from.slice(0, 7) : from;
+      return { verb: op, name, fields: rest, rest: '' };
+    }
+  } catch {}
+  const h = header(raw);
+  if (h) return { verb: h.verb, name: h.fields.name || '', fields: (delete h.fields.name, h.fields), rest: h.rest };
+  return { verb: 'text', name: '', fields: {}, rest: raw };
+}
+
+const parse = stem => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})(\d{2})$/.exec(stem);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : null;
+};
+const when = stem => {
+  const d = parse(stem);
+  if (!d) return stem;
+  const p2 = n => String(n).padStart(2, '0');
+  return `${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+};
+
+// "Did mine land" is the question this page is opened to answer, and it is
+// asked seconds after a tap. So an entry logged in the last five minutes says
+// how long ago in words. It claims recency, never ownership: the page cannot
+// know whose run it was, and a chip reading "yours" would be a guess.
+const RECENT = 5 * 60 * 1000;
+const ago = stem => {
+  const d = parse(stem);
+  if (!d) return null;
+  const s = (Date.now() - d) / 1000;
+  if (s < 0 || s * 1000 > RECENT) return null;
+  return s < 45 ? 'just now' : `${Math.round(s / 60)} min ago`;
+};
+const TONE = { run: 'badge-primary', import: 'badge-success', text: 'badge-ghost' };
+
+let builds = null;         // null until fetched: unknown is not "current"
+let buildsOnce = null;     // one fetch per page, awaited before the first paint
+// Public repo, so no token. A failure just means no verdict chip: an unknown
+// answer must not render as a good one.
+const loadBuilds = () => buildsOnce ||= fetch(BUILDS, { cache: 'no-store' })
+  .then(r => r.ok ? r.json() : null).then(b => { builds = b }).catch(() => {});
+
+// A payload is usually JSON carrying one enormous base64 field. Printing it raw
+// buries every row under it, which is the Show Result defect this page replaces,
+// only with scrolling. So print the STRUCTURE and elide the noise: a long string
+// keeps its head and reports its length, which is what a person actually reads
+// it for. `raw` is one tap away, never lost.
+const CAP = 96;
+function elide(v) {
+  if (typeof v === 'string') return v.length > CAP ? v.slice(0, 48) + `\u2026[${v.length}]` : v;
+  if (Array.isArray(v)) return v.map(elide);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, elide(x)]));
+  return v;
+}
+// Runs nest JSON inside JSON as a string, so one parse is not enough to see in.
+function deepen(v) {
+  if (typeof v === 'string' && /^\s*[[{]/.test(v)) {
+    try { return deepen(JSON.parse(v)) } catch { return v }
+  }
+  if (Array.isArray(v)) return v.map(deepen);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deepen(x)]));
+  return v;
+}
+function pretty(raw) {
+  try { return JSON.stringify(elide(deepen(JSON.parse(raw))), null, 2) } catch { return null }
+}
+
+const size = n => n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB';
+
+// Collapsed to a few lines by default so the row shape survives a big payload.
+function body(raw) {
+  const wrap = node('div', 'flex flex-col gap-1');
+  const nice = pretty(raw);
+  const pre = node('pre', 'bg-base-200 rounded-box p-2 text-xs whitespace-pre-wrap break-all');
+  const bar = node('div', 'flex items-center gap-2');
+  let open = false, isRaw = !nice;
+
+  const paint = () => {
+    pre.textContent = isRaw ? raw : nice;
+    pre.classList.toggle('max-h-24', !open);
+    pre.classList.toggle('overflow-hidden', !open);
+    pre.classList.toggle('max-h-96', open);
+    pre.classList.toggle('overflow-y-auto', open);
+    more.textContent = open ? 'less' : 'more';
+  };
+  const more = node('button', 'btn btn-xs');
+  more.onclick = () => { open = !open; paint() };
+  bar.append(node('span', 'badge badge-ghost badge-sm font-mono', size(raw.length)), more);
+  if (nice) {
+    const t = node('button', 'btn btn-xs btn-ghost', 'raw');
+    t.onclick = () => { isRaw = !isRaw; t.textContent = isRaw ? 'pretty' : 'raw'; paint() };
+    bar.append(t);
+  }
+  paint();
+  wrap.append(pre, bar);
+  return wrap;
+}
+
+function card(stem, raw, fresh) {
+  const { verb, name, fields, rest } = shape(raw);
+  const c = node('div', 'card bg-base-100 shadow-sm'
+    + (fresh || ago(stem) ? ' ring-2 ring-primary' : ''));
+  const b = node('div', 'card-body gap-2 p-3');
+  const head = node('div', 'flex items-center gap-2 flex-wrap');
+  head.append(node('span', 'badge badge-sm ' + (TONE[verb] || 'badge-ghost'), verb));
+  if (name) head.append(node('span', 'font-bold', name));
+  for (const [k, v] of Object.entries(fields))
+    head.append(node('span', 'badge badge-outline badge-sm font-mono', `${k}=${v}`));
+  // The verdict the build id exists for. Silent while unknown, because
+  // "current" and "not looked up" must never render the same.
+  const now = builds && name && builds[name];
+  if (now && fields.build)
+    head.append(fields.build === now
+      ? node('span', 'badge badge-success badge-sm', 'current')
+      : node('span', 'badge badge-warning badge-sm font-mono', 'stale \u2192 ' + now));
+  const fresh2 = ago(stem);
+  head.append(node('span', 'text-xs opacity-50 ml-auto', when(stem)));
+  if (fresh2) head.append(node('span', 'badge badge-sm badge-info', fresh2));
+  b.append(head);
+  if (rest) b.append(body(rest));
+  c.append(b);
+  return c;
+}
+
+let seen = null;
+
+async function load() {
+  if (!token()) { el('signin').classList.remove('hidden'); el('status').textContent = 'no token'; return; }
+  el('signin').classList.add('hidden');
+  el('status').textContent = 'loading';
+  const manifest = loadBuilds();
+  try {
+    const list = await fetch(`https://api.github.com/repos/${REPO}/contents/${DIR}`,
+                             { headers: headers(), cache: 'no-store' }).then(r => {
+      if (!r.ok) throw new Error(r.status === 404 ? 'not found or no access' : 'HTTP ' + r.status);
+      return r.json();
+    });
+    const newest = list.filter(f => f.name.endsWith('.json'))
+                       .sort((a, b) => b.name.localeCompare(a.name)).slice(0, SHOW);
+    const bodies = await Promise.all(newest.map(f =>
+      fetch(f.download_url, { cache: 'no-store' }).then(r => r.text()).catch(() => '')));
+    await manifest;   // in flight since before the listing: costs nothing, and
+                      // a verdict that appears 15s late reads as an absent one
+    const rows = el('rows');
+    rows.textContent = '';
+    newest.forEach((f, i) => {
+      const stem = f.name.replace(/\.json$/, '');
+      rows.append(card(stem, bodies[i].trim(), seen !== null && !seen.has(f.name)));
+    });
+    seen = new Set(newest.map(f => f.name));
+    el('status').className = 'badge badge-success badge-sm';
+    el('status').textContent = newest.length + ' entries';
+  } catch (e) {
+    el('status').className = 'badge badge-error badge-sm';
+    el('status').textContent = String(e.message || e);
+  }
+}
+
+el('save').onclick = () => { ls.set('ghToken', el('tok').value.trim()); load(); };
+el('refresh').onclick = load;
+load();
+setInterval(load, 15000);
+</script>
+</body>
+</html>

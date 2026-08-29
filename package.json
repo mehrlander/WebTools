@@ -57,6 +57,8 @@
     "test:shot-warnings": "node tools/test/shot-warnings.mjs",
     "test:data-view-links": "node tools/test/data-view-links.mjs",
     "tests-index": "node tools/build/tests-index.mjs",
+    "test:shortcut-log": "node tools/test/shortcut-log-page.mjs",
+    "test:bench-page": "node tools/test/bench-page.mjs",
     "test:playground": "node tools/test/playground-pass.mjs",
     "tools-index": "node tools/build/tools-index.mjs",
     "doc-growth": "python3 scripts/doc-growth.py"
@@ -84,6 +86,7 @@
     "idb-keyval": "^6.2.2",
     "jquery": "^3.7.1",
     "jsdom": "^29.1.0",
+    "js-yaml": "^4.1.0",
     "jszip": "^3.10.1",
     "marked": "^18.0.6",
     "papaparse": "^5.5.3",
