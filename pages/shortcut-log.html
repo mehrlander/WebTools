@@ -37,6 +37,13 @@
   Payloads come in two shapes and both are rendered: JSON, which installs write,
   and a `verb key=value` header line followed by a free payload, which runs write
   because a result full of quotes broke the JSON form.
+
+  AND THE VERDICT, WHICH IS THE HALF THE STAMP COULD NOT SUPPLY. A logged build
+  id says which copy ran; it takes a second number to say whether that copy is
+  the current one, and getting it meant a checkout and a hand-run hash. So a run
+  is scored against shortcut-tools' published plists/builds.json: `current`, or
+  `stale -> <id>`. Silent while the manifest is unfetched, because an unknown
+  answer must never render as a good one.
 -->
 </head>
 <body class="min-h-dvh bg-base-200">
@@ -65,6 +72,11 @@
 const REPO = 'mehrlander/web-tools-private';
 const DIR  = 'shortcuts/log';
 const SHOW = 25;
+// name -> build id for every installable chain, published by tools/plist.py.
+// A run logs which copy ran; this is the only thing that says whether that
+// copy is the current one, which is the question the stamp was added to answer
+// and could not answer alone.
+const BUILDS = 'https://cdn.jsdelivr.net/gh/mehrlander/shortcut-tools@main/plists/builds.json';
 
 const el = id => document.getElementById(id);
 const ls = {
@@ -114,6 +126,13 @@ const when = stem => {
   return m ? `${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}` : stem;
 };
 const TONE = { run: 'badge-primary', import: 'badge-success', text: 'badge-ghost' };
+
+let builds = null;         // null until fetched: unknown is not "current"
+let buildsOnce = null;     // one fetch per page, awaited before the first paint
+// Public repo, so no token. A failure just means no verdict chip: an unknown
+// answer must not render as a good one.
+const loadBuilds = () => buildsOnce ||= fetch(BUILDS, { cache: 'no-store' })
+  .then(r => r.ok ? r.json() : null).then(b => { builds = b }).catch(() => {});
 
 // A payload is usually JSON carrying one enormous base64 field. Printing it raw
 // buries every row under it, which is the Show Result defect this page replaces,
@@ -180,6 +199,13 @@ function card(stem, raw, fresh) {
   if (name) head.append(node('span', 'font-bold', name));
   for (const [k, v] of Object.entries(fields))
     head.append(node('span', 'badge badge-outline badge-sm font-mono', `${k}=${v}`));
+  // The verdict the build id exists for. Silent while unknown, because
+  // "current" and "not looked up" must never render the same.
+  const now = builds && name && builds[name];
+  if (now && fields.build)
+    head.append(fields.build === now
+      ? node('span', 'badge badge-success badge-sm', 'current')
+      : node('span', 'badge badge-warning badge-sm font-mono', 'stale \u2192 ' + now));
   head.append(node('span', 'text-xs opacity-50 ml-auto', when(stem)));
   b.append(head);
   if (rest) b.append(body(rest));
@@ -193,6 +219,7 @@ async function load() {
   if (!token()) { el('signin').classList.remove('hidden'); el('status').textContent = 'no token'; return; }
   el('signin').classList.add('hidden');
   el('status').textContent = 'loading';
+  const manifest = loadBuilds();
   try {
     const list = await fetch(`https://api.github.com/repos/${REPO}/contents/${DIR}`,
                              { headers: headers(), cache: 'no-store' }).then(r => {
@@ -203,6 +230,8 @@ async function load() {
                        .sort((a, b) => b.name.localeCompare(a.name)).slice(0, SHOW);
     const bodies = await Promise.all(newest.map(f =>
       fetch(f.download_url, { cache: 'no-store' }).then(r => r.text()).catch(() => '')));
+    await manifest;   // in flight since before the listing: costs nothing, and
+                      // a verdict that appears 15s late reads as an absent one
     const rows = el('rows');
     rows.textContent = '';
     newest.forEach((f, i) => {

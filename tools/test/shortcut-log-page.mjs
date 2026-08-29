@@ -47,6 +47,10 @@ const IMPORT = JSON.stringify({ op: 'import', name: 'Run-Pick',
   from: 'https://raw.githubusercontent.com/mehrlander/shortcut-tools/1136303175657' +
         '0f309858118c8562681161eaef6/plists/Run-Pick.plist' });
 
+// Swapped per case below: the run logs build=b07361d, so this decides whether
+// the page should call it current, stale, or nothing at all.
+let manifest = { 'Run-Pick': 'b07361d' };
+
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
 await ctx.addInitScript(() => { try { localStorage.setItem('ghToken', 'stub'); } catch {} });
@@ -65,6 +69,11 @@ await page.route('**/*', async route => {
   }
   if (url.endsWith('/__log/run')) return route.fulfill({ status: 200, body: RUN });
   if (url.endsWith('/__log/import')) return route.fulfill({ status: 200, body: IMPORT });
+  if (url.includes('plists/builds.json'))
+    return manifest === null
+      ? route.fulfill({ status: 404, body: 'nope' })
+      : route.fulfill({ status: 200, contentType: 'application/json',
+                        body: JSON.stringify(manifest) });
   if (url.startsWith('https://cdn.jsdelivr.net')) {
     if (!cdn.has(url)) {
       const r = await fetch(url);
@@ -133,6 +142,35 @@ ok('an install is typed as an import', r.imp.badges.includes('import'), r.imp.ba
 ok('an install shows the ref, not the URL', r.imp.badges.includes('from=1136303'),
    r.imp.badges.join(','));
 ok('status reports the count', /2 entries/.test(r.status), r.status);
+
+// THE VERDICT. A build id alone says which copy ran; scoring it against the
+// published manifest is what says whether that copy is the current one, which
+// is the question the stamp was added to answer and could not answer alone.
+const badges = async () => {
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForFunction(() => document.querySelectorAll('#rows > div').length > 0,
+                             { timeout: 8000 });
+  return page.evaluate(() =>
+    [...document.querySelectorAll('#rows > div')[0].querySelectorAll('.badge')]
+      .map(b => b.textContent));
+};
+
+const same = await badges();
+ok('a run matching the manifest is marked current', same.includes('current'), same.join(','));
+
+manifest = { 'Run-Pick': 'ccb6cfc' };
+const moved = await badges();
+ok('a run behind the manifest is marked stale, and names the current id',
+   moved.includes('stale \u2192 ccb6cfc'), moved.join(','));
+ok('and it is not also called current', !moved.includes('current'), moved.join(','));
+
+// The failure that would make this worse than no verdict: an unfetched
+// manifest rendering as a good answer.
+manifest = null;
+const blank = await badges();
+ok('an unreachable manifest yields no verdict at all',
+   !blank.includes('current') && !blank.some(b => b.startsWith('stale')), blank.join(','));
+ok('and the row still renders', blank.includes('build=b07361d'), blank.join(','));
 
 await browser.close(); server.close();
 console.log(failures.length ? `\n${failures.length} failed` : '\nall passed');
