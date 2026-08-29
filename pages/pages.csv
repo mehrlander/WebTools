@@ -1,6 +1,6 @@
 top,group,label,title,href,thumb,code,note
 main,,annotate,Annotate,annotate.html,thumbs/annotate.png,https://github.com/mehrlander/web-tools/blob/main/pages/annotate.html,
-main,,bench,Bench,bench.html,thumbs/bench.png,https://github.com/mehrlander/web-tools/blob/main/pages/bench.html,"A page a shortcut calls into rather than opens: real libraries loaded once from the CDN, a heap that survives between calls, and a live log of every call that lands."
+main,,bench,Bench,bench.html,thumbs/bench.png,https://github.com/mehrlander/web-tools/blob/main/pages/bench.html,
 main,,branch,Branch,branch.html,thumbs/branch.png,https://github.com/mehrlander/web-tools/blob/main/pages/branch.html,
 main,,chat-results,Chat Search Results,chat-results.html,thumbs/chat-results.png,https://github.com/mehrlander/web-tools/blob/main/pages/chat-results.html,
 main,,citations,Citations,citations.html,thumbs/citations.png,https://github.com/mehrlander/web-tools/blob/main/pages/citations.html,
