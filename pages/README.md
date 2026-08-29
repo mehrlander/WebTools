@@ -30,6 +30,7 @@ the link-dense text twin of the visual index above.
 | `launcher` | Popup Launcher · setup | [view](https://mehrlander.github.io/web-tools/pages/launcher.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/launcher.html) |
 | `links` | Links | [view](https://mehrlander.github.io/web-tools/pages/links.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/links.html) |
 | `pdf-inspect` | PDF Inspect | [view](https://mehrlander.github.io/web-tools/pages/pdf-inspect.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/pdf-inspect.html) |
+| `peek` | Peek — DOM under a selection | [view](https://mehrlander.github.io/web-tools/pages/peek.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/peek.html) |
 | `repo-atlas` | Repo Atlas | [view](https://mehrlander.github.io/web-tools/pages/repo-atlas.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/repo-atlas.html) |
 | `review` | Review | [view](https://mehrlander.github.io/web-tools/pages/review.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/review.html) |
 | `session` | Session | [view](https://mehrlander.github.io/web-tools/pages/session.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/session.html) |
@@ -46,7 +47,6 @@ the link-dense text twin of the visual index above.
 | `console-kit-demo` | Console kit + debugConsole demo | [view](https://mehrlander.github.io/web-tools/pages/demos/console-kit-demo.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/demos/console-kit-demo.html) |
 | `cross-repo-read-demo` | cross-repo read() — data transfer demo | [view](https://mehrlander.github.io/web-tools/pages/demos/cross-repo-read-demo.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/demos/cross-repo-read-demo.html) |
 | `mention-demo` | @-mention picker — living demo | [view](https://mehrlander.github.io/web-tools/pages/demos/mention-demo.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/demos/mention-demo.html) |
-| `peek-demo` | Peek — DOM under a selection | [view](https://mehrlander.github.io/web-tools/pages/demos/peek-demo.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/demos/peek-demo.html) |
 | `prebuild-demo` | Pre-build demo — one import, whole library | [view](https://mehrlander.github.io/web-tools/pages/demos/prebuild-demo.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/demos/prebuild-demo.html) |
 | `sheet-modal-demo` | sheet-modal demo | [view](https://mehrlander.github.io/web-tools/pages/demos/sheet-modal-demo.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/demos/sheet-modal-demo.html) |
 | `vanilla-bundle-demo` | vanilla-bundle — living demo | [view](https://mehrlander.github.io/web-tools/pages/demos/vanilla-bundle-demo.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/demos/vanilla-bundle-demo.html) |

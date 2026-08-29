@@ -827,7 +827,7 @@ field report and the fix, and this is that fix extracted. Self-contained on
 purpose, and it does duplicate about twenty lines of `console/base.js`'s `sig`
 and `rect`: base.js is a DevTools paste installing a dozen globals, this is a
 `gh.load` kit installing one, and sharing would mean one adopting the other's
-distribution. Fixtures at [`pages/demos/peek-demo.html`](../../pages/demos/peek-demo.html);
+distribution. The page half is [`pages/peek.html`](../../pages/peek.html), whose fixtures are chosen so each structure buries the thing you would actually want several levels under whatever your finger lands on;
 the browser facts (pointer path, outlines, auto-dock) are driven by
 `tools/render/scenarios/peek-walk.mjs`, since jsdom has no layout.
 

@@ -1,7 +1,7 @@
 // Drive kits/peek.js: arm, tap the deepest list item, then tap the same point
 // three more times and watch the chain index climb.
 //
-//   npm run shot -- pages/demos/peek-demo.html --script tools/render/scenarios/peek-walk.mjs
+//   npm run shot -- pages/peek.html --script tools/render/scenarios/peek-walk.mjs
 //
 // Prints the atom and selector at each step. The last shot is left on the
 // third ancestor, which is where the outline is visibly larger than the tap.

@@ -148,7 +148,7 @@ test('subject: the staged aim outranks every filed note', () => {
   assert.match(A._state.serialPre.textContent, /^li#li1/, 'the aim wins');
 });
 
-test('subject: ending the mode drops the aim back to the note', () => {
+test('subject: ending the mode keeps the reading and drops only the outline', () => {
   const w = boot();
   const A = w.Annotate;
   A.add(elTarget(w, '#p1'), 'filed');
@@ -159,7 +159,24 @@ test('subject: ending the mode drops the aim back to the note', () => {
 
   A.startPick();          // arms a mode
   A.notePage();           // endMode() runs on the way through
-  assert.equal(A._state.aimEl, null, 'the aim is cleared with the mode');
+  assert.equal(A._state.aimEl, null, 'the live aim goes with the mode');
+  assert.equal(A._state.holdEl, w.document.getElementById('li1'), 'the subject is held');
+  A.setReading('dom');
+  assert.match(A._state.serialPre.textContent, /^li#li1/, 'and still reads');
+});
+
+test('subject: choosing a note drops the held aim', () => {
+  const w = boot();
+  const A = w.Annotate;
+  A.add(elTarget(w, '#p1'), 'filed');
+  A.expand(true);
+  A._state.holdEl = w.document.getElementById('li1');
+  A.setReading('dom');
+  assert.match(A._state.serialPre.textContent, /^li#li1/);
+
+  A.select(A.items[0].id);
+  assert.equal(A._state.holdEl, null);
+  assert.match(A._state.serialPre.textContent, /^p#p1/);
 });
 
 test('subject: a staged rectangle reads as a region, not a node', () => {
