@@ -121,9 +121,28 @@ function shape(raw) {
   return { verb: 'text', name: '', fields: {}, rest: raw };
 }
 
-const when = stem => {
+const parse = stem => {
   const m = /^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})(\d{2})$/.exec(stem);
-  return m ? `${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}` : stem;
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : null;
+};
+const when = stem => {
+  const d = parse(stem);
+  if (!d) return stem;
+  const p2 = n => String(n).padStart(2, '0');
+  return `${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+};
+
+// "Did mine land" is the question this page is opened to answer, and it is
+// asked seconds after a tap. So an entry logged in the last five minutes says
+// how long ago in words. It claims recency, never ownership: the page cannot
+// know whose run it was, and a chip reading "yours" would be a guess.
+const RECENT = 5 * 60 * 1000;
+const ago = stem => {
+  const d = parse(stem);
+  if (!d) return null;
+  const s = (Date.now() - d) / 1000;
+  if (s < 0 || s * 1000 > RECENT) return null;
+  return s < 45 ? 'just now' : `${Math.round(s / 60)} min ago`;
 };
 const TONE = { run: 'badge-primary', import: 'badge-success', text: 'badge-ghost' };
 
@@ -192,7 +211,8 @@ function body(raw) {
 
 function card(stem, raw, fresh) {
   const { verb, name, fields, rest } = shape(raw);
-  const c = node('div', 'card bg-base-100 shadow-sm' + (fresh ? ' ring-2 ring-primary' : ''));
+  const c = node('div', 'card bg-base-100 shadow-sm'
+    + (fresh || ago(stem) ? ' ring-2 ring-primary' : ''));
   const b = node('div', 'card-body gap-2 p-3');
   const head = node('div', 'flex items-center gap-2 flex-wrap');
   head.append(node('span', 'badge badge-sm ' + (TONE[verb] || 'badge-ghost'), verb));
@@ -206,7 +226,9 @@ function card(stem, raw, fresh) {
     head.append(fields.build === now
       ? node('span', 'badge badge-success badge-sm', 'current')
       : node('span', 'badge badge-warning badge-sm font-mono', 'stale \u2192 ' + now));
+  const fresh2 = ago(stem);
   head.append(node('span', 'text-xs opacity-50 ml-auto', when(stem)));
+  if (fresh2) head.append(node('span', 'badge badge-sm badge-info', fresh2));
   b.append(head);
   if (rest) b.append(body(rest));
   c.append(b);

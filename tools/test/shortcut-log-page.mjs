@@ -47,6 +47,14 @@ const IMPORT = JSON.stringify({ op: 'import', name: 'Run-Pick',
   from: 'https://raw.githubusercontent.com/mehrlander/shortcut-tools/1136303175657' +
         '0f309858118c8562681161eaef6/plists/Run-Pick.plist' });
 
+// Dated at load time, since the recency chip is the point of the freshest row:
+// a fixture with a hard-coded date would age out of it and stop testing it.
+const stampOf = (d) => [d.getFullYear(), d.getMonth() + 1, d.getDate()]
+  .map((n, i) => String(n).padStart(i ? 2 : 4, '0')).join('-') + '-'
+  + [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join('');
+const RUN_STEM = stampOf(new Date(Date.now() - 20_000));
+const OLD_STEM = '2026-08-29-095546';
+
 // Swapped per case below: the run logs build=b07361d, so this decides whether
 // the page should call it current, stale, or nothing at all.
 let manifest = { 'Run-Pick': 'b07361d' };
@@ -63,7 +71,7 @@ await page.route('**/*', async route => {
   const url = route.request().url();
   if (url.includes('api.github.com')) {
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
-      { name: '2026-08-29-095617.json', download_url: origin + '/__log/run' },
+      { name: RUN_STEM + '.json', download_url: origin + '/__log/run' },
       { name: '2026-08-29-095546.json', download_url: origin + '/__log/import' },
     ]) });
   }
@@ -97,6 +105,7 @@ const r = await page.evaluate(() => {
     pre: (c.querySelector('pre') || {}).textContent || '',
     clipped: !!c.querySelector('pre.max-h-24.overflow-hidden'),
     btns: [...c.querySelectorAll('button')].map(b => b.textContent),
+    ringed: c.className.includes('ring-primary'),
   });
   return { count: cards.length, run: read(cards[0]), imp: read(cards[1]),
            status: document.getElementById('status').textContent,
@@ -142,6 +151,15 @@ ok('an install is typed as an import', r.imp.badges.includes('import'), r.imp.ba
 ok('an install shows the ref, not the URL', r.imp.badges.includes('from=1136303'),
    r.imp.badges.join(','));
 ok('status reports the count', /2 entries/.test(r.status), r.status);
+
+// "Did mine land" is what the page is opened to answer, seconds after a tap.
+ok('an entry logged seconds ago says so', r.run.badges.includes('just now'),
+   r.run.badges.join(','));
+ok('and it is ringed', r.run.ringed);
+// The claim is recency, not ownership: an older entry makes neither.
+ok('an older entry claims nothing', !r.imp.badges.some(b => /just now|min ago/.test(b)),
+   r.imp.badges.join(','));
+ok('and is not ringed', !r.imp.ringed);
 
 // THE VERDICT. A build id alone says which copy ran; scoring it against the
 // published manifest is what says whether that copy is the current one, which
