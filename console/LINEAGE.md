@@ -6,6 +6,12 @@ longer exists. This file is the join: one row per mod, the earlier tool it
 descends from, and **the approach that was tried and abandoned on the way**,
 which is the part worth having.
 
+The live counterpart is the
+[Console Suite Guide](https://mehrlander.github.io/web-tools/pages/console-playground.html),
+which `help()` opens: it documents what each mod does and gives it fixtures to
+bite on. Each mod's card there carries a one-line "came from" pointing back
+here. This file is the other half, which is why each one was shaped that way.
+
 It exists because the suite reads as though it were designed. It was not. Most
 of these mods are the third or fourth answer to a question first asked in 2023,
 and knowing which answers already failed is the difference between changing one
