@@ -644,18 +644,45 @@ grows upward from the card's bottom edge, pinning that edge first so a card
 that has been dragged (which re-anchors it to the top) grows the same
 direction as one that has not.
 
-What opens is one window of a fixed height, the same for all three readings and
-the same empty as full, with the body scrolling inside it: the list, or either
-serialization exactly as Copy hands it over, of the whole set or of the one
-selected note, which is the reading no other surface offers. The window is 55%
-of the viewport and never past 440px, so the card stays a window over the
-document rather than a takeover of it. One row carries both choices, which
-reading and what it is a reading of: the three format chips, then a scope chip
-labelled by the selection (`Note 2`) that swaps on a tap, then a copy key,
-which is a glyph and no word because the chips beside it are the qualifier. The
-footer is Save jot and Clear, and there is no status line: Save jot reports on
-its own label, and every other message it used to carry announced something
-the reader had just watched happen and then stayed.
+What opens is one window of a fixed height, the same for every reading and the
+same empty as full, with the body scrolling inside it. The window is 55% of the
+viewport and never past 440px, so the card stays a window over the document
+rather than a takeover of it. One row carries the format chips and then a copy
+key, which is a glyph and no word because the chips beside it are the
+qualifier. The footer is Save jot and Clear, and there is no status line: Save
+jot reports on its own label, and every other message it used to carry
+announced something the reader had just watched happen and then stayed.
+
+**Four readings, and the fourth is not of the set.** The list, then markdown and
+JSON exactly as Copy hands them over, then **DOM** (2026-08-29): the element the
+note is pinned to, its selector and how many nodes that selector matches, its
+box, layout and tree position, then its subtree and the ancestors containing it.
+
+Structure cannot be a reading of the set, because "what is this element and what
+contains it" is a question about one node and eight notes have no single answer
+to it. So the DOM reading keys on the SELECTED note, falling back to the draft
+being written and then to the most recent note; a prompt is what it shows only
+when there is none of the three. That fallback is the part that was measured
+wrong first: with one note filed and nothing selected, the pane showed
+instructions where an answer was expected.
+
+Two consequences of not being of the set. An empty set does not empty it, where
+markdown and JSON go bare. And the copy key is offered on a draft with nothing
+filed yet, since `copyShown` takes what is on screen.
+
+`kits/peek.js` is what it calls, and it is a soft dependency the way `dictate.js`
+is: load `annotate.js` alone and every other reading works with the chip simply
+absent. Peek's computations read the element's own document and need no
+`enable()`, so nothing of Peek's own UI is mounted by asking. Both loaders chain
+the trio, and the FAB's `_loadAnnotate` treats either extra as best-effort: a
+failure costs one chip, not the notes.
+
+**The element pick steps up.** A second tap within 14px of the last one selects
+the parent, then its parent, wrapping at `<body>`: the same gesture and the same
+slop as `peek.js`, and the fix for the complaint this mode always invited, that
+a tap lands on the smallest node under the finger. Section mode is exempt, since
+its own resolve already answers with the heading that owns a section and
+stepping would leave the aim the chip is named for.
 
 **The FAB drawer's Notes tab is retired** (2026-08-25). It was the only place a
 set could be READ until the expander existed, which made it a second
@@ -755,6 +782,13 @@ Two things it does that are easy to get wrong, both measured on 2026-08-29:
   strip instead of stepping up. It docks off the *point*, not the selection: the
   point is fixed for the length of a walk, where the selection grows to fill the
   screen and would flip the dock under the reader.
+
+**It is a library before it is a UI.** Every computation reads the element's own
+document rather than the enabled one, so `facts()`, `tree()`, `html()`,
+`chainOf()`, `atom()` and `selectorFor()` work on any element in any document
+with no `enable()`, no cover and no panel. That is what `annotate.js`'s DOM
+reading calls; reading the enabled document here would have made the whole kit
+conditional on its own UI.
 
 The pointer path is a full-screen cover taking `pointerup`, with
 `elementsFromPoint` to see past it. `console/mods/pick.js` does the same job off

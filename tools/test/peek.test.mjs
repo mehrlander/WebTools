@@ -144,6 +144,24 @@ test('json: carries the chain and the index it was read at', () => {
   assert.equal(j.atom, w.Peek.facts(w.Peek.current()).atom);
 });
 
+// The library contract annotate depends on: no enable(), no cover, no panel,
+// and every computation reads the element's own document.
+test('library: facts, tree and the chain work with no enable()', () => {
+  const { window } = makeWindow({ html: PAGE });
+  window.eval(readFileSync(path.join(repoRoot, 'lib/vanilla-bundle.js'), 'utf8'));
+  window.eval(readFileSync(path.join(repoRoot, 'lib/kits/peek.js'), 'utf8'));
+  assert.equal(window.Peek.enabled, false);
+  const row = window.document.querySelectorAll('tbody tr')[1];
+  const f = window.Peek.facts(row);
+  assert.equal(f.matches, 1);
+  assert.equal(window.document.querySelector(f.selector), row);
+  assert.equal(window.Peek.tree(row).split('\n')[0], 'tr');
+  assert.equal(window.Peek.chainOf(row).at(-1).tagName, 'BODY');
+  assert.equal(window.Peek.atom(row), 'tr');
+  // Nothing was mounted by asking.
+  assert.equal(window.document.querySelectorAll('[data-peek-ui]').length, 0);
+});
+
 test('disable: removes every node it added', () => {
   const w = boot();
   w.Peek.select(deepest(w, 'Two'));

@@ -53,6 +53,7 @@
     await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
   await gh.load('kits/dictate.js');     // the voice buffer; annotate reads it at the point of use
+  await gh.load('kits/peek.js');        // the DOM reading behind the card's fourth chip
   await gh.load('kits/annotate.js');
   const { marked } = await import('https://cdn.jsdelivr.net/npm/marked@12/+esm');
 
