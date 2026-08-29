@@ -55,6 +55,9 @@ const stampOf = (d) => [d.getFullYear(), d.getMonth() + 1, d.getDate()]
 const RUN_STEM = stampOf(new Date(Date.now() - 20_000));
 const OLD_STEM = '2026-08-29-095546';
 
+// A private repo answers 404, not 401, when the token cannot see it.
+let access = 200;
+
 // Swapped per case below: the run logs build=b07361d, so this decides whether
 // the page should call it current, stale, or nothing at all.
 let manifest = { 'Run-Pick': 'b07361d' };
@@ -67,9 +70,12 @@ const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 
 const cdn = new Map();
-await page.route('**/*', async route => {
+const handler = async route => {
   const url = route.request().url();
-  if (url.includes('api.github.com')) {
+  if (url.includes('api.github.com/repos/mehrlander/web-tools-private')) {
+    if (access === 404)
+      return route.fulfill({ status: 404, contentType: 'application/json',
+                             body: JSON.stringify({ message: 'Not Found' }) });
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
       { name: RUN_STEM + '.json', download_url: origin + '/__log/run' },
       { name: '2026-08-29-095546.json', download_url: origin + '/__log/import' },
@@ -82,6 +88,18 @@ await page.route('**/*', async route => {
       ? route.fulfill({ status: 404, body: 'nope' })
       : route.fulfill({ status: 200, contentType: 'application/json',
                         body: JSON.stringify(manifest) });
+  // The boot chain, served from this checkout: gh-api.js by URL, then each
+  // gh.load() through the contents API. Hitting the real CDN and the real API
+  // would make this check depend on the network and on rate limits.
+  if (url.includes('/lib/gh-api.js'))
+    return route.fulfill({ status: 200, contentType: 'application/javascript',
+                           body: await readFile(path.join(root, 'lib/gh-api.js')) });
+  const lib = url.match(/api\.github\.com\/repos\/mehrlander\/web-tools\/contents\/(lib\/[^?]+)/);
+  if (lib) {
+    const buf = await readFile(path.join(root, decodeURIComponent(lib[1])));
+    return route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ content: buf.toString('base64'), encoding: 'base64' }) });
+  }
   if (url.startsWith('https://cdn.jsdelivr.net')) {
     if (!cdn.has(url)) {
       const r = await fetch(url);
@@ -92,7 +110,8 @@ await page.route('**/*', async route => {
     return route.fulfill({ status: c.status, body: c.body, contentType: c.type });
   }
   return route.continue();
-});
+};
+await page.route('**/*', route => handler(route));
 
 await page.goto(`${origin}/pages/shortcut-log.html`, { waitUntil: 'networkidle' });
 await page.waitForFunction(() => document.querySelectorAll('#rows > div').length > 0, { timeout: 8000 });
@@ -109,12 +128,12 @@ const r = await page.evaluate(() => {
   });
   return { count: cards.length, run: read(cards[0]), imp: read(cards[1]),
            status: document.getElementById('status').textContent,
-           signinHidden: document.getElementById('signin').classList.contains('hidden') };
+           noPrompt: !document.getElementById('__ghAuthForm') };
 });
 
 console.log('shortcut-log.html');
 ok('page boots with no error', errors.length === 0, errors[0]);
-ok('a stored token skips the sign-in form', r.signinHidden);
+ok('a stored token skips the token screen', r.noPrompt);
 ok('both entries render', r.count === 2, String(r.count));
 ok('a run is typed as a run', r.run.badges.includes('run'), r.run.badges.join(','));
 ok('the run names the shortcut', r.run.bold === 'Run-Pick', r.run.bold);
@@ -189,6 +208,42 @@ const blank = await badges();
 ok('an unreachable manifest yields no verdict at all',
    !blank.includes('current') && !blank.some(b => b.startsWith('stale')), blank.join(','));
 ok('and the row still renders', blank.includes('build=b07361d'), blank.join(','));
+
+// THE TOKEN SCREEN IS gh-auth's, NOT THIS PAGE'S. A hand-rolled form shipped
+// here for one day and stranded a reader in a Shortcuts sheet with a password
+// box and nowhere to get a token. What makes the standard screen worth having
+// is the "Get a token" link, so that is what is asserted, not merely that some
+// form appeared.
+const promptFor = async (setup) => {
+  const c2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await c2.addInitScript(setup);
+  const p2 = await c2.newPage();
+  await p2.route('**/*', route => handler(route));
+  await p2.goto(`${origin}/pages/shortcut-log.html`, { waitUntil: 'networkidle' });
+  await p2.waitForSelector('#__ghAuthForm', { timeout: 8000 }).catch(() => {});
+  const out = await p2.evaluate(() => {
+    const f = document.getElementById('__ghAuthForm');
+    return { shown: !!f,
+             getToken: [...document.querySelectorAll('a')]
+               .some(a => /github\.com\/settings\/tokens\/new/.test(a.href)),
+             text: (document.body.innerText || '').slice(0, 200) };
+  });
+  await c2.close();
+  return out;
+};
+
+const noToken = await promptFor(() => { try { localStorage.removeItem('ghToken') } catch {} });
+ok('no token raises the standard token screen', noToken.shown, noToken.text);
+ok('and it offers the link to go get one', noToken.getToken, noToken.text);
+
+// gh-auth takes the page over on 401/403, and a private repo with no access
+// answers 404 because GitHub hides what you cannot see. Left unforwarded, the
+// page dies reading "not found" with no way to fix it.
+access = 404;
+const denied = await promptFor(() => { try { localStorage.setItem('ghToken', 'stale') } catch {} });
+ok('a 404 on the private repo raises it too, not a dead end', denied.shown, denied.text);
+ok('and that screen also offers the link', denied.getToken, denied.text);
+access = 200;
 
 await browser.close(); server.close();
 console.log(failures.length ? `\n${failures.length} failed` : '\nall passed');
