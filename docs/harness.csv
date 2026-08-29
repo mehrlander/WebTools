@@ -124,6 +124,7 @@ tools/render/scenarios/paste-button.mjs,"drives the header Paste button from a n
 tools/render/scenarios/paste-empty-toast.mjs,"What the header's Paste button says when the clipboard is empty: an info toast, never the error colour it used to raise.",tools/render/scenarios,31,driver,no,no,no
 tools/render/scenarios/paste-kinds-probe.mjs,puts four transform-shaped payloads through the paste intake and reports the name and preview mode each gets,tools/render/scenarios,54,driver,no,no,yes
 tools/render/scenarios/paste-script-probe.mjs,,tools/render/scenarios,83,driver,no,no,no
+tools/render/scenarios/peek-walk.mjs,drive kits/peek.js through a four-tap ancestor walk and report the selector at each rung,tools/render/scenarios,63,driver,no,yes,yes
 tools/render/scenarios/pick-md.mjs,"end-to-end reproduction of pick-a-file-in-the-fab, reporting what the frame did",tools/render/scenarios,76,driver,no,no,no
 tools/render/scenarios/project-board-review.mjs,"the project Board pane's typed read, seeded token-free",tools/render/scenarios,198,driver,no,yes,no
 tools/render/scenarios/project-board.mjs,the project view's Board pill with task links resolved into the shell viewer,tools/render/scenarios,72,driver,no,no,no

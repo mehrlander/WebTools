@@ -713,6 +713,60 @@ Dictate.available(win)              // is there a recognizer there
 at a frame's window: the kit runs in the shell realm and dictates into a
 document it does not own.
 
+### peek.js
+
+What is under the pointer, and what contains it. Point at something and the page
+answers with the element; point again in the same spot and it answers with that
+element's parent, then its parent, up to `<body>` and around.
+
+**The chain is the unit, not the element.** A tap builds the ancestor chain from
+the hit node to `<body>` and parks at index 0; everything after that moves an
+index rather than re-querying, so stepping is exact and reversible and the
+outline growing is all the feedback the gesture needs. The step is a *proximity*
+test (a tap within 14px of the last one steps up) because a phone has no Alt and
+no hover, and it wraps because on a touch screen there is no other way back from
+an overshoot.
+
+```js
+window.Peek.enable({ doc, onSelect })   // doc defaults to this one
+window.Peek.select(el) / .up() / .down() / .to(i)
+window.Peek.current() / .chain()
+window.Peek.facts(el) / .tree(el, {depth, nodes}) / .html(el) / .json()
+await window.Peek.copy('facts'|'tree'|'html'|'json'|'selector')
+```
+
+Four readings of one node, because "what is this" has four answers depending on
+why you are asking: **facts** (identity, the selector *and its match count*, the
+box, layout, tree position), **tree** (the subtree as an indented outline, depth-
+and node-capped: structure plus own text with the attribute noise dropped),
+**html** (the exact `outerHTML`, truncated on screen and whole on copy), and
+**json** (the facts as a record, for a model or a note).
+
+Two things it does that are easy to get wrong, both measured on 2026-08-29:
+
+- **The selector pins siblings by position, not by climbing.** Prefixing
+  ancestors separates cousins and never separates siblings, since two `<li>` with
+  the same classes have the same ancestor path by construction. The first
+  algorithm climbed to `<body>` still matching two, then fell back to something
+  matching three. Each segment now carries `:nth-child(n)` only where its atom is
+  ambiguous among its own siblings, which both terminates and stays readable.
+- **The panel docks away from the tap point.** A panel that grows over the point
+  just tapped eats the repeat tap, and the second tap landed on the breadcrumb
+  strip instead of stepping up. It docks off the *point*, not the selection: the
+  point is fixed for the length of a walk, where the selection grows to fill the
+  screen and would flip the dock under the reader.
+
+The pointer path is a full-screen cover taking `pointerup`, with
+`elementsFromPoint` to see past it. `console/mods/pick.js` does the same job off
+`mousemove` + `click`, which does not work on iOS; `annotate.js` carries the
+field report and the fix, and this is that fix extracted. Self-contained on
+purpose, and it does duplicate about twenty lines of `console/base.js`'s `sig`
+and `rect`: base.js is a DevTools paste installing a dozen globals, this is a
+`gh.load` kit installing one, and sharing would mean one adopting the other's
+distribution. Fixtures at [`pages/demos/peek-demo.html`](../../pages/demos/peek-demo.html);
+the browser facts (pointer path, outlines, auto-dock) are driven by
+`tools/render/scenarios/peek-walk.mjs`, since jsdom has no layout.
+
 ### wsl-core.js
 
 Dependency-free core for Washington State Legislature data: URL builders
