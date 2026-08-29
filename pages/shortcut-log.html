@@ -115,6 +115,62 @@ const when = stem => {
 };
 const TONE = { run: 'badge-primary', import: 'badge-success', text: 'badge-ghost' };
 
+// A payload is usually JSON carrying one enormous base64 field. Printing it raw
+// buries every row under it, which is the Show Result defect this page replaces,
+// only with scrolling. So print the STRUCTURE and elide the noise: a long string
+// keeps its head and reports its length, which is what a person actually reads
+// it for. `raw` is one tap away, never lost.
+const CAP = 96;
+function elide(v) {
+  if (typeof v === 'string') return v.length > CAP ? v.slice(0, 48) + `\u2026[${v.length}]` : v;
+  if (Array.isArray(v)) return v.map(elide);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, elide(x)]));
+  return v;
+}
+// Runs nest JSON inside JSON as a string, so one parse is not enough to see in.
+function deepen(v) {
+  if (typeof v === 'string' && /^\s*[[{]/.test(v)) {
+    try { return deepen(JSON.parse(v)) } catch { return v }
+  }
+  if (Array.isArray(v)) return v.map(deepen);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deepen(x)]));
+  return v;
+}
+function pretty(raw) {
+  try { return JSON.stringify(elide(deepen(JSON.parse(raw))), null, 2) } catch { return null }
+}
+
+const size = n => n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB';
+
+// Collapsed to a few lines by default so the row shape survives a big payload.
+function body(raw) {
+  const wrap = node('div', 'flex flex-col gap-1');
+  const nice = pretty(raw);
+  const pre = node('pre', 'bg-base-200 rounded-box p-2 text-xs whitespace-pre-wrap break-all');
+  const bar = node('div', 'flex items-center gap-2');
+  let open = false, isRaw = !nice;
+
+  const paint = () => {
+    pre.textContent = isRaw ? raw : nice;
+    pre.classList.toggle('max-h-24', !open);
+    pre.classList.toggle('overflow-hidden', !open);
+    pre.classList.toggle('max-h-96', open);
+    pre.classList.toggle('overflow-y-auto', open);
+    more.textContent = open ? 'less' : 'more';
+  };
+  const more = node('button', 'btn btn-xs');
+  more.onclick = () => { open = !open; paint() };
+  bar.append(node('span', 'badge badge-ghost badge-sm font-mono', size(raw.length)), more);
+  if (nice) {
+    const t = node('button', 'btn btn-xs btn-ghost', 'raw');
+    t.onclick = () => { isRaw = !isRaw; t.textContent = isRaw ? 'pretty' : 'raw'; paint() };
+    bar.append(t);
+  }
+  paint();
+  wrap.append(pre, bar);
+  return wrap;
+}
+
 function card(stem, raw, fresh) {
   const { verb, name, fields, rest } = shape(raw);
   const c = node('div', 'card bg-base-100 shadow-sm' + (fresh ? ' ring-2 ring-primary' : ''));
@@ -126,8 +182,7 @@ function card(stem, raw, fresh) {
     head.append(node('span', 'badge badge-outline badge-sm font-mono', `${k}=${v}`));
   head.append(node('span', 'text-xs opacity-50 ml-auto', when(stem)));
   b.append(head);
-  if (rest) b.append(node('pre',
-    'bg-base-200 rounded-box p-2 text-xs whitespace-pre-wrap break-all max-h-72 overflow-y-auto', rest));
+  if (rest) b.append(body(rest));
   c.append(b);
   return c;
 }

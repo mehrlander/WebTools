@@ -36,8 +36,13 @@ const server = http.createServer(async (req, res) => {
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${server.address().port}`;
 
+// Shaped like the real thing: one enormous base64 field beside the few small
+// ones that actually answer anything. Rendering that raw is what buried every
+// row under it on 2026-08-29.
+const B64 = 'eyJvcCI6ImltcG9ydCIsIm5hbWUiOiJSdW4tUGljayJ9'.repeat(20);
 const RUN = 'run name=Run-Pick build=b07361d chose=Get-FileInfo\n'
-          + '{"Type":"Text","File Size":165,"caption":"a \\"quoted\\" thing"}';
+          + JSON.stringify({ Base64: B64, Type: 'Text', 'File Size': 165,
+                             caption: 'a "quoted" thing' });
 const IMPORT = JSON.stringify({ op: 'import', name: 'Run-Pick',
   from: 'https://raw.githubusercontent.com/mehrlander/shortcut-tools/1136303175657' +
         '0f309858118c8562681161eaef6/plists/Run-Pick.plist' });
@@ -81,7 +86,8 @@ const r = await page.evaluate(() => {
     badges: [...c.querySelectorAll('.badge')].map(b => b.textContent),
     bold: (c.querySelector('.font-bold') || {}).textContent || '',
     pre: (c.querySelector('pre') || {}).textContent || '',
-    scrolls: !!c.querySelector('pre.overflow-y-auto'),
+    clipped: !!c.querySelector('pre.max-h-24.overflow-hidden'),
+    btns: [...c.querySelectorAll('button')].map(b => b.textContent),
   });
   return { count: cards.length, run: read(cards[0]), imp: read(cards[1]),
            status: document.getElementById('status').textContent,
@@ -97,12 +103,31 @@ ok('the run names the shortcut', r.run.bold === 'Run-Pick', r.run.bold);
 // The whole point: the build id is legible without scrolling or guessing.
 ok('the build id is a chip', r.run.badges.includes('build=b07361d'), r.run.badges.join(','));
 ok('the choice is a chip', r.run.badges.includes('chose=Get-FileInfo'), r.run.badges.join(','));
-// The half Show Result clipped away.
-// Escapes stay escaped: this is the raw payload, not a re-parse of it. Rendering
-// it through textContent is what makes an arbitrary result safe to show at all.
-ok('the result is shown whole, escapes intact', r.run.pre.includes('"File Size":165')
-   && r.run.pre.includes('\\"quoted\\"'), r.run.pre.slice(0, 80));
-ok('and it scrolls rather than clipping', r.run.scrolls);
+// The half Show Result clipped away, and the reason a reader is worth having:
+// the small fields that answer something are legible without hunting for them.
+ok('the result shows its structure', r.run.pre.includes('"File Size": 165'),
+   r.run.pre.slice(0, 80));
+// The base64 is the noise. Keeping its head and its length says what it is
+// without spending the screen on it; a raw copy is still one tap away below.
+ok('a huge field is elided with its length',
+   /"Base64": "eyJ\S*\u2026\[\d+\]"/.test(r.run.pre), r.run.pre.slice(0, 200));
+ok('the payload is collapsed, not dominating', r.run.clipped);
+ok('more and raw are both offered', r.run.btns.includes('more') && r.run.btns.includes('raw'),
+   r.run.btns.join(','));
+
+// Raw has to be the exact bytes, escapes intact: the pretty view is a reading of
+// the payload and the raw view is the payload. Losing the second makes the first
+// unfalsifiable.
+const raw = await page.evaluate(async () => {
+  const c = document.querySelector('#rows > div');
+  [...c.querySelectorAll('button')].find(b => b.textContent === 'raw').click();
+  [...c.querySelectorAll('button')].find(b => b.textContent === 'more').click();
+  return { pre: c.querySelector('pre').textContent,
+           scrolls: !!c.querySelector('pre.overflow-y-auto') };
+});
+ok('raw restores the exact payload', raw.pre.includes('"File Size":165')
+   && raw.pre.includes('\\"quoted\\"'), raw.pre.slice(0, 80));
+ok('and opened, it scrolls rather than clipping', raw.scrolls);
 ok('an install is typed as an import', r.imp.badges.includes('import'), r.imp.badges.join(','));
 // The whole URL is noise; the ref is the only part that answers the question.
 ok('an install shows the ref, not the URL', r.imp.badges.includes('from=1136303'),
