@@ -172,6 +172,34 @@ test('a heading with no blank line under it does not swallow its section', () =>
   assert.ok(units.every(u => u.words < 20), 'no unit swallowed the section');
 });
 
+// Found by rolling this segmenter up against doc-audit's paragraph segmenter,
+// which masks fences before it splits at all. A fence recognised only when it
+// opens a block misses two shapes: one opened inside a list item, and one whose
+// body holds a blank line, which the block splitter shreds into pieces carrying
+// no fence marker. Both let template text be annotated as though it were a rule.
+test('a fence is one unit whether or not it opens its block', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'str-'));
+  const f = join(dir, 'x.md');
+  writeFileSync(f, ['* **A rule.** It has a form:', '  ```bash', '  echo hi',
+                    '  ```', '  **Boundary:** and an edge.', '',
+                    '```markdown', 'Placeholder line.', '',
+                    'Second placeholder.', '```', '', 'Real prose after.'
+                   ].join('\n'));
+  const units = execFileSync('python3', [join(SKILL, 'segment.py'), f, '1', '99'],
+                             { encoding: 'utf8' }).trim().split('\n').map(JSON.parse);
+  rmSync(dir, { recursive: true, force: true });
+  const code = units.filter(u => u.kind === 'code');
+  assert.equal(code.length, 2, `both fences are code units, got ${code.length}`);
+  assert.ok(code[0].text.includes('echo hi'),
+    'a fence opened inside a list item is still one code unit');
+  assert.ok(code[1].text.includes('Second placeholder'),
+    'a blank line inside a fence body does not split it into prose');
+  assert.ok(!units.some(u => u.kind !== 'code' && u.text.includes('Placeholder')),
+    'no fence body line is segmented as prose');
+  assert.ok(units.some(u => u.kind !== 'code' && u.text.includes('Boundary')),
+    'prose after a mid-block fence is still segmented');
+});
+
 // The defect the contract check structurally cannot see: the neighbour of a
 // removed unit survives, so the contract counts it honoured. Three runs found
 // these by hand before seams.py existed.

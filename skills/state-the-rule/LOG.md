@@ -234,3 +234,49 @@ that cited it, not in the one that stated it.
 just inside.** The boundary in the skill says so; this run is the first to test
 it rather than assert it. The right reading is that `CONVENTIONS.md` is finished
 as a compression target, and the next thing it needs is a reader, not a pass.
+
+## 2026-08-29, held against doc-audit's segmenter, and merged into its machine
+
+**Two segmenters over the same file type, and each found a defect in the other.**
+`mehrlander/home`'s `projects/doc-audit/audit.py` has cut markdown into
+span-anchored paragraph units since June, three months before `segment.py` was
+written, and neither knew. Rolling `segment.py` up by block and applying
+`audit.py`'s own filters reproduces **137 of 138** paragraph units across four
+documents: `docs/CONVENTIONS.md` 31/31, `home/CLAUDE.md` 29/29,
+`doc-audit/README.md` 18/18, all with zero start-offset disagreements. So the
+grains were never incompatible. They are two settings of the dial that
+doc-audit's own synthesis declared in June, and `audit.py`'s docstring already
+called its own grain a compromise: "honest about working on the typographic
+paragraph, not the rhetorical move."
+
+**The fence defect, which shipped.** `segment.py` recognised a fence only when it
+opened a block. Two shapes slipped through: a fence opened inside a list item,
+and a fence whose body holds a blank line, which the block splitter shreds into
+pieces carrying no marker at all. Four blocks of `docs/SURFACING.md` hit it, and
+the guide-PR template's placeholder lines were annotated as though they were
+rules in the shipped run. Fixed by masking fenced regions before blocks are cut,
+which is what `audit.py` always did. Pinned by a test that fails on the old
+segmenter.
+
+**And the defect on the other side.** `audit.py` removes a fence and *then*
+splits on blank lines, so a removed fence can leave a blank line where the source
+had none. On `SURFACING.md` that cut the "Toss a live view" bullet into two units
+at spans 2575..3340 and 3626..3940. One list item, no paragraph break in the
+source, two units scored independently. That is the whole of the remaining
+disagreement, and it is a paragraph boundary the document does not contain.
+
+**The label column is data, and now that is shown rather than assumed.**
+`check.py` branches only on `verdict`; it never reads `label`. Run with
+doc-audit's theme-and-fit vocabulary (`core` / `supporting` / `off`) substituted
+and no code changed, it reports honestly on a clean cut (7/7 honoured, 29%) and
+names the breach under the foreign vocabulary when a `KEEP` is removed
+(`8w [core] Bloat often is not fluff, it is drift.`). So the receipt was already
+the family's shared receipt.
+
+**`seams.py` was designed in June, in another repo, and built here in August
+without knowing.** doc-audit's `2026-06-10-arriving-together-as-flow-audit.md`
+specifies step 7b, a flow walk over the edit seams, and gives the same reason for
+the same scope limit: "Seams only, so the burden stays proportional to the edit."
+It was run by hand and never mechanized. That is what the split costs, and it is
+why the machine now has one owner: doc-audit states it, this skill states one
+question over it.

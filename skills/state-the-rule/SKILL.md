@@ -1,6 +1,6 @@
 ---
 name: state-the-rule
-description: Separate a governing document's authoritative rules from the explanation around them, so what a reader must obey is stated directly and the intention, history and evidence are preserved elsewhere. Use when a CLAUDE.md, a conventions file, a SKILL.md or any executed instruction set has grown past what it declares; when the user asks to cut, tighten, compress or audit such a document; or when they say a document is bloated, over-explained, or repeats itself. Runs as an annotated pass with mechanical checks, so a cut can be shown not to have lost a rule. Not for prose written to be read straight through, which is succinct-text's job.
+description: Separate a governing document's authoritative rules from the explanation around them, so what a reader must obey is stated directly and the intention, history and evidence are preserved elsewhere. Use when a CLAUDE.md, a conventions file, a SKILL.md or any executed instruction set has grown past what it declares; or when the user asks to cut, tighten or compress one. It asks of each unit whether it is binding; whether a document repeats itself or drifts off its theme is a different question over the same units, answered by doc-audit's instruments. Runs as an annotated pass with mechanical checks, so a cut can be shown not to have lost a rule. Not for prose written to be read straight through, which is succinct-text's job.
 ---
 
 # State the rule
@@ -21,6 +21,22 @@ The method separates two things that fuse as a document grows:
 **Favor the mechanical: state the authoritative rule as directly as practical,
 so intention, history, and evidence can be separated from it.** Explanation is
 not waste. It is not the rule.
+
+## One question over a shared machine
+
+Four moves: inventory the document into span-anchored units, annotate each one,
+verify the annotation was honoured, read the seams. Three other questions run the
+same four moves over the same units, and differ only in what the walk asks and
+what counts as an alarm: `succinct-text` (did the cut lose anything),
+`source-anchoring` (does each claim sit on a chain to a source), `outlining`
+(does the reported structure cover the whole).
+
+**The machine, the grain doctrine, and the register of questions belong to
+doc-audit** (`mehrlander/home`, `projects/doc-audit/`, stated in
+`2026-06-23-one-machine-three-questions.md`). This file states one question, its
+labels, and its alarm, and nothing about the machine. The label column is data:
+`check.py` never branches on it, so a question supplies its own vocabulary and
+the checker does not change.
 
 ## The pass
 
@@ -141,6 +157,11 @@ tooling.**
 
 - Only for executed documents. A document written to be read straight through is
   `succinct-text`'s job, and its altitude and extraction moves apply there.
+- **Binding is the only question this pass asks.** Redundancy, drift, and a term
+  used before its definition are doc-audit's rungs (`audit.py`) over the same
+  units, and a high `KEEP` share says nothing about them: this skill's own
+  `SKILL.md` shipped a within-file duplicate that a redundancy rung would have
+  nominated. Run those too before calling a document finished.
 - Do not run it on a record. A dated observation, a lab notebook, a measured
   document: provenance and evidence are the subject there, not the surplus.
   Annotate one to find out; a result near 100% `KEEP` is the signal to stop.
