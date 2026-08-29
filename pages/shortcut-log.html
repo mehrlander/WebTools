@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Shortcut Log</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🧾</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  shortcut-log.html — what the device reported, read live, on the device.
+
+  THE PROBLEM THIS REPLACES. A shortcut that logs already returns itself, but the
+  only thing the person tapping sees is Show Result, which clips a long payload
+  to a few lines and does not scroll. So the useful half of a run, the result,
+  was visible to the session (which reads the log from git) and invisible to the
+  person who ran it. That asymmetry is backwards: they did the work.
+
+  ONE SURFACE, BOTH READERS. This renders the same log the session reads, from
+  the same source, so a run can be compared rather than described. Handed to
+  Show Web View it comes up as a sheet over Shortcuts, scrollable, with the run
+  that just happened at the top.
+
+  WHY A HOSTED URL AND NOT AN HTML PAYLOAD. Show Web View takes either, and the
+  difference decides whether this works at all: HTML text lands at a file://
+  origin, a different storage partition, where localStorage.ghToken is not. A
+  plain https URL keeps the page on its own origin and the stored token with it.
+  Measured 2026-08-26 by Probe-WebViewCaps; Dictate already takes this route.
+
+  THE BUILD CHIP IS THE POINT. Every install logs the ref it came from and every
+  stamped chain logs its own build id, so a row answers "is the copy that ran the
+  copy that was pushed" without anyone reasoning from silence. That question cost
+  this session hours before the stamp existed.
+
+  Payloads come in two shapes and both are rendered: JSON, which installs write,
+  and a `verb key=value` header line followed by a free payload, which runs write
+  because a result full of quotes broke the JSON form.
+-->
+</head>
+<body class="min-h-dvh bg-base-200">
+<div class="max-w-3xl mx-auto p-3 flex flex-col gap-3">
+
+  <div class="flex items-center gap-2 flex-wrap">
+    <h1 class="text-xl font-bold">Shortcut Log</h1>
+    <span id="status" class="badge badge-ghost badge-sm">loading</span>
+    <button id="refresh" class="btn btn-xs ml-auto"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
+  </div>
+
+  <div id="signin" class="card bg-base-100 shadow-sm hidden">
+    <div class="card-body gap-2 p-4">
+      <h2 class="card-title text-base">Sign in</h2>
+      <p class="text-sm opacity-70">The log lives in a private repo, so this needs your GitHub token.
+        It is stored in this browser only, as <code>localStorage.ghToken</code>.</p>
+      <input id="tok" type="password" class="input input-bordered input-sm" placeholder="ghp_…">
+      <button id="save" class="btn btn-sm btn-primary self-start">Save</button>
+    </div>
+  </div>
+
+  <div id="rows" class="flex flex-col gap-2"></div>
+</div>
+
+<script>
+const REPO = 'mehrlander/web-tools-private';
+const DIR  = 'shortcuts/log';
+const SHOW = 25;
+
+const el = id => document.getElementById(id);
+const ls = {
+  get(k) { try { return localStorage.getItem(k) } catch { return null } },
+  set(k, v) { try { localStorage.setItem(k, v) } catch {} },
+};
+const token = () => ls.get('ghToken') || '';
+const headers = () => token() ? { Authorization: 'Bearer ' + token() } : {};
+
+const node = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;   // never innerHTML: payloads are arbitrary
+  return n;
+};
+
+// A `verb key=value …` first line with the payload on the lines after. Runs use
+// this because a result carrying quotes broke the JSON form it replaced.
+function header(text) {
+  const nl = text.indexOf('\n');
+  const first = nl < 0 ? text : text.slice(0, nl);
+  const rest = nl < 0 ? '' : text.slice(nl + 1);
+  if (!/^\w+(\s+\w+=\S*)+\s*$/.test(first)) return null;
+  const [verb, ...pairs] = first.trim().split(/\s+/);
+  const fields = {};
+  for (const p of pairs) { const i = p.indexOf('='); fields[p.slice(0, i)] = p.slice(i + 1); }
+  return { verb, fields, rest: rest.trim() };
+}
+
+function shape(raw) {
+  try {
+    const j = JSON.parse(raw);
+    if (j && typeof j === 'object') {
+      const { op = '?', name = '', ...rest } = j;
+      const from = rest.from ? (String(rest.from).match(/\/shortcut-tools\/(.+?)\/plists\//) || [])[1] : null;
+      if (from) rest.from = /^[0-9a-f]{40}$/.test(from) ? from.slice(0, 7) : from;
+      return { verb: op, name, fields: rest, rest: '' };
+    }
+  } catch {}
+  const h = header(raw);
+  if (h) return { verb: h.verb, name: h.fields.name || '', fields: (delete h.fields.name, h.fields), rest: h.rest };
+  return { verb: 'text', name: '', fields: {}, rest: raw };
+}
+
+const when = stem => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})(\d{2})$/.exec(stem);
+  return m ? `${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}` : stem;
+};
+const TONE = { run: 'badge-primary', import: 'badge-success', text: 'badge-ghost' };
+
+function card(stem, raw, fresh) {
+  const { verb, name, fields, rest } = shape(raw);
+  const c = node('div', 'card bg-base-100 shadow-sm' + (fresh ? ' ring-2 ring-primary' : ''));
+  const b = node('div', 'card-body gap-2 p-3');
+  const head = node('div', 'flex items-center gap-2 flex-wrap');
+  head.append(node('span', 'badge badge-sm ' + (TONE[verb] || 'badge-ghost'), verb));
+  if (name) head.append(node('span', 'font-bold', name));
+  for (const [k, v] of Object.entries(fields))
+    head.append(node('span', 'badge badge-outline badge-sm font-mono', `${k}=${v}`));
+  head.append(node('span', 'text-xs opacity-50 ml-auto', when(stem)));
+  b.append(head);
+  if (rest) b.append(node('pre',
+    'bg-base-200 rounded-box p-2 text-xs whitespace-pre-wrap break-all max-h-72 overflow-y-auto', rest));
+  c.append(b);
+  return c;
+}
+
+let seen = null;
+
+async function load() {
+  if (!token()) { el('signin').classList.remove('hidden'); el('status').textContent = 'no token'; return; }
+  el('signin').classList.add('hidden');
+  el('status').textContent = 'loading';
+  try {
+    const list = await fetch(`https://api.github.com/repos/${REPO}/contents/${DIR}`,
+                             { headers: headers(), cache: 'no-store' }).then(r => {
+      if (!r.ok) throw new Error(r.status === 404 ? 'not found or no access' : 'HTTP ' + r.status);
+      return r.json();
+    });
+    const newest = list.filter(f => f.name.endsWith('.json'))
+                       .sort((a, b) => b.name.localeCompare(a.name)).slice(0, SHOW);
+    const bodies = await Promise.all(newest.map(f =>
+      fetch(f.download_url, { cache: 'no-store' }).then(r => r.text()).catch(() => '')));
+    const rows = el('rows');
+    rows.textContent = '';
+    newest.forEach((f, i) => {
+      const stem = f.name.replace(/\.json$/, '');
+      rows.append(card(stem, bodies[i].trim(), seen !== null && !seen.has(f.name)));
+    });
+    seen = new Set(newest.map(f => f.name));
+    el('status').className = 'badge badge-success badge-sm';
+    el('status').textContent = newest.length + ' entries';
+  } catch (e) {
+    el('status').className = 'badge badge-error badge-sm';
+    el('status').textContent = String(e.message || e);
+  }
+}
+
+el('save').onclick = () => { ls.set('ghToken', el('tok').value.trim()); load(); };
+el('refresh').onclick = load;
+load();
+setInterval(load, 15000);
+</script>
+</body>
+</html>
