@@ -174,17 +174,32 @@ const loaded = ['marked', 'js-yaml', 'papaparse', 'turndown']
 
 const fmt = v => typeof v === 'string' ? v : JSON.stringify(v, null, 1);
 
+// Built as nodes rather than interpolated markup. A call's output is arbitrary
+// text, and `md` returns HTML by definition, so this is the one place on the
+// page holding a value that must not be parsed. textContent settles it without
+// a local escape helper, which the estate keeps to exactly one (window.esc,
+// lib/vanilla-bundle.js) and this page does not boot the chain to reach.
+const node = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+};
+
 function render() {
   el('n').textContent = bench.log.length;
-  el('log').innerHTML = bench.log.slice(0, 25).map(e => `
-    <div class="border-l-4 border-primary pl-3">
-      <div class="flex gap-2 items-baseline flex-wrap">
-        <span class="font-mono font-bold">${e.op}</span>
-        <span class="opacity-60 text-xs">${e.at} · ${e.bytes}b in</span>
-      </div>
-      <pre class="text-xs opacity-80 whitespace-pre-wrap break-all mt-1">${
-        fmt(e.out).slice(0, 400).replace(/[<&]/g, c => c === '<' ? '&lt;' : '&amp;')}</pre>
-    </div>`).join('') || '<span class="opacity-50">nothing yet</span>';
+  const log = el('log');
+  log.textContent = '';
+  if (!bench.log.length) return log.append(node('span', 'opacity-50', 'nothing yet'));
+  for (const e of bench.log.slice(0, 25)) {
+    const row = node('div', 'border-l-4 border-primary pl-3');
+    const head = node('div', 'flex gap-2 items-baseline flex-wrap');
+    head.append(node('span', 'font-mono font-bold', e.op),
+                node('span', 'opacity-60 text-xs', `${e.at} · ${e.bytes}b in`));
+    row.append(head, node('pre', 'text-xs opacity-80 whitespace-pre-wrap break-all mt-1',
+                          fmt(e.out).slice(0, 400)));
+    log.append(row);
+  }
 }
 
 el('origin').textContent = location.origin;
