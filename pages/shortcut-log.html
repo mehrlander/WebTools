@@ -38,6 +38,18 @@
   and a `verb key=value` header line followed by a free payload, which runs write
   because a result full of quotes broke the JSON form.
 
+  THE TOKEN SCREEN IS NOT THIS PAGE'S. It is gh-auth.js's showPrompt, reached by
+  loading the standard chain, and it carries a "Get a token" link that a
+  hand-rolled form does not. This page had a hand-rolled form for one day; the
+  cost of that was a reader stranded in a Shortcuts sheet with a password box and
+  nowhere to go for a token. A page that talks to a private repo loads gh-auth
+  and calls ghAuth.prompt; it does not build the screen.
+
+  WHY IT IS RAISED EXPLICITLY AND NOT LEFT TO THE 401. gh-auth takes the page
+  over on a 401 or 403, and a private repo with no token answers 404, since
+  GitHub hides what you cannot see. So an absent token has to raise the prompt
+  here, and a 404 has to be forwarded to it, or the page dies as "not found".
+
   AND THE VERDICT, WHICH IS THE HALF THE STAMP COULD NOT SUPPLY. A logged build
   id says which copy ran; it takes a second number to say whether that copy is
   the current one, and getting it meant a checkout and a hand-run hash. So a run
@@ -55,20 +67,27 @@
     <button id="refresh" class="btn btn-xs ml-auto"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
   </div>
 
-  <div id="signin" class="card bg-base-100 shadow-sm hidden">
-    <div class="card-body gap-2 p-4">
-      <h2 class="card-title text-base">Sign in</h2>
-      <p class="text-sm opacity-70">The log lives in a private repo, so this needs your GitHub token.
-        It is stored in this browser only, as <code>localStorage.ghToken</code>.</p>
-      <input id="tok" type="password" class="input input-bordered input-sm" placeholder="ghp_…">
-      <button id="save" class="btn btn-sm btn-primary self-start">Save</button>
-    </div>
-  </div>
-
   <div id="rows" class="flex flex-col gap-2"></div>
 </div>
 
-<script>
+<script type="module">
+// The repo's standard boot: gh-api.js, then gh-auth.js, which patches token
+// resolution and owns the token screen. ?use=<ref> pins the chain to a branch
+// for previewing edits, exactly as the other loader pages do.
+const q = new URLSearchParams(location.search);
+const useRef = q.get('use');
+if (useRef) {
+  window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref: useRef };
+  const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${useRef}/lib/gh-api.js`,
+                        { cache: 'no-store' });
+  if (!r.ok) throw new Error(`?use=${useRef}: could not fetch gh-api.js (HTTP ${r.status})`);
+  const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+  try { await import(u); } finally { URL.revokeObjectURL(u); }
+} else {
+  await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+}
+await gh.load('gh-auth.js');
+
 const REPO = 'mehrlander/web-tools-private';
 const DIR  = 'shortcuts/log';
 const SHOW = 25;
@@ -79,12 +98,23 @@ const SHOW = 25;
 const BUILDS = 'https://cdn.jsdelivr.net/gh/mehrlander/shortcut-tools@main/plists/builds.json';
 
 const el = id => document.getElementById(id);
-const ls = {
-  get(k) { try { return localStorage.getItem(k) } catch { return null } },
-  set(k, v) { try { localStorage.setItem(k, v) } catch {} },
+
+// One client, so token resolution and the 401/403 takeover are gh-auth's job
+// rather than this page's. `log` reads the private repo; the raw blob fetches
+// below still carry the header directly, since download_url is not an API path.
+const log = new window.GH({ repo: REPO, ref: 'main' });
+const headers = () => {
+  const t = window.ghAuth.resolve();
+  return t ? { Authorization: 'Bearer ' + t } : {};
 };
-const token = () => ls.get('ghToken') || '';
-const headers = () => token() ? { Authorization: 'Bearer ' + token() } : {};
+
+// A private repo with no access answers 404, not 401, because GitHub hides what
+// you cannot see. gh-auth only takes over on 401/403, so that case is forwarded
+// by hand or the page dies reading "not found" with no way to fix it.
+const NEED_TOKEN =
+  'The device log lives in a private repo, so this page needs a GitHub token with repo scope. '
+  + 'Storage here is per-app: a token saved in Safari is not visible inside the Shortcuts sheet, '
+  + 'so this may need entering once in each place you open the page.';
 
 const node = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -238,16 +268,17 @@ function card(stem, raw, fresh) {
 let seen = null;
 
 async function load() {
-  if (!token()) { el('signin').classList.remove('hidden'); el('status').textContent = 'no token'; return; }
-  el('signin').classList.add('hidden');
+  if (!window.ghAuth.resolve()) { window.ghAuth.prompt(NEED_TOKEN); return; }
   el('status').textContent = 'loading';
   const manifest = loadBuilds();
   try {
-    const list = await fetch(`https://api.github.com/repos/${REPO}/contents/${DIR}`,
-                             { headers: headers(), cache: 'no-store' }).then(r => {
-      if (!r.ok) throw new Error(r.status === 404 ? 'not found or no access' : 'HTTP ' + r.status);
-      return r.json();
-    });
+    let list;
+    try {
+      list = await log.req(`contents/${DIR}`);
+    } catch (e) {
+      if (e && e.status === 404) { window.ghAuth.prompt(NEED_TOKEN); return; }
+      throw e;
+    }
     const newest = list.filter(f => f.name.endsWith('.json'))
                        .sort((a, b) => b.name.localeCompare(a.name)).slice(0, SHOW);
     const bodies = await Promise.all(newest.map(f =>
@@ -269,9 +300,11 @@ async function load() {
   }
 }
 
-el('save').onclick = () => { ls.set('ghToken', el('tok').value.trim()); load(); };
 el('refresh').onclick = load;
-load();
+await load();
+// The boot chain is settled, so a later rejection is the page's own, not a boot
+// failure, and must not paint gh-auth's "Boot failed" screen over a live page.
+window.ghAuth.bootDone();
 setInterval(load, 15000);
 </script>
 </body>
