@@ -192,6 +192,30 @@ test('subject: a staged rectangle reads as a region, not a node', () => {
   assert.match(t, /covers nothing on the page\.|contains \d+|touches \d+/);
 });
 
+// Arming the element aim is one deliberate act with one question behind it, so
+// the pane that answers it opens with the mode rather than being found after.
+// The earlier objection was to expanding on every TAP, which is a different
+// moment; section stays out because its notes are about markdown source.
+test('element aim: choosing it opens the card on the DOM reading', () => {
+  const w = boot();
+  assert.equal(w.Annotate.expanded, false);
+  w.Annotate.startPick();
+  assert.equal(w.Annotate.expanded, true);
+  assert.equal(w.Annotate.reading, 'dom');
+});
+
+test('element aim: section does not, and neither does a page without peek', () => {
+  const w = boot();
+  w.Annotate.startPick({ aim: 'section' });
+  assert.equal(w.Annotate.expanded, false);
+  assert.equal(w.Annotate.reading, 'notes');
+
+  const bare = boot({ peek: false });
+  bare.Annotate.startPick();
+  assert.equal(bare.Annotate.expanded, false, 'no reading to open without the kit');
+  assert.equal(bare.Annotate.reading, 'notes');
+});
+
 test('elementOf: every target type resolves through one function', () => {
   const w = boot();
   const A = w.Annotate;

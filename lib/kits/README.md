@@ -677,14 +677,20 @@ touches where there are none, and the heading says which. Contain alone is
 useless on a phone, where a box drawn with a thumb is narrower than any block in
 a text column and the precise answer is almost always empty.
 
-**Region opens the card on it.** A drag is a deliberate question about what is in
-there and the answer is a list with nowhere else to go, so that one mode expands
-the card and switches to this reading; the element pick only repaints a pane
-already showing, since growing the card under every tap would be a takeover
-nobody asked for. The commit button moves out of the card's way when it does:
-below the box, else above it, else clear of the card's top edge. Measured at
-430px, it had been landing at 528 inside a card spanning 488 to 928, which made
-the answer cost the "+ note" it was an answer about.
+**Both aims open the card on it**, Region when the box is drawn and Element when
+the aim is chosen. Each is one deliberate act with one question behind it, and
+the pane that answers should be open before the first tap rather than found
+afterwards. What is still refused is expanding on every TAP, which would grow
+the card under a reader mid-gesture. Section stays out too: its notes are about
+markdown SOURCE and its aim resolves to the heading that owns a run, so this
+reading would answer with an `h2` where the reader is asking about a passage.
+
+The "+ note" offer moves out of the card's way when they do, through one shared
+`placeOffer`: two candidate tops in the caller's order, then a fallback clear of
+the card's top edge. Measured at 430px, the region's had been landing at 528
+inside a card spanning 488 to 928 and could not be tapped at all, which made the
+answer cost the control it was an answer about. The element pick's offer had the
+same latent clash, sitting 30px above whatever it outlined.
 
 Two consequences of not being of the set. An empty set does not empty it, where
 markdown and JSON go bare. And the copy key is offered on a draft with nothing
