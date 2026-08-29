@@ -107,11 +107,13 @@ test('it carries every primitive and none of the course', () => {
 // The rung window moves whenever the injected prose changes size, since it is
 // the body's byte count that decides which rung a budget selects. Two shifts so
 // far: the receipts reserved inside the budget on 2026-08-27 (514 bytes off the
-// body), then two surfacing primitives grew on the same day. Measured after
-// both, this rung is chosen for a budget in [26876, 27771); pick the midpoint so
+// body), then two surfacing primitives grew on the same day, then the
+// state-the-rule pass over Surfacing caption and Closing state on 2026-08-29 took
+// 1,341 bytes back out and walked the window down by 1,342. Measured after all
+// three, this rung is chosen for a budget in [25534, 26429); pick the midpoint so
 // a small future edit does not walk the test off either edge silently.
 test('over budget it drops the front matter before it drops a single rule', () => {
-  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '27323' });
+  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '25981' });
   assert.match(out, /ALSO NOT INCLUDED, to fit the channel/,
     'the second rung says what it withheld, as the first one does');
   assert.doesNotMatch(out, /PARTIAL LOAD/, 'and it is not the last rung');
