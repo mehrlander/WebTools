@@ -36,6 +36,12 @@ const boot = ({ peek = true } = {}) => {
 
 const elTarget = (w, sel) => ({ type: 'element', selector: sel, excerpt: 'x' });
 
+// The reading is DRAWN now, not a <pre> of text, so these read the pane. `head`
+// is the identity row on its own, which is the tag pill plus its id and class
+// chips and so reads as the atom does.
+const pane = (A) => A._state.domBody.textContent.replace(/\s+/g, ' ').trim();
+const head = (A) => (A._state.domBody.firstElementChild?.textContent || '').trim();
+
 test('chip: absent without peek, offered with it', () => {
   const bare = boot({ peek: false });
   assert.equal(bare.Peek, undefined);
@@ -63,10 +69,10 @@ test('subject: selected note wins, then the draft, then the most recent', () => 
   A.setReading('dom');
 
   // Nothing selected: the most recent note.
-  assert.match(A._state.serialPre.textContent, /^li#li1/);
+  assert.equal(head(A), 'li#li1');
 
   A.select(A.items[0].id);
-  assert.match(A._state.serialPre.textContent, /^p#p1/);
+  assert.equal(head(A), 'p#p1');
 });
 
 test('reading: names the element, its selector, its subtree and its ancestors', () => {
@@ -75,21 +81,23 @@ test('reading: names the element, its selector, its subtree and its ancestors', 
   A.add(elTarget(w, '#li1'), 'note');
   A.expand(true);
   A.setReading('dom');
-  const t = A._state.serialPre.textContent;
+  const t = pane(A);
 
-  assert.match(t, /^li#li1/);
-  assert.match(t, /selector\s+#li1\s+unique/);
-  assert.match(t, /path\s+html\/body\/article\/ul\/li/);
-  assert.match(t, /tree\s+depth \d+ · child 1 of 2 · 1 children/);
-  // The subtree, indented under its own heading.
-  assert.match(t, /\nunder\n {2}li#li1/);
+  assert.equal(head(A), 'li#li1');
+  const q = (sel) => A._state.domBody.querySelector(sel);
+  assert.equal(q('[data-peek-sel]').textContent, '#li1');
+  assert.equal(q('[data-peek-verdict]').dataset.peekVerdict, 'unique');
+  assert.match(t, /html\/body\/article\/ul\/li/, 'the tag path');
+  assert.match(t, /depth \d+ · 1 of 2 · 1 child/, 'where it sits');
+  assert.match(t, /under/);
   assert.match(t, /strong/);
-  assert.match(t, /a {2}"detail"/);
-  // And what contains it, outermost first.
-  const chain = t.split('contained by\n')[1];
-  assert.ok(chain, 'the containing chain is printed');
-  assert.match(chain.split('\n')[0], /^ {2}body/);
-  assert.match(chain, /article#art/);
+  assert.match(t, /"detail"/);
+  // The trail is a row of buttons, outermost first, the subject last and lit.
+  const crumbs = [...A._state.domBody.querySelectorAll('[data-peek-crumb]')];
+  assert.ok(crumbs.length >= 3, 'the ancestor trail is drawn');
+  assert.match(crumbs[0].textContent, /^body/);
+  assert.match(crumbs.at(-1).textContent, /^li/);
+  assert.equal(crumbs.at(-1).dataset.peekCrumb, '0', 'the subject is the innermost crumb');
 });
 
 test('reading: says so when the note resolves to nothing', () => {
@@ -98,7 +106,7 @@ test('reading: says so when the note resolves to nothing', () => {
   A.add(elTarget(w, '#gone'), 'note');
   A.expand(true);
   A.setReading('dom');
-  assert.match(A._state.serialPre.textContent, /does not resolve to an element/);
+  assert.match(pane(A), /does not resolve to an element/);
 });
 
 test('reading: with no note and no draft it says where a subject comes from', () => {
@@ -106,7 +114,7 @@ test('reading: with no note and no draft it says where a subject comes from', ()
   w.Annotate.expand(true);
   w.Annotate.setReading('dom');
   // The aim leads the sentence because it leads the fallback chain.
-  assert.match(w.Annotate._state.serialPre.textContent, /Aim at something, or select a note/);
+  assert.match(pane(w.Annotate), /Aim at something, or select a note/);
 });
 
 test('empty set: the dom reading still shows, where md and json go bare', () => {
@@ -117,7 +125,8 @@ test('empty set: the dom reading still shows, where md and json go bare', () => 
   assert.equal(A._state.empty.style.display, 'flex', 'md over an empty set is bare');
   A.setReading('dom');
   assert.equal(A._state.empty.style.display, 'none', 'dom is not of the set');
-  assert.equal(A._state.serial.style.display, 'flex');
+  assert.equal(A._state.serial.style.display, 'none', 'the <pre> yields to the drawn pane');
+  assert.equal(A._state.domPane.style.display, 'flex');
 });
 
 test('copy: the key is offered for dom on an empty set', () => {
@@ -140,12 +149,11 @@ test('subject: the staged aim outranks every filed note', () => {
   A.add(elTarget(w, '#p1'), 'filed');
   A.expand(true);
   A.setReading('dom');
-  assert.match(A._state.serialPre.textContent, /^p#p1/, 'the note, with no aim');
+  assert.equal(head(A), 'p#p1', 'the note, with no aim');
 
   A._state.aimEl = w.document.getElementById('li1');
-  A._state.serialPre.textContent = '';
   A.setReading('dom');
-  assert.match(A._state.serialPre.textContent, /^li#li1/, 'the aim wins');
+  assert.equal(head(A), 'li#li1', 'the aim wins');
 });
 
 test('subject: ending the mode keeps the reading and drops only the outline', () => {
@@ -155,14 +163,14 @@ test('subject: ending the mode keeps the reading and drops only the outline', ()
   A.expand(true);
   A._state.aimEl = w.document.getElementById('li1');
   A.setReading('dom');
-  assert.match(A._state.serialPre.textContent, /^li#li1/);
+  assert.equal(head(A), 'li#li1');
 
   A.startPick();          // arms a mode
   A.notePage();           // endMode() runs on the way through
   assert.equal(A._state.aimEl, null, 'the live aim goes with the mode');
   assert.equal(A._state.holdEl, w.document.getElementById('li1'), 'the subject is held');
   A.setReading('dom');
-  assert.match(A._state.serialPre.textContent, /^li#li1/, 'and still reads');
+  assert.equal(head(A), 'li#li1', 'and still reads');
 });
 
 test('subject: choosing a note drops the held aim', () => {
@@ -172,11 +180,11 @@ test('subject: choosing a note drops the held aim', () => {
   A.expand(true);
   A._state.holdEl = w.document.getElementById('li1');
   A.setReading('dom');
-  assert.match(A._state.serialPre.textContent, /^li#li1/);
+  assert.equal(head(A), 'li#li1');
 
   A.select(A.items[0].id);
   assert.equal(A._state.holdEl, null);
-  assert.match(A._state.serialPre.textContent, /^p#p1/);
+  assert.equal(head(A), 'p#p1');
 });
 
 test('subject: a staged rectangle reads as a region, not a node', () => {
@@ -185,10 +193,10 @@ test('subject: a staged rectangle reads as a region, not a node', () => {
   A.expand(true);
   A._state.aimRect = { x: 0, y: 0, w: 300, h: 200 };
   A.setReading('dom');
-  const t = A._state.serialPre.textContent;
-  assert.match(t, /^region {2}300 × 200 at 0, 0/);
+  const t = pane(A);
+  assert.match(head(A), /^region300 × 200at 0, 0$/);
   // jsdom has no layout, so nothing has a box to be inside or to touch; the
-  // reading must say that rather than throw or print an empty list.
+  // reading must say that rather than throw or draw an empty list.
   assert.match(t, /covers nothing on the page\.|contains \d+|touches \d+/);
 });
 
@@ -216,6 +224,25 @@ test('element aim: section does not, and neither does a page without peek', () =
   assert.equal(bare.Annotate.reading, 'notes');
 });
 
+// The trail is the one thing in the pane a reader can act on. With no mode
+// running it re-points the reading; the outline half needs layout and is driven
+// by tools/render/scenarios/annotate-dom-crumb.mjs.
+test('trail: tapping a crumb re-points the reading at that ancestor', () => {
+  const w = boot();
+  const A = w.Annotate;
+  A.expand(true);
+  A._state.holdEl = w.document.getElementById('li1');
+  A.setReading('dom');
+  assert.equal(head(A), 'li#li1');
+
+  const crumbs = [...A._state.domBody.querySelectorAll('[data-peek-crumb]')];
+  const ul = crumbs.find(b => b.textContent.trim() === 'ul');
+  assert.ok(ul, 'the ul is on the trail');
+  ul.click();
+  assert.equal(head(A), 'ul');
+  assert.equal(A._state.holdEl, w.document.querySelector('ul'));
+});
+
 test('elementOf: every target type resolves through one function', () => {
   const w = boot();
   const A = w.Annotate;
@@ -223,12 +250,12 @@ test('elementOf: every target type resolves through one function', () => {
   A.add({ type: 'page' }, 'p');
   A.expand(true);
   A.setReading('dom');
-  assert.match(A._state.serialPre.textContent, /^body/, 'a page note reads the body');
+  assert.match(head(A), /^body/, 'a page note reads the body');
 
   A.clear();
   const p1 = d.getElementById('p1').firstChild;
   const r = d.createRange();
   r.setStart(p1, 4); r.setEnd(p1, 19);
   A.add({ type: 'text', quote: A._quoteFor(d.body, r), display: 'quick brown fox' }, 't');
-  assert.match(A._state.serialPre.textContent, /^p#p1/, 'a text note reads its block');
+  assert.equal(head(A), 'p#p1', 'a text note reads its block');
 });

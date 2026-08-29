@@ -658,6 +658,24 @@ JSON exactly as Copy hands them over, then **DOM** (2026-08-29): the element the
 note is pinned to, its selector and how many nodes that selector matches, its
 box, layout and tree position, then its subtree and the ancestors containing it.
 
+**And it is DRAWN, not printed.** The other two readings ARE bytes, so a `<pre>`
+is the honest shape for them: what is on screen is what Copy hands over. This
+one is a description, and it first shipped as a monospace blob holding its
+columns with `padEnd(9)`, which is a serialization pretending to be a layout and
+loses the pretence the moment a value wraps. It has its own pane now: the tag as
+a pill with its id and classes as chips, the ancestor trail as a scrolling row,
+the selector in a box with a green `unique` or amber `N matches` verdict beside
+it, an aligned label grid, the own text clamped, and the subtree indented by
+padding rather than by spaces. `domText` survives as the copy payload, so Copy
+still hands over something a model can read.
+
+**The trail is tappable**, and it is the only thing in the pane that is. A crumb
+re-points the reading at that ancestor, and where a mode is running it moves the
+outline too, through a `S.restage` hook the pick publishes: a crumb that renames
+the pane while the highlight stays three levels down is two answers to one
+question. The subject is always the last crumb, so the trail scrolls to its end
+after every draw.
+
 Structure cannot be a reading of the set, because "what is this element and what
 contains it" is a question about one node and eight notes have no single answer
 to it. **The subject is the LIVE AIM first**: the node a pick has staged, or the
