@@ -3,158 +3,130 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>How context reaches a session</title>
+<title>Startup context</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🚰</text></svg>">
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
 <style>
-  /* Palette tokens only, per the dataviz method: roles here, raw hex nowhere else. */
-  .viz { color-scheme: light;
-    --surface-1:#fcfcfb; --plane:#f9f9f7;
+  /* Palette tokens only. Every rule below is Tailwind against these roles. */
+  :root { --surface-1:#fcfcfb; --plane:#f9f9f7;
     --ink-1:#0b0b0b; --ink-2:#52514e; --ink-muted:#898781;
-    --grid:#e1e0d9; --baseline:#c3c2b7; --ring:rgba(11,11,11,0.10);
-    --hook:#2a78d6; --instr:#eb6834;
-    --critical:#d03b3b; --good:#0ca30c; }
-  @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .viz {
-    color-scheme: dark;
+    --grid:#e1e0d9; --baseline:#c3c2b7;
+    --hook:#2a78d6; --instr:#eb6834; --critical:#d03b3b; }
+  @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) {
     --surface-1:#1a1a19; --plane:#0d0d0d;
     --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-muted:#898781;
-    --grid:#2c2c2a; --baseline:#383835; --ring:rgba(255,255,255,0.10);
-    --hook:#3987e5; --instr:#d95926; } }
-  :root[data-theme="dark"] .viz { color-scheme: dark;
-    --surface-1:#1a1a19; --plane:#0d0d0d;
-    --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-muted:#898781;
-    --grid:#2c2c2a; --baseline:#383835; --ring:rgba(255,255,255,0.10);
-    --hook:#3987e5; --instr:#d95926; }
+    --grid:#2c2c2a; --baseline:#383835;
+    --hook:#3987e5; --instr:#d95926; --critical:#d03b3b; } }
 </style>
 </head>
-<body class="viz" style="background:var(--plane)">
-<main class="max-w-5xl mx-auto p-6 space-y-6" style="color:var(--ink-1);font-family:system-ui,-apple-system,'Segoe UI',sans-serif">
+<body class="min-h-dvh bg-[var(--plane)] text-[var(--ink-1)] text-base">
 
-  <header class="space-y-1">
-    <h1 class="text-2xl font-semibold">How context reaches a session</h1>
-    <p class="text-sm" style="color:var(--ink-2)">Two channels carry material into a Claude Code session at start. One is capped and fought over. The other is not. Measured 2026-08-29 with <code>tools/build/injection-measure.mjs</code>, from this container, with <code>home</code> and <code>web-tools</code> open.</p>
-  </header>
+<header class="sticky top-0 z-10 bg-[var(--plane)] border-b border-[var(--grid)] px-6 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
+  <h1 class="font-semibold">Startup context</h1>
+  <span class="text-xs font-mono text-[var(--ink-2)]">27,653/28,000 hook · 79,132 uncapped · 34,076 twice · 2026-08-29</span>
+</header>
 
-  <!-- Hero row. Three numbers, no plot: the form heuristic says a headline is a tile. -->
-  <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-    <div class="rounded-xl p-4" style="background:var(--surface-1);box-shadow:0 0 0 1px var(--ring)">
-      <div class="text-3xl font-semibold" style="color:var(--critical)">347</div>
-      <div class="text-sm font-medium mt-1">bytes of headroom</div>
-      <div class="text-xs mt-1" style="color:var(--ink-2)">on the capped channel. 1.2% of its 28,000 allowance.</div>
-    </div>
-    <div class="rounded-xl p-4" style="background:var(--surface-1);box-shadow:0 0 0 1px var(--ring)">
-      <div class="text-3xl font-semibold">34,076</div>
-      <div class="text-sm font-medium mt-1">bytes arriving twice</div>
-      <div class="text-xs mt-1" style="color:var(--ink-2)">CONVENTIONS.md and SURFACING.md come down both channels.</div>
-    </div>
-    <div class="rounded-xl p-4" style="background:var(--surface-1);box-shadow:0 0 0 1px var(--ring)">
-      <div class="text-3xl font-semibold">26%</div>
-      <div class="text-sm font-medium mt-1">is the capped share</div>
-      <div class="text-xs mt-1" style="color:var(--ink-2)">27,653 of 106,785 bytes. The limit governs the smaller part.</div>
-    </div>
-  </section>
+<main class="px-6 py-5 space-y-8">
 
-  <!-- Figure 1. One byte axis, two channels. The cap line sits on the capped row only. -->
-  <section class="rounded-xl p-5" style="background:var(--surface-1);box-shadow:0 0 0 1px var(--ring)">
-    <h2 class="text-base font-semibold">Both channels on one scale</h2>
-    <p class="text-xs mt-1 mb-3" style="color:var(--ink-2)">Hatched segments are the same bytes counted in both bars.</p>
-
-    <div class="flex items-center gap-4 text-xs mb-3" style="color:var(--ink-2)">
-      <span class="inline-flex items-center gap-1.5"><span style="width:10px;height:10px;border-radius:2px;background:var(--hook);display:inline-block"></span>Session hook</span>
-      <span class="inline-flex items-center gap-1.5"><span style="width:10px;height:10px;border-radius:2px;background:var(--instr);display:inline-block"></span>Project instructions</span>
-      <span class="inline-flex items-center gap-1.5"><svg width="12" height="10"><rect width="12" height="10" rx="2" fill="var(--ink-muted)" opacity=".35"/><path d="M-2 10 L10 -2 M0 12 L12 0 M2 14 L14 2" stroke="var(--surface-1)" stroke-width="1.5"/></svg>Delivered twice</span>
+  <section class="space-y-3">
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-[var(--ink-2)]">
+      <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-[var(--hook)]"></span>Session hook</span>
+      <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-[var(--instr)]"></span>Project instructions</span>
+      <span class="inline-flex items-center gap-1.5"><svg width="12" height="10"><rect width="12" height="10" rx="2" class="fill-[var(--ink-muted)]" opacity=".35"/><path d="M-2 10 L10 -2 M0 12 L12 0 M2 14 L14 2" class="stroke-[var(--surface-1)]" stroke-width="1.5"/></svg>delivered twice</span>
     </div>
 
-    <svg viewBox="0 0 800 210" class="w-full" style="overflow:visible" role="img"
-         aria-label="Session hook 27,653 bytes against a 28,000 cap; project instructions 79,132 bytes with no cap.">
+    <svg viewBox="0 0 820 200" class="w-full" role="img"
+         aria-label="Session hook 27,653 bytes against a 28,000 cap. Project instructions 79,132 bytes, uncapped.">
       <defs>
         <pattern id="dup" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="8" height="8" fill="none"/>
-          <line x1="0" y1="0" x2="0" y2="8" stroke="var(--surface-1)" stroke-width="2.5" opacity=".55"/>
+          <line x1="0" y1="0" x2="0" y2="8" class="stroke-[var(--surface-1)]" stroke-width="2.5" opacity=".55"/>
         </pattern>
       </defs>
 
-      <!-- gridlines every 20,000 bytes; scale 0..80,000 over 720px -->
-      <g style="font-size:10px" fill="var(--ink-muted)">
-        <line x1="0" y1="170" x2="720" y2="170" stroke="var(--baseline)" stroke-width="1"/>
-        <line x1="180" y1="8" x2="180" y2="170" stroke="var(--grid)" stroke-width="1"/><text x="180" y="186" text-anchor="middle">20k</text>
-        <line x1="360" y1="8" x2="360" y2="170" stroke="var(--grid)" stroke-width="1"/><text x="360" y="186" text-anchor="middle">40k</text>
-        <line x1="540" y1="8" x2="540" y2="170" stroke="var(--grid)" stroke-width="1"/><text x="540" y="186" text-anchor="middle">60k</text>
-        <line x1="720" y1="8" x2="720" y2="170" stroke="var(--grid)" stroke-width="1"/><text x="720" y="186" text-anchor="middle">80k</text>
-        <text x="0" y="186" text-anchor="start">0</text>
+      <g class="text-xs fill-[var(--ink-muted)]" style="font-size:11px">
+        <line x1="0" y1="164" x2="720" y2="164" class="stroke-[var(--baseline)]"/>
+        <line x1="180" y1="6" x2="180" y2="164" class="stroke-[var(--grid)]"/><text x="180" y="180" text-anchor="middle">20k</text>
+        <line x1="360" y1="6" x2="360" y2="164" class="stroke-[var(--grid)]"/><text x="360" y="180" text-anchor="middle">40k</text>
+        <line x1="540" y1="6" x2="540" y2="164" class="stroke-[var(--grid)]"/><text x="540" y="180" text-anchor="middle">60k</text>
+        <line x1="720" y1="6" x2="720" y2="164" class="stroke-[var(--grid)]"/><text x="720" y="180" text-anchor="middle">80k</text>
+        <text x="0" y="180">0</text>
       </g>
 
-      <!-- Row A: session hook. 27,653 => 248.9px. Segments separated by a 2px surface gap. -->
-      <g>
-        <text x="0" y="28" style="font-size:12px;font-weight:600" fill="var(--ink-1)">Session hook</text>
-        <text x="103" y="28" style="font-size:11px" fill="var(--ink-muted)">capped</text>
-        <rect x="0" y="36" width="236.1" height="26" rx="4" fill="var(--hook)"><title>home/session-conventions.sh — 26,460 bytes, almost all of it a trimmed copy of the two documents in the row below</title></rect>
-        <rect x="0" y="36" width="236.1" height="26" rx="4" fill="url(#dup)"/>
-        <rect x="238.1" y="36" width="7.9" height="26" rx="2" fill="var(--hook)"><title>home/session-memory-manifest.sh — 1,095 bytes</title></rect>
-        <rect x="248" y="36" width="0.9" height="26" rx="1" fill="var(--hook)"><title>web-tools/session-start.sh — 98 bytes</title></rect>
-        <!-- the cap, and the sliver of room left under it -->
-        <line x1="252" y1="30" x2="252" y2="68" stroke="var(--critical)" stroke-width="2"/>
-        <text x="258" y="46" style="font-size:11px;font-weight:600" fill="var(--critical)">cap 28,000</text>
-        <text x="258" y="59" style="font-size:10px" fill="var(--ink-2)">347 bytes spare</text>
-        <text x="0" y="78" style="font-size:11px" fill="var(--ink-2)">27,653 bytes · 96% of it from one script</text>
+      <g style="font-size:13px">
+        <text x="0" y="24" class="fill-[var(--ink-1)]" font-weight="600">Session hook</text>
+        <rect x="0" y="32" width="236.1" height="28" rx="4" class="fill-[var(--hook)]"/>
+        <rect x="0" y="32" width="236.1" height="28" rx="4" fill="url(#dup)"/>
+        <rect x="238.1" y="32" width="7.9" height="28" rx="2" class="fill-[var(--hook)]"/>
+        <rect x="248" y="32" width="0.9" height="28" rx="1" class="fill-[var(--hook)]"/>
+        <line x1="252" y1="26" x2="252" y2="66" class="stroke-[var(--critical)]" stroke-width="2"/>
+        <text x="8" y="51" class="fill-[var(--surface-1)]" font-weight="600">26,460 · conventions injector</text>
+        <text x="260" y="45" class="fill-[var(--critical)]" font-weight="600">cap 28,000</text>
+        <text x="260" y="61" class="fill-[var(--ink-2)]" style="font-size:12px">347 spare</text>
       </g>
 
-      <!-- Row B: project instructions. 79,132 => 712.2px. -->
-      <g>
-        <text x="0" y="112" style="font-size:12px;font-weight:600" fill="var(--ink-1)">Project instructions</text>
-        <text x="140" y="112" style="font-size:11px" fill="var(--ink-muted)">no cap</text>
-        <rect x="0" y="120" width="299.7" height="26" rx="4" fill="var(--instr)"><title>home/CLAUDE.md — 33,747 bytes</title></rect>
-        <rect x="303.7" y="120" width="97.1" height="26" rx="2" fill="var(--instr)"><title>web-tools/CLAUDE.md — 11,013 bytes</title></rect>
-        <rect x="402.8" y="120" width="228.3" height="26" rx="2" fill="var(--instr)"><title>docs/SURFACING.md — 25,593 bytes, also sent down the session hook</title></rect>
-        <rect x="402.8" y="120" width="228.3" height="26" rx="2" fill="url(#dup)"/>
-        <rect x="633.1" y="120" width="74.3" height="26" rx="2" fill="var(--instr)"><title>docs/CONVENTIONS.md — 8,483 bytes, also sent down the session hook</title></rect>
-        <rect x="633.1" y="120" width="74.3" height="26" rx="2" fill="url(#dup)"/>
-        <rect x="709.4" y="120" width="2.7" height="26" rx="1" fill="var(--instr)"><title>~/.claude/CLAUDE.md — 296 bytes</title></rect>
-        <text x="0" y="162" style="font-size:11px" fill="var(--ink-2)">79,132 bytes · nothing measures it and nothing trims it</text>
+      <g style="font-size:13px">
+        <text x="0" y="100" class="fill-[var(--ink-1)]" font-weight="600">Project instructions</text>
+        <rect x="0" y="108" width="299.7" height="28" rx="4" class="fill-[var(--instr)]"/>
+        <rect x="303.7" y="108" width="97.1" height="28" rx="2" class="fill-[var(--instr)]"/>
+        <rect x="402.8" y="108" width="228.3" height="28" rx="2" class="fill-[var(--instr)]"/>
+        <rect x="402.8" y="108" width="228.3" height="28" rx="2" fill="url(#dup)"/>
+        <rect x="633.1" y="108" width="74.3" height="28" rx="2" class="fill-[var(--instr)]"/>
+        <rect x="633.1" y="108" width="74.3" height="28" rx="2" fill="url(#dup)"/>
+        <rect x="709.4" y="108" width="2.7" height="28" rx="1" class="fill-[var(--instr)]"/>
+        <text x="8" y="127" class="fill-[var(--surface-1)]" font-weight="600">33,747 · home/CLAUDE.md</text>
+        <text x="311" y="127" class="fill-[var(--surface-1)]" font-weight="600">11,013</text>
+        <text x="410" y="127" class="fill-[var(--surface-1)]" font-weight="600">25,593 · SURFACING.md</text>
+        <text x="641" y="127" class="fill-[var(--surface-1)]" font-weight="600">8,483</text>
+        <text x="724" y="127" class="fill-[var(--ink-2)]" style="font-size:12px">no cap</text>
       </g>
     </svg>
   </section>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- The two caps, side by side. The asymmetry is the point. -->
-    <section class="rounded-xl p-5 space-y-3" style="background:var(--surface-1);box-shadow:0 0 0 1px var(--ring)">
-      <h2 class="text-base font-semibold">Two caps, two failure modes</h2>
-      <div class="rounded-lg p-3" style="box-shadow:0 0 0 1px var(--ring)">
-        <div class="flex items-baseline justify-between">
-          <span class="text-sm font-medium">Injector budget</span>
-          <span class="text-sm tabular-nums">27,000</span>
-        </div>
-        <p class="text-xs mt-1" style="color:var(--ink-2)">Yours. A literal on line 65 of <code>inject-conventions.sh</code>. Over it, the script steps down a rung and prints what it withheld.</p>
-        <p class="text-xs mt-1 font-medium" style="color:var(--good)"><i class="ph ph-check-circle align-middle"></i> degrades, and says so</p>
-      </div>
-      <div class="rounded-lg p-3" style="box-shadow:0 0 0 1px var(--ring)">
-        <div class="flex items-baseline justify-between">
-          <span class="text-sm font-medium">Harness ceiling</span>
-          <span class="text-sm tabular-nums">~28,000</span>
-        </div>
-        <p class="text-xs mt-1" style="color:var(--ink-2)">Claude Code's. Undocumented, found by probing. Over it, the first ~2,000 bytes arrive and the rest goes to a file nothing reads.</p>
-        <p class="text-xs mt-1 font-medium" style="color:var(--critical)"><i class="ph ph-warning-circle align-middle"></i> silent cliff</p>
-      </div>
-    </section>
+  <section>
+    <table class="w-full">
+      <thead class="text-xs uppercase tracking-wide text-[var(--ink-muted)]">
+        <tr class="text-left">
+          <th class="py-1 font-medium">Document</th>
+          <th class="py-1 font-medium">Channel</th>
+          <th class="py-1 font-medium">Delivered</th>
+          <th class="py-1 font-medium text-right">Bytes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5 font-mono">web-tools/docs/SURFACING.md</td><td><span class="w-2 h-2 rounded-sm bg-[var(--hook)] inline-block mr-1.5"></span>session hook</td><td class="text-[var(--ink-2)]">without course</td><td class="text-right font-mono">25,593</td></tr>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5 font-mono">web-tools/docs/CONVENTIONS.md</td><td><span class="w-2 h-2 rounded-sm bg-[var(--hook)] inline-block mr-1.5"></span>session hook</td><td class="text-[var(--ink-2)]">full</td><td class="text-right font-mono">8,483</td></tr>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5 font-mono">home/CLAUDE.md</td><td><span class="w-2 h-2 rounded-sm bg-[var(--instr)] inline-block mr-1.5"></span>project instructions</td><td class="text-[var(--ink-2)]">full</td><td class="text-right font-mono">33,747</td></tr>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5 font-mono">web-tools/docs/SURFACING.md</td><td><span class="w-2 h-2 rounded-sm bg-[var(--instr)] inline-block mr-1.5"></span>project instructions</td><td class="text-[var(--ink-2)]">full · again</td><td class="text-right font-mono">25,593</td></tr>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5 font-mono">web-tools/CLAUDE.md</td><td><span class="w-2 h-2 rounded-sm bg-[var(--instr)] inline-block mr-1.5"></span>project instructions</td><td class="text-[var(--ink-2)]">full</td><td class="text-right font-mono">11,013</td></tr>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5 font-mono">web-tools/docs/CONVENTIONS.md</td><td><span class="w-2 h-2 rounded-sm bg-[var(--instr)] inline-block mr-1.5"></span>project instructions</td><td class="text-[var(--ink-2)]">full · again</td><td class="text-right font-mono">8,483</td></tr>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5 font-mono">~/.claude/CLAUDE.md</td><td><span class="w-2 h-2 rounded-sm bg-[var(--instr)] inline-block mr-1.5"></span>project instructions</td><td class="text-[var(--ink-2)]">full</td><td class="text-right font-mono">296</td></tr>
+      </tbody>
+    </table>
+  </section>
 
-    <!-- The rung ladder as a table: the accessible view of the same data. -->
-    <section class="rounded-xl p-5" style="background:var(--surface-1);box-shadow:0 0 0 1px var(--ring)">
-      <h2 class="text-base font-semibold">The three rungs</h2>
-      <p class="text-xs mt-1 mb-2" style="color:var(--ink-2)">What the injector drops as it runs out of room. Rung 1 fires today.</p>
-      <table class="w-full text-xs">
-        <thead style="color:var(--ink-muted)"><tr class="text-left">
-          <th class="py-1 font-medium">Rung</th><th class="py-1 font-medium">Withholds</th><th class="py-1 font-medium text-right tabular-nums">Bytes out</th>
-        </tr></thead>
-        <tbody>
-          <tr style="border-top:1px solid var(--grid)"><td class="py-1.5 font-medium">1 <span style="color:var(--good)">●</span></td><td class="py-1.5">the guide-PR course only</td><td class="py-1.5 text-right tabular-nums">26,430</td></tr>
-          <tr style="border-top:1px solid var(--grid)"><td class="py-1.5">2</td><td class="py-1.5">that, plus SURFACING.md's opening</td><td class="py-1.5 text-right tabular-nums">25,536</td></tr>
-          <tr style="border-top:1px solid var(--grid)"><td class="py-1.5">3</td><td class="py-1.5">everything but CONVENTIONS.md</td><td class="py-1.5 text-right tabular-nums">9,305</td></tr>
-        </tbody>
-      </table>
-      <p class="text-xs mt-3" style="color:var(--ink-2)">Cutting prose moves the payload <em>up</em> a rung rather than banking the space: the script spends slack on content, because its budget cannot see the sibling scripts sharing the ceiling.</p>
-    </section>
-  </div>
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-6">
+    <table class="w-full">
+      <thead class="text-xs uppercase tracking-wide text-[var(--ink-muted)]">
+        <tr class="text-left"><th class="py-1 font-medium">Cap</th><th class="py-1 font-medium">Owner</th><th class="py-1 font-medium">Over it</th><th class="py-1 font-medium text-right">Bytes</th></tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5">injector budget</td><td class="text-[var(--ink-2)]">this repo</td><td class="text-[var(--ink-2)]">drops a rung, says so</td><td class="text-right font-mono">27,000</td></tr>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5">harness ceiling</td><td class="text-[var(--ink-2)]">Claude Code</td><td class="text-[var(--critical)]">keeps 2,000, discards the rest</td><td class="text-right font-mono">~28,000</td></tr>
+      </tbody>
+    </table>
+
+    <table class="w-full">
+      <thead class="text-xs uppercase tracking-wide text-[var(--ink-muted)]">
+        <tr class="text-left"><th class="py-1 font-medium">Rung</th><th class="py-1 font-medium">Withholds</th><th class="py-1 font-medium text-right">Bytes out</th></tr>
+      </thead>
+      <tbody>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5">1 <span class="text-[var(--ink-muted)] text-xs">· fires today</span></td><td>the guide-PR course</td><td class="text-right font-mono">26,430</td></tr>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5">2</td><td>and SURFACING.md's opening</td><td class="text-right font-mono">25,536</td></tr>
+        <tr class="border-t border-[var(--grid)]"><td class="py-1.5">3</td><td>and every primitive</td><td class="text-right font-mono">9,305</td></tr>
+      </tbody>
+    </table>
+  </section>
 
 </main>
 </body>
