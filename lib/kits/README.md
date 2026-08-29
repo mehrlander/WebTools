@@ -660,11 +660,31 @@ box, layout and tree position, then its subtree and the ancestors containing it.
 
 Structure cannot be a reading of the set, because "what is this element and what
 contains it" is a question about one node and eight notes have no single answer
-to it. So the DOM reading keys on the SELECTED note, falling back to the draft
-being written and then to the most recent note; a prompt is what it shows only
-when there is none of the three. That fallback is the part that was measured
-wrong first: with one note filed and nothing selected, the pane showed
-instructions where an answer was expected.
+to it. **The subject is the LIVE AIM first**: the node a pick has staged, or the
+rectangle a region has drawn, then the selected note, then the draft being
+written, then the most recent note.
+
+That order is the correction the reading needed, and both halves of it were
+measured wrong first. It keyed on the filed note, so a reader aiming at things
+watched the pane say "select a note" through an entire pick, cycling included:
+the answer arrived only after the question had stopped being asked. And with one
+note filed and nothing selected it showed instructions where an answer was
+expected.
+
+**A rectangle gets its own answer**, since it is not a node: what it covers,
+through `Peek.covers`. Contained roots where there are any, the text blocks it
+touches where there are none, and the heading says which. Contain alone is
+useless on a phone, where a box drawn with a thumb is narrower than any block in
+a text column and the precise answer is almost always empty.
+
+**Region opens the card on it.** A drag is a deliberate question about what is in
+there and the answer is a list with nowhere else to go, so that one mode expands
+the card and switches to this reading; the element pick only repaints a pane
+already showing, since growing the card under every tap would be a takeover
+nobody asked for. The commit button moves out of the card's way when it does:
+below the box, else above it, else clear of the card's top edge. Measured at
+430px, it had been landing at 528 inside a card spanning 488 to 928, which made
+the answer cost the "+ note" it was an answer about.
 
 Two consequences of not being of the set. An empty set does not empty it, where
 markdown and JSON go bare. And the copy key is offered on a draft with nothing
@@ -785,8 +805,18 @@ Two things it does that are easy to get wrong, both measured on 2026-08-29:
 
 **It is a library before it is a UI.** Every computation reads the element's own
 document rather than the enabled one, so `facts()`, `tree()`, `html()`,
-`chainOf()`, `atom()` and `selectorFor()` work on any element in any document
-with no `enable()`, no cover and no panel. That is what `annotate.js`'s DOM
+`chainOf()`, `atom()`, `selectorFor()` and `covers()` work on any element or
+rectangle in any document with no `enable()`, no cover and no panel.
+
+`covers(rect, {doc, mode})` is the rectangle half, in document coordinates so a
+live drag and a filed region note ask the same question. `contain` returns the
+covered elements whose parent is not covered, which is `console/mods/lasso.js`'s
+selection-roots rule; `touch` returns the text blocks the box overlaps, keeping
+the innermost where they nest. Blocks rather than whatever element is deepest,
+because a box over prose overlaps the links inside it and "three `<a>` elements"
+is a true answer to a question nobody drew a box to ask. The block set is the one
+annotate's region excerpt already reads, so the two agree about what a region
+covers. That is what `annotate.js`'s DOM
 reading calls; reading the enabled document here would have made the whole kit
 conditional on its own UI.
 

@@ -105,7 +105,8 @@ test('reading: with no note and no draft it says where a subject comes from', ()
   const w = boot();
   w.Annotate.expand(true);
   w.Annotate.setReading('dom');
-  assert.match(w.Annotate._state.serialPre.textContent, /Select a note, or aim at something/);
+  // The aim leads the sentence because it leads the fallback chain.
+  assert.match(w.Annotate._state.serialPre.textContent, /Aim at something, or select a note/);
 });
 
 test('empty set: the dom reading still shows, where md and json go bare', () => {
@@ -128,6 +129,50 @@ test('copy: the key is offered for dom on an empty set', () => {
   A.setReading('dom');
   assert.equal(A._state.serialCopy.style.display, 'flex');
   assert.match(A._state.serialCopy.title, /DOM reading/);
+});
+
+// THE LIVE AIM, which is the correction this reading needed. The first version
+// keyed on the filed note, so a reader aiming at things watched the pane say
+// "select a note" through an entire pick. Reproduced headlessly before the fix.
+test('subject: the staged aim outranks every filed note', () => {
+  const w = boot();
+  const A = w.Annotate;
+  A.add(elTarget(w, '#p1'), 'filed');
+  A.expand(true);
+  A.setReading('dom');
+  assert.match(A._state.serialPre.textContent, /^p#p1/, 'the note, with no aim');
+
+  A._state.aimEl = w.document.getElementById('li1');
+  A._state.serialPre.textContent = '';
+  A.setReading('dom');
+  assert.match(A._state.serialPre.textContent, /^li#li1/, 'the aim wins');
+});
+
+test('subject: ending the mode drops the aim back to the note', () => {
+  const w = boot();
+  const A = w.Annotate;
+  A.add(elTarget(w, '#p1'), 'filed');
+  A.expand(true);
+  A._state.aimEl = w.document.getElementById('li1');
+  A.setReading('dom');
+  assert.match(A._state.serialPre.textContent, /^li#li1/);
+
+  A.startPick();          // arms a mode
+  A.notePage();           // endMode() runs on the way through
+  assert.equal(A._state.aimEl, null, 'the aim is cleared with the mode');
+});
+
+test('subject: a staged rectangle reads as a region, not a node', () => {
+  const w = boot();
+  const A = w.Annotate;
+  A.expand(true);
+  A._state.aimRect = { x: 0, y: 0, w: 300, h: 200 };
+  A.setReading('dom');
+  const t = A._state.serialPre.textContent;
+  assert.match(t, /^region {2}300 × 200 at 0, 0/);
+  // jsdom has no layout, so nothing has a box to be inside or to touch; the
+  // reading must say that rather than throw or print an empty list.
+  assert.match(t, /covers nothing on the page\.|contains \d+|touches \d+/);
 });
 
 test('elementOf: every target type resolves through one function', () => {

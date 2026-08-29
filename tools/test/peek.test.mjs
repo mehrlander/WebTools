@@ -162,6 +162,51 @@ test('library: facts, tree and the chain work with no enable()', () => {
   assert.equal(window.document.querySelectorAll('[data-peek-ui]').length, 0);
 });
 
+// covers(): the two readings of a drawn rectangle. jsdom has no layout, so
+// every rect would be zero and both modes would degenerate; these stub real
+// numbers onto the nodes under test, which is the only way the geometry is
+// exercised at all outside a browser.
+const withRects = (w, map) => {
+  for (const [sel, r] of Object.entries(map)) {
+    for (const el of w.document.querySelectorAll(sel)) {
+      el.getBoundingClientRect = () => ({ left: r[0], top: r[1], right: r[0] + r[2],
+        bottom: r[1] + r[3], width: r[2], height: r[3], x: r[0], y: r[1] });
+    }
+  }
+};
+
+test('covers: contain returns roots, not every descendant', () => {
+  const w = boot();
+  // One wide box around the whole table, which sits inside the rectangle.
+  withRects(w, { '#bills': [10, 10, 200, 100], 'tbody': [10, 10, 200, 100],
+                 'tr': [10, 10, 200, 50], 'td': [10, 10, 100, 50], 'a': [12, 12, 40, 20],
+                 'main, article, section, div, ul, li, h1, p, strong': [0, 0, 0, 0] });
+  const got = w.Peek.covers({ x: 0, y: 0, w: 400, h: 400 }, { doc: w.document, mode: 'contain' });
+  // #bills is wholly inside and its parent (main) is not, so the table is the
+  // root; nothing under it is listed.
+  assert.ok(got.includes(w.document.getElementById('bills')), 'the table is a root');
+  assert.ok(!got.some(n => n.tagName === 'TD'), 'no descendant of a root is listed');
+});
+
+test('covers: touch answers with text blocks, not the links inside them', () => {
+  const w = boot();
+  withRects(w, { 'li': [0, 0, 300, 40], 'a': [10, 10, 60, 20], 'strong': [10, 10, 60, 20],
+                 'p, tr, td, th, h1': [0, 500, 300, 40] });
+  const got = w.Peek.covers({ x: 0, y: 0, w: 100, h: 30 }, { doc: w.document, mode: 'touch' });
+  assert.ok(got.length, 'the box touches something');
+  assert.ok(got.every(n => n.tagName === 'LI'), `blocks only, got ${got.map(n => n.tagName)}`);
+});
+
+test('covers: touch keeps the innermost of nested blocks', () => {
+  const w = boot();
+  // Both the outer li and the inner one overlap; only the inner is kept.
+  withRects(w, { 'li': [0, 0, 300, 40], 'a, strong, p, tr, td, th, h1': [0, 900, 10, 10] });
+  const got = w.Peek.covers({ x: 0, y: 0, w: 100, h: 30 }, { doc: w.document, mode: 'touch' });
+  for (const n of got) {
+    assert.ok(!got.some(o => o !== n && n.contains(o)), `${n.textContent.slice(0, 20)} contains another hit`);
+  }
+});
+
 test('disable: removes every node it added', () => {
   const w = boot();
   w.Peek.select(deepest(w, 'Two'));
