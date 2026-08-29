@@ -62,6 +62,27 @@
         "alpine",
         "html-artifact"
       ]
+    },
+    {
+      "name": "google-style-clarity",
+      "source": "./skills/google-style-clarity",
+      "strict": false,
+      "description": "Google developer-documentation style, applied to clarity: name the referent, explain the term, state the relationship, describe the operation behind a metaphor, match the claim to the evidence, and separate an instruction from a recommendation. Every principle cites the guide section it comes from, and a second table of wording to leave alone holds the restraint. Model-invocable, so it triggers on drafting and review work without being asked.",
+      "author": {
+        "name": "mehrlander"
+      },
+      "homepage": "https://github.com/mehrlander/web-tools/tree/main/skills/google-style-clarity",
+      "skills": [
+        "./"
+      ],
+      "keywords": [
+        "clarity",
+        "prose",
+        "style-guide",
+        "documentation",
+        "review",
+        "editing"
+      ]
     }
   ]
 }
