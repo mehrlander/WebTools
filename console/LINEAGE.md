@@ -39,9 +39,9 @@ so they had nothing to inherit.
 | `scan` | the aside scanner | 2025-06 | `_asideScanInterval`, a bare `setInterval` re-reading a region. No dedupe, no persistence, so a long run drowned in repeats. |
 | `harvest` | the aside scanner | 2025-06 | Same origin; the scroll-and-accumulate half. |
 | `query` | the XPath tally bookmarklet | 2024-03 | Paths were **tallied and picked from a list** (`tallyXPaths`, `traverseElement`), not written. Fine for one page, unrepeatable on the next. |
-| `tap` | — | | Watching the wire has no ancestor in the archive: three years of tools all read the rendered DOM. |
-| `semantics` | — | | Nothing in the archive reads JSON-LD or microdata; the assumption throughout was that structure had to be inferred. |
-| `join`, `sets`, `recipe`, `watch` | — | | These answer problems that only exist once a selection persists, so there was nothing to inherit. `watch` in particular answers a bug the archive predates. |
+| `tap` | none found | | Watching the wire has no ancestor in the archive: three years of tools all read the rendered DOM. |
+| `semantics` | none found | | Nothing in the archive reads JSON-LD or microdata; the assumption throughout was that structure had to be inferred. |
+| `join`, `sets`, `recipe`, `watch` | none found | | These answer problems that only exist once a selection persists, so there was nothing to inherit. `watch` in particular answers a bug the archive predates. |
 
 ## Two things the whole line kept
 
