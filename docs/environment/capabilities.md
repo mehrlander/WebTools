@@ -707,6 +707,21 @@ after it and 8c's opening backtick fell before `[main](`. The measured length is
 stable across all of them; only the re-serialization wanders. Look for a backtick
 anywhere near a URL, not at a fixed offset.
 
+**An angle-bracket placeholder is eaten, backticks included.**
+*(one observation, 2026-08-29, PR #546's body; not bracketed the way the length
+rows above are)* A body written through the MCP had `` `stale -> <id>` `` in it
+and read back as `` `stale -> ` ``, the placeholder gone and the `>` of the
+arrow escaped to `&gt;`. That is HTML sanitization rather than the length rule:
+`<id>` parses as an unknown tag and is dropped, while a bare `>` survives as
+text. A code span did not protect it, which is the part worth knowing, since
+the length rule's safe harbour is the same construct.
+
+Distinct from wrapping in the way that matters: a wrapped URL is disfigured but
+still there, and a dropped placeholder leaves a sentence that reads as finished
+and says nothing. Write a concrete example (`stale -> ccb6cfc`) rather than a
+placeholder in any body or comment written this way. Chat replies are untouched,
+as with everything else in this section.
+
 ## MCP: two servers can share a tool name, and only one may work
 
 *(measured 2026-07-29)*

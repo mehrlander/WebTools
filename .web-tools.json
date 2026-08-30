@@ -1,37 +1,38 @@
 {
-  "icon": "ph-toolbox",
-  "estate": true,
-  "group": "core",
-  "order": 11,
-  "note": "Home of the Web Tools app, the browser tools and kits, and the portable conventions.",
-  "scope": "The public hub: the Web Tools app (the show-repo shell), the browser tools and kits, and the portable conventions every repo pulls. Public on purpose, since conventions are not secret and a public hub is what lets private repos fetch them with no credentials at session start.",
-  "tracker": "tracker/board.md",
-  "growth": "data/doc-growth/web-tools.json",
-  "pins": [
-    "pages",
-    "lib/alpineComponents",
-    "docs/CONVENTIONS.md",
-    "docs/SURFACING.md"
-  ],
-  "pages": [
-    {
-      "path": "pages/doc-growth.html",
-      "title": "Doc Growth",
-      "note": "This repo's markdown over time: every file a bubble, drifting right as it grows."
-    }
-  ],
-  "stage": {
-    "files": [],
-    "targets": [
-      "mehrlander/home:chron/dump"
-    ]
-  },
-  "checks": [
-    {
-      "kind": "tracker",
-      "path": "tracker/board.csv",
-      "staleAfterDays": 45,
-      "label": "tracker"
-    }
+ "icon": "ph-toolbox",
+ "estate": true,
+ "group": "core",
+ "order": 11,
+ "note": "Home of the Web Tools app, the browser tools and kits, and the portable conventions.",
+ "scope": "The public hub: the Web Tools app (the show-repo shell), the browser tools and kits, and the portable conventions every repo pulls. Public on purpose, since conventions are not secret and a public hub is what lets private repos fetch them with no credentials at session start.",
+ "tracker": "tracker/board.md",
+ "growth": "data/doc-growth/web-tools.json",
+ "pins": [
+  "pages",
+  "console",
+  "lib/alpineComponents",
+  "docs/CONVENTIONS.md",
+  "docs/SURFACING.md"
+ ],
+ "pages": [
+  {
+   "path": "pages/doc-growth.html",
+   "title": "Doc Growth",
+   "note": "This repo's markdown over time: every file a bubble, drifting right as it grows."
+  }
+ ],
+ "stage": {
+  "files": [],
+  "targets": [
+   "mehrlander/home:chron/dump"
   ]
+ },
+ "checks": [
+  {
+   "kind": "tracker",
+   "path": "tracker/board.csv",
+   "staleAfterDays": 45,
+   "label": "tracker"
+  }
+ ]
 }

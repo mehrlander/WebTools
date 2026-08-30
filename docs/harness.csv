@@ -88,7 +88,7 @@ tools/render/scenarios/diff-tool-roots.mjs,the browse panel's root list over a s
 tools/render/scenarios/diff-tool-sources.mjs,the Sources tab with the normalization strip open and two prose drafts loaded,tools/render/scenarios,25,driver,no,no,no
 tools/render/scenarios/entities-stub.mjs,"pages/entities.html against the committed index, token-free",tools/render/scenarios,35,driver,no,no,no
 tools/render/scenarios/estate-crawl-progress.mjs,"Branches or Sessions mid-crawl: the pane seeded, then the shell's progress slot written by hand",tools/render/scenarios,61,driver,no,no,no
-tools/render/scenarios/estate-jots.mjs,the estate's Jots view with a populated pile,tools/render/scenarios,90,driver,no,no,no
+tools/render/scenarios/estate-jots.mjs,the estate's Jots view with a populated pile,tools/render/scenarios,89,driver,no,no,no
 tools/render/scenarios/estate-open.mjs,Activity's Open view seeded token-free so the list renders headlessly,tools/render/scenarios,205,driver,no,no,no
 tools/render/scenarios/estate-pins.mjs,the Lists pane with the Pin block populated above To-do and Jot,tools/render/scenarios,96,driver,no,no,no
 tools/render/scenarios/estate-rows.mjs,the grouped-grid Repos view with a nested companion card,tools/render/scenarios,88,driver,no,no,no

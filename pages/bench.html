@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Bench</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔧</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script src="https://cdn.jsdelivr.net/combine/npm/marked/marked.min.js,npm/js-yaml/dist/js-yaml.min.js,npm/papaparse/papaparse.min.js,npm/turndown/dist/turndown.js"></script>
+
+<!--
+  bench.html — a page a shortcut calls into, rather than a page a shortcut opens.
+
+  EVERY OTHER PAGE IN THIS ESTATE IS A DESTINATION. Show-Html navigates Safari
+  to a data: URL, Show-WebView raises a sheet, show.py gzips a page into a link.
+  In all three the shortcut's flow ENDS when the page appears, which is why the
+  return channel has been such a preoccupation and why Log-Repo exists at all.
+
+  Run JavaScript on Web Page is the other direction and it was already on the
+  device. It runs inside a shortcut and hands its value back through
+  completion(), so a page becomes callable. Three facts settle the model, all
+  read out of the corpus rather than guessed (shortcut-tools
+  docs/shortcuts-format-notes.md, "The browser is a coprocessor"):
+
+    1. completion() returns structured values, not only text. Get-Nice ends a
+       card with completion(window.siriData), an array of objects.
+    2. The page is a HEAP BETWEEN CALLS. One Get-Nice card writes
+       window.siriData, a later separate card reads it back. Same run, same page.
+    3. WFJavaScript may be a token string, and in AI Run JavaScript On Page it is
+       ENTIRELY one variable. So the sent script can be built at run time.
+
+  EACH DEPENDENCY NAMES ITS UMD DIST FILE, and that is not tidiness. A jsDelivr
+  combine of bare package names takes each package's DEFAULT entry, and js-yaml's
+  and papaparse's are CommonJS: the first unguarded `exports` throws, and because
+  combine concatenates into one script, the throw takes out every package after it
+  in the bundle. The symptom is that marked works and Papa is not defined, which
+  reads as a CDN outage rather than as the bundle being one file. Caught by
+  tools/test/bench-page.mjs on 2026-08-29.
+
+  WHAT THAT BUYS, AND WHY THIS PAGE EXISTS. The documented performance cliff on
+  that action scales with SOURCE LENGTH (JavaScriptCore, no JIT), not with work
+  done. So the discipline is not "avoid JavaScript in Shortcuts", it is "put the
+  heavy code somewhere that already parsed it and send one line". A page that has
+  already pulled marked, js-yaml, papaparse and turndown off the CDN is exactly
+  that somewhere. The shortcut then sends:
+
+      completion(bench.call("md", "<base64>"))
+
+  which is short enough that the cliff never applies.
+
+  INPUT ARRIVES BASE64, DELIBERATELY. It is interpolated into the script by
+  Shortcuts, so raw text would end the string literal on the first quote,
+  backtick or newline it contained. Base64 with WFBase64LineBreakMode "None" has
+  none of those characters, and the estate already base64s on this boundary
+  (Log-Repo does). bench.call decodes as UTF-8 on the way in.
+
+  OPS ARE SYNCHRONOUS ON PURPOSE. completion(bench.call(...)) has to receive a
+  value, not a promise. An async op is still reachable, it just has to be written
+  by the caller as bench.call("x", b).then(completion).
+
+  THE CALL LOG IS THE POINT OF THE UI. Leave this open in a tab, drive it from a
+  shortcut, and watch each call land with its op, its input size and its result.
+  That is the diagnostic the estate never had for this boundary: everywhere else
+  a failed call is a shortcut that stops with no explanation. The try-it box
+  below exercises the same bench.call the shortcut uses, so the page is testable
+  in a desktop browser with no device in the loop.
+-->
+</head>
+<body class="min-h-dvh bg-base-200">
+<div class="max-w-3xl mx-auto p-4 flex flex-col gap-4">
+
+  <div class="flex items-center gap-3 flex-wrap">
+    <h1 class="text-2xl font-bold">Bench</h1>
+    <span id="ready" class="badge badge-warning">loading</span>
+    <span class="text-xs opacity-60 font-mono break-all" id="origin"></span>
+  </div>
+
+  <div class="alert text-sm">
+    <i class="ph ph-terminal-window text-xl"></i>
+    <span>A page a shortcut calls into. Leave it open in a tab, then
+      <span class="font-mono">completion(bench.call("op", "&lt;base64&gt;"))</span>.</span>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body gap-2 p-4">
+      <h2 class="card-title text-base">Loaded</h2>
+      <div id="libs" class="flex flex-wrap gap-1"></div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body gap-2 p-4">
+      <h2 class="card-title text-base">Ops</h2>
+      <div class="overflow-x-auto">
+        <table class="table table-sm"><tbody id="ops"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body gap-2 p-4">
+      <h2 class="card-title text-base">Try it</h2>
+      <div class="flex gap-2 flex-wrap">
+        <select id="op" class="select select-sm select-bordered"></select>
+        <button id="go" class="btn btn-sm btn-primary">Run</button>
+      </div>
+      <textarea id="in" class="textarea textarea-bordered font-mono text-sm h-28"
+        placeholder="input"># Hello
+
+Some *markdown*.</textarea>
+      <pre id="out" class="bg-base-200 rounded-box p-3 text-xs overflow-x-auto whitespace-pre-wrap"></pre>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow-sm">
+    <div class="card-body gap-2 p-4">
+      <h2 class="card-title text-base">Calls <span id="n" class="badge badge-sm"></span></h2>
+      <div id="log" class="flex flex-col gap-2 text-sm"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const dec = b64 => new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+const el = id => document.getElementById(id);
+
+const bench = window.bench = {
+  heap: {},
+  log: [],
+  last: null,
+  ops: {},
+  def(name, note, fn) { this.ops[name] = { note, fn }; return this },
+  names() { return Object.keys(this.ops) },
+  caps() { return { ops: this.names(), libs: loaded, origin: location.origin, calls: this.log.length } },
+  call(op, b64) {
+    const entry = { op, at: new Date().toLocaleTimeString(), bytes: (b64 || '').length };
+    let out;
+    if (!this.ops[op]) out = 'BENCH ERR: no op ' + op + ' (have: ' + this.names().join(' ') + ')';
+    else {
+      try { out = this.ops[op].fn(b64 == null ? '' : dec(b64)) }
+      catch (e) { out = 'BENCH ERR: ' + e.name + ': ' + e.message }
+    }
+    this.last = out;
+    entry.out = out;
+    this.log.unshift(entry);
+    render();
+    return out;
+  }
+};
+
+bench
+  .def('echo',    'return the input unchanged (the smoke test)', s => s)
+  .def('caps',    'what this bench has loaded', () => bench.caps())
+  .def('stats',   'chars, words, lines', s => ({
+        chars: s.length, words: (s.match(/\S+/g) || []).length, lines: s.split('\n').length }))
+  .def('md',      'markdown to HTML', s => marked.parse(s))
+  .def('mdplain', 'markdown to plain text', s => {
+        const d = document.createElement('div'); d.innerHTML = marked.parse(s); return d.textContent.trim() })
+  .def('html2md', 'HTML to markdown', s =>
+        new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' }).turndown(s))
+  .def('yaml',    'YAML to an object', s => jsyaml.load(s))
+  .def('csv',     'CSV to a list of objects', s => Papa.parse(s.trim(), { header: true }).data)
+  .def('json',    'pretty-print JSON', s => JSON.stringify(JSON.parse(s), null, 2))
+  .def('push',    'append the input to bench.heap.items', s => {
+        (bench.heap.items = bench.heap.items || []).push(s); return bench.heap.items.length })
+  .def('drain',   'return bench.heap.items and clear it', () => {
+        const v = bench.heap.items || []; bench.heap.items = []; return v });
+
+const loaded = ['marked', 'js-yaml', 'papaparse', 'turndown']
+  .filter((n, i) => [self.marked, self.jsyaml, self.Papa, self.TurndownService][i]);
+
+const fmt = v => typeof v === 'string' ? v : JSON.stringify(v, null, 1);
+
+// Built as nodes rather than interpolated markup. A call's output is arbitrary
+// text, and `md` returns HTML by definition, so this is the one place on the
+// page holding a value that must not be parsed. textContent settles it without
+// a local escape helper, which the estate keeps to exactly one (window.esc,
+// lib/vanilla-bundle.js) and this page does not boot the chain to reach.
+const node = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+};
+
+function render() {
+  el('n').textContent = bench.log.length;
+  const log = el('log');
+  log.textContent = '';
+  if (!bench.log.length) return log.append(node('span', 'opacity-50', 'nothing yet'));
+  for (const e of bench.log.slice(0, 25)) {
+    const row = node('div', 'border-l-4 border-primary pl-3');
+    const head = node('div', 'flex gap-2 items-baseline flex-wrap');
+    head.append(node('span', 'font-mono font-bold', e.op),
+                node('span', 'opacity-60 text-xs', `${e.at} · ${e.bytes}b in`));
+    row.append(head, node('pre', 'text-xs opacity-80 whitespace-pre-wrap break-all mt-1',
+                          fmt(e.out).slice(0, 400)));
+    log.append(row);
+  }
+}
+
+el('origin').textContent = location.origin;
+el('libs').innerHTML = loaded.map(n => `<span class="badge badge-success badge-sm">${n}</span>`).join('')
+  || '<span class="badge badge-error badge-sm">none</span>';
+el('ops').innerHTML = bench.names().map(n =>
+  `<tr><td class="font-mono font-bold w-32">${n}</td><td class="opacity-70">${bench.ops[n].note}</td></tr>`).join('');
+el('op').innerHTML = bench.names().map(n => `<option${n === 'md' ? ' selected' : ''}>${n}</option>`).join('');
+el('ready').className = 'badge badge-success';
+el('ready').textContent = 'ready · ' + loaded.length + ' libs';
+
+el('go').onclick = () => {
+  const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(el('in').value)));
+  el('out').textContent = fmt(bench.call(el('op').value, b64));
+};
+
+render();
+</script>
+</body>
+</html>
