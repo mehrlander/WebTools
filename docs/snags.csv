@@ -9,6 +9,7 @@ mcp-approval-is-often-routing,an approval prompt that is really a wall,2,2026-08
 ci-watch-on-blocked-api,a curl watch loop on the GitHub API waits forever,2,2026-08-14,2026-08-10;2026-08-14,environment/capabilities.md
 headless-shot-prose-flat,typography CSS misses in screenshots,2,2026-08-14,2026-08-07;2026-08-14,environment/testing.md
 x-data-scope-shadows-component-names,"a mount's config read a component, not the host's field",2,2026-08-14,2026-08-14;2026-08-14,show-repo.md;HTML-STYLE.md
+showing-blocks-a-new-page-on-its-own-favicon,a page added on the branch always trips the shell rule,1,2026-08-30,2026-08-30,showing.md;../scripts/showing.py
 crawl-is-the-only-clock,a merged manifest change did not reach the nav,1,2026-08-28,2026-08-28,manifest.md
 showing-whitelists-pages-only,the render-link script named two pages the branch never touched,1,2026-08-28,2026-08-28,showing.md;../scripts/showing.py
 combine-serves-cjs,"a jsDelivr /combine/ spec served the CommonJS build, and the local mirror hid it",1,2026-08-26,2026-08-26,doc-growth.md
