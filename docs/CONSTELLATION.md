@@ -72,6 +72,19 @@ from the update step. The only thing ever copied is that seed, the minimal thing
 that lets everything else be pulled; a repo cannot pull the mechanism by which it
 pulls.
 
+## Principle 5: the repo owns its own story
+
+A repo's account of what it holds and why is a property of the repo, not of the
+set. It is stated on the repo's own terms and does not change when a sibling
+appears or disappears. Housing it centrally invites writing it comparatively, as
+differentiation, which rots the moment the roster changes. So each repo declares
+its own scope (in its `.web-tools.json` `scope` field, per
+[`PORTABLE.md`](PORTABLE.md)); the cross-repo picture is a view that stacks those
+statements, never an authored central list. This is the same shape as estate
+membership (a repo opts in on its own config; there is no registry roster of
+members) and as the surface split (a repo owns the surface that tells its own
+story; the registry keeps only the curated, cross-repo ones).
+
 ## Principle 6: documentation has four places, and everything else is a question
 
 Four slots. A markdown file in none of them is a **residual**.
@@ -88,6 +101,12 @@ documents gets its own `docs/` rather than sending them up to the repo's, which 
 same move as principle 2 one level down: a folder can express topic, and `docs/` is
 where it expresses genre.
 
+**`docs/` is the default and the third slot is narrow.** The third holds a reference
+whose subject is the files sitting with it, so it is decided by what the document is
+about, never by what moving it would cost. A folder that has quietly accumulated
+documents about the workspace is a `docs/` nobody made, whatever the inbound reference
+count says.
+
 A residual is a question, not a defect, and two answers close it: a document about one
 folder becomes that folder's `README.md`; a document about the workspace moves to its
 `docs/`. Where neither reading fits, leave it and say which it failed.
@@ -98,16 +117,3 @@ residual by directory. It sorts on basename shape, so it cannot separate the thi
 from a file that drifted, and reports what else is in the directory instead: eight
 capitalised documents beside sixteen CSVs is a data-design folder documenting itself,
 one beside nothing is a document with nowhere to be. Advisory, never gates.
-
-## Principle 5: the repo owns its own story
-
-A repo's account of what it holds and why is a property of the repo, not of the
-set. It is stated on the repo's own terms and does not change when a sibling
-appears or disappears. Housing it centrally invites writing it comparatively, as
-differentiation, which rots the moment the roster changes. So each repo declares
-its own scope (in its `.web-tools.json` `scope` field, per
-[`PORTABLE.md`](PORTABLE.md)); the cross-repo picture is a view that stacks those
-statements, never an authored central list. This is the same shape as estate
-membership (a repo opts in on its own config; there is no registry roster of
-members) and as the surface split (a repo owns the surface that tells its own
-story; the registry keeps only the curated, cross-repo ones).
