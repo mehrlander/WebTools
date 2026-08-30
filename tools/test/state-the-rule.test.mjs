@@ -246,3 +246,125 @@ test('seams.py reports a heading that swallowed the line under it', () => {
   rmSync(dir, { recursive: true, force: true });
   assert.match(out, /heading-absorbed/, 'the heading line carries a sentence');
 });
+
+// ── ops.py: the patch ──────────────────────────────────────────────────────
+// The page applies each operation optimistically and ops.py is the authority
+// that validates and writes, so what the two must agree on is the RESULT of a
+// patch. These pin the half nobody can see in a screenshot: what a bad patch
+// does to the file it was pointed at.
+
+const DOC = 'Close the lid, because the contents spoil.\n\nCheck it twice.';
+
+function standoff(dir) {
+  const doc = join(dir, 'doc.md');
+  writeFileSync(doc, DOC);
+  const so = {
+    kind: 'standoff/1',
+    target: { path: 'doc.md' },
+    vocabulary: [{ label: 'WHAT', side: 'declaration' },
+                 { label: 'WHY-MOT', side: 'explanation' }],
+    units: [
+      { uid: 'u-001', start: 0, end: 42, kind: 'sent', words: 7, label: 'WHAT' },
+      { uid: 'u-002', start: 44, end: 59, kind: 'sent', words: 3, label: 'WHAT' },
+    ],
+  };
+  const sf = join(dir, 'so.json');
+  writeFileSync(sf, JSON.stringify(so));
+  return { doc, sf };
+}
+
+// Returns { status, out, so } so a test can assert on both the exit and the
+// file: a refusal that still wrote is the failure worth catching.
+function patch(ops, write = true) {
+  const dir = mkdtempSync(join(tmpdir(), 'ops-'));
+  const { doc, sf } = standoff(dir);
+  const pf = join(dir, 'patch.json');
+  writeFileSync(pf, JSON.stringify(ops));
+  const args = [join(SKILL, 'ops.py'), sf, pf, doc];
+  if (write) args.push('--write');
+  let status = 0, out = '';
+  try { out = execFileSync('python3', args, { encoding: 'utf8', stdio: 'pipe' }); }
+  catch (e) { status = e.status; out = (e.stderr || '') + (e.stdout || ''); }
+  const so = JSON.parse(readFileSync(sf, 'utf8'));
+  rmSync(dir, { recursive: true, force: true });
+  return { status, out, so };
+}
+
+test('a split leaves the two halves tiling the parent span', () => {
+  const { so } = patch([{ op: 'split', uid: 'u-001', at: 15 }]);
+  const [a, b] = so.units;
+  assert.equal(a.uid, 'u-001a');
+  assert.equal(b.uid, 'u-001b');
+  assert.deepEqual([a.start, a.end, b.start, b.end], [0, 15, 15, 42]);
+  assert.equal(a.from, 'split:u-001', 'the halves record what they came from');
+});
+
+test('a split at a boundary outside the unit is refused', () => {
+  const { status, out, so } = patch([{ op: 'split', uid: 'u-001', at: 200 }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /not inside/);
+  assert.equal(so.units.length, 2, 'the file is untouched');
+});
+
+// The one that matters: an operation is checked after it is applied, so a patch
+// whose LAST step is bad must not leave the earlier steps on disk.
+test('a patch is refused whole, not applied up to the bad operation', () => {
+  const { status, so } = patch([{ op: 'split', uid: 'u-001', at: 15 },
+                                { op: 'relabel', uid: 'u-001a', label: 'NOPE' }]);
+  assert.notEqual(status, 0);
+  assert.equal(so.units.length, 2, 'the good split did not survive the bad relabel');
+  assert.equal(so.units[0].uid, 'u-001');
+});
+
+test('a label outside the declared vocabulary is refused', () => {
+  const { status, out } = patch([{ op: 'relabel', uid: 'u-001', label: 'WHY-OP' }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /vocabulary/);
+});
+
+test('an unknown operation is refused rather than skipped', () => {
+  const { status, out } = patch([{ op: 'reword', uid: 'u-001', text: 'no' }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /unknown operation/);
+});
+
+test('the last unit has nothing to merge with', () => {
+  const { status, out } = patch([{ op: 'merge', uid: 'u-002' }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /nothing follows/);
+});
+
+// A merge that kept either side's kind would be stating something false about
+// the span it now covers, and the kind is what the page styles on.
+test('a merge across two kinds reports mixed, not one of them', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ops-'));
+  const { doc, sf } = standoff(dir);
+  const so = JSON.parse(readFileSync(sf, 'utf8'));
+  so.units[1].kind = 'heading';
+  writeFileSync(sf, JSON.stringify(so));
+  const pf = join(dir, 'p.json');
+  writeFileSync(pf, JSON.stringify([{ op: 'merge', uid: 'u-001' }]));
+  execFileSync('python3', [join(SKILL, 'ops.py'), sf, pf, doc, '--write']);
+  const after = JSON.parse(readFileSync(sf, 'utf8'));
+  rmSync(dir, { recursive: true, force: true });
+  assert.equal(after.units.length, 1);
+  assert.equal(after.units[0].kind, 'mixed');
+  assert.equal(after.units[0].end, 59, 'the survivor covers both spans');
+});
+
+test('a note is set and cleared through the same operation', () => {
+  const set = patch([{ op: 'note', uid: 'u-001', text: 'the reason is fused in' }]);
+  assert.equal(set.so.units[0].note, 'the reason is fused in');
+  const cleared = patch([{ op: 'note', uid: 'u-001', text: 'x' },
+                         { op: 'note', uid: 'u-001', text: '' }]);
+  assert.ok(!('note' in cleared.so.units[0]), 'an empty note removes the key');
+});
+
+// Without --write the run is a dry run, which is what makes a patch reviewable
+// before it lands.
+test('without --write nothing is written', () => {
+  const { status, out, so } = patch([{ op: 'split', uid: 'u-001', at: 15 }], false);
+  assert.equal(status, 0);
+  assert.match(out, /2 units -> 3/);
+  assert.equal(so.units.length, 2);
+});

@@ -172,6 +172,47 @@ a governed file runs before one that measures it.
 **A lesson that recurs a third time earns a change to this skill or its
 tooling.**
 
+## Revising the annotation
+
+Step 1's grain is a starting guess and step 2's label is a first reading. Both
+are revised by a **patch**, a list of operations over the stored standoff:
+
+```bash
+python3 ops.py <standoff.json> <patch.json> <doc.md> [--write]
+```
+
+| operation | is |
+| --- | --- |
+| `{"op":"split","uid":…,"at":<document offset>}` | one unit becomes two, meeting at `at` |
+| `{"op":"merge","uid":…}` | a unit absorbs its successor |
+| `{"op":"relabel","uid":…,"label":…}` | a different label from the declared vocabulary |
+| `{"op":"note","uid":…,"text":…}` | what the label cannot say; an empty text clears it |
+
+**Operations are keyed by uid, not by array index.** RFC 6902 is the standard and
+the wrong altitude: its paths are positions, so inserting one unit invalidates
+every later path and a split reads as two array mutations nothing can check as a
+split. `why` is accepted on any operation.
+
+**A patch is valid against its base or it does not run.** Every operation is
+checked after it is applied, and a failure anywhere refuses the whole patch,
+so a bad last step cannot leave the earlier ones on disk. The invariants are
+the ones a stored run is already held to: units tile the document with no
+unannotated gap, every span resolves to non-whitespace, every label is in the
+declared vocabulary, uids are unique. Without `--write` the run is a dry run.
+
+**The uid records the grain's history and the patch does not.** A split suffixes
+its parent (`046` becomes `046a`/`046b`, and splitting a half gives `046aa`), and
+each unit carries `from`. So a patch is a transport, not a second history to
+store: nothing keeps the patch files.
+
+**Where a patch comes from.** `pages/audit-render.html` (hub) offers the four
+operations on the selected unit and accumulates them, applying each one
+optimistically so the view moves under your thumb; it splits at connective
+boundaries, which is where 40% of fused prose units divide. The page is not a
+second implementation of the rules: it renders a prediction, and `ops.py`
+validates and writes. `tools/render/scenarios/audit-edit.mjs` prints the units
+the page produced so they can be diffed against `ops.py` over the same patch.
+
 ## Boundaries
 
 - Only for executed documents. A document written to be read straight through is
@@ -186,14 +227,14 @@ tooling.**
   Annotate one to find out; a result near 100% `KEEP` is the signal to stop.
 - Do not fold a doctrine change into a compression. Rewriting what a rule *says*
   is a separate decision from stating it more directly.
-- The tooling's checks are tested (`tools/test/state-the-rule.test.mjs`), and a
-  stored run is held to its target and to the page that shows it
-  (`tools/test/audit-standoff.test.mjs`); both hub only. The judgment steps are not testable and every figure in `runs.csv`
+- The tooling's checks and the patch operations are tested
+  (`tools/test/state-the-rule.test.mjs`), and a stored run is held to its target
+  and to the page that shows it (`tools/test/audit-standoff.test.mjs`); both hub only. The judgment steps are not testable and every figure in `runs.csv`
   was read by hand.
 
 ## Files
 
-`segment.py` · `check.py` · `seams.py` · `runs.csv` · `LOG.md` · `runs/<date>-<patient>/`
+`segment.py` · `check.py` · `seams.py` · `ops.py` · `runs.csv` · `LOG.md` · `runs/<date>-<patient>/`
 
 `reanchor.py` resolves an annotation into an edited document across four tiers
 and reports which one caught each unit, so a run can say how much annotation an

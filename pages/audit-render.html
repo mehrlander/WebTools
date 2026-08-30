@@ -876,14 +876,19 @@ window.__audit = {
       if (spec) payload = JSON.parse((await gh.get(spec)).text);
       this.a = payload;
       this.sections = mdDoc.split(this.a.text);
-      // Blocks: consecutive units with no blank line between them.
+      this.regroup();
+      this.$nextTick(() => this.paint());
+    },
+    // Blocks: consecutive units with no blank line between them. Derived from
+    // units, so every grain edit rebuilds it; paint() reads blocks and would
+    // otherwise keep rendering the units a split just replaced.
+    regroup() {
       let blocks = [], cur = null;
       for (const u of this.units) {
         const gap = cur ? this.a.text.slice(cur.at(-1).end, u.start) : '';
         if (!cur || /\n\s*\n/.test(gap)) { cur = [u]; blocks.push(cur); } else cur.push(u);
       }
       this.blocks = blocks;
-      this.$nextTick(() => this.paint());
     },
     get vocab() { return this.so.vocabulary.filter(v => this.count(v.label)); },
     get sides() { return [...new Set(this.vocab.map(v => v.side))]; },
@@ -911,6 +916,80 @@ window.__audit = {
     // Only the ordinal distinguishes them, and the full uid wrapped to two
     // lines on a phone to carry the half that never varies.
     num(u) { return u.uid.split('-').pop(); },
+
+    // EDITING. The page applies an operation optimistically so the view moves
+    // under your thumb; skills/state-the-rule/ops.py is the authority that
+    // validates and writes. The PATCH is what travels between them, so a
+    // disagreement ends with ops.py refusing rather than with two half-edited
+    // artifacts. Operations are keyed by uid, never by array index: RFC 6902's
+    // paths would renumber every unit after an insert, and a split would read
+    // as two opaque array mutations nothing could check as a split.
+    patch: [], menu: null, boundaries: [],
+    // Each operation returns the uid to leave selected, or false to refuse it.
+    // A refused operation is never recorded: the patch is what the page did,
+    // so a step the page declined to take cannot ride along in it.
+    push(op) {
+      const uid = this[op.op](op);
+      if (uid === false) return;
+      this.patch.push(op);
+      this.regroup();
+      this.menu = null;
+      this.paint();
+      const u = this.units.find(x => x.uid === uid);
+      this.sel = u ? { ...u, broken: !!this.unitHtml(u).broken, ref: this.srcRef(u) } : null;
+    },
+    nextOf(uid) { return this.units[this.units.findIndex(u => u.uid === uid) + 1]; },
+
+    split(o) {
+      const i = this.units.findIndex(u => u.uid === o.uid), u = this.units[i];
+      if (!u || o.at <= u.start || o.at >= u.end) return false;
+      const half = (a, b, suf) => ({ ...u, uid: u.uid + suf, start: a, end: b,
+        words: this.a.text.slice(a, b).split(/\s+/).filter(Boolean).length,
+        from: 'split:' + u.uid });
+      this.units.splice(i, 1, half(u.start, o.at, 'a'), half(o.at, u.end, 'b'));
+      return o.uid + 'a';
+    },
+    merge(o) {
+      const i = this.units.findIndex(u => u.uid === o.uid), u = this.units[i], n = this.units[i + 1];
+      if (!u || !n) return false;
+      // A cross-kind merge cannot keep either kind and stay true, so it says so.
+      this.units.splice(i, 2, { ...u, end: n.end, kind: u.kind === n.kind ? u.kind : 'mixed',
+        words: this.a.text.slice(u.start, n.end).split(/\s+/).filter(Boolean).length,
+        from: `merge:${u.uid}+${n.uid}` });
+      return o.uid;
+    },
+    relabel(o) {
+      const u = this.units.find(x => x.uid === o.uid);
+      if (!u || !this.so.vocabulary.some(v => v.label === o.label)) return false;
+      u.label = o.label;
+      return o.uid;
+    },
+    note(o) {
+      const u = this.units.find(x => x.uid === o.uid);
+      if (!u) return false;
+      if (o.text) u.note = o.text; else delete u.note;
+      return o.uid;
+    },
+
+    // Split candidates are the connectives the measurement said matter: 40% of
+    // prose units carry one, with a rule on one side and its reason on the
+    // other. Offering those beats a caret, which a phone does not really have.
+    openSplit(u) {
+      // The connective rides with the SECOND half, so the boundary is a
+      // lookahead: splitting after "because" leaves the rule ending on a
+      // dangling connective and the reason unable to say it is one.
+      const t = this.a.text;
+      const re = /[.!?][*`)\]]*\s+|;\s+|:\s+|,\s+(?=so\b|because\b|since\b|which is why\b)/g;
+      const body = t.slice(u.start, u.end);
+      this.boundaries = [...body.matchAll(re)]
+        .map(m => ({ at: u.start + m.index + m[0].length,
+                     lead: body.slice(Math.max(0, m.index - 26), m.index + m[0].length).trim(),
+                     rest: body.slice(m.index + m[0].length, m.index + m[0].length + 40).trim() }))
+        .filter(b => b.at > u.start && b.at < u.end);
+      this.menu = 'split';
+    },
+    get patchJson() { return JSON.stringify(this.patch, null, 1); },
+    get patchHref() { return 'data:application/json;charset=utf-8,' + encodeURIComponent(this.patchJson); },
     dim(u) { return this.off[u.label] ? .12 : 1 },
     verdicts(v) { return this.units.filter(u => u.verdict === v).length; },
     get unrenderable() {
@@ -1032,6 +1111,8 @@ window.__audit = {
         </div>
         <button class="btn btn-xs btn-ghost" @click="deck()"><i class="ph ph-cards"></i> Sections</button>
         <button class="btn btn-xs btn-ghost" @click="$refs.reading.showModal()">Reading</button>
+        <button class="btn btn-xs btn-primary" x-show="patch.length" x-cloak
+                @click="$refs.patch.showModal()">patch <span class="font-mono" x-text="patch.length"></span></button>
       </div>
 
       <!-- The legend is the explanation. Each chip carries the treatment it
@@ -1084,7 +1165,7 @@ window.__audit = {
           <thead><tr><th class="text-right">#</th>
                      <th class="text-right">start</th><th class="text-right">end</th>
                      <th>kind</th><th class="text-right">w</th>
-                     <th>label</th><th>verdict</th><th>text</th></tr></thead>
+                     <th>label</th><th>verdict</th><th>note</th><th>text</th></tr></thead>
           <tbody>
             <template x-for="u in units" :key="u.uid">
               <tr class="cursor-pointer hover:bg-base-200" @click="sel={...u, ref: srcRef(u)}">
@@ -1096,6 +1177,7 @@ window.__audit = {
                 <td><span class="rounded px-1 whitespace-nowrap"
                           :style="`background:rgba(${HUE[u.label]},.25)`" x-text="u.label"></span></td>
                 <td :class="mark(u.verdict)" x-text="u.verdict"></td>
+                <td class="italic opacity-70 max-w-40 truncate" x-text="u.note || ''"></td>
                 <td class="max-w-md truncate" x-text="slice(u)"></td>
               </tr>
             </template>
@@ -1108,7 +1190,10 @@ window.__audit = {
       </details>
     </div>
 
-    <div class="sticky bottom-0 bg-base-200 border-t border-base-300 px-4 py-2 text-xs"
+    <!-- Above the shared FAB (z-80), which is fixed to this same corner and was
+         covering the split candidates. dictate.html's sheet takes the corner the
+         same way: while a page's own bottom UI is up, it owns the bottom. -->
+    <div class="sticky bottom-0 z-[90] bg-base-200 border-t border-base-300 px-4 py-2 text-xs"
          x-show="sel" x-cloak>
       <div class="flex flex-wrap gap-x-4 gap-y-1 items-baseline">
         <b class="font-mono" x-text="sel?.uid"></b>
@@ -1118,10 +1203,66 @@ window.__audit = {
         <span class="badge badge-sm badge-outline" x-text="sel?.verdict"></span>
         <span class="opacity-60 font-mono" x-text="sel?.words + 'w · ' + sel?.kind"></span>
         <span class="opacity-60 font-mono" x-text="sel?.ref"></span>
+        <span class="italic opacity-70" x-show="sel?.note" x-text="sel?.note"></span>
         <span class="text-error" x-show="sel?.broken">slice does not close its own markup</span>
-        <button class="btn btn-ghost btn-xs ml-auto" @click="sel=null">close</button>
+        <button class="btn btn-ghost btn-xs ml-auto" @click="sel=null; menu=null">close</button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1 mt-2">
+        <button class="btn btn-xs" @click="openSplit(sel)">Split</button>
+        <button class="btn btn-xs" :disabled="!nextOf(sel?.uid)"
+                @click="push({op:'merge',uid:sel.uid})">Merge next</button>
+        <button class="btn btn-xs" :class="menu==='label' && 'btn-active'"
+                @click="menu = menu==='label' ? null : 'label'">Relabel</button>
+        <button class="btn btn-xs" :class="menu==='note' && 'btn-active'"
+                @click="menu = menu==='note' ? null : 'note'">Note</button>
+      </div>
+
+      <div class="flex flex-wrap gap-1 mt-2" x-show="menu==='label'">
+        <template x-for="v in so.vocabulary" :key="v.label">
+          <button class="btn btn-xs border-0" :class="v.label===sel?.label && 'ring-1 ring-base-content'"
+                  :style="`background:rgba(${HUE[v.label]},.22)`"
+                  @click="push({op:'relabel',uid:sel.uid,label:v.label})" x-text="v.label"></button>
+        </template>
+      </div>
+
+      <div class="mt-2" x-show="menu==='note'">
+        <input class="input input-xs input-bordered w-full" placeholder="what the label cannot say"
+               :value="sel?.note || ''" @keydown.enter="push({op:'note',uid:sel.uid,text:$event.target.value})">
+      </div>
+
+      <div class="mt-2 space-y-1" x-show="menu==='split'">
+        <template x-if="!boundaries.length">
+          <span class="opacity-60">no clause boundary inside this unit</span>
+        </template>
+        <template x-for="b in boundaries" :key="b.at">
+          <button class="btn btn-xs btn-block justify-start font-normal h-auto py-1 text-left"
+                  @click="push({op:'split',uid:sel.uid,at:b.at})">
+            <span class="opacity-50" x-text="'…' + b.lead"></span>
+            <span class="text-primary">▸</span>
+            <span x-text="b.rest + '…'"></span>
+          </button>
+        </template>
       </div>
     </div>
+
+    <!-- The patch is the artifact of an editing session: what you decided,
+         reviewable as a list of judgments rather than as a JSON diff. -->
+    <dialog class="modal" x-ref="patch">
+      <div class="modal-box max-w-2xl">
+        <div class="flex items-center gap-2 mb-2 text-xs">
+          <span class="font-mono" x-text="patch.length + ' operations'"></span>
+          <a class="link" :href="patchHref" download="patch.json">download</a>
+          <button class="link" @click="navigator.clipboard?.writeText(patchJson)">copy</button>
+          <button class="link text-error ml-auto" @click="location.reload()">discard</button>
+        </div>
+        <pre class="text-xs overflow-x-auto bg-base-200 p-3 rounded" x-text="patchJson"></pre>
+        <p class="text-xs opacity-60 mt-2 font-mono">
+          python3 skills/state-the-rule/ops.py &lt;standoff.json&gt; patch.json &lt;doc.md&gt; --write
+        </p>
+        <form method="dialog" class="modal-backdrop"><button class="btn btn-sm btn-block mt-3">close</button></form>
+      </div>
+    </dialog>
 
     <!-- Where the numbers went: the header carries the figure, the reading that
          makes it mean something lives here, one tap away. -->
