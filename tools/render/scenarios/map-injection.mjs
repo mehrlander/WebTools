@@ -48,4 +48,19 @@ export default async function (page) {
     const d = el && window.Alpine.$data(el);
     return d && d.injection && !d.injectionLoading;
   }, { timeout: 20000 });
+
+  // INJ_SEG opens the tooltip on one segment. Hover is gated on
+  // (hover: hover) and (pointer: fine); headless may not match it, so the shot
+  // drives the tap path, which is the same tipShow and exercises the toggle.
+  if (process.env.INJ_SEG) {
+    const i = Number(process.env.INJ_SEG);
+    const segs = await page.$$('[data-inj-seg]');
+    if (!segs[i]) throw new Error('map-injection: no segment ' + i + ' of ' + segs.length);
+    await segs[i].click();
+    await page.waitForFunction(() => {
+      const el = [...document.querySelectorAll('[x-data]')]
+        .find(e => (e.getAttribute('x-data') || '').includes('map('));
+      return !!window.Alpine.$data(el).tip.seg;
+    }, { timeout: 5000 });
+  }
 }

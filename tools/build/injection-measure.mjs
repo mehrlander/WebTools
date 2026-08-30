@@ -53,8 +53,35 @@ const dispatch = sh('session-dispatch.sh');
 const contributors = [];
 const parts = dispatch.split(/^(\[[^\]\s]+\.sh\])$/m);
 for (let i = 1; i < parts.length; i += 2) {
-  contributors.push({ script: parts[i].slice(1, -1), bytes: bytes(parts[i] + parts[i + 1]) });
+  contributors.push({ script: parts[i].slice(1, -1), text: parts[i] + parts[i + 1],
+                      bytes: bytes(parts[i] + parts[i + 1]) });
 }
+
+// SPLIT THE INJECTOR'S OUTPUT BY DOCUMENT, because the receipt's `bytes` is the
+// SOURCE size and the payload carries a TRIMMED copy. Stacking the hook bar on
+// receipt figures would draw 34,076 bytes into a 27,653-byte bar. The payload
+// is banner, then CONVENTIONS.md from its H1, then SURFACING.md from its H1,
+// then the receipt lines, so the three cuts are exact rather than apportioned.
+const H1_CONV = '\n# Working conventions (portable)\n';
+const H1_SURF = '\n# Surfacing\n';
+const RECEIPTS = '\n[startup-context] ';
+const segmentsOf = (script, text) => {
+  const a = text.indexOf(H1_CONV);
+  const b = text.indexOf(H1_SURF, a + 1);
+  const c = text.indexOf(RECEIPTS, b + 1);
+  if (a < 0 || b < 0 || c < 0) return [{ label: script, path: null, kind: 'overhead', bytes: bytes(text) }];
+  return [
+    { label: 'banner', path: null, kind: 'overhead', bytes: bytes(text.slice(0, a)) },
+    { label: 'web-tools/docs/CONVENTIONS.md', path: 'web-tools/docs/CONVENTIONS.md',
+      kind: 'document', bytes: bytes(text.slice(a, b)) },
+    { label: 'web-tools/docs/SURFACING.md', path: 'web-tools/docs/SURFACING.md',
+      kind: 'document', bytes: bytes(text.slice(b, c)) },
+    { label: 'receipts', path: null, kind: 'overhead', bytes: bytes(text.slice(c)) },
+  ];
+};
+const hookSegments = contributors.flatMap(k =>
+  /session-conventions/.test(k.script) ? segmentsOf(k.script, k.text)
+    : [{ label: k.script, path: null, kind: 'overhead', bytes: k.bytes }]);
 
 // The startup-context receipts: what each carrier says arrived, by path.
 const documents = dispatch.split('\n')
@@ -93,9 +120,13 @@ const out = {
   channels: [
     { id: 'session_hook', label: 'Session hook', total: bytes(dispatch), cap: HARNESS_CAP,
       headroom: HARNESS_CAP - bytes(dispatch), rung: rungOf(sh('inject-conventions.sh')),
-      contributors },
+      contributors: contributors.map(({ script, bytes }) => ({ script, bytes })),
+      segments: hookSegments },
     { id: 'project_instructions', label: 'Project instructions',
-      total: channelTotal('project_instructions'), cap: null, headroom: null, contributors: [] },
+      total: channelTotal('project_instructions'), cap: null, headroom: null, contributors: [],
+      // These arrive whole, so a segment IS the document and its receipt size is the truth.
+      segments: documents.filter(d => d.via === 'project_instructions')
+        .map(d => ({ label: d.path, path: d.path, kind: 'document', bytes: d.bytes })) },
   ],
   rungs: [1, 2, 3].map(n => {
     const budget = { 1: String(INJECTOR_BUDGET), 2: '25981', 3: '4000' }[n];
