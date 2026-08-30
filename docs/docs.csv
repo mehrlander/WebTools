@@ -1,5 +1,5 @@
 path,subject,status,reach,words,maintenance
-docs/APP.md,"the Web Tools app: mission, durable goals, and the name split",living,project,1025,"authored; revised on deliberate reframing, not per feature"
+docs/APP.md,"the Web Tools app: mission, durable goals, and the name split",living,project,1058,"authored; revised on deliberate reframing, not per feature"
 docs/CONSTELLATION.md,the portable kernel of the what-goes-where doctrine,living,app,835,"authored; the argument is the content, so no data carrier applies"
 docs/CONVENTIONS.md,the portable working conventions: the general-behavior hub,living,injected,1339,"authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
 docs/HTML-STYLE.md,"the house style for pages: what to build, as against how",living,skill,930,"authored, edited in place; paired with the daisy-alpine skill, which carries the mechanics and points here for composition; the split is convention, unchecked"
@@ -7,7 +7,7 @@ docs/MARKETPLACE.md,the plugin marketplace: how the set is published and subscri
 docs/PORTABLE.md,"the portable set: what travels, and how to adopt it",living,project,6871,"authored, edited in place; the roster tables are registry-gated against portable.csv and disk (portable-manifest.test.mjs)"
 docs/README.md,the docs folder's front door: the generated index of this registry,living,project,1284,"generated from docs.csv by tools/build/docs-readme.mjs (commit hook plus the derived-artifacts gate); edit the registry, never this file"
 docs/SHARE.md,the copy-paste prompt that points another session at the portable docs,living,orphan,89,"authored; the copy-paste prompt's raw.githubusercontent URL is now covered by dead-links.py's bare-URL scan, which reads fenced shell for exactly this case"
-docs/SNAGS.md,"the friction log: one line per snag, symptom then corrected move",living,project,11374,"authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
+docs/SNAGS.md,"the friction log: one line per snag, symptom then corrected move",living,project,11423,"authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite"
 docs/SURFACING.md,the surfacing system: primitives plus the guide-PR course,living,injected,4103,"authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)"
 docs/TRACKER.md,"the opt-in cross-session project tracker: schema, ids, board",living,project,3838,"authored, edited in place; the schema the tasks skill implements, held to it by review alone"
 docs/aims.json,the mission the estate's material serves and the five goals it is held to,living,app,96,authored; rendered by the Map view's Aims tab
@@ -64,7 +64,7 @@ docs/showing.md,why the showing boundaries sit where they are: the frame and the
 docs/snags.csv,"every snag SNAGS.md records: its slug, one-line symptom, sightings and the doc carrying the fix",living,orphan,608,"generated from docs/SNAGS.md by tools/build/snags-index.mjs, which writes the log's index block in the same run; held to it by derived-artifacts.test.mjs"
 docs/stage.md,"the stage: bench and Saved, intake, the walkable preview and diff, Out, save-as-surface, and the #stage= link grammar",living,project,6073,"authored, edited in place; split from show-repo.md 2026-08-16, which keeps the boundary statement and points here"
 docs/surfacing.csv,the gated index of the surfacing primitives SURFACING.md defines,living,project,785,authored; membership held two-way against the prose by surfacing-manifest.test.mjs
-docs/tests.csv,"the test registry: every check, its kind, and what breaks if it is deleted",living,skill,32293,"derived by npm run tests-index except protects, which is authored; held by tests-registry.test.mjs"
+docs/tests.csv,"the test registry: every check, its kind, and what breaks if it is deleted",living,skill,32300,"derived by npm run tests-index except protects, which is authored; held by tests-registry.test.mjs"
 docs/text-content.md,"the estate's authored text: whether the carriers holding it are organized, and how much never reached one",measured,orphan,4478,"re-derive with scripts/embedded-prose.py and scripts/text-carriers.py; every figure is a command away, and the date in the opening line is what the numbers are as of"
 docs/text-fields.csv,the names a prose-bearing CSV column or JSON key may take,living,app,577,"authored; held to the carriers by tools/test/properties-registry.test.mjs. Uncounted until 2026-08-16, when the registry widened to .csv and found it"
 docs/text-tools.md,"the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not",living,orphan,1310,"authored; carries its own honest assessment, so a later reader is not left to infer the limits from a feature description"

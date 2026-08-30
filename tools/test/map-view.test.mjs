@@ -118,6 +118,20 @@ test('mounts and loads the public set with no startup warnings; adoption stays g
   assert.ok(data.manifest && data.manifest.items.length === 3);
 });
 
+// The Markdown copy is a second rendering of docs/aims.json, so it is built
+// from the manifest rather than scraped off the page. Asserted whole: a
+// per-line check would pass on a rendering that lost the goal numbering.
+test('the Aims tab renders its manifest as Markdown', () => {
+  data.aims = { mission: 'M.', goals: [
+    { key: 'a', name: 'One', gloss: 'First.' },
+    { key: 'b', name: 'Two', gloss: 'Second.' },
+  ] };
+  assert.equal(data.aimsMd(),
+    '# Aims\n\n## Mission\n\nM.\n\n## Goals\n\n1. **One.** First.\n2. **Two.** Second.\n');
+  data.aims = null;
+  assert.equal(data.aimsMd(), '', 'nothing loaded copies nothing rather than a heading');
+});
+
 test('the set groups into plugin / docs / scripts sections', () => {
   const secs = data.setSections;
   // [...] rebuilds the realm-crossed array on this side for deepEqual.
