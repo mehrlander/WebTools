@@ -813,6 +813,7 @@ test('the row carries it, so the pane draws a glyph without opening the record',
 // three as having been read forty-three times, which is the failure the docs
 // registry was avoiding with a hard-coded "injected" string on two rows.
 const CONV = 'web-tools/docs/CONVENTIONS.md';
+const SURF = 'web-tools/docs/SURFACING.md';
 
 function withStartup(entries, over = {}) {
   return { ...S.summarize(record({ startup_context: entries }), 'x'),
@@ -827,7 +828,8 @@ test('startupOf keeps a file per channel, since one document arrives two ways', 
     { path: CONV, via: 'session_hook', basis: 'receipt' },
     { path: CONV, via: 'project_instructions', basis: 'reconstructed' },
   ]);
-  assert.deepEqual(row.startup, [[CONV, 'receipt'], [CONV, 'reconstructed']]);
+  assert.deepEqual(row.startup, [[CONV, 'receipt', 'session_hook', ''],
+                                 [CONV, 'reconstructed', 'project_instructions', '']]);
 });
 
 test('startupOf drops an entry with no path and sorts for a stable diff', () => {
@@ -843,7 +845,7 @@ test('startupOf treats any basis but receipt as reconstructed', () => {
   // The field is a claim about how the entry was obtained, so an unknown value
   // must fall to the weaker side rather than being carried through as data.
   const row = withStartup([{ path: CONV, basis: 'guessed' }]);
-  assert.deepEqual(row.startup, [[CONV, 'reconstructed']]);
+  assert.deepEqual(row.startup, [[CONV, 'reconstructed', '', '']]);
 });
 
 test('startupAttention counts sessions, never occurrences', () => {
@@ -885,4 +887,73 @@ test('a record predating schema 6 contributes nothing rather than a zero', () =>
   const row = { ...S.summarize(record(), 'x'), started: '2026-08-05T13:51:08Z' };
   assert.deepEqual(row.startup, []);
   assert.deepEqual(S.startupAttention([row]), []);
+});
+
+// ── The channel, which the container cannot see ────────────────────────────
+// `startupAttention` above counts presence per document; `injectionAcross`
+// counts the CARRIER, and the two facts it is built for exist nowhere else. A
+// measurement of the checkout sees every one of these files perfectly present
+// on disk, so it can never report that the injector went quiet or that a
+// document arrived twice. Only a receipt can say either.
+
+test('injectionAcross separates the two carriers for one document', () => {
+  const got = S.injectionAcross([withStartup([
+    { path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' },
+    { path: CONV, via: 'project_instructions', basis: 'reconstructed' },
+  ])]);
+  assert.equal(got.sessions, 1);
+  assert.deepEqual(got.documents.map(d => d.via), ['project_instructions', 'session_hook']);
+  assert.deepEqual(got.documents.find(d => d.via === 'session_hook').delivered, { full: 1 });
+  assert.deepEqual(got.documents.find(d => d.via === 'project_instructions').delivered, { 'n/a': 1 });
+});
+
+test('both_channels counts the session, not the document', () => {
+  // Two documents arriving down both carriers in one session is one session
+  // with the duplication, not two: the number sits beside a session count.
+  const got = S.injectionAcross([withStartup([
+    { path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' },
+    { path: CONV, via: 'project_instructions', basis: 'reconstructed' },
+    { path: SURF, via: 'session_hook', basis: 'receipt', delivered: 'primitives_only' },
+    { path: SURF, via: 'project_instructions', basis: 'reconstructed' },
+  ])]);
+  assert.equal(got.both_channels, 1);
+});
+
+test('hook_silent is a session whose startup context holds no receipt at all', () => {
+  const got = S.injectionAcross([
+    withStartup([{ path: CONV, via: 'project_instructions', basis: 'reconstructed' }]),
+    withStartup([{ path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' }]),
+  ]);
+  assert.equal(got.sessions, 2);
+  assert.equal(got.hook_silent, 1);
+  assert.equal(got.both_channels, 0, 'one carrier each, so neither session is doubled');
+});
+
+test('a row from an older summarizer is counted as unhealed, never as a silent hook', () => {
+  // The distinction is the whole point. A row built before ROW_V 13 carries no
+  // `via`, and reading that as "the hook delivered nothing" would turn a
+  // half-finished crawl into an alarming and false finding.
+  const got = S.injectionAcross([
+    { startup: [[CONV, 'reconstructed']], day: '2026-08-01' },
+    withStartup([{ path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' }],
+                { day: '2026-08-27' }),
+  ]);
+  assert.equal(got.sessions, 2);
+  assert.equal(got.unhealed, 1);
+  assert.equal(got.hook_silent, 0);
+  assert.equal(got.documents.length, 1, 'the unhealed row contributes no document');
+});
+
+test('injectionAcross spans the days it saw and ignores rows with no startup context', () => {
+  const got = S.injectionAcross([
+    { ...S.summarize(record(), 'x'), day: '2026-01-01' },
+    withStartup([{ path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' }],
+                { day: '2026-08-27' }),
+    withStartup([{ path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' }],
+                { day: '2026-08-28' }),
+  ]);
+  assert.equal(got.sessions, 2, 'the record with no startup context is not a session here');
+  assert.equal(got.from, '2026-08-27');
+  assert.equal(got.to, '2026-08-28');
+  assert.equal(got.documents[0].sessions, 2);
 });
