@@ -85,7 +85,7 @@ export default async function (page) {
       .find(e => (e.getAttribute('x-data') || '').includes('map('));
     const d = el && window.Alpine.$data(el);
     return d && d.injection && !d.injectionLoading
-      && (d.injObserved || d.injObservedErr);
+      && (d.injObserved || d.injObservedDone);
   }, { timeout: 20000 });
 
   // INJ_SEG opens the tooltip on one segment. Hover is gated on
