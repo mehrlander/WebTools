@@ -1,0 +1,14 @@
+interface:
+  display_name: Google Style Clarity
+  short_description: Write and revise clear prose using Google’s guide
+  default_prompt: Use $google-style-clarity to revise this text for clarity while
+    preserving its meaning.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

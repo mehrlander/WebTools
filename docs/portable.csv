@@ -20,7 +20,7 @@ doc,,docs/SURFACING.md,Surfacing,the surfacing system: primitives (chat-handoff 
 doc,,docs/venues.md,Venues,"the venue map: where work can run besides the session reading it, and the attended-versus-unattended split that decides where a job belongs",live
 doc,,docs/PORTABLE.md,The to-go bag,catalog of everything here that travels; the prose parent of this manifest,reference
 doc,,docs/TRACKER.md,Project tracker,opt-in cross-session tracker: one file per task plus a generated board,adopt
-doc,,docs/CONSTELLATION.md,Constellation architecture,"the portable kernel of the what-goes-where doctrine: commit discipline, visibility forces repo boundaries, conventions pull from a public hub, the repo owns its own scope. The theory behind show-repo's Map view",reference
+doc,,docs/CONSTELLATION.md,Constellation architecture,"the portable kernel of the what-goes-where doctrine: commit discipline, visibility forces repo boundaries, conventions pull from a public hub, the repo owns its own scope, documentation has four places. The theory behind show-repo's Map view",reference
 doc,,docs/show-repo.md,show-repo,"the hosted shell, the stage, and the .web-tools.json manifest",on-demand
 doc,,docs/artifacts.md,Artifacts,the bake-and-publish pipeline and the 📦 marker's place in the link-choice matrix,on-demand
 doc,,docs/HTML-STYLE.md,HTML house style,"what to build, as against how: no stat cards, no page prose, browsing is a full-viewport takeover, type sized for reading, tooltips built rather than borrowed",on-demand
@@ -35,6 +35,7 @@ script,,.claude/skills/tasks/build-board.py,build-board.py,regenerate a tracker'
 script,,.claude/skills/in-flight/in-flight.py,in-flight.py,classify a branch estate into live / merged / unrelated and reconcile tracker claims against it; ships inside the plugin,plugin
 script,,scripts/sunset-scan.py,sunset-scan.py,,on-demand
 script,,scripts/unclaimed-code.py,unclaimed-code.py,,on-demand
+script,,scripts/doc-placement.py,doc-placement.py,,on-demand
 script,,scripts/declared-paths.py,declared-paths.py,,on-demand
 script,,scripts/dead-links.py,dead-links.py,,on-demand
 script,,scripts/embedded-prose.py,embedded-prose.py,,on-demand

@@ -74,7 +74,7 @@ phone.
 
 ## Durable goals
 
-Five, and a feature belongs in the app when it serves one of them:
+Five, and a feature belongs in the app when it serves one of them. These are the app's. The estate's own mission and goals, about what the material must be rather than what the app does, are in [`aims.json`](aims.json) and render on the Map view's Aims tab:
 
 - **One front door.** The estate is legible from a single address; nothing
   requires knowing which repo to open first.

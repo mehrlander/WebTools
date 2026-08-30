@@ -84,3 +84,36 @@ statements, never an authored central list. This is the same shape as estate
 membership (a repo opts in on its own config; there is no registry roster of
 members) and as the surface split (a repo owns the surface that tells its own
 story; the registry keeps only the curated, cross-repo ones).
+
+## Principle 6: documentation has four places, and everything else is a question
+
+Four slots. A markdown file in none of them is a **residual**.
+
+| Slot | Holds |
+| --- | --- |
+| `docs/`, at a workspace root | documentation about the workspace |
+| `README.md`, in any folder | what that folder is |
+| beside the files it describes | a reference about that folder's own contents |
+| `CLAUDE.md` or `AGENTS.md`, at a repo root | the agent contract |
+
+A **workspace** is a repo, or a project folder inside one. A project that accumulates
+documents gets its own `docs/` rather than sending them up to the repo's, which is the
+same move as principle 2 one level down: a folder can express topic, and `docs/` is
+where it expresses genre.
+
+**`docs/` is the default and the third slot is narrow.** The third holds a reference
+whose subject is the files sitting with it, so it is decided by what the document is
+about, never by what moving it would cost. A folder that has quietly accumulated
+documents about the workspace is a `docs/` nobody made, whatever the inbound reference
+count says.
+
+A residual is a question, not a defect, and two answers close it: a document about one
+folder becomes that folder's `README.md`; a document about the workspace moves to its
+`docs/`. Where neither reading fits, leave it and say which it failed.
+
+Counted by [`scripts/doc-placement.py`](../scripts/doc-placement.py)
+(`npm run doc-placement`), which takes repo paths and reports the four slots plus the
+residual by directory. It sorts on basename shape, so it cannot separate the third slot
+from a file that drifted, and reports what else is in the directory instead: eight
+capitalised documents beside sixteen CSVs is a data-design folder documenting itself,
+one beside nothing is a document with nowhere to be. Advisory, never gates.

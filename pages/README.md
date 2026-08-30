@@ -14,6 +14,7 @@ the link-dense text twin of the visual index above.
 | Page | Title | Links |
 |---|---|---|
 | `annotate` | Annotate | [view](https://mehrlander.github.io/web-tools/pages/annotate.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/annotate.html) |
+| `bench` | Bench | [view](https://mehrlander.github.io/web-tools/pages/bench.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/bench.html) |
 | `branch` | Branch | [view](https://mehrlander.github.io/web-tools/pages/branch.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/branch.html) |
 | `chat-results` | Chat Search Results | [view](https://mehrlander.github.io/web-tools/pages/chat-results.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/chat-results.html) |
 | `citations` | Citations | [view](https://mehrlander.github.io/web-tools/pages/citations.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/citations.html) |
@@ -34,6 +35,7 @@ the link-dense text twin of the visual index above.
 | `repo-atlas` | Repo Atlas | [view](https://mehrlander.github.io/web-tools/pages/repo-atlas.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/repo-atlas.html) |
 | `review` | Review | [view](https://mehrlander.github.io/web-tools/pages/review.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/review.html) |
 | `session` | Session | [view](https://mehrlander.github.io/web-tools/pages/session.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/session.html) |
+| `shortcut-log` | Shortcut Log | [view](https://mehrlander.github.io/web-tools/pages/shortcut-log.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/shortcut-log.html) |
 | `shorter` | Shorter | [view](https://mehrlander.github.io/web-tools/pages/shorter.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/shorter.html) |
 | `toss-render` | Toss Render | [view](https://mehrlander.github.io/web-tools/pages/toss-render.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/toss-render.html) |
 | `transform` | Transform | [view](https://mehrlander.github.io/web-tools/pages/transform.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/transform.html) |

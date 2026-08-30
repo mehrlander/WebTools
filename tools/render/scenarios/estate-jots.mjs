@@ -11,12 +11,11 @@
 // below it newest first, each row with the lightbulb mark, wrapping text,
 // and its age at the right edge.
 //
-// It also drives the kind chips, which is the only way to see them: they are
-// hidden until there is a draft, so that capture costs nothing for the four
-// jots in five that want no kind. The scenario types into the capture box, so
-// the shot carries the row of derived chips (`snag` seeded, plus whatever the
-// pile uses) with `+` at the end for a kind nobody has used yet. j2 carries a
-// kind so the row badge is in the same frame.
+// The kind chips stand in the capture form whether or not there is a draft, so
+// the shot carries them either way (`snag` seeded, plus whatever the pile uses)
+// with `+` at the end for a kind nobody has used yet. The scenario still types
+// a draft and takes a chip, which is what puts a SELECTED chip and an enabled
+// submit in the frame. j2 and j4 carry kinds, so a row badge is there too.
 export default async function (page) {
   const ok = await page.evaluate(() => {
     if (!window.Alpine || !window.__shell || !window.GH) return 'no shell';

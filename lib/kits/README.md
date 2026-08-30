@@ -79,6 +79,7 @@ folder deliberately no longer encodes.
 | `repo-mailbox.js` | `RepoMailbox` | the private git-backed request/response channel |
 | `repo-proposals.js` | `RepoProposals` | cross-repo edit proposals, the mailbox's write side |
 | `repo-sessions-cache.js` | `RepoSessionsCache` | session-record aggregate over the private registry |
+| `row-menu.js` | `rowMenu` | the row tap on a Tabulator grid: read from here, and the two copies |
 | `session-render.js` | `sessionRender` | a session record as a readable, paged conversation |
 | `shorter-payload.js` | `ShorterPayload` | reading a shorter toss |
 | `source-peek.js` | `SourcePeek` | the hover card behind an exact-file GitHub jump-over **(boot;** the manifest calls `install()`, the kit no longer self-installs**)** |

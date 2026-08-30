@@ -1,5 +1,6 @@
 top,group,label,title,href,thumb,code,note
 main,,annotate,Annotate,annotate.html,thumbs/annotate.png,https://github.com/mehrlander/web-tools/blob/main/pages/annotate.html,
+main,,bench,Bench,bench.html,thumbs/bench.png,https://github.com/mehrlander/web-tools/blob/main/pages/bench.html,
 main,,branch,Branch,branch.html,thumbs/branch.png,https://github.com/mehrlander/web-tools/blob/main/pages/branch.html,
 main,,chat-results,Chat Search Results,chat-results.html,thumbs/chat-results.png,https://github.com/mehrlander/web-tools/blob/main/pages/chat-results.html,
 main,,citations,Citations,citations.html,thumbs/citations.png,https://github.com/mehrlander/web-tools/blob/main/pages/citations.html,
@@ -19,6 +20,7 @@ main,,peek,Peek — DOM under a selection,peek.html,thumbs/peek.png,https://gith
 main,,repo-atlas,Repo Atlas,repo-atlas.html,thumbs/repo-atlas.png,https://github.com/mehrlander/web-tools/blob/main/pages/repo-atlas.html,"Zoomable treemap map of any GitHub repo — files as tiles, sized by bytes or count."
 main,,review,Review,review.html,thumbs/review.png,https://github.com/mehrlander/web-tools/blob/main/pages/review.html,"A branch changeset or file, reviewed: CM6 diffs vs a base, links, patch dumps — the 🔍 target."
 main,,session,Session,session.html,thumbs/session.png,https://github.com/mehrlander/web-tools/blob/main/pages/session.html,
+main,,shortcut-log,Shortcut Log,shortcut-log.html,thumbs/shortcut-log.png,https://github.com/mehrlander/web-tools/blob/main/pages/shortcut-log.html,
 main,,shorter,Shorter,shorter.html,thumbs/shorter.png,https://github.com/mehrlander/web-tools/blob/main/pages/shorter.html,"Adjudicate a shorter draft against your text: word-diff, accept-by-default edits, per-span rewrite with an optional in-browser LLM."
 main,,toss-render,Toss Render,toss-render.html,thumbs/toss-render.png,https://github.com/mehrlander/web-tools/blob/main/pages/toss-render.html,"Render tossed HTML payloads or allowlisted repo paths (the 🥏 target); with no address, paste anything and see it shown the way it deserves."
 main,,transform,Transform,transform.html,thumbs/transform.png,https://github.com/mehrlander/web-tools/blob/main/pages/transform.html,"Multi-tab rows ⇒ rows workbench: $name refs, worker run, profile and pivot views, gz bundles. The standalone face of lib/alpineComponents/transform-workbench.js."

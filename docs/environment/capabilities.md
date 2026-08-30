@@ -29,6 +29,46 @@ see [container.md](container.md); for how to use these to test HTML/JS, see
 - A real **Chromium is pre-installed** (see Browsers below). Headless rendering
   and screenshots *are* available in-sandbox.
 
+## SessionStart hooks: a per-hook size ceiling, and where the cut lands
+
+*(measured 2026-08-30)*
+
+Past a size threshold the harness saves a hook's whole stdout to a file and
+passes the session a preview wrapped in `<persisted-output>`, opening
+`Output too large (28KB). Full output saved to: …` and then
+`Preview (first 2KB):`. The hook exits 0 and reports success, so from inside the
+script the cut is invisible; this is the failure the injector's rungs and the
+dispatcher's warning both exist for.
+
+Four things measured on one live session:
+
+- **The preview is 1,997 bytes**, and it ended partway into `CONVENTIONS.md`'s
+  opening. Only the head of a payload is guaranteed to arrive, which is why
+  [`inject-conventions.sh`](../../.claude/skills/hooks/inject-conventions.sh)
+  prints its recovery block first and
+  [`session-dispatch.sh`](../../.claude/skills/hooks/session-dispatch.sh) prints
+  its warning first.
+- **The cap is per hook entry, not across the event.** In the same session the
+  dispatcher's 28,670-character payload was cut while a separate 298-character
+  SessionStart hook arrived whole. Each registered hook command gets its own
+  attachment and its own verdict, so the dispatcher's guard is correctly scoped
+  to its own output.
+- **The transcript keeps both halves**, which is what makes the cut detectable
+  after the fact rather than only at the moment it happens: the `hook_success`
+  attachment's `stdout` is the full output and its `content` is what was
+  injected. `web-tools-private` `sessions/tools/record.py` reads the pair into
+  each record's `startup_delivery` (schema 7), and the Map view's Injection tab
+  renders it.
+- **The receipts are the half that is lost.** They print last, so a cut
+  session's `startup_context` is byte-identical to a delivered session's. Any
+  reading of what a session *received* has to come from the delivery pair above,
+  never from the receipts.
+
+The exact ceiling is still undocumented. The bound is that the smallest
+persisted output in the session archive is 29.4 KB, so it sits at or below that;
+`session-dispatch.sh` guards at 28,000 and the injector derives its own budget
+from that number rather than carrying a second copy.
+
 ## Git transport: a per-push size ceiling
 
 *(verified 2026-07-20)*
@@ -666,6 +706,21 @@ consistent in the stored body. 9b came back with the backtick opening after
 after it and 8c's opening backtick fell before `[main](`. The measured length is
 stable across all of them; only the re-serialization wanders. Look for a backtick
 anywhere near a URL, not at a fixed offset.
+
+**An angle-bracket placeholder is eaten, backticks included.**
+*(one observation, 2026-08-29, PR #546's body; not bracketed the way the length
+rows above are)* A body written through the MCP had `` `stale -> <id>` `` in it
+and read back as `` `stale -> ` ``, the placeholder gone and the `>` of the
+arrow escaped to `&gt;`. That is HTML sanitization rather than the length rule:
+`<id>` parses as an unknown tag and is dropped, while a bare `>` survives as
+text. A code span did not protect it, which is the part worth knowing, since
+the length rule's safe harbour is the same construct.
+
+Distinct from wrapping in the way that matters: a wrapped URL is disfigured but
+still there, and a dropped placeholder leaves a sentence that reads as finished
+and says nothing. Write a concrete example (`stale -> ccb6cfc`) rather than a
+placeholder in any body or comment written this way. Chat replies are untouched,
+as with everything else in this section.
 
 ## MCP: two servers can share a tool name, and only one may work
 
