@@ -1002,3 +1002,93 @@ test('sized counts the sessions that reported bytes, apart from those that spoke
   assert.equal(got.hook_silent, 0, 'both sessions have a receipt');
   assert.equal(got.sized, 1, 'only one of them reported what it sent');
 });
+
+// ── Delivery, which every field above is blind to ──────────────────────────
+// A receipt is the injector's claim about what it supplied. Past a size
+// threshold the harness saves the hook's stdout to a file and passes the
+// session a ~2 KB preview, and the receipts print last, so they ride in the
+// discarded half. A cut session's `startup` is byte-identical to a delivered
+// session's, which is why this is read from the record's own delivery entries
+// and never inferred from the receipts.
+
+test('startupCutOf reads the harness wrapper, and says nothing when it cannot', () => {
+  const of = d => S.startupCutOf({ startup_delivery: d });
+  assert.equal(of([{ hook: 'SessionStart:startup', produced: 28670, delivered: 2238, truncated: true }]), true);
+  assert.equal(of([{ hook: 'SessionStart:startup', produced: 298, delivered: 297 }]), false);
+  assert.equal(of(undefined), null, 'a record predating schema 7 is unmeasured, not fine');
+  assert.equal(of([]), null, 'and so is a session where no SessionStart hook ran');
+  // One firing cut is the session cut: a resume that lands whole does not undo
+  // a startup that did not.
+  assert.equal(of([{ truncated: true }, { produced: 10, delivered: 10 }]), true);
+});
+
+test('the cut rate is reported over the sessions that can answer, never over all', () => {
+  // A rate diluted by silence is the failure this whole reading exists to stop.
+  // Unmeasured sessions are excluded from both halves and counted separately.
+  const row = cut => ({
+    startup: S.startupOf({ startup_context: [
+      { path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' }] }),
+    startupCut: cut, day: '2026-08-30',
+  });
+  const got = S.injectionAcross([row(true), row(false), row(null)]);
+  assert.equal(got.sessions, 3, 'every session with a startup context is still counted');
+  assert.equal(got.cut, 1);
+  assert.equal(got.measuredCut, 2, 'the third could not say, so it is in neither half');
+});
+
+test('a cut session still contributes its receipts, which is the trap', () => {
+  // The record is complete and the delivery did not happen. Both facts have to
+  // survive the fold, or the panel reports a document as delivered to a session
+  // that received a 2 KB preview of it.
+  const got = S.injectionAcross([{
+    startup: S.startupOf({ startup_context: [
+      { path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' }] }),
+    startupCut: true, day: '2026-08-30',
+  }]);
+  assert.equal(got.cut, 1);
+  assert.equal(got.hook_silent, 0, 'the hook spoke; the session simply did not hear it');
+  assert.equal(got.documents[0].delivered.full, 1,
+    'and the receipt still says full, which is why the cut count sits above it');
+});
+
+test('a document counted once per session, even when the record holds it twice', () => {
+  // Not hypothetical, and it shipped wrong: a startup_context entry keys on its
+  // sha as well as its path, so a file edited mid-session is two true entries
+  // about one presence. Counting entries reported 35 sessions out of 33.
+  const got = S.injectionAcross([withStartup([
+    { path: 'home/CLAUDE.md', via: 'project_instructions', basis: 'reconstructed' },
+    { path: 'home/CLAUDE.md', via: 'project_instructions', basis: 'reconstructed' },
+  ])]);
+  assert.equal(got.sessions, 1);
+  assert.equal(got.documents.length, 1, 'one row, since it is one document on one channel');
+  assert.equal(got.documents[0].sessions, 1, 'and it cannot outrun the sessions it is counted over');
+});
+
+test('no document can be counted in more sessions than were scanned', () => {
+  // The invariant the bug above broke, stated so it cannot break silently again.
+  const rows = [
+    withStartup([{ path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' },
+                 { path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' },
+                 { path: SURF, via: 'project_instructions', basis: 'reconstructed' }]),
+    withStartup([{ path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' }]),
+  ];
+  const got = S.injectionAcross(rows);
+  for (const d of got.documents) {
+    assert.ok(d.sessions <= got.sessions,
+      `${d.path} claims ${d.sessions} of ${got.sessions}`);
+  }
+});
+
+test('a verdict is counted once per session, so the counts never undershoot', () => {
+  // Two rungs in one session is one session on each verdict, and the verdict
+  // counts must still account for every session on the row.
+  const got = S.injectionAcross([withStartup([
+    { path: SURF, via: 'session_hook', basis: 'receipt', delivered: 'without_course' },
+    { path: SURF, via: 'session_hook', basis: 'receipt', delivered: 'primitives_only' },
+  ])]);
+  const [d] = got.documents;
+  assert.equal(d.sessions, 1);
+  assert.deepEqual(d.delivered, { without_course: 1, primitives_only: 1 });
+  const total = Object.values(d.delivered).reduce((a, b) => a + b, 0);
+  assert.ok(total >= d.sessions, 'every session on the row is represented by a verdict');
+});

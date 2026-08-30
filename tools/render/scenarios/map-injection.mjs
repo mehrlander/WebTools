@@ -40,7 +40,7 @@ function sessionsCache() {
   for (const f of files) {
     let rec; try { rec = JSON.parse(readFileSync(f, 'utf8')); } catch { continue; }
     rows.push({ day: rec.day || (rec.started || '').slice(0, 10), started: rec.started,
-                startup: S.startupOf(rec) });
+                startup: S.startupOf(rec), startupCut: S.startupCutOf(rec) });
   }
   return rows.length ? JSON.stringify({ count: rows.length, rows }) : null;
 }
