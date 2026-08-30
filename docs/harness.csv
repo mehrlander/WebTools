@@ -72,6 +72,7 @@ tools/render/scenarios/audit-overflow.mjs,"measure horizontal overflow in both a
 tools/render/scenarios/audit-read.mjs,"the audit render's Read view, framed on the units that cannot render alone",tools/render/scenarios,18,driver,no,no,no
 tools/render/scenarios/audit-standoff.mjs,the audit render's Standoff view: the annotation as rows over spans,tools/render/scenarios,12,driver,no,no,no
 tools/render/scenarios/audit-table.mjs,measure the audit render's table cells under the guide renderer,tools/render/scenarios,16,driver,no,no,no
+tools/render/scenarios/audit-undo.mjs,"drive undo and redo over the audit render's patch cursor: three edits, two undos, a redo, then a fresh operation that must truncate the redo tail. Asserts the units match the cursor and that the patch which would TRAVEL is the applied prefix only, since an undone operation is not a judgment the reader stands behind and must not ride out in the commit message. That last part is the half a screenshot cannot show",tools/render/scenarios,57,driver,no,no,no
 tools/render/scenarios/branch-address.mjs,,tools/render/scenarios,83,driver,no,no,yes
 tools/render/scenarios/branch-brief-errors.mjs,"the branch page's failure states, driven through the real load() path",tools/render/scenarios,59,driver,no,no,no
 tools/render/scenarios/branch-deck.mjs,,tools/render/scenarios,131,driver,no,yes,no

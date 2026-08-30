@@ -901,6 +901,7 @@ window.__audit = {
       if (spec) payload = JSON.parse((await gh.get(spec)).text);
       this.a = payload;
       this.sections = mdDoc.split(this.a.text);
+      this.base = JSON.parse(JSON.stringify(this.a.standoff));
       this.regroup();
       this.$nextTick(() => { this.bindDoc(); this.paint(); });
     },
@@ -950,18 +951,43 @@ window.__audit = {
     // lib/kits/standoff.js, and skills/state-the-rule/ops.py is the same rules
     // in Python. This page is the view: it decides what to offer and where to
     // put it, and delegates what an operation MEANS.
-    patch: [], menu: null, boundaries: [], opErr: '',
+    patch: [], at: 0, base: null, menu: null, boundaries: [], opErr: '',
+    // UNDO IS FREE, and it is free because the patch is declarative. The
+    // annotation on screen is `apply(base, patch.slice(0, at))`, so stepping
+    // back is decrementing a number and replaying: no inverse operation to
+    // write, none to get wrong, and the two implementations stay one rule.
+    // `at` is the cursor into the patch, not its length: a new operation after
+    // an undo truncates the redo tail the way every editor does.
+    get canUndo() { return this.at > 0; },
+    get canRedo() { return this.at < this.patch.length; },
+    replay(n) {
+      const r = Standoff.apply(this.base, this.patch.slice(0, n), this.a.text);
+      if (r.complaints.length) { this.opErr = r.complaints[0]; return false; }
+      this.a.standoff = r.so;
+      this.at = n;
+      this.opErr = '';
+      this.regroup();
+      const keep = this.sel && this.units.find(u => u.uid === this.sel.uid);
+      this.sel = keep ? { ...keep, ref: this.srcRef(keep) } : null;
+      this.armed = null;
+      this.paint();
+      return true;
+    },
+    undo() { if (this.canUndo) this.replay(this.at - 1); },
+    redo() { if (this.canRedo) this.replay(this.at + 1); },
     push(op) {
       // Applied to the live annotation so the view moves under your thumb, then
       // checked and rolled back if it broke something. Same rule ops.py runs on
       // a whole patch: valid against its base, or it does not stand.
       const before = JSON.parse(JSON.stringify(this.units));
       const uid = Standoff.ops[op.op]?.(this.so, this.a.text, op) ?? null;
-      const bad = uid === null ? [`${op.op} ${op.uid} was refused`]
+      const bad = uid === null ? [`${op.op} ${op.uid ?? op.after} was refused`]
                               : Standoff.check(this.so, this.a.text);
       if (bad.length) { this.so.units = before; this.opErr = bad[0]; return; }
       this.opErr = '';
+      this.patch.length = this.at;      // a new move drops the redo tail
       this.patch.push(op);
+      this.at = this.patch.length;
       this.regroup();
       this.menu = null;
       this.paint();
@@ -988,7 +1014,8 @@ window.__audit = {
         .filter(b => b.at > u.start && b.at < u.end);
       this.menu = 'split';
     },
-    get patchJson() { return JSON.stringify(this.patch, null, 1); },
+    get applied() { return this.patch.slice(0, this.at); },
+    get patchJson() { return JSON.stringify(this.applied, null, 1); },
     get patchHref() { return 'data:application/json;charset=utf-8,' + encodeURIComponent(this.patchJson); },
 
     // SAVING. The page writes to the ref it is READING: you previewed a branch,
@@ -1006,12 +1033,13 @@ window.__audit = {
         // The patch rides in the commit message rather than in a file of its
         // own: the judgment belongs to the change that carries it, and each
         // unit already records its own `from`.
-        const head = `standoff: ${this.patch.length} operation${this.patch.length === 1 ? '' : 's'} `
+        const head = `standoff: ${this.at} operation${this.at === 1 ? '' : 's'} `
                    + `on ${this.so.target.path}`;
         await gh.save(this.so.self.path, Standoff.serialize(this.so),
-                      `${head}\n\n${Standoff.describe(this.patch).join('\n')}\n`);
+                      `${head}\n\n${Standoff.describe(this.applied).join('\n')}\n`);
         this.saved = `${this.units.length} units to ${this.target}`;
-        this.patch = [];
+        this.base = JSON.parse(JSON.stringify(this.so));
+        this.patch = []; this.at = 0;
       } catch (e) {
         this.saveErr = e.message || String(e);
       } finally {
@@ -1068,7 +1096,7 @@ window.__audit = {
           const { html, broken, block: isBlock } = this.unitHtml(u);
           const block = this.view === 'read' && isBlock;
           const el = document.createElement(block ? 'div' : 'span');
-          el.className = `cursor-pointer rounded-sm px-0.5 ${block ? 'py-1 my-2' : ''}`;
+          el.className = `cursor-pointer px-0.5 ${block ? 'py-1 my-2' : ''}`;
           el.style.background = tint(u.label, .18 * this.dim(u));
           el.style.boxShadow = `inset 2px 0 0 0 ${tint(u.label, .9 * this.dim(u))}`;
           el.style.opacity = this.dim(u);
@@ -1084,8 +1112,11 @@ window.__audit = {
           const raw = this.a.text.slice(u.start, u.end);
           el.dataset.off = u.start + (raw.length - raw.trimStart().length);
           if (u.uid === this.sel?.uid) {
-            el.style.outline = `2px solid ${tint(u.label, .95)}`;
-            el.style.outlineOffset = '1px';
+            el.style.background = tint(u.label, .42);
+            el.style.textDecoration = 'underline';
+            el.style.textDecorationThickness = '2px';
+            el.style.textUnderlineOffset = '3px';
+            el.style.textDecorationColor = tint(u.label, .95);
           }
           el.onclick = () => this.hit(u, broken);
           wrap.appendChild(el);
@@ -1296,8 +1327,14 @@ window.__audit = {
         </div>
         <button class="btn btn-xs btn-ghost" @click="deck()"><i class="ph ph-cards"></i> Sections</button>
         <button class="btn btn-xs btn-ghost" @click="$refs.reading.showModal()">Reading</button>
-        <button class="btn btn-xs btn-primary" x-show="patch.length" x-cloak
-                @click="$refs.patch.showModal()">patch <span class="font-mono" x-text="patch.length"></span></button>
+        <div class="join" x-show="patch.length" x-cloak>
+          <button class="join-item btn btn-xs" :disabled="!canUndo" @click="undo()"
+                  aria-label="undo"><i class="ph ph-arrow-counter-clockwise"></i></button>
+          <button class="join-item btn btn-xs btn-primary" @click="$refs.patch.showModal()">
+            patch <span class="font-mono" x-text="at + (canRedo ? '/' + patch.length : '')"></span></button>
+          <button class="join-item btn btn-xs" :disabled="!canRedo" @click="redo()"
+                  aria-label="redo"><i class="ph ph-arrow-clockwise"></i></button>
+        </div>
       </div>
 
       <!-- The legend is the explanation. Each chip carries the treatment it
@@ -1463,7 +1500,7 @@ window.__audit = {
     <dialog class="modal" x-ref="patch">
       <div class="modal-box max-w-2xl">
         <div class="flex items-center gap-2 mb-2 text-xs">
-          <span class="font-mono" x-text="patch.length + ' operations'"></span>
+          <span class="font-mono" x-text="at + ' of ' + patch.length + ' applied'"></span>
           <a class="link" :href="patchHref" download="patch.json">download</a>
           <button class="link" @click="navigator.clipboard?.writeText(patchJson)">copy</button>
           <button class="link text-error ml-auto" @click="location.reload()">discard</button>
