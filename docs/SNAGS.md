@@ -159,9 +159,14 @@ two branches that did not know about each other:
 **The entry is not the fix, and the third sighting is the proof.** By then this
 was the newest entry in the log with its corrected move already written down,
 and the session that hit it had that move in context. Reading costs nothing and
-did not happen, twice. What would fix it is running the check against the index
-the gate uses, which `git add -A` before the final suite run does for free, or a
-`tracked()` that falls back to the working tree when a path is untracked.
+did not happen, twice. So it is now mechanical:
+[../tools/test/untracked-carriers.test.mjs](../tools/test/untracked-carriers.test.mjs)
+fails when a governed file sits in the working tree and not in the index, which
+is the condition under which every other gate's green means nothing. Fixing the
+eleven enumerators would have been the wrong altitude, since they read the
+tracked set deliberately and two say so in their own docstrings; what was
+missing was the one check that notices they are reading a tree the push will
+not produce. Its own first run failed on itself.
 → [../scripts/text-carriers.py](../scripts/text-carriers.py), and the gate at [../tools/test/text-vocabulary-conformance.test.mjs](../tools/test/text-vocabulary-conformance.test.mjs)
 ### showing-blocks-a-new-page-on-its-own-favicon: a page added on the branch always trips the shell rule
 `scripts/showing.py` matches its shell-change patterns against the DIFF, so for
