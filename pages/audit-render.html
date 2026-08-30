@@ -846,6 +846,7 @@ window.__audit = {
   await gh.load('vanilla-bundle.js');   // window.esc; the suite gates local copies
   await gh.load('kits/md-doc.js');
   await gh.load('kits/swipe-deck.js');
+  await gh.load('kits/guide-render.js');   // house markdown type, not prose-sm
   // md-doc's html() returns '' with no window.marked, which is a silent empty
   // render rather than an error. Found by looking at the pixels.
   window.marked = (await import('https://cdn.jsdelivr.net/npm/marked@12/+esm')).marked;
@@ -895,7 +896,13 @@ window.__audit = {
         Math.round(100 * this.a.units.filter(u => u.label === v.label)
                             .reduce((n, u) => n + u.words, 0) / t)]));
     },
+    HUE,
     dim(u) { return this.off[u.label] ? .12 : 1 },
+    verdicts(v) { return this.a.units.filter(u => u.verdict === v).length; },
+    get unrenderable() {
+      return this.a.units.filter(u => u.kind === 'sent'
+        && !balanced(this.a.text.slice(u.start, u.end).trim())).length;
+    },
     toggle(l) { this.off[l] = !this.off[l]; this.paint(); },
     // The verdict is the SECOND channel: fill says what a unit is, the mark says
     // what you decided to do with it, so one look answers both.
@@ -908,34 +915,39 @@ window.__audit = {
     unitHtml(u) {
       const raw = this.a.text.slice(u.start, u.end).trim();
       if (this.view === 'source') return { html: esc(raw), broken: false };
-      if (u.kind === 'code' || u.kind === 'table' || u.kind === 'heading')
-        return { html: mdDoc.html(raw, { proseClass: '' }), broken: false };
       if (!balanced(raw)) return { html: esc(raw), broken: true };
-      return { html: mdDoc.html(raw, { proseClass: '' }).replace(/^<p>|<\/p>\s*$/g, ''), broken: false };
+      const out = mdDoc.html(raw, { proseClass: '' });
+      // A list bullet is kind `sent` and still renders to a <ul>. Choose the
+      // wrapper from what markdown ACTUALLY produced, not from the unit's kind:
+      // keying on kind put every bullet's list inside a <span>, the parser
+      // hoisted it out, and the tint stayed behind as an empty stripe.
+      if (/^\s*<(ul|ol|table|pre|h[1-6]|blockquote)\b/i.test(out)) return { html: out, block: true };
+      return { html: out.replace(/^<p>|<\/p>\s*$/g, ''), block: false };
     },
     paint(host) {
-      const box = host || this.$refs.doc;
-      if (!box) return;
-      box.innerHTML = '';
+      const host_ = host || this.$refs.doc;
+      if (!host_) return;
+      host_.innerHTML = '';
+      // The type classes go on an inner element, never on the host: paint() does
+      // not own its container's layout, and assigning className to the host wiped
+      // the padding the page and the deck slide had each given it.
+      const box = document.createElement('div');
       box.className = this.view === 'source'
-        ? 'whitespace-pre-wrap font-mono text-[13px] leading-relaxed'
-        : 'prose prose-sm max-w-none';
+        ? 'whitespace-pre-wrap font-mono text-base leading-7'
+        : GuideRender.bodyClass();
+      host_.appendChild(box);
       for (const b of this.blocks) {
         const wrap = document.createElement(this.view === 'source' ? 'div' : 'div');
         wrap.className = this.view === 'source' ? 'mb-3' : 'mb-4';
         for (const u of b) {
-          const { html, broken } = this.unitHtml(u);
-          // A <table> or <pre> inside a <span> is hoisted out by the parser and
-          // leaves the tint behind as an empty stripe. Found in the pixels: the
-          // status table and both fences escaped their own units.
-          const block = this.view === 'read' && u.kind !== 'sent';
+          const { html, broken, block: isBlock } = this.unitHtml(u);
+          const block = this.view === 'read' && isBlock;
           const el = document.createElement(block ? 'div' : 'span');
           el.className = `cursor-pointer rounded-sm px-0.5 ${block ? 'py-1 my-2' : ''} ${this.mark(u.verdict)}`;
           el.style.background = tint(u.label, .18 * this.dim(u));
           el.style.boxShadow = `inset 2px 0 0 0 ${tint(u.label, .9 * this.dim(u))}`;
           el.style.opacity = this.dim(u);
           if (broken) el.style.outline = '1px dotted rgba(239,68,68,.8)';
-          el.title = `${u.uid} · ${u.label} · ${u.verdict}${broken ? ' · slice does not close its own markup' : ''}`;
           el.innerHTML = html + (this.view === 'source' ? '' : ' ');
           el.onclick = () => { this.sel = { ...u, broken, ref: this.srcRef(u) }; };
           wrap.appendChild(el);
@@ -971,72 +983,110 @@ window.__audit = {
   await gh.load('alpine-bundle.js');
 </script>
 </head>
-<body class="bg-base-100 min-h-screen" x-data="auditPage()" x-init="init()">
+<body class="bg-base-100 min-h-dvh" x-data="auditPage()" x-init="init()">
 <template x-if="a">
-  <div class="max-w-4xl mx-auto p-4 sm:p-6">
+  <div>
 
-    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-1">
-      <h1 class="text-xl font-semibold" x-text="a.title"></h1>
-      <span class="text-sm opacity-60" x-text="'“' + a.question + '”'"></span>
-      <a class="link link-primary text-xs ml-auto" :href="a.addr.url" x-show="a.addr.url" x-text="a.addr.path"></a>
-    </div>
-
-    <div class="flex flex-wrap items-center gap-2 mb-4">
-      <div class="stats stats-horizontal shadow-sm border border-base-300">
-        <div class="stat py-2 px-4"><div class="stat-title text-[11px]">units</div>
-          <div class="stat-value text-lg" x-text="a.units.length"></div></div>
-        <div class="stat py-2 px-4"><div class="stat-title text-[11px]">words</div>
-          <div class="stat-value text-lg" x-text="words.toLocaleString()"></div></div>
-        <div class="stat py-2 px-4"><div class="stat-title text-[11px]">keep</div>
-          <div class="stat-value text-lg" x-text="keepPct + '%'"></div>
-          <div class="stat-desc text-[10px]" x-text="keepPct >= 90 ? 'finished as a target' : keepPct >= 72 ? 'little to take' : 'loose; a pass will pay'"></div></div>
-      </div>
-      <div class="join ml-auto">
-        <button class="join-item btn btn-sm" :class="view==='source' && 'btn-active'"
-                @click="view='source'; paint()">Source</button>
-        <button class="join-item btn btn-sm" :class="view==='read' && 'btn-active'"
-                @click="view='read'; paint()">Read</button>
-      </div>
-      <button class="btn btn-sm btn-ghost" @click="deck()"><i class="ph ph-cards"></i> Sections</button>
-    </div>
-
-    <div class="mb-4 space-y-1.5">
-      <template x-for="s in sides" :key="s">
-        <div class="flex flex-wrap items-center gap-1.5">
-          <span class="text-[10px] uppercase tracking-wide opacity-40 w-20 shrink-0" x-text="s"></span>
-          <template x-for="v in vocab.filter(v => v.side === s)" :key="v.label">
-            <button class="btn btn-xs gap-1.5 border" :title="v.gloss"
-                    :style="`background:rgba(${({WHAT:'16,185,129',HOW:'13,148,136','WHY-OP':'245,158,11','WHY-MOT':'244,63,94',PROV:'219,39,119',EVID:'192,38,211',NAV:'79,70,229',META:'148,163,184'})[v.label]},${off[v.label]?0.04:0.22})`"
-                    :class="off[v.label] && 'opacity-40 line-through'"
-                    @click="toggle(v.label)">
-              <span x-text="v.label"></span>
-              <span class="opacity-60" x-text="count(v.label)"></span>
-              <span class="opacity-40 text-[10px]" x-text="shareOf[v.label] + '%'"></span>
-            </button>
-          </template>
+    <!-- Tenant chrome: this page is routinely tossed inside an iframe, so it
+         sticks rather than taking the viewport, and it does not narrow itself
+         to a reading column. The figure is one compact line, not stat cards:
+         the reading that gives those numbers meaning is one tap away, under
+         Reading. -->
+    <header class="sticky top-0 z-20 bg-base-100/90 backdrop-blur border-b border-base-300">
+      <div class="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span class="font-semibold" x-text="a.title"></span>
+        <span class="text-xs opacity-60" x-text="a.question"></span>
+        <span class="text-xs font-mono opacity-70"
+              x-text="`${a.units.length} units · ${words.toLocaleString()} words · ${keepPct}% keep`"></span>
+        <a class="text-xs link link-primary" :href="a.addr.url" x-show="a.addr.url">source</a>
+        <div class="join ml-auto">
+          <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
+                  @click="view='source'; paint()">Source</button>
+          <button class="join-item btn btn-xs" :class="view==='read' && 'btn-active'"
+                  @click="view='read'; paint()">Read</button>
         </div>
-      </template>
-      <p class="text-[11px] opacity-50 pt-1">
-        Fill is what a unit <em>is</em>. A dashed underline is <b>REWRITE</b>, italic is <b>MOVE</b>,
-        struck-through is <b>DROP</b>. In Read view a red dotted outline marks a unit whose slice
-        does not close its own markup, so it cannot be rendered alone.
-      </p>
-    </div>
+        <button class="btn btn-xs btn-ghost" @click="deck()"><i class="ph ph-cards"></i> Sections</button>
+        <button class="btn btn-xs btn-ghost" @click="$refs.reading.showModal()">Reading</button>
+      </div>
 
-    <div x-ref="doc"></div>
+      <!-- The legend is the explanation. Each chip carries the treatment it
+           names, so a label chip is tinted as its units are and a verdict chip
+           is struck, dashed or italic as its units are. Nothing left to say in
+           prose. -->
+      <div class="px-4 pb-2 flex flex-wrap items-center gap-1">
+        <template x-for="v in vocab" :key="v.label">
+          <button class="btn btn-xs gap-1.5 border-0"
+                  :style="`background:rgba(${HUE[v.label]},${off[v.label]?0.05:0.22});
+                           box-shadow:inset 2px 0 0 0 rgba(${HUE[v.label]},${off[v.label]?0.2:0.9})`"
+                  :class="off[v.label] && 'opacity-40'"
+                  @click="toggle(v.label)">
+            <span x-text="v.label"></span>
+            <span class="opacity-60 font-mono" x-text="count(v.label)"></span>
+          </button>
+        </template>
+        <span class="w-px h-4 bg-base-300 mx-1"></span>
+        <template x-for="v in ['REWRITE','MOVE','DROP']" :key="v">
+          <span class="btn btn-xs btn-ghost no-animation cursor-default gap-1.5"
+                :class="mark(v)" x-show="verdicts(v)">
+            <span x-text="v"></span>
+            <span class="opacity-60 font-mono" x-text="verdicts(v)"></span>
+          </span>
+        </template>
+        <span class="btn btn-xs btn-ghost no-animation cursor-default gap-1.5"
+              style="outline:1px dotted rgba(239,68,68,.8)"
+              x-show="view==='read' && unrenderable">
+          <span>slice does not close</span>
+          <span class="opacity-60 font-mono" x-text="unrenderable"></span>
+        </span>
+      </div>
+    </header>
 
-    <div class="fixed bottom-0 inset-x-0 bg-base-200 border-t border-base-300 p-3 text-xs" x-show="sel" x-cloak>
-      <div class="max-w-4xl mx-auto flex flex-wrap gap-x-4 gap-y-1 items-baseline">
-        <b x-text="sel?.uid"></b>
-        <span class="badge badge-sm" :style="`background:rgba(${({WHAT:'16,185,129',HOW:'13,148,136','WHY-OP':'245,158,11','WHY-MOT':'244,63,94',PROV:'219,39,119',EVID:'192,38,211',NAV:'79,70,229',META:'148,163,184'})[sel?.label]},.25);border:none`" x-text="sel?.label"></span>
+    <div x-ref="doc" class="px-4 py-4"></div>
+
+    <div class="sticky bottom-0 bg-base-200 border-t border-base-300 px-4 py-2 text-xs"
+         x-show="sel" x-cloak>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 items-baseline">
+        <b class="font-mono" x-text="sel?.uid"></b>
+        <span class="badge badge-sm border-0"
+              :style="`background:rgba(${HUE[sel?.label]},.25)`" x-text="sel?.label"></span>
         <span class="opacity-60" x-text="gloss(sel?.label)"></span>
         <span class="badge badge-sm badge-outline" x-text="sel?.verdict"></span>
-        <span class="opacity-60" x-text="sel?.words + 'w · ' + sel?.kind"></span>
-        <span class="opacity-60 font-mono text-[10px]" x-text="sel?.ref"></span>
+        <span class="opacity-60 font-mono" x-text="sel?.words + 'w · ' + sel?.kind"></span>
+        <span class="opacity-60 font-mono" x-text="sel?.ref"></span>
         <span class="text-error" x-show="sel?.broken">slice does not close its own markup</span>
         <button class="btn btn-ghost btn-xs ml-auto" @click="sel=null">close</button>
       </div>
     </div>
+
+    <!-- Where the numbers went: the header carries the figure, the reading that
+         makes it mean something lives here, one tap away. -->
+    <dialog class="modal" x-ref="reading">
+      <div class="modal-box max-w-lg">
+        <table class="table table-sm">
+          <tbody>
+            <tr><td class="font-mono" x-text="keepPct + '% keep'"></td>
+                <td x-text="keepPct >= 90 ? 'finished as a compression target'
+                          : keepPct >= 72 ? 'little to take; a pass yields corrections, not cuts'
+                          : 'loose; a pass should beat its own floor'"></td></tr>
+            <tr><td class="font-mono">50-65%</td><td>loose prose, beats its floor</td></tr>
+            <tr><td class="font-mono">72%+</td><td>misses its floor because there is little to take</td></tr>
+            <tr><td class="font-mono">~100%</td><td>stop: it needs a reader, not a pass</td></tr>
+          </tbody>
+        </table>
+        <table class="table table-sm mt-2">
+          <thead><tr><th>label</th><th>units</th><th>words</th><th>side</th></tr></thead>
+          <tbody>
+            <template x-for="v in vocab" :key="v.label">
+              <tr><td class="font-mono" x-text="v.label"></td>
+                  <td class="font-mono" x-text="count(v.label)"></td>
+                  <td class="font-mono" x-text="shareOf[v.label] + '%'"></td>
+                  <td class="opacity-60" x-text="v.side"></td></tr>
+            </template>
+          </tbody>
+        </table>
+        <form method="dialog" class="modal-backdrop"><button class="btn btn-sm btn-block mt-3">close</button></form>
+      </div>
+    </dialog>
 
   </div>
 </template>

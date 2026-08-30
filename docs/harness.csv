@@ -64,6 +64,7 @@ tools/render/scenarios/annotate-tap-canvas.mjs,"a tap on the blank canvas below 
 tools/render/scenarios/annotate-triple-tap.mjs,"the buffer scrolled to its newest line in a box of whole lines, then three taps in a run taking the whole thing",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/annotate-units-demo.mjs,"the two unit modes, element pick and region drag, driven through real pointer events",tools/render/scenarios,54,driver,no,no,no
 tools/render/scenarios/audit-deck.mjs,,tools/render/scenarios,23,driver,no,no,no
+tools/render/scenarios/audit-overflow.mjs,,tools/render/scenarios,15,driver,no,no,no
 tools/render/scenarios/audit-read.mjs,,tools/render/scenarios,18,driver,no,no,no
 tools/render/scenarios/branch-address.mjs,,tools/render/scenarios,83,driver,no,no,yes
 tools/render/scenarios/branch-brief-errors.mjs,"the branch page's failure states, driven through the real load() path",tools/render/scenarios,59,driver,no,no,no
