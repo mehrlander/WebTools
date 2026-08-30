@@ -214,10 +214,20 @@ store: nothing keeps the patch files.
 **Where a patch comes from.** `pages/audit-render.html` (hub) offers the four
 operations on the selected unit and accumulates them, applying each one
 optimistically so the view moves under your thumb; it splits at connective
-boundaries, which is where 40% of fused prose units divide. The page is not a
-second implementation of the rules: it renders a prediction, and `ops.py`
-validates and writes. `tools/render/scenarios/audit-edit.mjs` prints the units
-the page produced so they can be diffed against `ops.py` over the same patch.
+boundaries, which is where 40% of fused prose units divide. Where the page is
+reading a branch it saves the result there, with the patch as the commit
+message; a commit and the default branch both refuse, since the contents API
+writes to a branch name and a change to the default one arrives through a pull
+request.
+
+**Two implementations, held to each other.** `ops.py` is the rules in Python,
+`lib/kits/standoff.js` the same rules in JavaScript, because the work happens in
+both places and a browser cannot run the first. They are not a layering:
+`tools/render/scenarios/audit-edit.mjs` diffs their output over one patch, so a
+drift is a failed comparison rather than a surprise months later. The two
+serializations agree byte for byte with `audit-payload.py`'s, which a test
+holds, so a save from the page and a rebuild from the run do not reformat each
+other's file.
 
 ## Boundaries
 
@@ -234,13 +244,19 @@ the page produced so they can be diffed against `ops.py` over the same patch.
 - Do not fold a doctrine change into a compression. Rewriting what a rule *says*
   is a separate decision from stating it more directly.
 - The tooling's checks and the patch operations are tested
-  (`tools/test/state-the-rule.test.mjs`), and a stored run is held to its target
-  and to the page that shows it (`tools/test/audit-standoff.test.mjs`); both hub only. The judgment steps are not testable and every figure in `runs.csv`
+  (`tools/test/state-the-rule.test.mjs`), the browser's copy of the rules
+  separately (`tools/test/standoff-kit.test.mjs`), and a stored run is held to
+  its target and to the page that shows it (`tools/test/audit-standoff.test.mjs`);
+  all three hub only. The judgment steps are not testable and every figure in `runs.csv`
   was read by hand.
 
 ## Files
 
 `segment.py` · `check.py` · `seams.py` · `ops.py` · `runs.csv` · `LOG.md` · `runs/<date>-<patient>/`
+
+Hub only, and not part of the skill: `lib/kits/standoff.js` (the same rules for a
+browser), `tools/build/audit-payload.py` (the artifact and its delivery payload),
+`pages/audit-render.html` (the view that shows and edits one).
 
 `reanchor.py` resolves an annotation into an edited document across four tiers
 and reports which one caught each unit, so a run can say how much annotation an

@@ -51,3 +51,22 @@ test('the page shows the committed standoff, not a re-derivation', () => {
     'the embedded standoff differs from the committed file; rebuild:\n' +
     `  python3 tools/build/audit-payload.py payload ${standoff.target.path} ${RUN} --inject pages/audit-render.html`);
 });
+
+// The standoff has two writers now: tools/build/audit-payload.py rebuilds it
+// from the run's inputs, and pages/audit-render.html saves an edited one back
+// through gh-store. They have to agree on bytes, or each save reformats the
+// other's file and every real change arrives buried in a whole-file diff.
+test('the page and the builder serialize to the same bytes', () => {
+  const raw = readFileSync(`${RUN}/standoff.json`, 'utf8');
+  assert.equal(JSON.stringify(JSON.parse(raw), null, 1) + '\n', raw,
+    "JSON.stringify(so, null, 1) is what the page writes; python json.dumps(indent=1) " +
+    'is what the builder writes. They have parted.');
+});
+
+test('the annotation carries its own address, not only its target', () => {
+  // `target` is the document. Without `self` the page can render the standoff
+  // and cannot write it back, because nothing on the page names the run.
+  assert.ok(standoff.self?.path?.endsWith('/standoff.json'),
+    'standoff.self.path must name the annotation itself; rebuild with audit-payload.py');
+  assert.match(standoff.self.repo ?? '', /^[^/]+\/[^/]+$/);
+});

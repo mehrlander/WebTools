@@ -19,7 +19,7 @@ the artifact:
              Standoff view is the committed file, not a re-derivation of it.
 
     python3 tools/build/audit-payload.py standoff <doc.md> <run-dir> \
-        [--addr owner/repo@ref:path] [--question <text>]
+        [--addr owner/repo@ref:path] [--self owner/repo] [--question <text>]
     python3 tools/build/audit-payload.py payload <doc.md> <run-dir> \
         [--inject <page.html>]
 """
@@ -55,7 +55,7 @@ def parse_addr(spec):
                 "url": f"https://github.com/{repo}/blob/{ref}/{path}"}
     return out
 
-def build_standoff(doc, run, addr, question):
+def build_standoff(doc, run, addr, self_repo, question):
     raw = pathlib.Path(doc).read_bytes()
     ann = {r["uid"]: r for r in csv.DictReader(open(f"{run}/labels.tsv"), delimiter="\t")}
     units = []
@@ -65,8 +65,17 @@ def build_standoff(doc, run, addr, question):
         units.append({"uid": u["uid"], "start": u["start"], "end": u["end"],
                       "kind": u["kind"], "words": u["words"],
                       "label": a.get("label", "")})
+    # `self` is the annotation's own address, which `target` cannot supply: the
+    # target is the DOCUMENT. Without it a page that edits the annotation has
+    # nowhere to put the result and has to be told the run directory out of
+    # band. No ref: the ref is whatever the reader is looking at, and a stored
+    # one would name the branch the run was made on forever.
+    me = {"path": f"{run}/standoff.json"}
+    if self_repo or addr.get("repo"):
+        me["repo"] = self_repo or addr["repo"]
     return {"kind": "standoff/1",
             "question": question,
+            "self": me,
             "target": addr | {"bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()},
             "vocabulary": [{"label": l, "side": s, "gloss": g} for l, s, g in VOCAB],
             "units": units}
@@ -90,10 +99,11 @@ if __name__ == "__main__":
             i = a.index(flag); v = a[i + 1]; del a[i:i + 2]; return v
         return default
     addr, question, inject = opt("--addr"), opt("--question", "is this unit binding?"), opt("--inject")
+    self_repo = opt("--self")
     cmd, doc, run = a[0], a[1], a[2].rstrip("/")
 
     if cmd == "standoff":
-        s = build_standoff(doc, run, parse_addr(addr), question)
+        s = build_standoff(doc, run, parse_addr(addr), self_repo, question)
         out = pathlib.Path(f"{run}/standoff.json")
         out.write_text(json.dumps(s, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         print(f"wrote {out}: {len(s['units'])} units over {s['target']['bytes']} bytes "

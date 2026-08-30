@@ -1,6 +1,10 @@
 {
  "kind": "standoff/1",
  "question": "is this unit binding?",
+ "self": {
+  "path": "skills/state-the-rule/runs/2026-08-29-conventions/standoff.json",
+  "repo": "mehrlander/web-tools"
+ },
  "target": {
   "path": "docs/CONVENTIONS.md",
   "repo": "mehrlander/web-tools",

@@ -43,6 +43,10 @@ window.__audit = {
  "standoff": {
   "kind": "standoff/1",
   "question": "is this unit binding?",
+  "self": {
+   "path": "skills/state-the-rule/runs/2026-08-29-conventions/standoff.json",
+   "repo": "mehrlander/web-tools"
+  },
   "target": {
    "path": "docs/CONVENTIONS.md",
    "repo": "mehrlander/web-tools",
@@ -771,6 +775,7 @@ window.__audit = {
   await gh.load('kits/md-doc.js');
   await gh.load('kits/swipe-deck.js');
   await gh.load('kits/guide-render.js');   // house markdown type, not prose-sm
+  await gh.load('kits/standoff.js');       // the annotation's rules, shared with ops.py
   // md-doc's html() returns '' with no window.marked, which is a silent empty
   // render rather than an error. Found by looking at the pixels.
   window.marked = (await import('https://cdn.jsdelivr.net/npm/marked@12/+esm')).marked;
@@ -788,8 +793,9 @@ window.__audit = {
                        && (s.match(/\[/g) || []).length === (s.match(/\]/g) || []).length;
 
   window.auditPage = () => ({
-    a: null, view: 'source', off: {}, sel: null, sections: [],
+    a: null, view: 'source', off: {}, sel: null, sections: [], ref: '',
     async init() {
+      this.ref = (typeof gh !== 'undefined' && gh.ref) || '';
       let payload = window.__audit;
       const spec = p.get('src') || new URLSearchParams(location.hash.slice(1)).get('src');
       if (spec) payload = JSON.parse((await gh.get(spec)).text);
@@ -839,20 +845,22 @@ window.__audit = {
     // lines on a phone to carry the half that never varies.
     num(u) { return u.uid.split('-').pop(); },
 
-    // EDITING. The page applies an operation optimistically so the view moves
-    // under your thumb; skills/state-the-rule/ops.py is the authority that
-    // validates and writes. The PATCH is what travels between them, so a
-    // disagreement ends with ops.py refusing rather than with two half-edited
-    // artifacts. Operations are keyed by uid, never by array index: RFC 6902's
-    // paths would renumber every unit after an insert, and a split would read
-    // as two opaque array mutations nothing could check as a split.
-    patch: [], menu: null, boundaries: [],
-    // Each operation returns the uid to leave selected, or false to refuse it.
-    // A refused operation is never recorded: the patch is what the page did,
-    // so a step the page declined to take cannot ride along in it.
+    // EDITING. Every rule about a standoff (the invariants, the four
+    // operations, the serialization, where a save may land) lives in
+    // lib/kits/standoff.js, and skills/state-the-rule/ops.py is the same rules
+    // in Python. This page is the view: it decides what to offer and where to
+    // put it, and delegates what an operation MEANS.
+    patch: [], menu: null, boundaries: [], opErr: '',
     push(op) {
-      const uid = this[op.op](op);
-      if (uid === false) return;
+      // Applied to the live annotation so the view moves under your thumb, then
+      // checked and rolled back if it broke something. Same rule ops.py runs on
+      // a whole patch: valid against its base, or it does not stand.
+      const before = JSON.parse(JSON.stringify(this.units));
+      const uid = Standoff.ops[op.op]?.(this.so, this.a.text, op) ?? null;
+      const bad = uid === null ? [`${op.op} ${op.uid} was refused`]
+                              : Standoff.check(this.so, this.a.text);
+      if (bad.length) { this.so.units = before; this.opErr = bad[0]; return; }
+      this.opErr = '';
       this.patch.push(op);
       this.regroup();
       this.menu = null;
@@ -862,44 +870,14 @@ window.__audit = {
     },
     nextOf(uid) { return this.units[this.units.findIndex(u => u.uid === uid) + 1]; },
 
-    split(o) {
-      const i = this.units.findIndex(u => u.uid === o.uid), u = this.units[i];
-      if (!u || o.at <= u.start || o.at >= u.end) return false;
-      const half = (a, b, suf) => ({ ...u, uid: u.uid + suf, start: a, end: b,
-        words: this.a.text.slice(a, b).split(/\s+/).filter(Boolean).length,
-        from: 'split:' + u.uid });
-      this.units.splice(i, 1, half(u.start, o.at, 'a'), half(o.at, u.end, 'b'));
-      return o.uid + 'a';
-    },
-    merge(o) {
-      const i = this.units.findIndex(u => u.uid === o.uid), u = this.units[i], n = this.units[i + 1];
-      if (!u || !n) return false;
-      // A cross-kind merge cannot keep either kind and stay true, so it says so.
-      this.units.splice(i, 2, { ...u, end: n.end, kind: u.kind === n.kind ? u.kind : 'mixed',
-        words: this.a.text.slice(u.start, n.end).split(/\s+/).filter(Boolean).length,
-        from: `merge:${u.uid}+${n.uid}` });
-      return o.uid;
-    },
-    relabel(o) {
-      const u = this.units.find(x => x.uid === o.uid);
-      if (!u || !this.so.vocabulary.some(v => v.label === o.label)) return false;
-      u.label = o.label;
-      return o.uid;
-    },
-    note(o) {
-      const u = this.units.find(x => x.uid === o.uid);
-      if (!u) return false;
-      if (o.text) u.note = o.text; else delete u.note;
-      return o.uid;
-    },
-
     // Split candidates are the connectives the measurement said matter: 40% of
     // prose units carry one, with a rule on one side and its reason on the
     // other. Offering those beats a caret, which a phone does not really have.
+    //
+    // The connective rides with the SECOND half, so the boundary is a
+    // lookahead: splitting after "because" leaves the rule ending on a dangling
+    // connective and the reason unable to say it is one.
     openSplit(u) {
-      // The connective rides with the SECOND half, so the boundary is a
-      // lookahead: splitting after "because" leaves the rule ending on a
-      // dangling connective and the reason unable to say it is one.
       const t = this.a.text;
       const re = /[.!?][*`)\]]*\s+|;\s+|:\s+|,\s+(?=so\b|because\b|since\b|which is why\b)/g;
       const body = t.slice(u.start, u.end);
@@ -912,6 +890,34 @@ window.__audit = {
     },
     get patchJson() { return JSON.stringify(this.patch, null, 1); },
     get patchHref() { return 'data:application/json;charset=utf-8,' + encodeURIComponent(this.patchJson); },
+
+    // SAVING. The page writes to the ref it is READING: you previewed a branch,
+    // you edited, the edit lands on that branch. Standoff.saveTarget owns which
+    // refs qualify and says why when none does.
+    saving: false, saved: '', saveErr: '',
+    get where() { return Standoff.saveTarget(this.so, this.ref); },
+    get target() { return this.where.ref; },
+    get whyNoSave() { return this.where.why; },
+    async save() {
+      if (this.saving || !this.target) return;
+      this.saving = true; this.saveErr = ''; this.saved = '';
+      try {
+        if (!gh.save) await gh.load('gh-store.js');
+        // The patch rides in the commit message rather than in a file of its
+        // own: the judgment belongs to the change that carries it, and each
+        // unit already records its own `from`.
+        const head = `standoff: ${this.patch.length} operation${this.patch.length === 1 ? '' : 's'} `
+                   + `on ${this.so.target.path}`;
+        await gh.save(this.so.self.path, Standoff.serialize(this.so),
+                      `${head}\n\n${Standoff.describe(this.patch).join('\n')}\n`);
+        this.saved = `${this.units.length} units to ${this.target}`;
+        this.patch = [];
+      } catch (e) {
+        this.saveErr = e.message || String(e);
+      } finally {
+        this.saving = false;
+      }
+    },
     dim(u) { return this.off[u.label] ? .12 : 1 },
     get unrenderable() {
       return this.units.filter(u => u.kind === 'sent'
@@ -1116,6 +1122,7 @@ window.__audit = {
         <span class="opacity-60 font-mono" x-text="sel?.ref"></span>
         <span class="italic opacity-70" x-show="sel?.note" x-text="sel?.note"></span>
         <span class="text-error" x-show="sel?.broken">slice does not close its own markup</span>
+        <span class="text-error" x-show="opErr" x-text="opErr"></span>
         <button class="btn btn-ghost btn-xs ml-auto" @click="sel=null; menu=null">close</button>
       </div>
 
@@ -1168,6 +1175,19 @@ window.__audit = {
           <button class="link text-error ml-auto" @click="location.reload()">discard</button>
         </div>
         <pre class="text-xs overflow-x-auto bg-base-200 p-3 rounded" x-text="patchJson"></pre>
+
+        <!-- Two ways out, and the page says which one is open. Saving writes
+             the edited standoff to the ref being read; where that ref is main
+             there is nothing to write to, and the command below is the route. -->
+        <div class="flex flex-wrap items-center gap-2 mt-3 text-xs">
+          <button class="btn btn-sm btn-primary" x-show="target" :disabled="!!saving"
+                  @click="save()">
+            <span x-text="saving ? 'saving…' : 'save to ' + target"></span>
+          </button>
+          <span class="opacity-60" x-show="whyNoSave" x-text="whyNoSave"></span>
+          <span class="text-success" x-show="saved" x-text="'saved ' + saved"></span>
+          <span class="text-error" x-show="saveErr" x-text="saveErr"></span>
+        </div>
         <p class="text-xs opacity-60 mt-2 font-mono">
           python3 skills/state-the-rule/ops.py &lt;standoff.json&gt; patch.json &lt;doc.md&gt; --write
         </p>

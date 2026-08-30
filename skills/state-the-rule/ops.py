@@ -118,9 +118,15 @@ HANDLERS = {"split": lambda so, t, o: split(so, t, o["uid"], o["at"], o.get("why
             "note": lambda so, t, o: note(so, t, o["uid"], o.get("text", ""))}
 
 
-def apply(so, patch, text):
-    """Run a patch, refusing the whole of it if any operation breaks an
-    invariant. A patch is valid against its base or it does not run."""
+def apply(base, patch, text):
+    """Run a patch on a COPY, refusing the whole of it if any operation breaks
+    an invariant: a patch is valid against its base or it does not run, so a bad
+    last step cannot leave the earlier ones applied. Returns the new standoff.
+
+    lib/kits/standoff.js is the same rules in JavaScript, for the browser that
+    authors a patch. tools/render/scenarios/audit-edit.mjs diffs the two over
+    one patch, so a drift between them is a failed comparison."""
+    so = json.loads(json.dumps(base))
     for n, op in enumerate(patch, 1):
         kind = op.get("op")
         if kind not in HANDLERS:
@@ -139,7 +145,7 @@ if __name__ == "__main__":
     so = json.loads(sofile.read_text())
     text = doc.read_text(encoding="utf-8")
     before = len(so["units"])
-    apply(so, json.loads(patchfile.read_text()), text)
+    so = apply(so, json.loads(patchfile.read_text()), text)
     print(f"{before} units -> {len(so['units'])}, invariants hold")
     if "--write" in sys.argv:
         sofile.write_text(json.dumps(so, ensure_ascii=False, indent=1) + "\n")
