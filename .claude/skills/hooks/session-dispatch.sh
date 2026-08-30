@@ -62,11 +62,32 @@ BUDGET="${WEB_TOOLS_SESSION_BUDGET:-120}"
 # smallest persisted output in the session archive is 29.4 KB, so it sits at or
 # below that. 28,000 is under the bound and above what a healthy run emits.
 #
+# Scoped to THIS script's output, and that is correct rather than lucky: the cap
+# applies per hook entry, not across the SessionStart event. Measured 2026-08-30
+# on one session, this dispatcher's 28,670-character payload was cut while a
+# separate 298-character SessionStart hook in the same session arrived whole.
+# So a neighbouring hook cannot eat this budget, and this one cannot eat theirs.
+#
 # This does not shrink anything. A script's payload is its own business, and
 # trimming here would cut a neighbour's output at an arbitrary byte. What it
 # does is make the failure LOUD, which is the whole difference: the warning is
 # printed FIRST, so it lands inside the 2,000 bytes that survive.
 OUTPUT_BUDGET="${WEB_TOOLS_OUTPUT_BUDGET:-28000}"
+
+# ── Told, not guessed (2026-08-30) ─────────────────────────────────────────
+#
+# The ceiling above is shared, and until now only this file knew it. A script
+# that sizes its own payload, which today means inject-conventions.sh, had to
+# carry a second constant guessing at the ceiling MINUS its siblings, and that
+# guess could not see how many siblings there were. Measured 2026-08-30 across
+# three checkouts: the guess reserved 1,000 bytes and the siblings emitted
+# 1,223.
+#
+# So the ceiling is exported rather than kept, and the sibling count goes with
+# it, since the count is the part a script cannot discover for itself. A script
+# reading neither behaves exactly as before; both are hints, and this file stays
+# the only enforcer.
+export WEB_TOOLS_OUTPUT_BUDGET="$OUTPUT_BUDGET"
 
 # Handed to every dispatched script so a repo can call something the plugin
 # ships (inject-conventions.sh) without knowing where the cache put it, or
@@ -152,11 +173,18 @@ trap 'rm -rf "$TMP"' EXIT
 
 # Each script runs with its OWN checkout as both cwd and CLAUDE_PROJECT_DIR, so
 # a script written for `.claude/settings.json` needs no change to run here.
+#
+# WEB_TOOLS_SESSION_SIBLINGS is per script: how many OTHERS are running, which
+# is what a self-sizing script needs to reserve room for. Set inside the loop
+# rather than exported once, so it stays true from each script's own point of
+# view.
 i=0
 for s in "${scripts[@]}"; do
   repo="${owners[$i]}"
   {
-    ( cd "$repo" && CLAUDE_PROJECT_DIR="$repo" timeout "$BUDGET" bash "$s" ) \
+    ( cd "$repo" && CLAUDE_PROJECT_DIR="$repo" \
+        WEB_TOOLS_SESSION_SIBLINGS="$((${#scripts[@]} - 1))" \
+        timeout "$BUDGET" bash "$s" ) \
       >"$TMP/$i.out" 2>/dev/null
     printf '%s' "$?" >"$TMP/$i.rc"
   } &
