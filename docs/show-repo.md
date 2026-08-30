@@ -913,8 +913,12 @@ converging.
 The chips are what keep it converging rather than sprawling: the add form
 offers the kinds already in the pile, commonest first, so tapping is always
 cheaper than typing and nobody writes `snag` twice; a trailing `+` is how a kind
-that does not exist yet gets made. They appear only once there is a draft,
-because capture is the reason the pane exists and most jots want no kind. A kind
+that does not exist yet gets made. They sit inside the capture form, ahead of
+the box and always visible, so a kind can be picked before the text is typed
+and the field is not something you have to know is there. A row of their own
+was the first shape and it charged every jot a line; inside the form they cost
+nothing until the pane is too narrow to hold chips and box on one line, where
+the form wraps and the box drops below them. A kind
 earns a chip by naming a **destination the text cannot imply**: `snag` names the
 owning repo's [`SNAGS.md`](SNAGS.md), where a topic is in the text already and
 grep finds it. Seeded with `snag` alone, 2026-08-26, because every jot in the

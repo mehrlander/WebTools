@@ -86,6 +86,9 @@
     font: 11.5px/1.6 ui-monospace, monospace; padding: 10px 12px; border-radius: 9px;
     white-space: pre-wrap; overflow-wrap: anywhere; }
   .card pre .cm { color: #64748b; }
+  .anc { margin-top: 8px; padding-top: 7px; border-top: 1px dashed #e2e8f0;
+         color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+  .anc a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
   .beats { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
   .beats li { position: relative; padding-left: 15px; color: var(--muted); font-size: 12.5px; line-height: 1.4; }
   .beats li::before { content: ""; position: absolute; left: 3px; top: 6px; width: 5px; height: 5px;
@@ -295,12 +298,14 @@
       { ic: '🕺', t: 'verbs', g: 'Move the whole set in lockstep.',
         io: ['set', 'stepped set'],
         c: ["glom.up('tr')   glom.down('a')", "glom.downAll('td')   glom.over(-1)"],
-        b: ['One cursor over N parallel subtrees.', 'Steps that land nowhere drop out; landings dedupe.'] },
+        b: ['One cursor over N parallel subtrees.', 'Steps that land nowhere drop out; landings dedupe.'],
+        anc: "the 2023-12 hover overlay, where climbing was a click gesture rather than a vocabulary" },
       { ic: '⛓️', t: 'q()', g: 'A Playwright-flavored selector chain.',
         io: ["'expr'", 'decorated set'],
         c: ["q('#bills >> tbody tr >> has-text=hearing >> nth=0-4')"],
         b: ['Stages split by <code>&gt;&gt;</code>; returns <code>.mark() .glom() .texts()</code>.', '<code>text=</code> filters <b>current</b> members — css-hop first.'],
-        stages: true },
+        stages: true,
+        anc: "the 2024-03 XPath tally bookmarklet, where paths were picked from a list, not written" },
       { ic: '🗂️', t: 'sets', g: 'Name a set, park it, reuse it later.',
         io: ['set', "'name'"],
         c: ["glom.save('rows')   glom.use('rows')", "glom.names()   glom.forget('rows')"],
@@ -314,41 +319,50 @@
       { ic: '📊', t: 'census', g: 'Ping the page’s shape — no HTML reading.',
         io: ['page', 'ranked groups'],
         c: ["census()   census.grab(2)   census.clear()"],
-        b: ['Groups by tag path, ranks by count.', '<code>geoReg</code> ≈ 1 → tiles its region like a grid.'] },
+        b: ['Groups by tag path, ranks by count.', '<code>geoReg</code> ≈ 1 → tiles its region like a grid.'],
+        anc: "the 2026-02 Structural X-Ray, which grouped by typography and left edge" },
       { ic: '🧩', t: 'templates', g: 'Group by signature; hashy classes become slots.',
         io: ['set', 'template groups'],
         c: ["glom.templates()   glom.templates.grab(2)"],
-        b: ['<code>c.hash-x1/x2</code> → <code>c.hash-${0}</code>.', 'Lossless — <code>reconstruct</code> rebuilds each.'] },
+        b: ['<code>c.hash-x1/x2</code> → <code>c.hash-${0}</code>.', 'Lossless — <code>reconstruct</code> rebuilds each.'],
+        anc: "the X-Ray and <code>dom-sig</code> (2025-05), where one hashy class split a group" },
       { ic: '🌱', t: 'grow', g: 'Two examples → the whole family.',
         io: ['2 picks', 'every alike element'],
         c: ["glom.pick()   glom.grow()", "glom.grow({by:'style'})"],
-        b: ['Shared classes survive; hashy ones wash out.', 'Headers differ in tag path → excluded.'] },
+        b: ['Shared classes survive; hashy ones wash out.', 'Headers differ in tag path → excluded.'],
+        anc: "the element inspector&rsquo;s <em>path buddies</em> (2024-08), live on hover" },
       { ic: '👆', t: 'pick', g: 'Click to collect.',
         io: ['clicks', 'set'],
         c: ["glom.pick()   glom.pick.done()"],
-        b: ['Toggles membership; Esc ends.', 'Clicks swallowed — links don’t navigate.'] },
+        b: ['Toggles membership; Esc ends.', 'Clicks swallowed — links don’t navigate.'],
+        anc: "the 2023-12 hover overlay, where the click cycled ancestors instead of toggling membership" },
       { ic: '🧬', t: 'infer', g: 'A hand-danced set → a durable selector.',
         io: ['set', 'CSS selector'],
         c: ["glom.infer()   <span class=cm>// {selector, extra, missing}</span>"],
-        b: ['Replayable; Playwright-pasteable.', 'Honest: <code>extra</code> / <code>missing</code>; (0,0) is exact.'] },
+        b: ['Replayable; Playwright-pasteable.', 'Honest: <code>extra</code> / <code>missing</code>; (0,0) is exact.'],
+        anc: "<em>path buddies</em> again (2024-08), read the other way and killed by performance" },
       { ic: '🪢', t: 'lasso', g: 'Drag a rectangle to select.',
         io: ['drag', 'set'],
         c: ["await glom.lasso()", "await glom.lasso({mode:'intersect'})"],
-        b: ['Empty set → discover; full set → refine.', 'Collapses to selection roots, not every span.'] },
+        b: ['Empty set → discover; full set → refine.', 'Collapses to selection roots, not every span.'],
+        anc: "the 2026-02 dashboard that dropped analytical tabs for rectangles over an iframe" },
     ],
     extract: [
       { ic: '🧮', t: 'columns', g: 'Repetition → a table.',
         io: ['set', 'row objects'],
         c: ["glom.columns()", "packTable(glom.columns())"],
-        b: ['Leaf texts keyed by tag path; links add <code>@href</code>.', 'Invariant columns drop (<code>{all:true}</code> keeps).'] },
+        b: ['Leaf texts keyed by tag path; links add <code>@href</code>.', 'Invariant columns drop (<code>{all:true}</code> keeps).'],
+        anc: "<code>nice-table</code> (2024-03), a &lt;pre&gt; of bill text read out as a table" },
       { ic: '🌾', t: 'harvest', g: 'Sweep a virtualized list.',
         io: ['set', 'all records'],
         c: ["await glom.harvest({selector:'.row'})"],
-        b: ['Scrolls, waits, accumulates until <code>dry</code>.', 'Snapshots survive element death.'] },
+        b: ['Scrolls, waits, accumulates until <code>dry</code>.', 'Snapshots survive element death.'],
+        anc: "the 2025-06 aside scanner, the scroll-and-accumulate half" },
       { ic: '💾', t: 'scan', g: 'Capture over time — persist to IndexedDB.',
         io: ['set | selector', 'durable records'],
         c: ["glom.scan.define('rows')   <span class=cm>// seed from the set</span>", "await glom.scan.sweep()   glom.scan.watch()", "glom.scan.grab('rows')   glom.scan.data('rows')"],
-        b: ['Fresh-diff by <code>key</code>; survives the tab.', 'Seeds from the set; <code>grab</code> feeds it back.', 'Browsable in <code>idb-nav</code>.'] },
+        b: ['Fresh-diff by <code>key</code>; survives the tab.', 'Seeds from the set; <code>grab</code> feeds it back.', 'Browsable in <code>idb-nav</code>.'],
+        anc: "the 2025-06 aside scanner, a bare <code>setInterval</code> with no dedupe" },
       { ic: '🔗', t: 'join', g: 'Pair two sets by relation.',
         io: ['setA + setB', 'pairs'],
         c: ["glom.join('labels','inputs','left-of')"],
@@ -360,13 +374,15 @@
       { ic: '🏷️', t: 'semantics', g: 'The data the page already carries.',
         io: ['page', '{ jsonld, microdata, meta }'],
         c: ["glom.semantics()"],
-        b: ['JSON-LD, microdata, og: metas.', 'Often the whole scrape — typed and labeled.'] },
+        b: ['JSON-LD, microdata, og: metas.', 'Often the whole scrape — typed and labeled.'],
+        anc: "nothing: three years of tools all inferred structure from the DOM" },
     ],
     wire: [
       { ic: '🚰', t: 'tap', g: 'Watch the wire, not the DOM.',
         io: ['fetch / XHR', 'hits[]'],
         c: ["tap(/api/)   tap.hits   tap.last", "tap.find('bills')   tap.clear()   tap.stop()"],
-        b: ['Requests pass through; responses cloned.', 'Standalone — works without base.js.'] },
+        b: ['Requests pass through; responses cloned.', 'Standalone — works without base.js.'],
+        anc: "nothing: every ancestor read the rendered DOM, never the wire" },
       { ic: '🚶', t: 'tap.replay / walk', g: 'A captured hit is a request template.',
         io: ['one hit', 'the whole dataset'],
         c: ["await tap.replay(0, {page:7})", "await tap.walk(0, {param:'page', to:40})"],
@@ -376,7 +392,8 @@
       { ic: '🃏', t: 'deck', g: 'The set in a live side-window.',
         io: ['set', 'its own window'],
         c: ["glom.deck()   glom.deck.close()"],
-        b: ['Re-renders on every <code>glom.set</code>.', 'Page CSS can’t touch it; a rerender can’t kill it.'] },
+        b: ['Re-renders on every <code>glom.set</code>.', 'Page CSS can’t touch it; a rerender can’t kill it.'],
+        anc: "the 2024-09 popup tree viewers, after light DOM, shadow DOM and an iframe each failed" },
       { ic: '🖍️', t: 'mark', g: 'Outline the set — two modes, no dialect.',
         io: ['color | CSS', 'outlined set'],
         c: ["glom.mark('#2563eb')   <span class=cm>// bare color → outline</span>", "glom.mark('outline:3px dashed #059669')"],
@@ -427,6 +444,9 @@
       if (e.b) card += `<ul class="beats">${e.b.map(x => `<li>${x}</li>`).join('')}</ul>`;
       if (e.stages) card += '<table class="stage">' +
         Q_STAGES.map(([x, y]) => `<tr><td>${x}</td><td>${y}</td></tr>`).join('') + '</table>';
+      // Last, so it reads as a footnote to the whole card rather than
+      // interrupting q()'s stage table.
+      if (e.anc) card += `<div class="anc"><a href="https://github.com/mehrlander/web-tools/blob/main/console/LINEAGE.md">came from</a> ${e.anc}</div>`;
       card += '</div>';
       parts.push(card);
     }
