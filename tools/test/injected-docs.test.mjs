@@ -35,6 +35,18 @@ const LIMITS = {
   'docs/SURFACING.md': 4400,     // 3,918w when set
 };
 
+// Neither number is the binding constraint, and the gap between them and the
+// one that is misleads in the expensive direction. These are per-file word
+// ceilings; the channel is a shared BYTE budget over both documents at once,
+// held by conventions-delivery.test.mjs. Measured 2026-08-30 after PR #545's
+// state-the-rule pass: about 100 bytes of headroom before the payload drops
+// SURFACING.md's front matter, and about 1,000 before it drops every primitive,
+// while CONVENTIONS.md reads 261 words under its ceiling. A session that spends
+// the words it appears to have here fails there: a 192-word section added that
+// day cost 1,159 bytes and took the payload two rungs down. The rung boundaries
+// move whenever either document changes size, so re-measure rather than trusting
+// these figures; check the delivery test before adding to either file.
+
 for (const [file, limit] of Object.entries(LIMITS)) {
   test(`${file} stays under its ceiling`, () => {
     const n = words(read(file));
