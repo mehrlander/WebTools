@@ -60,7 +60,10 @@ test('the injected payload fits the channel', () => {
   assert.ok(out.length < BUDGET,
     `the injector emits ${out.length} bytes, over its own ${BUDGET}-byte budget. ` +
     'The harness truncates a payload this size to a 2,000-byte preview without saying so.');
-  assert.doesNotMatch(out, /OUTPUT TRUNCATED|PARTIAL LOAD/, 'and it is the whole payload');
+  // The banner forms, not the words: the recovery block quotes both strings so a
+  // reader can recognise them, which is exactly the text this used to match on.
+  assert.doesNotMatch(out, /^=+ SESSION START: OUTPUT TRUNCATED/m, 'and it is the whole payload');
+  assert.doesNotMatch(out, /^=+ Portable conventions: PARTIAL LOAD/m, 'at its widest rung');
 });
 
 test('the budget is measured in bytes, so the locale cannot change the rung', () => {
@@ -140,8 +143,8 @@ test('over budget it drops the front matter before it drops a single rule', () =
 // untested; what has to hold is what happens when someone does.
 test('past every rung it says so and degrades to a known half, never to a silent cut', () => {
   const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '4000' });
-  assert.match(out, /^===== Portable conventions: PARTIAL LOAD =====/,
-    'the banner leads, so it survives a 2,000-byte preview');
+  assert.match(out, /^=+ Portable conventions: PARTIAL LOAD =+$/m,
+    'it says which rung it landed on');
   assert.match(out, /Run \/web-tools/, 'and it names the recovery');
   assert.match(out, /# Working conventions \(portable\)/, 'CONVENTIONS.md still arrives');
   assert.ok(!/^\* \*\*Show pixels/m.test(out), 'the primitives are the half dropped');
@@ -291,4 +294,58 @@ test('the sent figure is the payload, so it matches what the rung emitted', () =
   const head = doc.split('\n## The surfacing course')[0].replace(/\n+$/, '');
   assert.equal(surf.sent, Buffer.byteLength(head, 'utf8'),
     'the widest rung sends SURFACING.md up to the course heading');
+});
+
+// ── The recovery block ─────────────────────────────────────────────────────
+// The budget can be respected and the payload still lost: the ceiling belongs
+// to the harness, not to this script, and past it the whole stdout goes to a
+// file while the session gets a ~2 KB preview. Measured 2026-08-30 on a live
+// session, that preview is 1,997 bytes and ends partway into CONVENTIONS.md's
+// opening. So the head of this payload is the only part guaranteed to arrive,
+// and what sits there is a design decision, not a formatting one.
+
+test('the recovery block leads every rung, since only the head is guaranteed to arrive', () => {
+  const budgets = [undefined, '25981', '4000'];   // rung 1, rung 2, the partial rung
+  for (const b of budgets) {
+    const out = run('inject-conventions.sh', b ? { WEB_TOOLS_INJECT_BUDGET: b } : {});
+    assert.match(out, /^RECOVERY: /,
+      `the recovery block is the first thing printed (budget ${b || 'default'})`);
+    assert.ok(Buffer.byteLength(out.split('\n\n')[0], 'utf8') < 1500,
+      'and it fits inside a 2,000-byte preview with room for the banner behind it');
+  }
+});
+
+test('the recovery block names files, a directory, and an ordering', () => {
+  // The dispatcher already warned, and its warning states the problem without
+  // the remedy: no file, no path, and nothing about when to act. Each of these
+  // is a thing a session needs in order to do something rather than worry.
+  const out = run('inject-conventions.sh');
+  const block = out.split('\n\n')[0];
+  assert.match(block, /CONVENTIONS\.md and SURFACING\.md/, 'which documents were lost');
+  assert.match(block, /from \/\S+/, 'an absolute path to read them from');
+  assert.doesNotMatch(block, /\/\.\.\//, 'resolved, not joined: a reader should not unpick it');
+  assert.match(block, /before acting on the request/, 'and when to do it');
+  assert.match(block, /no network needed/,
+    'the recovery must hold when the network is the thing that is broken');
+});
+
+test('the recovery block stays small enough not to cost a rung', () => {
+  // It did, at 480 bytes: it traded SURFACING.md's opening away in every session
+  // to buy a message that matters only in the cut ones. The size is the whole
+  // reason one directory is printed rather than two full paths.
+  const out = run('inject-conventions.sh');
+  const block = out.split('\n\n')[0] + '\n\n';
+  assert.ok(Buffer.byteLength(block, 'utf8') < 450,
+    `the recovery block is ${Buffer.byteLength(block, 'utf8')} bytes; over 450 it starts buying its room from the rungs`);
+});
+
+test('the path the recovery names is real, and holds both documents', () => {
+  // A recovery instruction pointing at nothing is worse than none: it costs the
+  // session a detour and ends where it started.
+  const out = run('inject-conventions.sh');
+  const dir = /from (\/\S+)/.exec(out.split('\n\n')[0])?.[1];
+  assert.ok(dir, 'the block names a directory');
+  for (const f of ['CONVENTIONS.md', 'SURFACING.md']) {
+    assert.ok(fs.existsSync(join(dir, f)), `${f} is where the block says it is`);
+  }
 });

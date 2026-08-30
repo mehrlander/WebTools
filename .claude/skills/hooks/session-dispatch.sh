@@ -62,6 +62,12 @@ BUDGET="${WEB_TOOLS_SESSION_BUDGET:-120}"
 # smallest persisted output in the session archive is 29.4 KB, so it sits at or
 # below that. 28,000 is under the bound and above what a healthy run emits.
 #
+# Scoped to THIS script's output, and that is correct rather than lucky: the cap
+# applies per hook entry, not across the SessionStart event. Measured 2026-08-30
+# on one session, this dispatcher's 28,670-character payload was cut while a
+# separate 298-character SessionStart hook in the same session arrived whole.
+# So a neighbouring hook cannot eat this budget, and this one cannot eat theirs.
+#
 # This does not shrink anything. A script's payload is its own business, and
 # trimming here would cut a neighbour's output at an arbitrary byte. What it
 # does is make the failure LOUD, which is the whole difference: the warning is

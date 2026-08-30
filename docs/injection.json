@@ -27,14 +27,14 @@
     {
       "id": "session_hook",
       "label": "Session hook",
-      "total": 27678,
+      "total": 27131,
       "cap": 28000,
-      "headroom": 322,
+      "headroom": 869,
       "rung": 1,
       "contributors": [
         {
           "script": "home/session-conventions.sh",
-          "bytes": 26485
+          "bytes": 25938
         },
         {
           "script": "home/session-memory-manifest.sh",
@@ -47,28 +47,10 @@
       ],
       "segments": [
         {
-          "label": "banner",
+          "label": "home/session-conventions.sh",
           "path": null,
           "kind": "overhead",
-          "bytes": 479
-        },
-        {
-          "label": "web-tools/docs/CONVENTIONS.md",
-          "path": "web-tools/docs/CONVENTIONS.md",
-          "kind": "document",
-          "bytes": 8484
-        },
-        {
-          "label": "web-tools/docs/SURFACING.md",
-          "path": "web-tools/docs/SURFACING.md",
-          "kind": "document",
-          "bytes": 16983
-        },
-        {
-          "label": "receipts",
-          "path": null,
-          "kind": "overhead",
-          "bytes": 539
+          "bytes": 25938
         },
         {
           "label": "home/session-memory-manifest.sh",
@@ -128,17 +110,17 @@
   "rungs": [
     {
       "rung": 1,
-      "output": 26455,
+      "output": 26802,
       "withholds": "the guide-PR course"
     },
     {
       "rung": 2,
-      "output": 25561,
+      "output": 25908,
       "withholds": "the course and SURFACING.md's opening"
     },
     {
       "rung": 3,
-      "output": 9326,
+      "output": 9673,
       "withholds": "the course, the opening, and every primitive"
     }
   ],
@@ -155,7 +137,7 @@
       "bytes": 25593,
       "via": "session_hook",
       "basis": "receipt",
-      "delivered": "without the guide-PR course"
+      "delivered": "primitives_only"
     },
     {
       "path": "/root/.claude/CLAUDE.md",

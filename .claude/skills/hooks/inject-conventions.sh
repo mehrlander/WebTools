@@ -104,7 +104,9 @@ BUDGET=${WEB_TOOLS_INJECT_BUDGET:-$((CEILING - BASE_RESERVE - SIBLINGS * PER_SIB
 [ "$BUDGET" -gt 0 ] 2>/dev/null || BUDGET=1
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd) || exit 0
-DOCS="$HERE/../web-tools"
+# Resolved rather than joined, because the recovery block prints it for a reader
+# to act on and "$HERE/../web-tools" is a path a person has to unpick.
+DOCS=$(cd "$HERE/../web-tools" 2>/dev/null && pwd) || DOCS="$HERE/../web-tools"
 
 for f in CONVENTIONS SURFACING; do
   [ -f "$DOCS/$f.md" ] || exit 0
@@ -152,7 +154,45 @@ surfacing_head() {
 # path, the one per-repo setting), about 1 KB, and both are restated where they
 # are used. The primitives are the rules themselves. So the head goes before
 # they do, and CONVENTIONS.md, the hub, goes last of all.
+# ── The recovery block, and why it is printed first ────────────────────────
+#
+# The budget below can be respected and the payload still lost. The ceiling is
+# the harness's, not this script's: past it the whole stdout goes to a file and
+# the session gets a ~2 KB preview. Measured 2026-08-30 on a live session, the
+# preview is 1,997 bytes and it ends partway into CONVENTIONS.md's opening.
+#
+# So the first ~1,500 bytes of this script's output are the only part guaranteed
+# to reach a reader, and until now they carried provenance. The dispatcher's
+# warning does arrive and says "assume it did not", which states the problem and
+# not the remedy: it names no file, no path, and no ordering against the work the
+# session was actually asked to do.
+#
+# This block is the remedy, and it is printed UNCONDITIONALLY because the
+# condition is unknowable from in here. Truncation happens downstream of this
+# script, after it has exited 0. What the session can see, and this script
+# cannot, is the wrapper around its own context, so the test is handed to the
+# only party able to run it.
+#
+# Absolute paths, because the recovery has to work with no network and no
+# GitHub token: these files ship inside the plugin and are already on disk. That
+# is also why they beat `/web-tools`, which fetches from main and can fail
+# exactly when things are already going wrong.
+#
+# Kept near 350 bytes, and the size is load-bearing: at 480 it cost a rung, which
+# would have traded SURFACING.md's opening sections away in every session to buy
+# a message that matters in the few that are cut. One directory rather than two
+# paths is most of the saving.
+recovery() {
+  echo "RECOVERY: if the text above says \"Output too large\" or \"OUTPUT TRUNCATED\","
+  echo "this payload was CUT and little of what follows reached you. Read"
+  echo "CONVENTIONS.md and SURFACING.md from $DOCS"
+  echo "before acting on the request in hand; both are on disk, no network needed."
+  echo "Otherwise ignore this: the same text is below."
+  echo
+}
+
 emit() {
+  recovery
   # Say where this came from before saying it. Injected text arrives with no
   # provenance otherwise, and "which copy of the conventions is this" is a
   # question that has already cost a session once.
@@ -267,6 +307,7 @@ fi
 # knows it received a partial payload can go read the rest, which is the whole
 # difference between a degraded load and a load that lies about itself.
 if [ "$(bytes_of "$BODY")" -gt "$BUDGET" ]; then
+  recovery
   echo "===== Portable conventions: PARTIAL LOAD ====="
   echo "The injected payload is $(bytes_of "$BODY") bytes, over its ${BUDGET}-byte budget, and the"
   echo "harness truncates a large hook payload to a 2,000-byte preview without saying so."
