@@ -211,6 +211,17 @@ its parent (`046` becomes `046a`/`046b`, and splitting a half gives `046aa`), an
 each unit carries `from`. So a patch is a transport, not a second history to
 store: nothing keeps the patch files.
 
+**A rebuild is a reset, not a refresh.** `units.jsonl` and `labels.tsv` record
+steps 1 and 2, so once a patch has moved the grain the standoff holds units
+those inputs never had. Re-running `audit-payload.py standoff` would undo the
+pass silently; it reads `from` and refuses without `--reset`.
+
+**Split where the two halves take different labels.** A boundary whose halves
+would both be `WHAT` separates two rules without changing what the annotation
+says about either, and grain for its own sake is not a finding. On
+`CONVENTIONS.md`, 36 of 69 prose units carry a clause boundary and 10 met the
+bar; every one of the ten was a rule with its reason fused on.
+
 **Where a patch comes from.** `pages/audit-render.html` (hub) offers the four
 operations on the selected unit and accumulates them, applying each one
 optimistically so the view moves under your thumb; it splits at connective

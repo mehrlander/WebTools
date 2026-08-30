@@ -1,5 +1,5 @@
-// Driving the grain edits: split a fused unit, relabel the reason half, note
-// the rule half, and read back the patch the page produced.
+// Driving the grain edits: split a fused unit, relabel one half, note the
+// other, and read back the patch the page produced.
 //
 // The patch is the assertion. The page applies each operation optimistically so
 // the view moves under your thumb, but what travels to ops.py is this list, and
@@ -10,31 +10,41 @@
 //   npm run shot -- pages/audit-render.html --width 430 \
 //     --script tools/render/scenarios/audit-edit.mjs
 //
-// conven-046 is the worked example from the grain measurement: one sentence
-// carrying a rule and its reason, joined by "because".
-const TARGET = 'conven-046';
+// It picks its own target rather than naming one. An earlier version named
+// conven-046, the worked example from the grain measurement, and went stale the
+// first time that unit was actually split: a driver that has to be re-pointed
+// after every pass is a driver nobody runs.
+//
+// `stop=menu` photographs the offer instead of the result: the candidates the
+// page found, before anything has been decided.
 
 export default async function (page) {
-  // `stop=menu` photographs the offer instead of the result: the candidates the
-  // page found, before anything has been decided.
   const stop = new URL(page.url()).searchParams.get('stop');
   await page.waitForSelector('[x-ref="doc"] span');
   const before = await page.evaluate(() => Alpine.$data(document.body).units.length);
 
-  // Select through the component, not by clicking a tinted span: the spans
-  // carry no uid, and this scenario is about one named unit.
-  await page.evaluate((uid) => {
+  // The first prose unit the page can offer a split inside. Selected through
+  // the component, not by clicking a tinted span: the spans carry no uid.
+  const target = await page.evaluate(() => {
     const d = Alpine.$data(document.body);
-    const u = d.units.find(x => x.uid === uid);
-    d.sel = { ...u, ref: d.srcRef(u) };
-  }, TARGET);
+    for (const u of d.units) {
+      if (u.kind !== 'sent') continue;
+      d.openSplit(u);
+      if (d.boundaries.length) {
+        d.sel = { ...u, ref: d.srcRef(u) };
+        return { uid: u.uid, label: u.label, at: d.boundaries[0].at };
+      }
+    }
+    return null;
+  });
+  if (!target) throw new Error('no prose unit on this page carries a split candidate');
+  console.log('TARGET ' + JSON.stringify(target));
   await page.waitForTimeout(300);
 
   await page.click('button:has-text("Split")');
   await page.waitForTimeout(300);
   const cands = await page.evaluate(() => Alpine.$data(document.body).boundaries);
   console.log('BOUNDARIES ' + JSON.stringify(cands.map(b => b.rest.slice(0, 22))));
-  if (!cands.length) throw new Error('no split candidate inside ' + TARGET);
 
   if (stop === 'menu') {
     await page.evaluate(() => document.querySelector('[x-show*="split"]')
@@ -45,13 +55,16 @@ export default async function (page) {
   await page.click('[x-show="menu===\'split\'"] button');
   await page.waitForTimeout(400);
 
-  // The second half is the reason; the first keeps the rule.
+  // Any label the vocabulary declares that is not the one the parent carried,
+  // so the relabel is a real change whatever document is loaded.
   await page.click('button:has-text("Relabel")');
   await page.waitForTimeout(200);
-  await page.evaluate((uid) => Alpine.$data(document.body)
-    .push({ op: 'relabel', uid: uid + 'b', label: 'WHY-MOT' }), TARGET);
-  await page.evaluate((uid) => Alpine.$data(document.body)
-    .push({ op: 'note', uid: uid + 'a', text: 'the rule; its reason is now its own unit' }), TARGET);
+  await page.evaluate((t) => {
+    const d = Alpine.$data(document.body);
+    const other = d.so.vocabulary.find(v => v.label !== t.label).label;
+    d.push({ op: 'relabel', uid: t.uid + 'b', label: other });
+    d.push({ op: 'note', uid: t.uid + 'a', text: 'the rule; what followed is now its own unit' });
+  }, target);
   await page.waitForTimeout(400);
 
   const after = await page.evaluate(() => Alpine.$data(document.body).units.length);
@@ -74,11 +87,11 @@ export default async function (page) {
   });
   console.log('UNTILED ' + JSON.stringify(gaps));
 
-  // The page and ops.py must produce the SAME units from the same patch, or
-  // the optimistic view is not a preview of anything. Printed so the two can be
-  // diffed outside the browser.
-  const touched = await page.evaluate((uid) => Alpine.$data(document.body)
-    .units.filter(u => u.uid.startsWith(uid)), TARGET);
+  // The page and ops.py must produce the SAME units from the same patch, or the
+  // optimistic view is not a preview of anything. Printed so the two can be
+  // diffed outside the browser; lib/kits/standoff.js is what the page ran.
+  const touched = await page.evaluate((t) => Alpine.$data(document.body)
+    .units.filter(u => u.uid.startsWith(t.uid)), target);
   console.log('TOUCHED ' + JSON.stringify(touched));
 
   await page.evaluate(() => document.querySelector('[x-ref="patch"]').showModal());

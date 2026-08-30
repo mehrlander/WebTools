@@ -280,3 +280,31 @@ the same scope limit: "Seams only, so the burden stays proportional to the edit.
 It was run by hand and never mechanized. That is what the split costs, and it is
 why the machine now has one owner: doc-audit states it, this skill states one
 question over it.
+
+## 2026-08-30 — the grain was a starting guess, and now it moves
+
+**Ten fused units, split, with the bar stated: split where the two halves take
+DIFFERENT labels.** 36 of `docs/CONVENTIONS.md`'s 69 prose units carry a clause
+boundary, which is what the earlier measurement counted; most of those are two
+rules joined by a semicolon, and separating them changes nothing the annotation
+says about either. Grain for its own sake is not a finding. The ten that
+qualified were all one shape: a rule with its reason fused on, seven of them
+labelled `WHY-OP` whole (so the rule half was reading as a reason) and three
+labelled `WHAT` whole (so the reason half was reading as a rule).
+
+**What it moved.** 81 units to 91. `explanation` went from 1% of the document's
+words to 3.4%, `hinge` from 18% to 15.3%, `declaration` unchanged at 65%. The
+document was not more explanatory than it looked; two chunks of pure motivation
+were hidden inside declaration units and seven operative reasons were inflating
+the hinge share by carrying their rules with them.
+
+**A rebuild is a reset, not a refresh, and the builder now says so.**
+`units.jsonl` and `labels.tsv` record steps 1 and 2. Once a patch has moved the
+grain, the standoff holds units those inputs never had, and re-running
+`audit-payload.py standoff` would silently undo the pass. `from` is the tell, so
+the builder reads it and refuses without `--reset`. Nothing had gone wrong yet;
+the trap was one command away and invisible.
+
+**The two implementations were diffed on real work rather than a fixture.** The
+same 20-operation patch through `ops.py` and through `lib/kits/standoff.js`
+produced byte-identical output, 91 units, field order included.

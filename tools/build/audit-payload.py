@@ -19,7 +19,7 @@ the artifact:
              Standoff view is the committed file, not a re-derivation of it.
 
     python3 tools/build/audit-payload.py standoff <doc.md> <run-dir> \
-        [--addr owner/repo@ref:path] [--self owner/repo] [--question <text>]
+        [--addr owner/repo@ref:path] [--self owner/repo] [--question <text>] [--reset]
     python3 tools/build/audit-payload.py payload <doc.md> <run-dir> \
         [--inject <page.html>]
 """
@@ -103,8 +103,19 @@ if __name__ == "__main__":
     cmd, doc, run = a[0], a[1], a[2].rstrip("/")
 
     if cmd == "standoff":
-        s = build_standoff(doc, run, parse_addr(addr), self_repo, question)
         out = pathlib.Path(f"{run}/standoff.json")
+        # A REBUILD IS A RESET, NOT A REFRESH. units.jsonl and labels.tsv record
+        # steps 1 and 2; once a patch has moved the grain (skills/state-the-rule/
+        # ops.py), the standoff carries units those inputs never held, and `from`
+        # is the tell. Rebuilding would silently undo that work, so it refuses.
+        if out.exists():
+            prior = json.loads(out.read_text())
+            moved = [u["uid"] for u in prior["units"] if "from" in u]
+            if moved and "--reset" not in sys.argv:
+                sys.exit(f"{out} carries {len(moved)} patched unit(s) ({', '.join(moved[:4])}"
+                         f"{'…' if len(moved) > 4 else ''}) that units.jsonl and labels.tsv "
+                         f"do not hold.\nRebuilding resets the grain. Pass --reset to mean it.")
+        s = build_standoff(doc, run, parse_addr(addr), self_repo, question)
         out.write_text(json.dumps(s, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         print(f"wrote {out}: {len(s['units'])} units over {s['target']['bytes']} bytes "
               f"(sha256 {s['target']['sha256'][:12]})")
