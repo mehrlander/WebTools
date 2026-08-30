@@ -907,6 +907,10 @@ window.__audit = {
     get raw() { return JSON.stringify(this.so, null, 1); },
     get srcHref() { return 'data:application/json;charset=utf-8,' + encodeURIComponent(this.raw); },
     slice(u) { return this.a.text.slice(u.start, u.end).trim(); },
+    // The uid's prefix is the document, which every row on this page shares.
+    // Only the ordinal distinguishes them, and the full uid wrapped to two
+    // lines on a phone to carry the half that never varies.
+    num(u) { return u.uid.split('-').pop(); },
     dim(u) { return this.off[u.label] ? .12 : 1 },
     verdicts(v) { return this.units.filter(u => u.verdict === v).length; },
     get unrenderable() {
@@ -1077,16 +1081,19 @@ window.__audit = {
       </div>
       <div class="overflow-x-auto">
         <table class="table table-xs">
-          <thead><tr><th>uid</th><th>span</th><th>kind</th><th>w</th>
+          <thead><tr><th class="text-right">#</th>
+                     <th class="text-right">start</th><th class="text-right">end</th>
+                     <th>kind</th><th class="text-right">w</th>
                      <th>label</th><th>verdict</th><th>text</th></tr></thead>
           <tbody>
             <template x-for="u in units" :key="u.uid">
               <tr class="cursor-pointer hover:bg-base-200" @click="sel={...u, ref: srcRef(u)}">
-                <td class="font-mono" x-text="u.uid"></td>
-                <td class="font-mono opacity-60" x-text="u.start + '-' + u.end"></td>
+                <td class="font-mono text-right" x-text="num(u)"></td>
+                <td class="font-mono opacity-60 text-right whitespace-nowrap" x-text="u.start"></td>
+                <td class="font-mono opacity-60 text-right whitespace-nowrap" x-text="u.end"></td>
                 <td class="opacity-60" x-text="u.kind"></td>
-                <td class="font-mono opacity-60" x-text="u.words"></td>
-                <td><span class="badge badge-sm border-0"
+                <td class="font-mono opacity-60 text-right" x-text="u.words"></td>
+                <td><span class="rounded px-1 whitespace-nowrap"
                           :style="`background:rgba(${HUE[u.label]},.25)`" x-text="u.label"></span></td>
                 <td :class="mark(u.verdict)" x-text="u.verdict"></td>
                 <td class="max-w-md truncate" x-text="slice(u)"></td>
