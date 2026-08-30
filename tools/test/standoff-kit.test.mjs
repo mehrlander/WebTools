@@ -119,6 +119,63 @@ test('applying does not touch the annotation it was given', () => {
   assert.equal(b.units.length, 2, 'apply works on a copy; the caller decides to adopt it');
 });
 
+// ── the boundary, and the partition it keeps ───────────────────────────────
+
+test('an overlap is a complaint, and it was not one until 2026-08-30', () => {
+  // Ten characters in two units. Both implementations reported nothing: the
+  // gap check only looks forward, so a unit starting BEFORE its predecessor
+  // ended slipped past every gate. The edge drag is what made it easy to
+  // create, which is why it is checked now.
+  const so = base();
+  so.units[1].start = 30;
+  const bad = S.check(so, DOC);
+  assert.match(bad.join('\n'), /u-002: overlaps the unit before it by 12 chars/);
+});
+
+test('moving a boundary moves both units, so the partition survives', () => {
+  const { so, complaints } = S.apply(base(), [{ op: 'move', after: 'u-001', to: 30 }], DOC);
+  assert.deepEqual(complaints, []);
+  assert.deepEqual([so.units[0].start, so.units[0].end], [0, 30]);
+  assert.deepEqual([so.units[1].start, so.units[1].end], [30, 59]);
+  assert.equal(so.units[0].from, 'move:u-001/u-002');
+  assert.equal(so.units[1].from, 'move:u-001/u-002');
+  assert.deepEqual(S.check(so, DOC), [], 'no gap and no overlap, by construction');
+});
+
+test('a boundary cannot be moved outside the pair it separates', () => {
+  for (const to of [0, 200, 59]) {
+    const { complaints } = S.apply(base(), [{ op: 'move', after: 'u-001', to }], DOC);
+    assert.match(complaints.join('\n'), /refused/, `to=${to} should be refused`);
+  }
+});
+
+test('a boundary cannot be moved so far that a side is only whitespace', () => {
+  // Reachable only where the text near the boundary is blank, so this gets a
+  // fixture of its own: trailing spaces the second unit would be left holding
+  // once the first has swallowed the words.
+  const PAD = 'Alpha. Beta.  ';
+  const so = { vocabulary: [{ label: 'WHAT' }], units: [
+    { uid: 'p-1', start: 0, end: 6, kind: 'sent', words: 1, label: 'WHAT' },
+    { uid: 'p-2', start: 6, end: 14, kind: 'sent', words: 1, label: 'WHAT' }] };
+  assert.deepEqual(S.check(so, PAD), [], 'the fixture itself is sound');
+  for (const to of [12, 13])
+    assert.match(S.apply(so, [{ op: 'move', after: 'p-1', to }], PAD).complaints.join('\n'),
+      /refused/, `to=${to} would leave p-2 holding only spaces`);
+  assert.deepEqual(S.apply(so, [{ op: 'move', after: 'p-1', to: 11 }], PAD).complaints, [],
+    'one character of real text on each side is enough');
+});
+
+test('word counts follow the boundary on both sides', () => {
+  const { so } = S.apply(base(), [{ op: 'move', after: 'u-001', to: 14 }], DOC);
+  assert.equal(so.units[0].words, 3, '"Close the lid,"');
+  assert.equal(so.units[1].words, 7);
+});
+
+test('the last unit has no boundary after it', () => {
+  const { complaints } = S.apply(base(), [{ op: 'move', after: 'u-002', to: 50 }], DOC);
+  assert.match(complaints.join('\n'), /refused/);
+});
+
 // ── where a save may land ──────────────────────────────────────────────────
 
 test('a commit is not a branch, and the default branch takes a pull request', () => {

@@ -11,6 +11,7 @@ is, survives reordering, and is reviewable as a judgment rather than a result.
 
     {"op": "split",   "uid": …, "at": <offset into the document>, "why": …}
     {"op": "merge",   "uid": …}                 with its successor
+    {"op": "move",    "after": …, "to": <offset>}   the boundary after that unit
     {"op": "relabel", "uid": …, "label": …}
     {"op": "note",    "uid": …, "text": …}
 
@@ -38,6 +39,12 @@ def check(so, text):
             bad.append(f"{u['uid']}: label {u['label']!r} is not in the vocabulary")
         if u["start"] > prev and text[prev:u["start"]].strip():
             bad.append(f"{u['uid']}: unannotated text at {prev}-{u['start']}")
+        # The other way a boundary can be wrong, and the one nothing caught
+        # until 2026-08-30: a unit starting before its predecessor ended. The
+        # units are a PARTITION, one label per character, because the figure
+        # they produce is a word share and an overlap makes it double-count.
+        if u["start"] < prev:
+            bad.append(f"{u['uid']}: overlaps the unit before it by {prev - u['start']} chars")
         prev = max(prev, u["end"])
     if text[prev:].strip():
         bad.append(f"unannotated tail from {prev}")
@@ -92,6 +99,30 @@ def merge(so, text, uid, why=None):
     return so
 
 
+def move(so, text, after, to, why=None):
+    """A BOUNDARY IS THE OBJECT. `after` names the unit whose end it is, which
+    is also the next unit's start, so moving it keeps the partition by
+    construction rather than by a rule. Expressing it as merge-then-split would
+    work and would lose both uids, so the grain's history would read as two
+    units appearing where two units were already standing."""
+    units = sorted(so["units"], key=lambda x: x["start"])
+    i, u = _at(so, after)
+    if i + 1 >= len(units):
+        raise ValueError(f"{after}: nothing follows, so there is no boundary after it")
+    n = units[i + 1]
+    if not u["start"] < to < n["end"]:
+        raise ValueError(f"{after}: {to} is outside {u['start']}-{n['end']}")
+    for a, b in ((u["start"], to), (to, n["end"])):
+        if not text[a:b].strip():
+            raise ValueError(f"{after}: moving the boundary to {to} empties a side")
+    tag = f"move:{u['uid']}/{n['uid']}"
+    u.update({"end": to, "words": len(text[u["start"]:to].split()), "from": tag})
+    n.update({"start": to, "words": len(text[to:n["end"]].split()), "from": tag})
+    if why:
+        u["why"] = why
+    return so
+
+
 def relabel(so, text, uid, label, why=None):
     vocab = {v["label"] for v in so["vocabulary"]}
     if label not in vocab:
@@ -114,6 +145,7 @@ def note(so, text, uid, text_, **_):
 
 HANDLERS = {"split": lambda so, t, o: split(so, t, o["uid"], o["at"], o.get("why")),
             "merge": lambda so, t, o: merge(so, t, o["uid"], o.get("why")),
+            "move": lambda so, t, o: move(so, t, o["after"], o["to"], o.get("why")),
             "relabel": lambda so, t, o: relabel(so, t, o["uid"], o["label"], o.get("why")),
             "note": lambda so, t, o: note(so, t, o["uid"], o.get("text", ""))}
 

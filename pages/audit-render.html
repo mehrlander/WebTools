@@ -902,7 +902,7 @@ window.__audit = {
       this.a = payload;
       this.sections = mdDoc.split(this.a.text);
       this.regroup();
-      this.$nextTick(() => this.paint());
+      this.$nextTick(() => { this.bindDoc(); this.paint(); });
     },
     // Blocks: consecutive units with no blank line between them. Derived from
     // units, so every grain edit rebuilds it; paint() reads blocks and would
@@ -1074,12 +1074,172 @@ window.__audit = {
           el.style.opacity = this.dim(u);
           if (broken) el.style.outline = '1px dotted rgba(239,68,68,.8)';
           el.innerHTML = html + (this.view === 'source' ? '' : ' ');
-          el.onclick = () => { this.sel = { ...u, broken, ref: this.srcRef(u) }; };
+          // The span's own address. In Source view its text is the raw slice
+          // with the leading whitespace trimmed off, so a character position
+          // inside it maps back to the document by adding this. In Read view
+          // the text is RENDERED, and no such map exists: `**bold**` is four
+          // characters the reader cannot see, which is why edge editing is a
+          // Source-view affordance and switches the view rather than guessing.
+          el.dataset.uid = u.uid;
+          const raw = this.a.text.slice(u.start, u.end);
+          el.dataset.off = u.start + (raw.length - raw.trimStart().length);
+          if (u.uid === this.sel?.uid) {
+            el.style.outline = `2px solid ${tint(u.label, .95)}`;
+            el.style.outlineOffset = '1px';
+          }
+          el.onclick = () => this.hit(u, broken);
           wrap.appendChild(el);
           if (this.view === 'source') wrap.appendChild(document.createTextNode('\n'));
         }
         box.appendChild(wrap);
       }
+      this.$nextTick(() => this.placePins());
+    },
+
+    // ── EDGES ────────────────────────────────────────────────────────────────
+    // A BOUNDARY IS THE OBJECT, not an edge: the end of one unit is the start of
+    // the next, so there is one draggable thing per junction and the partition
+    // survives by construction. Overlap is therefore not a mode this offers, and
+    // since 2026-08-30 it is also a complaint the checker makes.
+    //
+    // TAP TO ARM, NOT DRAG TO EXTEND, which is lib/kits/annotate.js's measured
+    // answer for the same problem on the same phone: dragging a handle puts the
+    // finger over the words being aimed at, which is what every platform then
+    // patches with a floating magnifier. Two taps also survive a scroll, a
+    // mis-hit and a change of mind, and a drag survives none of them.
+    armed: null, pins: [],
+    get edges() {
+      if (!this.sel || this.view !== 'source') return [];
+      const i = this.units.findIndex(u => u.uid === this.sel.uid);
+      const out = [];
+      if (i > 0) out.push({ edge: 'start', after: this.units[i - 1].uid, at: this.units[i].start });
+      if (i >= 0 && i < this.units.length - 1)
+        out.push({ edge: 'end', after: this.units[i].uid, at: this.units[i].end });
+      return out;
+    },
+    // A tap in the text is two different requests, and which one is a state the
+    // reader set by tapping a pinhead. Armed: put this boundary here. Otherwise:
+    // make that unit the active one.
+    hit(u, broken) {
+      if (this.armed) {
+        const e = this.edges.find(x => x.edge === this.armed);
+        const off = this.lastTapOffset;
+        if (e && off != null) this.push({ op: 'move', after: e.after, to: off });
+        this.armed = null;
+        return;
+      }
+      this.sel = { ...u, broken, ref: this.srcRef(u) };
+      this.paint();
+    },
+    // Document offset under a client point, or null. The span carries its own
+    // start, so this is one addition rather than a walk over the whole buffer.
+    offsetAt(x, y) {
+      const d = document;
+      let node = null, off = 0;
+      if (d.caretRangeFromPoint) { const r = d.caretRangeFromPoint(x, y); if (r) { node = r.startContainer; off = r.startOffset; } }
+      else if (d.caretPositionFromPoint) { const p = d.caretPositionFromPoint(x, y); if (p) { node = p.offsetNode; off = p.offset; } }
+      if (!node) return null;
+      const span = (node.nodeType === 3 ? node.parentElement : node)?.closest('[data-off]');
+      if (!span || node.nodeType !== 3) return null;
+      return +span.dataset.off + off;
+    },
+    // The inverse, for placing a pinhead: a collapsed Range at the offset,
+    // measured against the doc container so the pins scroll with the text.
+    pointAt(at) {
+      const host = this.$refs.doc;
+      const span = [...host.querySelectorAll('[data-off]')].find(el => {
+        const s = +el.dataset.off, n = el.firstChild;
+        return n && n.nodeType === 3 && at >= s && at <= s + n.length;
+      });
+      if (!span) return null;
+      const r = document.createRange();
+      r.setStart(span.firstChild, at - +span.dataset.off);
+      r.collapse(true);
+      const b = r.getBoundingClientRect(), h = host.getBoundingClientRect();
+      if (!b.height && !b.width) return null;
+      return { x: b.left - h.left, y: b.top - h.top, h: b.height || 20 };
+    },
+    placePins() {
+      this.pins = this.edges.map(e => ({ ...e, p: this.pointAt(e.at) })).filter(x => x.p);
+    },
+    // Where the last tap landed, recorded on the way down so `hit()` can use it
+    // on the way up. One delegated listener, bound once: paint() rebuilds every
+    // span, so a per-span listener would be re-bound on every repaint.
+    lastTapOffset: null,
+    bindDoc() {
+      const host = this.$refs.doc;
+      if (!host || host.dataset.bound) return;
+      host.dataset.bound = '1';
+      host.addEventListener('pointerdown', (e) => {
+        this.lastTapOffset = this.offsetAt(e.clientX, e.clientY);
+      });
+      // One source of position beats two that must agree, so the pins are
+      // re-measured rather than offset. Cheap: at most two of them.
+      addEventListener('scroll', () => this.placePins(), { passive: true });
+      addEventListener('resize', () => this.placePins());
+    },
+
+    // ── THE PAD ──────────────────────────────────────────────────────────────
+    // A relative pointer, not a scrubber. The drag moves a VIRTUAL POINT that
+    // starts at the armed pin, and each move asks the browser what offset sits
+    // under it, so wrapped lines and proportional type come out right without
+    // arithmetic over the buffer.
+    //
+    // The gain depends on how fast the finger moves: creep and the boundary
+    // creeps, well under 1:1, which is the precision the pad exists for; flick
+    // and it runs ahead. Overshoot on a flick, crawl back a character at a time,
+    // both without lifting. The four numbers are the whole feel of the control,
+    // and they are lib/kits/annotate.js's, which is where they were tuned.
+    padding_: false, padPt: null, padBase: null,
+    PAD: { slow: 0.45, fast: 2.4, v0: 0.12, v1: 1.5 },
+    padDown(ev) {
+      const e = this.edges.find(x => x.edge === this.armed);
+      if (!e) return;
+      const p = this.pointAt(e.at), h = this.$refs.doc.getBoundingClientRect();
+      if (!p) return;
+      ev.target.setPointerCapture?.(ev.pointerId);
+      this.padding_ = true;
+      this.padPt = { x: p.x + h.left, y: p.y + h.top + p.h / 2 };
+      this.padBase = { after: e.after, from: e.at, last: ev, t: performance.now() };
+      document.body.style.userSelect = 'none';
+    },
+    padMove(ev) {
+      if (!this.padding_) return;
+      ev.preventDefault();
+      const b = this.padBase, now = performance.now();
+      const dx = ev.clientX - b.last.clientX, dy = ev.clientY - b.last.clientY;
+      const dt = Math.max(1, now - b.t);
+      const v = Math.hypot(dx, dy) / dt, P = this.PAD;
+      const t = Math.min(1, Math.max(0, (v - P.v0) / (P.v1 - P.v0)));
+      const gain = P.slow + t * (P.fast - P.slow);
+      this.padPt = { x: this.padPt.x + dx * gain, y: this.padPt.y + dy * gain };
+      b.last = ev; b.t = now;
+      // Nothing under the point is not a failure: the point keeps moving and
+      // the boundary holds until text is under it again. Walking x back to the
+      // line end was tried and is the wrong reading, since past the end of a
+      // line the next character is on the NEXT line, and the point reaches it
+      // by moving down the way a finger would.
+      const off = this.offsetAt(this.padPt.x, this.padPt.y);
+      if (off != null) {
+        // Moved on the live annotation, not recorded: one drag is one judgment,
+        // so the patch gets a single `move` when the finger lifts.
+        if (Standoff.ops.move(this.so, this.a.text, { after: b.after, to: off }) !== null) {
+          this.regroup(); this.paint();
+        }
+      }
+    },
+    padUp() {
+      if (!this.padding_) return;
+      this.padding_ = false;
+      document.body.style.userSelect = '';
+      const b = this.padBase, e = this.edges.find(x => x.edge === this.armed);
+      const to = e ? e.at : b.from;
+      // Put it back, then let push() make the one real operation, so the page
+      // and a patch replayed by ops.py end in the same place.
+      Standoff.ops.move(this.so, this.a.text, { after: b.after, to: b.from });
+      this.regroup();
+      if (to !== b.from) this.push({ op: 'move', after: b.after, to });
+      else this.paint();
     },
     // The deck is a CONTAINER, not a viewer: one section per slide, same units,
     // same paint(). Nothing about the audit changes to ride it.
@@ -1165,7 +1325,29 @@ window.__audit = {
       </div>
     </header>
 
-    <div x-ref="doc" class="px-4 py-4" x-show="view!=='standoff'"></div>
+    <div class="relative">
+      <div x-ref="doc" class="px-4 py-4" x-show="view!=='standoff'"></div>
+      <!-- The pins sit in a layer over the text, measured against the same
+           container, so scrolling moves both together. A pinhead is a 36px
+           target around a hairline bar: the bar is the boundary, the box is
+           the thumb. -->
+      <template x-for="pin in pins" :key="pin.edge">
+        <button class="absolute z-10 grid place-items-center"
+                :class="padding_ && 'pointer-events-none'"
+                style="width:36px;height:36px;margin-left:-18px"
+                :style="`left:${pin.p.x}px; top:${pin.p.y + pin.p.h/2 - 18}px`"
+                :aria-label="`${pin.edge} boundary`"
+                @click.stop="armed = armed === pin.edge ? null : pin.edge">
+          <span class="rounded-full transition-all"
+                :class="armed===pin.edge ? 'w-3 h-3' : 'w-2 h-2'"
+                :style="`background:${armed===pin.edge ? 'var(--color-primary)' : 'var(--color-base-content)'};
+                         opacity:${armed===pin.edge ? 1 : .5}`"></span>
+          <span class="absolute w-0.5"
+                :style="`height:${pin.p.h + 6}px; background:var(--color-primary);
+                         opacity:${armed===pin.edge ? .9 : .35}`"></span>
+        </button>
+      </template>
+    </div>
 
     <!-- The annotation as the thing it is: rows over spans, and the committed
          bytes underneath. The page never re-derives this; the builder copies
@@ -1186,7 +1368,8 @@ window.__audit = {
                      <th>label</th><th>note</th><th>text</th></tr></thead>
           <tbody>
             <template x-for="u in units" :key="u.uid">
-              <tr class="cursor-pointer hover:bg-base-200" @click="sel={...u, ref: srcRef(u)}">
+              <tr class="cursor-pointer hover:bg-base-200"
+                  @click="sel={...u, ref: srcRef(u)}; armed=null">
                 <td class="font-mono text-right" x-text="num(u)"></td>
                 <td class="font-mono opacity-60 text-right whitespace-nowrap" x-text="u.start"></td>
                 <td class="font-mono opacity-60 text-right whitespace-nowrap" x-text="u.end"></td>
@@ -1226,7 +1409,18 @@ window.__audit = {
         <button class="btn btn-ghost btn-xs ml-auto" @click="sel=null; menu=null">close</button>
       </div>
 
+      <div class="flex items-center gap-2 mt-2" x-show="armed" x-cloak>
+        <button class="btn btn-sm btn-primary touch-none select-none"
+                @pointerdown="padDown($event)" @pointermove="padMove($event)"
+                @pointerup="padUp()" @pointercancel="padUp()">
+          <i class="ph ph-crosshair"></i> drag the edge
+        </button>
+        <span class="opacity-60 font-mono" x-text="edges.find(e=>e.edge===armed)?.at"></span>
+      </div>
+
       <div class="flex flex-wrap items-center gap-1 mt-2">
+        <button class="btn btn-xs" x-show="view!=='source'"
+                @click="view='source'; paint()">Edges</button>
         <button class="btn btn-xs" @click="openSplit(sel)">Split</button>
         <button class="btn btn-xs" :disabled="!nextOf(sel?.uid)"
                 @click="push({op:'merge',uid:sel.uid})">Merge next</button>

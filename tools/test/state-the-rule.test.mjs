@@ -368,3 +368,46 @@ test('without --write nothing is written', () => {
   assert.match(out, /2 units -> 3/);
   assert.equal(so.units.length, 2);
 });
+
+// ── the boundary ───────────────────────────────────────────────────────────
+// A boundary is the object a reader moves: the end of one unit is the start of
+// the next, so one operation moves both and the partition survives by
+// construction rather than by a rule.
+
+test('moving a boundary moves both units and keeps the partition', () => {
+  const { so } = patch([{ op: 'move', after: 'u-001', to: 30 }]);
+  assert.deepEqual([so.units[0].start, so.units[0].end], [0, 30]);
+  assert.deepEqual([so.units[1].start, so.units[1].end], [30, 59]);
+  assert.equal(so.units[0].from, 'move:u-001/u-002');
+  assert.equal(so.units[1].from, 'move:u-001/u-002');
+});
+
+test('a boundary outside the pair it separates is refused', () => {
+  const { status, out } = patch([{ op: 'move', after: 'u-001', to: 200 }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /outside/);
+});
+
+test('the last unit has no boundary after it', () => {
+  const { status, out } = patch([{ op: 'move', after: 'u-002', to: 50 }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /no boundary after it/);
+});
+
+// The complaint nothing made until 2026-08-30: the gap check only looks
+// forward, so a unit starting BEFORE its predecessor ended passed every gate.
+// The edge drag is what made one easy to create.
+test('an overlap is reported, not just a gap', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ops-'));
+  const { doc, sf } = standoff(dir);
+  const so = JSON.parse(readFileSync(sf, 'utf8'));
+  so.units[1].start = 30;                       // twelve characters in both
+  writeFileSync(sf, JSON.stringify(so));
+  const pf = join(dir, 'p.json');
+  writeFileSync(pf, JSON.stringify([{ op: 'note', uid: 'u-001', text: 'x' }]));
+  let out = '';
+  try { execFileSync('python3', [join(SKILL, 'ops.py'), sf, pf, doc], { encoding: 'utf8', stdio: 'pipe' }); }
+  catch (e) { out = (e.stderr || '') + (e.stdout || ''); }
+  rmSync(dir, { recursive: true, force: true });
+  assert.match(out, /u-002: overlaps the unit before it by 12 chars/);
+});
