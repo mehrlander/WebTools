@@ -893,7 +893,7 @@ window.__audit = {
                        && (s.match(/\[/g) || []).length === (s.match(/\]/g) || []).length;
 
   window.auditPage = () => ({
-    a: null, view: 'source', off: {}, sel: null, sections: [], ref: '',
+    a: null, view: 'read', off: {}, sel: null, sections: [], ref: '',
     async init() {
       this.ref = (typeof gh !== 'undefined' && gh.ref) || '';
       let payload = window.__audit;
@@ -1109,8 +1109,7 @@ window.__audit = {
           // characters the reader cannot see, which is why edge editing is a
           // Source-view affordance and switches the view rather than guessing.
           el.dataset.uid = u.uid;
-          const raw = this.a.text.slice(u.start, u.end);
-          el.dataset.off = u.start + (raw.length - raw.trimStart().length);
+          Standoff.mapText(el, this.a.text, u.start);
           if (u.uid === this.sel?.uid) {
             el.style.background = tint(u.label, .42);
             el.style.textDecoration = 'underline';
@@ -1139,8 +1138,13 @@ window.__audit = {
     // patches with a floating magnifier. Two taps also survive a scroll, a
     // mis-hit and a change of mind, and a drag survives none of them.
     armed: null, pins: [],
+    // EDGES ARE A READ-VIEW AFFORDANCE. Source shows the bytes, markup and all,
+    // and a boundary placed inside `**` or `](url)` leaves one side holding an
+    // unclosed delimiter; the rendered view cannot offer one, since markup is
+    // in no text node and an inline construct is atomic. Two views that
+    // disagreed about what is legal would be worse than one that edits.
     get edges() {
-      if (!this.sel || this.view !== 'source') return [];
+      if (!this.sel || this.view !== 'read') return [];
       const i = this.units.findIndex(u => u.uid === this.sel.uid);
       const out = [];
       if (i > 0) out.push({ edge: 'start', after: this.units[i - 1].uid, at: this.units[i].start });
@@ -1162,29 +1166,15 @@ window.__audit = {
       this.sel = { ...u, broken, ref: this.srcRef(u) };
       this.paint();
     },
-    // Document offset under a client point, or null. The span carries its own
-    // start, so this is one addition rather than a walk over the whole buffer.
-    offsetAt(x, y) {
-      const d = document;
-      let node = null, off = 0;
-      if (d.caretRangeFromPoint) { const r = d.caretRangeFromPoint(x, y); if (r) { node = r.startContainer; off = r.startOffset; } }
-      else if (d.caretPositionFromPoint) { const p = d.caretPositionFromPoint(x, y); if (p) { node = p.offsetNode; off = p.offset; } }
-      if (!node) return null;
-      const span = (node.nodeType === 3 ? node.parentElement : node)?.closest('[data-off]');
-      if (!span || node.nodeType !== 3) return null;
-      return +span.dataset.off + off;
-    },
+    offsetAt(x, y) { return Standoff.offsetAt(document, x, y); },
     // The inverse, for placing a pinhead: a collapsed Range at the offset,
     // measured against the doc container so the pins scroll with the text.
     pointAt(at) {
       const host = this.$refs.doc;
-      const span = [...host.querySelectorAll('[data-off]')].find(el => {
-        const s = +el.dataset.off, n = el.firstChild;
-        return n && n.nodeType === 3 && at >= s && at <= s + n.length;
-      });
-      if (!span) return null;
+      const hit = Standoff.nodeAt(host, at);
+      if (!hit) return null;
       const r = document.createRange();
-      r.setStart(span.firstChild, at - +span.dataset.off);
+      r.setStart(hit.node, hit.offset);
       r.collapse(true);
       const b = r.getBoundingClientRect(), h = host.getBoundingClientRect();
       if (!b.height && !b.width) return null;
@@ -1456,8 +1446,8 @@ window.__audit = {
       </div>
 
       <div class="flex flex-wrap items-center gap-1 mt-2">
-        <button class="btn btn-xs" x-show="view!=='source'"
-                @click="view='source'; paint()">Edges</button>
+        <button class="btn btn-xs" x-show="view!=='read'"
+                @click="view='read'; paint()">Edges</button>
         <button class="btn btn-xs" @click="openSplit(sel)">Split</button>
         <button class="btn btn-xs" :disabled="!nextOf(sel?.uid)"
                 @click="push({op:'merge',uid:sel.uid})">Merge next</button>

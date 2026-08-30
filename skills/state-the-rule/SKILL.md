@@ -222,10 +222,28 @@ says about either, and grain for its own sake is not a finding. On
 `CONVENTIONS.md`, 36 of 69 prose units carry a clause boundary and 10 met the
 bar; every one of the ten was a rule with its reason fused on.
 
-**Where a patch comes from.** `pages/audit-render.html` (hub) offers the four
+**A boundary is the object, not an edge.** The end of one unit is the start of
+the next, so `move` touches both and the units stay a partition: one label per
+character, which is what the word-share figure counts. Overlap is a complaint
+rather than a mode.
+
+**Where a patch comes from.** `pages/audit-render.html` (hub) offers the
 operations on the selected unit and accumulates them, applying each one
 optimistically so the view moves under your thumb; it splits at connective
-boundaries, which is where 40% of fused prose units divide. Where the page is
+boundaries, which is where 40% of fused prose units divide. Undo replays
+`apply(base, patch[0..n])`, so there is no inverse operation to write, and what
+travels is the applied prefix.
+
+**Edges are placed against the RENDERED document.** `lib/kits/standoff.js` maps
+each rendered text node back to the source by finding it with a moving cursor,
+which works because the rendered text is a subsequence of the source. What it
+cannot find it leaves unmapped, and an unmapped run offers no offset, so markup
+is not a place: `**`, `[`, `](url)` and a fence's backticks are in no text node.
+An inline construct is atomic on top of that, since a boundary inside a link's
+label breaks it as surely as one inside its target. This is a **placement** rule
+and not an invariant: `check.py` is stdlib Python with no markdown parser, and a
+second disagreeing implementation would be worse than none, so a hand-authored
+patch can still do what the interface cannot. Where the page is
 reading a branch it saves the result there, with the patch as the commit
 message; a commit and the default branch both refuse, since the contents API
 writes to a branch name and a change to the default one arrives through a pull
