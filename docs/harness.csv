@@ -17,7 +17,7 @@ scripts/stranded-titles.py,,scripts,186,npm:stranded-titles,no,yes,yes
 scripts/sunset-scan.py,scan a repo for SUNSET(YYYY-MM-DD) markers and report the ones now due,scripts,111,npm:sunset,no,yes,yes
 scripts/text-carriers.py,"inventory the CSV and JSON carriers that already hold authored prose, and registry their field names to show how much vocabulary the carriers share",scripts,539,argv,no,yes,yes
 scripts/unclaimed-code.py,"per-layer counts of files, files prose names, and files a test exercises; the code-scan behind code-layers.md",scripts,187,npm:code-scan,no,yes,no
-tools/build/audit-payload.py,,tools/build,77,argv,no,no,no
+tools/build/audit-payload.py,"build a standoff annotation from a document plus its segmentation and labels, and the audit/1 delivery payload that carries it into a page",tools/build,106,argv,no,no,yes
 tools/build/bake.mjs,emit dist/<page>.html: the page's chain inlined into a standalone file,tools/build,53,npm:bake,yes,yes,no
 tools/build/build-lib.mjs,"emit dist/web-tools.js, the pre-build: the whole lib/ as one self-booting offline artifact",tools/build,108,npm:build:lib,yes,yes,yes
 tools/build/build.mjs,"emit dist/<page>.js: a page's gh.load chain frozen offline, through lib/build.js's emitter",tools/build,77,npm:build,yes,yes,no
@@ -63,10 +63,11 @@ tools/render/scenarios/annotate-stitch.mjs,"the composer pad's stitch key: a car
 tools/render/scenarios/annotate-tap-canvas.mjs,"a tap on the blank canvas below the text, which jsdom cannot judge: whether it reaches a listener at all, and whether the painted rects say it missed the words",tools/render/scenarios,103,driver,no,no,no
 tools/render/scenarios/annotate-triple-tap.mjs,"the buffer scrolled to its newest line in a box of whole lines, then three taps in a run taking the whole thing",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/annotate-units-demo.mjs,"the two unit modes, element pick and region drag, driven through real pointer events",tools/render/scenarios,54,driver,no,no,no
-tools/render/scenarios/audit-deck.mjs,,tools/render/scenarios,23,driver,no,no,no
-tools/render/scenarios/audit-overflow.mjs,,tools/render/scenarios,15,driver,no,no,no
-tools/render/scenarios/audit-read.mjs,,tools/render/scenarios,18,driver,no,no,no
-tools/render/scenarios/audit-table.mjs,,tools/render/scenarios,16,driver,no,no,no
+tools/render/scenarios/audit-deck.mjs,"the audit render in the swipe deck, one document section per slide",tools/render/scenarios,23,driver,no,no,no
+tools/render/scenarios/audit-overflow.mjs,"measure horizontal overflow in both audit views, which a viewport shot cannot show",tools/render/scenarios,15,driver,no,no,no
+tools/render/scenarios/audit-read.mjs,"the audit render's Read view, framed on the units that cannot render alone",tools/render/scenarios,18,driver,no,no,no
+tools/render/scenarios/audit-standoff.mjs,,tools/render/scenarios,12,driver,no,no,no
+tools/render/scenarios/audit-table.mjs,measure the audit render's table cells under the guide renderer,tools/render/scenarios,16,driver,no,no,no
 tools/render/scenarios/branch-address.mjs,,tools/render/scenarios,83,driver,no,no,yes
 tools/render/scenarios/branch-brief-errors.mjs,"the branch page's failure states, driven through the real load() path",tools/render/scenarios,59,driver,no,no,no
 tools/render/scenarios/branch-deck.mjs,,tools/render/scenarios,131,driver,no,yes,no
