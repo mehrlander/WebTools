@@ -917,12 +917,21 @@ window.__audit = {
       if (this.view === 'source') return { html: esc(raw), broken: false };
       if (!balanced(raw)) return { html: esc(raw), broken: true };
       const out = mdDoc.html(raw, { proseClass: '' });
-      // A list bullet is kind `sent` and still renders to a <ul>. Choose the
-      // wrapper from what markdown ACTUALLY produced, not from the unit's kind:
-      // keying on kind put every bullet's list inside a <span>, the parser
-      // hoisted it out, and the tint stayed behind as an empty stripe.
-      if (/^\s*<(ul|ol|table|pre|h[1-6]|blockquote)\b/i.test(out)) return { html: out, block: true };
-      return { html: out.replace(/^<p>|<\/p>\s*$/g, ''), block: false };
+      // A unit is inline IFF markdown produced exactly one <p>; everything else
+      // is a block and needs a block wrapper, or the parser hoists it out of the
+      // <span> and leaves the tint behind as an empty stripe.
+      //
+      // Structural, not a tag whitelist, because the whitelist was wrong three
+      // times running: first tables and fences, then list bullets (kind `sent`
+      // but rendering to <ul>), then tables again once mdDoc.contain() started
+      // wrapping them in <div data-md-scroll>. Asking the parse settles all of
+      // them and the next one.
+      const t = document.createElement('template');
+      t.innerHTML = out;
+      const kids = [...t.content.children];
+      if (kids.length === 1 && kids[0].tagName === 'P')
+        return { html: kids[0].innerHTML, block: false };
+      return { html: out, block: true };
     },
     paint(host) {
       const host_ = host || this.$refs.doc;
