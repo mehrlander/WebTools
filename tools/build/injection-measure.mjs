@@ -13,7 +13,7 @@
 // selects.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -60,7 +60,11 @@ for (let i = 1; i < parts.length; i += 2) {
 const documents = dispatch.split('\n')
   .filter(l => l.startsWith('[startup-context] '))
   .map(l => JSON.parse(l.slice('[startup-context] '.length)))
-  .map(r => ({ path: r.path, bytes: r.bytes, via: r.via, delivered: r.delivered || null, basis: r.basis }));
+  .map(r => ({ path: r.path, bytes: r.bytes, via: r.via, basis: r.basis,
+    // The receipt writes delivery as an enum for machines; the tab shows it to
+    // a reader, and "without_course" is not a phrase anyone says.
+    delivered: ({ full: 'in full', without_course: 'without the guide-PR course' })[r.delivered]
+      || r.delivered || null }));
 
 // A document reaching the session through two channels at once is the finding
 // this tool exists to surface: the capped channel spending its allowance on
@@ -75,24 +79,39 @@ const channelTotal = via => documents.filter(d => d.via === via).reduce((t, d) =
 
 const out = {
   measured: new Date().toISOString().slice(0, 10),
-  project_dir: PROJECT_DIR,
+  note: 'A dated reading, not a derived artifact. The sibling session-*.sh scripts print '
+      + 'different amounts on different days and project_instructions depends on which repos '
+      + 'the session opened with, so no commit hook can restamp this and no test can hold it.',
   caps: [
-    { id: 'harness_total', bytes: HARNESS_CAP, owner: 'claude-code', basis: 'measured',
-      over: `first ~${PREVIEW} bytes delivered, remainder written to a file nothing reads` },
-    { id: 'injector_budget', bytes: INJECTOR_BUDGET, owner: 'repo', basis: 'literal',
-      source: '.claude/skills/hooks/inject-conventions.sh', over: 'step down one rung' },
+    { id: 'injector', label: 'Injector budget', bytes: INJECTOR_BUDGET, owner: 'this repo',
+      basis: 'literal', source: '.claude/skills/hooks/inject-conventions.sh',
+      over: 'drops a rung and prints what it withheld', graceful: true },
+    { id: 'harness', label: 'Harness ceiling', bytes: HARNESS_CAP, owner: 'Claude Code',
+      basis: 'measured', source: '.claude/skills/hooks/session-dispatch.sh',
+      over: `keeps the first ~${PREVIEW.toLocaleString('en-US')} bytes and discards the rest`, graceful: false },
   ],
-  session_hook: {
-    total: bytes(dispatch), cap: HARNESS_CAP, headroom: HARNESS_CAP - bytes(dispatch),
-    rung: rungOf(sh('inject-conventions.sh')), contributors,
-  },
-  project_instructions: { total: channelTotal('project_instructions'), cap: null },
+  channels: [
+    { id: 'session_hook', label: 'Session hook', total: bytes(dispatch), cap: HARNESS_CAP,
+      headroom: HARNESS_CAP - bytes(dispatch), rung: rungOf(sh('inject-conventions.sh')),
+      contributors },
+    { id: 'project_instructions', label: 'Project instructions',
+      total: channelTotal('project_instructions'), cap: null, headroom: null, contributors: [] },
+  ],
   rungs: [1, 2, 3].map(n => {
     const budget = { 1: String(INJECTOR_BUDGET), 2: '25981', 3: '4000' }[n];
     const o = sh('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: budget });
-    return { rung: n, probe_budget: Number(budget), output: bytes(o), fired: rungOf(o) };
+    return { rung: n, output: bytes(o),
+      withholds: { 1: 'the guide-PR course', 2: "the course and SURFACING.md's opening",
+                   3: 'the course, the opening, and every primitive' }[n] };
   }),
   documents, duplicated,
 };
 
-process.stdout.write(JSON.stringify(out, null, 2) + '\n');
+const text = JSON.stringify(out, null, 2) + '\n';
+if (process.argv.includes('--write')) {
+  const dest = path.join(ROOT, 'docs', 'injection.json');
+  writeFileSync(dest, text);
+  process.stderr.write(`wrote docs/injection.json (${bytes(text)} bytes)\n`);
+} else {
+  process.stdout.write(text);
+}

@@ -1,0 +1,144 @@
+{
+  "measured": "2026-08-30",
+  "note": "A dated reading, not a derived artifact. The sibling session-*.sh scripts print different amounts on different days and project_instructions depends on which repos the session opened with, so no commit hook can restamp this and no test can hold it.",
+  "caps": [
+    {
+      "id": "injector",
+      "label": "Injector budget",
+      "bytes": 27000,
+      "owner": "this repo",
+      "basis": "literal",
+      "source": ".claude/skills/hooks/inject-conventions.sh",
+      "over": "drops a rung and prints what it withheld",
+      "graceful": true
+    },
+    {
+      "id": "harness",
+      "label": "Harness ceiling",
+      "bytes": 28000,
+      "owner": "Claude Code",
+      "basis": "measured",
+      "source": ".claude/skills/hooks/session-dispatch.sh",
+      "over": "keeps the first ~2,000 bytes and discards the rest",
+      "graceful": false
+    }
+  ],
+  "channels": [
+    {
+      "id": "session_hook",
+      "label": "Session hook",
+      "total": 27653,
+      "cap": 28000,
+      "headroom": 347,
+      "rung": 1,
+      "contributors": [
+        {
+          "script": "home/session-conventions.sh",
+          "bytes": 26460
+        },
+        {
+          "script": "home/session-memory-manifest.sh",
+          "bytes": 1095
+        },
+        {
+          "script": "web-tools/session-start.sh",
+          "bytes": 98
+        }
+      ]
+    },
+    {
+      "id": "project_instructions",
+      "label": "Project instructions",
+      "total": 79132,
+      "cap": null,
+      "headroom": null,
+      "contributors": []
+    }
+  ],
+  "rungs": [
+    {
+      "rung": 1,
+      "output": 26430,
+      "withholds": "the guide-PR course"
+    },
+    {
+      "rung": 2,
+      "output": 25536,
+      "withholds": "the course and SURFACING.md's opening"
+    },
+    {
+      "rung": 3,
+      "output": 9305,
+      "withholds": "the course, the opening, and every primitive"
+    }
+  ],
+  "documents": [
+    {
+      "path": "web-tools/docs/CONVENTIONS.md",
+      "bytes": 8483,
+      "via": "session_hook",
+      "basis": "receipt",
+      "delivered": "in full"
+    },
+    {
+      "path": "web-tools/docs/SURFACING.md",
+      "bytes": 25593,
+      "via": "session_hook",
+      "basis": "receipt",
+      "delivered": "without the guide-PR course"
+    },
+    {
+      "path": "/root/.claude/CLAUDE.md",
+      "bytes": 296,
+      "via": "project_instructions",
+      "basis": "reconstructed",
+      "delivered": null
+    },
+    {
+      "path": "home/CLAUDE.md",
+      "bytes": 33747,
+      "via": "project_instructions",
+      "basis": "reconstructed",
+      "delivered": null
+    },
+    {
+      "path": "web-tools/CLAUDE.md",
+      "bytes": 11013,
+      "via": "project_instructions",
+      "basis": "reconstructed",
+      "delivered": null
+    },
+    {
+      "path": "web-tools/docs/CONVENTIONS.md",
+      "bytes": 8483,
+      "via": "project_instructions",
+      "basis": "reconstructed",
+      "delivered": null
+    },
+    {
+      "path": "web-tools/docs/SURFACING.md",
+      "bytes": 25593,
+      "via": "project_instructions",
+      "basis": "reconstructed",
+      "delivered": null
+    }
+  ],
+  "duplicated": [
+    {
+      "path": "web-tools/docs/CONVENTIONS.md",
+      "via": [
+        "session_hook",
+        "project_instructions"
+      ],
+      "bytes": 8483
+    },
+    {
+      "path": "web-tools/docs/SURFACING.md",
+      "via": [
+        "session_hook",
+        "project_instructions"
+      ],
+      "bytes": 25593
+    }
+  ]
+}
