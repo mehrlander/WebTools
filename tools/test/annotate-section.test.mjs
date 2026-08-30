@@ -17,12 +17,18 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeWindow, loadKit } from './bootstrap.mjs';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { makeWindow, loadKit, repoRoot } from './bootstrap.mjs';
 import { marked } from 'marked';
 
 const { window } = makeWindow({ html: '<!doctype html><html><head><title>Host</title></head><body></body></html>' });
 const doc = window.document;
 window.marked = marked;
+// vanilla-bundle first: the card's drawn readings escape through the window.esc
+// it puts there rather than defining a second one (tools/test/one-escape-helper).
+window.eval(readFileSync(path.join(repoRoot, 'lib/vanilla-bundle.js'), 'utf8'));
+window.eval(readFileSync(path.join(repoRoot, 'lib/kits/peek.js'), 'utf8'));
 loadKit('md-doc.js', { window });
 loadKit('annotate.js', { window });
 const A = window.Annotate;
@@ -139,3 +145,102 @@ test('a heading outside any declared render notes nothing', () => {
   loose.remove();
   A.disable();
 });
+
+// ── The section's own reading ───────────────────────────────────────────────
+// The DOM reading answers "what is this element and what contains it". A
+// section is not an element, so it gets the same question answered in
+// markdown's units: rank, line span, what the passage holds, its subsections.
+// Section was excluded from this reading at first, on the grounds that it would
+// answer with an <h2> in a div; the fix was a second reading, not a withheld
+// one.
+
+const domHead = () => (A._state.domBody.firstElementChild?.textContent || '').trim();
+const domText = () => A._state.domBody.textContent.replace(/\s+/g, ' ').trim();
+
+test('the reading names the section in markdown terms, not the DOM ones', () => {
+  const host = render();
+  A.enable();
+  A._state.aimEl = headingNamed(host, 'Under first');
+  A._state.aimKind = 'section';
+  A.expand(true);
+  A.setReading('dom');
+
+  assert.equal(domHead(), 'h3Under first', 'the rank and the title, not a tag and a class list');
+  const t = domText();
+  assert.match(t, /docs\/APP\.md § Under first/, 'the source address');
+  assert.match(t, /lines/i);
+  assert.match(t, /words/, 'size in words, not a bounding box');
+  assert.match(t, /#under-first/, 'the slug');
+  assert.match(t, /### Under first/, 'the source, hashes intact');
+  assert.doesNotMatch(t, /selector|nth-child/, 'no css selector: that is the other reading');
+  A.disable(); host.remove();
+});
+
+test('the trail is the markdown chain, which the DOM does not carry', () => {
+  const host = render();
+  A.enable();
+  A._state.aimEl = headingNamed(host, 'Under first');
+  A._state.aimKind = 'section';
+  A.expand(true);
+  A.setReading('dom');
+
+  const crumbs = [...A._state.domBody.querySelectorAll('[data-peek-crumb]')]
+    .map(b => b.textContent.trim());
+  assert.deepEqual(crumbs, ['h1 Title', 'h2 First', 'h3 Under first'],
+    'outermost first, by rank');
+  // In the DOM those three are flat siblings, so an element chain would say
+  // something entirely different.
+  const h3 = headingNamed(host, 'Under first');
+  assert.equal(h3.parentElement, headingNamed(host, 'First').parentElement,
+    'they are siblings in the render');
+  A.disable(); host.remove();
+});
+
+test('a crumb re-points the reading at the containing section', () => {
+  const host = render();
+  A.enable();
+  A._state.holdEl = headingNamed(host, 'Under first');
+  A._state.holdKind = 'section';
+  A.expand(true);
+  A.setReading('dom');
+  assert.equal(domHead(), 'h3Under first');
+
+  const crumbs = [...A._state.domBody.querySelectorAll('[data-peek-crumb]')];
+  crumbs.find(b => b.textContent.trim() === 'h2 First').click();
+  assert.equal(domHead(), 'h2First');
+  assert.equal(A._state.holdKind, 'section', 'still a section, not the heading element');
+  A.disable(); host.remove();
+});
+
+test('subsections are listed, and a leaf section lists none', () => {
+  const host = render();
+  A.enable();
+  A.expand(true);
+  A._state.aimKind = 'section';
+
+  A._state.aimEl = headingNamed(host, 'First');
+  A.setReading('dom');
+  assert.match(domText(), /1 subsection/);
+  assert.match(domText(), /Under first/);
+
+  A._state.aimEl = headingNamed(host, 'Second');
+  A.setReading('dom');
+  assert.doesNotMatch(domText(), /subsection/);
+  A.disable(); host.remove();
+});
+
+test('a filed section note reads as a section, not as its heading element', () => {
+  const host = render();
+  A.enable();
+  // noteSection builds the target the same way the aim does, so this is the
+  // filed shape rather than one assembled by hand.
+  A.noteSection(headingNamed(host, 'First'));
+  const target = A._state.draft.target;
+  assert.equal(target.type, 'section');
+  A.add(target, 'a note');
+  A.expand(true);
+  A.setReading('dom');
+  assert.equal(domHead(), 'h2First', 'the target type chose the reading');
+  A.disable(); host.remove();
+});
+

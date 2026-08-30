@@ -598,6 +598,16 @@ is how `annotate.js` knows to keep it out of the text a note is anchored in.
 `chat-render.js` keeps its own copy of the table wrap, deliberately: it is a
 standalone script a page can drop in from jsDelivr with nothing else.
 
+
+**Sections nest, and the hierarchy is arithmetic rather than a walk.** `chain`
+gives a section's ancestors by rank (innermost first, the shape `Peek.chainOf`
+uses so one renderer serves both), `children` the sections exactly one rank
+finer before a peer closes the run, `headOf` the heading node for any section
+index, and `stats` what a passage holds counted in markdown's units: words,
+paragraphs, list items, code blocks, tables, quotes, links. Counted off the
+SOURCE, so a fence full of hyphens is one code block rather than the list it
+resembles.
+
 ### annotate.js
 
 Notes pinned to pieces of a page: select text (or pick an element, or drag a
@@ -675,6 +685,24 @@ outline too, through a `S.restage` hook the pick publishes: a crumb that renames
 the pane while the highlight stays three levels down is two answers to one
 question. The subject is always the last crumb, so the trail scrolls to its end
 after every draw.
+
+**A section reads in markdown's units, and steps through markdown's hierarchy.**
+Section was excluded from this reading at first, on the grounds that it would
+answer with an `h2` in a div where the reader is asking about a passage. That was
+the right observation and the wrong fix: a section gets its own reading rather
+than none. It shows the rank and title, the source address with its line span,
+the size in words, what the passage HOLDS (paragraphs, list items, code blocks,
+tables, links), the slug, the first lines of the source with its hashes intact,
+and the subsections under it.
+
+The two structures over a rendered markdown document **do not agree**, which is
+the whole reason this is a second reading rather than a relabelled first.
+`### Form` is inside `## Marker` inside `# Status` in markdown, and all three are
+flat siblings in the DOM. So the repeat tap and the trail walk `mdDoc.chain`,
+which is arithmetic over the ranks `split` already knows, and `mdDoc.headOf`
+reaches the heading node of a section other than the located one. The aim carries
+its KIND for the same reason: a heading element can be aimed at either way and
+the node alone cannot say which was meant.
 
 Structure cannot be a reading of the set, because "what is this element and what
 contains it" is a question about one node and eight notes have no single answer

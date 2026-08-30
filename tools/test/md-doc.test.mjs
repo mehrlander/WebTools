@@ -381,3 +381,74 @@ test('html() returns the body alone when the caller owns the container', () => {
   assert.equal(out.startsWith('<div'), false, 'no second prose box');
   assert.match(out, /data-md-scroll/, 'the table is still contained');
 });
+
+// ── The markdown hierarchy, which is not the DOM's ──────────────────────────
+// A rendered document carries two structures and they disagree: `### Under
+// first` is INSIDE `## First` in markdown and its flat sibling in the DOM.
+// Nothing in the render says so; the ranks split already knows do.
+
+const NEST = [
+  '# Top', '', 'Opening.', '',
+  '## One', '', 'A paragraph.', '', '- a', '- b', '',
+  '### One deep', '', 'More.', '', '```js', 'code();', '```', '',
+  '## Two', '', 'Last, with a [link](x).', '',
+  '| a | b |', '| - | - |', '| 1 | 2 |', '',
+].join('\n');
+
+test('chain: ancestors by rank, innermost first, stopping at the top', () => {
+  const secs = mdDoc.split(NEST);
+  const i = secs.findIndex(s => s.title === 'One deep');
+  assert.deepEqual(mdDoc.chain(secs, i).map(s => s.title), ['One deep', 'One', 'Top']);
+  // A top-level section is its own chain.
+  const t = secs.findIndex(s => s.title === 'Top');
+  assert.deepEqual(mdDoc.chain(secs, t).map(s => s.title), ['Top']);
+  // And a later peer does not pick up the earlier one's children.
+  const two = secs.findIndex(s => s.title === 'Two');
+  assert.deepEqual(mdDoc.chain(secs, two).map(s => s.title), ['Two', 'Top']);
+});
+
+test('children: one rank finer, and only until a peer closes the run', () => {
+  const secs = mdDoc.split(NEST);
+  const top = secs.findIndex(s => s.title === 'Top');
+  assert.deepEqual(mdDoc.children(secs, top).map(s => s.title), ['One', 'Two']);
+  const one = secs.findIndex(s => s.title === 'One');
+  assert.deepEqual(mdDoc.children(secs, one).map(s => s.title), ['One deep']);
+  const two = secs.findIndex(s => s.title === 'Two');
+  assert.deepEqual(mdDoc.children(secs, two), []);
+});
+
+test('stats: counts markdown units, and a fence is one block not its contents', () => {
+  const secs = mdDoc.split(NEST);
+  const deep = mdDoc.stats(secs.find(s => s.title === 'One deep').raw);
+  assert.equal(deep.code, 1);
+  assert.equal(deep.paragraphs, 1, 'the fence body is not prose');
+  assert.equal(deep.listItems, 0);
+
+  const one = mdDoc.stats(secs.find(s => s.title === 'One').raw);
+  assert.equal(one.listItems, 2);
+  assert.equal(one.code, 1, 'its subsection is inside it');
+
+  const two = mdDoc.stats(secs.find(s => s.title === 'Two').raw);
+  assert.equal(two.tables, 1);
+  assert.equal(two.links, 1);
+  assert.ok(two.words > 0 && two.chars > 0 && two.lines > 0);
+});
+
+test('stats: a heading-only section counts nothing but itself', () => {
+  const secs = mdDoc.split('# Solo\n');
+  assert.equal(mdDoc.stats(secs[0].raw).paragraphs, 0);
+  assert.equal(mdDoc.stats(secs[0].raw).headings, 0, 'its own heading is not a child');
+});
+
+test('headOf: reaches the heading node of a section other than the located one', () => {
+  const host = window.document.createElement('div');
+  window.document.body.append(host);
+  const { box } = mdDoc.render(host, NEST, {});
+  const secs = box.__mdDoc ? box.__mdDoc.sections : mdDoc.split(NEST);
+  const i = secs.findIndex(s => s.title === 'One');
+  const h = mdDoc.headOf(box, i);
+  assert.ok(h, 'the heading node is found by index');
+  assert.match(h.textContent, /^One/);
+  assert.equal(mdDoc.headOf(box, 999), null);
+  host.remove();
+});

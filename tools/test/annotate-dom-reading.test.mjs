@@ -212,12 +212,17 @@ test('element aim: choosing it opens the card on the DOM reading', () => {
   assert.equal(w.Annotate.reading, 'dom');
 });
 
-test('element aim: section does not, and neither does a page without peek', () => {
+test('section aim: opens it too, since a section has its own reading', () => {
+  // This reverses an earlier exclusion. Section was left out because the
+  // reading would answer with an <h2> in a div where the reader is asking
+  // about a passage; the fix is a markdown reading, not a withheld one.
   const w = boot();
   w.Annotate.startPick({ aim: 'section' });
-  assert.equal(w.Annotate.expanded, false);
-  assert.equal(w.Annotate.reading, 'notes');
+  assert.equal(w.Annotate.expanded, true);
+  assert.equal(w.Annotate.reading, 'dom');
+});
 
+test('either aim: a page without peek opens nothing', () => {
   const bare = boot({ peek: false });
   bare.Annotate.startPick();
   assert.equal(bare.Annotate.expanded, false, 'no reading to open without the kit');
