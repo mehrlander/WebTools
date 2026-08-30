@@ -2,6 +2,10 @@
 //
 //   npm run shot -- pages/annotate.html --script tools/render/scenarios/annotate-section-reading.mjs
 //
+// The default document is h1/h2 only, so the chain is two deep. For a THREE
+// deep walk add --query "doc=docs/SURFACING.md", where the step reads
+// `h3 The guide PR` then `h2 The surfacing course` then `h1 Surfacing`.
+//
 // A rendered markdown document has TWO structures over it and they disagree:
 // the DOM's (`article > div > h3`) and markdown's (`### Form` inside `## Marker`
 // inside `# Status`), which are flat siblings in the DOM. This drives the

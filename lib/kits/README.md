@@ -841,6 +841,12 @@ and node-capped: structure plus own text with the attribute noise dropped),
 **html** (the exact `outerHTML`, truncated on screen and whole on copy), and
 **json** (the facts as a record, for a model or a note).
 
+`layout` reports what kind of box it is rather than one `display`. A flex or grid
+CONTAINER names its own axis, gaps and alignment; a flex or grid CHILD names its
+parent's mode and its own side of that contract, since `display: block` for
+something a grid is placing says nothing at all. Defaults are dropped throughout,
+so a row of `normal` and `auto` never reaches the panel.
+
 Two things it does that are easy to get wrong, both measured on 2026-08-29:
 
 - **The selector pins siblings by position, not by climbing.** Prefixing
