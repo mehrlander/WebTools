@@ -1,6 +1,7 @@
 slug,title,count,last_seen,seen,targets
 opacity-step-off-the-tens,"a class that generates nothing, so the text meant to recede advances",3,2026-08-19,2026-08-19;2026-08-19;2026-08-19,HTML-STYLE.md
 mcp-body-escaping,"the GitHub MCP mangles link shapes in a PR body, on write as well as read",3,2026-08-16,2026-08-05;2026-08-05;2026-08-16,SURFACING.md
+hand-rolled-use-block-boots-nothing,"a copied boot block was rewritten instead, and shipped blank",2,2026-08-30,2026-08-22;2026-08-30,loader.md;../tools/test/use-boot-block.test.mjs
 untracked-file-invisible-to-the-suite,a local green over a file the scanner never enumerated,2,2026-08-30,2026-08-28;2026-08-30,../scripts/text-carriers.py;../tools/test/text-vocabulary-conformance.test.mjs
 daisy-divide-paints-black,"hairlines come out black, not grey",2,2026-08-22,2026-07-28;2026-08-22,../skills/daisy-alpine/SKILL.md
 claude-logomark-copied,the standard session mark is six inline copies with no owner,2,2026-08-21,2026-08-09;2026-08-21,code-layers.md
