@@ -37,14 +37,25 @@ const run = (script, env = {}, input = '') =>
 // Read out of the script rather than restated here. A test that carries its own
 // copy of a budget passes while the script uses a different one, which is the
 // failure this whole file exists to prevent, one level up.
-const BUDGET = Number(
-  /BUDGET=\$\{WEB_TOOLS_INJECT_BUDGET:-(\d+)\}/
-    .exec(readFileSync(join(HOOKS, 'inject-conventions.sh'), 'utf8'))?.[1]
-);
+//
+// The budget stopped being a literal on 2026-08-30: it is derived from the
+// ceiling the dispatcher owns, less a reserve for the sibling scripts sharing
+// that ceiling. So the derivation is what gets parsed, and `budgetFor` below is
+// this file's only statement of it.
+const INJECTOR = readFileSync(join(HOOKS, 'inject-conventions.sh'), 'utf8');
+const constant = name =>
+  Number(new RegExp(`^${name}=\\$\\{[A-Z_]+:-(\\d+)\\}`, 'm').exec(INJECTOR)?.[1]);
+const CEILING = constant('CEILING');
+const BASE_RESERVE = constant('BASE_RESERVE');
+const PER_SIBLING = constant('PER_SIBLING');
+const budgetFor = siblings => CEILING - BASE_RESERVE - siblings * PER_SIBLING;
+// Zero siblings is the script run on its own, which is how every `run()` below
+// invokes it.
+const BUDGET = budgetFor(0);
 
 test('the injected payload fits the channel', () => {
-  assert.ok(Number.isFinite(BUDGET) && BUDGET > 0,
-    'the budget parses out of the script, so this cannot pass against a stale copy');
+  assert.ok([CEILING, BASE_RESERVE, PER_SIBLING].every(Number.isFinite) && BUDGET > 0,
+    'the derivation parses out of the script, so this cannot pass against a stale copy');
   const out = run('inject-conventions.sh');
   assert.ok(out.length < BUDGET,
     `the injector emits ${out.length} bytes, over its own ${BUDGET}-byte budget. ` +
@@ -187,3 +198,97 @@ function tmpWorkspace(size) {
   fs.writeFileSync(join(ws, '.claude', 'hooks', 'session-noisy.sh'), body, { mode: 0o755 });
   return ws;
 }
+
+// ── The reserve, which is what the flat number could not do ────────────────
+// The budget was a literal 27,000 until 2026-08-30: one guess at the ceiling
+// minus its siblings, frozen, and blind to how many siblings there were.
+// Measured that day across three checkouts, the guess reserved 1,000 bytes
+// while the siblings emitted 1,223, and rung 1 fitted only because the ceiling
+// is itself conservative against the measured bound. These pin the derivation
+// that replaced it, not the numbers it currently produces.
+
+test('the budget tightens as more session scripts share the ceiling', () => {
+  // The banking. Every byte a sibling might spend is a byte this script must
+  // not, so the room left has to fall as the session grows; a budget that
+  // ignores its neighbours spends their headroom and nothing says so.
+  assert.ok(budgetFor(20) < budgetFor(6) && budgetFor(6) < budgetFor(0),
+    'more siblings, less room');
+  const rung = n => run('inject-conventions.sh',
+    { WEB_TOOLS_OUTPUT_BUDGET: String(CEILING), WEB_TOOLS_SESSION_SIBLINGS: String(n) });
+  assert.doesNotMatch(rung(0), /ALSO NOT INCLUDED|PARTIAL LOAD/,
+    'a session with no siblings gets the widest rung');
+  assert.match(rung(400), /PARTIAL LOAD/,
+    'and a session crowded past every rung says so rather than overrunning in silence');
+});
+
+test('the ceiling comes from the dispatcher, so the two cannot drift apart', () => {
+  // One fact, one owner. The dispatcher enforces the shared ceiling and now
+  // exports it; a second copy here is the drift this replaces.
+  const dispatcher = readFileSync(join(HOOKS, 'session-dispatch.sh'), 'utf8');
+  assert.match(dispatcher, /^OUTPUT_BUDGET="\$\{WEB_TOOLS_OUTPUT_BUDGET:-(\d+)\}"/m);
+  assert.equal(Number(/^OUTPUT_BUDGET="\$\{WEB_TOOLS_OUTPUT_BUDGET:-(\d+)\}"/m
+    .exec(dispatcher)[1]), CEILING, 'the injector falls back to the same number it enforces');
+  assert.match(dispatcher, /^export WEB_TOOLS_OUTPUT_BUDGET=/m, 'and hands it down');
+  assert.match(dispatcher, /WEB_TOOLS_SESSION_SIBLINGS="\$\(\(\$\{#scripts\[@\]\} - 1\)\)"/,
+    'with the count of the others, which a script cannot discover for itself');
+
+  // A lowered ceiling reaches the rung, which is the whole point of exporting it.
+  const out = run('inject-conventions.sh', { WEB_TOOLS_OUTPUT_BUDGET: '12000' });
+  assert.match(out, /PARTIAL LOAD/);
+});
+
+test('a garbled sibling count falls back rather than failing into the session', () => {
+  const out = run('inject-conventions.sh', { WEB_TOOLS_SESSION_SIBLINGS: 'not-a-number' });
+  assert.doesNotMatch(out, /PARTIAL LOAD/);
+  assert.match(out, /# Working conventions \(portable\)/);
+});
+
+// ── What went out, not what is on disk ─────────────────────────────────────
+// `bytes` is the document in the plugin; `sent` is what this script put on the
+// channel. They were one field until 2026-08-30, which made every receipt claim
+// the whole file had arrived even at a rung that withheld two thirds of it: the
+// one number that could have contradicted `delivered` agreed with it instead.
+
+test('each receipt reports the bytes it actually sent, per rung', () => {
+  const receiptsOf = out => Object.fromEntries(out.split('\n')
+    .filter(l => l.startsWith('[startup-context] '))
+    .map(l => JSON.parse(l.slice('[startup-context] '.length)))
+    .map(e => [e.path.replace(/^.*\//, ''), e]));
+
+  const doc = readFileSync(join(HOOKS, '..', 'web-tools', 'SURFACING.md'), 'utf8');
+  const onDisk = Buffer.byteLength(doc, 'utf8');
+
+  const wide = receiptsOf(run('inject-conventions.sh'))['SURFACING.md'];
+  assert.equal(wide.delivered, 'without_course');
+  assert.equal(wide.bytes, onDisk, 'bytes is the document, whichever rung fired');
+  assert.ok(wide.sent > 0 && wide.sent < wide.bytes,
+    'and even the widest rung withholds the course, so sent is short of it');
+
+  const mid = receiptsOf(run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '25981' }));
+  assert.equal(mid['SURFACING.md'].delivered, 'primitives_only');
+  assert.ok(mid['SURFACING.md'].sent < wide.sent, 'a narrower rung sends less');
+  assert.equal(mid['CONVENTIONS.md'].sent, mid['CONVENTIONS.md'].bytes,
+    'CONVENTIONS.md rides every rung whole, so its two numbers agree');
+
+  const last = receiptsOf(run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '4000' }));
+  assert.equal(last['SURFACING.md'].delivered, 'omitted');
+  assert.equal(last['SURFACING.md'].sent, 0, 'nothing sent reads as zero, not as the file size');
+  assert.equal(last['SURFACING.md'].bytes, onDisk, 'the document is still that big');
+});
+
+test('the sent figure is the payload, so it matches what the rung emitted', () => {
+  // The check that keeps `sent` from becoming a second label. It is a byte
+  // count of real text, so it has to agree with the text that went out.
+  const out = run('inject-conventions.sh');
+  const surf = out.split('\n').filter(l => l.startsWith('[startup-context] '))
+    .map(l => JSON.parse(l.slice('[startup-context] '.length)))
+    .find(e => e.path.endsWith('SURFACING.md'));
+  const doc = readFileSync(join(HOOKS, '..', 'web-tools', 'SURFACING.md'), 'utf8');
+  // Trailing newlines stripped, because that is what the script measures: the
+  // slice goes through `$(...)`, which drops them, and the payload gets its own
+  // single newline back at print time. So `sent` is the document's own bytes
+  // and not the separators around it, which is the number worth reporting.
+  const head = doc.split('\n## The surfacing course')[0].replace(/\n+$/, '');
+  assert.equal(surf.sent, Buffer.byteLength(head, 'utf8'),
+    'the widest rung sends SURFACING.md up to the course heading');
+});

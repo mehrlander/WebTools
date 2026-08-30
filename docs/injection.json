@@ -5,9 +5,9 @@
     {
       "id": "injector",
       "label": "Injector budget",
-      "bytes": 27000,
+      "bytes": 26900,
       "owner": "this repo",
-      "basis": "literal",
+      "basis": "derived",
       "source": ".claude/skills/hooks/inject-conventions.sh",
       "over": "drops a rung and prints what it withheld",
       "graceful": true
@@ -27,14 +27,14 @@
     {
       "id": "session_hook",
       "label": "Session hook",
-      "total": 27653,
+      "total": 27678,
       "cap": 28000,
-      "headroom": 347,
+      "headroom": 322,
       "rung": 1,
       "contributors": [
         {
           "script": "home/session-conventions.sh",
-          "bytes": 26460
+          "bytes": 26485
         },
         {
           "script": "home/session-memory-manifest.sh",
@@ -68,7 +68,7 @@
           "label": "receipts",
           "path": null,
           "kind": "overhead",
-          "bytes": 514
+          "bytes": 539
         },
         {
           "label": "home/session-memory-manifest.sh",
@@ -128,17 +128,17 @@
   "rungs": [
     {
       "rung": 1,
-      "output": 26430,
+      "output": 26455,
       "withholds": "the guide-PR course"
     },
     {
       "rung": 2,
-      "output": 25536,
+      "output": 25561,
       "withholds": "the course and SURFACING.md's opening"
     },
     {
       "rung": 3,
-      "output": 9305,
+      "output": 9326,
       "withholds": "the course, the opening, and every primitive"
     }
   ],

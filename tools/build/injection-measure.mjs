@@ -37,9 +37,15 @@ const HARNESS_CAP = Number(
   /WEB_TOOLS_OUTPUT_BUDGET:-(\d+)/.exec(readFileSync(path.join(HOOKS, 'session-dispatch.sh'), 'utf8'))?.[1] || 28000);
 const PREVIEW = 2000;
 
-// The injector's own budget: a literal in the repo, not a platform limit.
+// The injector's own budget: the repo's choice, not a platform limit. It stopped
+// being a literal on 2026-08-30 and is now the harness ceiling above less a
+// reserve for the sibling scripts sharing it, so the derivation is what gets
+// read. Zero siblings, matching the bare `sh('inject-conventions.sh')` runs
+// below; the dispatch run further down sets its own count.
 const injectorSrc = readFileSync(path.join(HOOKS, 'inject-conventions.sh'), 'utf8');
-const INJECTOR_BUDGET = Number(/BUDGET=\$\{WEB_TOOLS_INJECT_BUDGET:-(\d+)\}/.exec(injectorSrc)?.[1]);
+const injectorConst = name =>
+  Number(new RegExp(`^${name}=\\$\\{[A-Z_]+:-(\\d+)\\}`, 'm').exec(injectorSrc)?.[1]);
+const INJECTOR_BUDGET = injectorConst('CEILING') - injectorConst('BASE_RESERVE');
 
 // Which rung a payload lands on. Read from the banner it prints about itself.
 const rungOf = out =>
@@ -124,7 +130,7 @@ const out = {
       + 'the session opened with, so no commit hook can restamp this and no test can hold it.',
   caps: [
     { id: 'injector', label: 'Injector budget', bytes: INJECTOR_BUDGET, owner: 'this repo',
-      basis: 'literal', source: '.claude/skills/hooks/inject-conventions.sh',
+      basis: 'derived', source: '.claude/skills/hooks/inject-conventions.sh',
       over: 'drops a rung and prints what it withheld', graceful: true },
     { id: 'harness', label: 'Harness ceiling', bytes: HARNESS_CAP, owner: 'Claude Code',
       basis: 'measured', source: '.claude/skills/hooks/session-dispatch.sh',

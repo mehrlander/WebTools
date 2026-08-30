@@ -828,8 +828,8 @@ test('startupOf keeps a file per channel, since one document arrives two ways', 
     { path: CONV, via: 'session_hook', basis: 'receipt' },
     { path: CONV, via: 'project_instructions', basis: 'reconstructed' },
   ]);
-  assert.deepEqual(row.startup, [[CONV, 'receipt', 'session_hook', ''],
-                                 [CONV, 'reconstructed', 'project_instructions', '']]);
+  assert.deepEqual(row.startup, [[CONV, 'receipt', 'session_hook', '', null],
+                                 [CONV, 'reconstructed', 'project_instructions', '', null]]);
 });
 
 test('startupOf drops an entry with no path and sorts for a stable diff', () => {
@@ -845,7 +845,7 @@ test('startupOf treats any basis but receipt as reconstructed', () => {
   // The field is a claim about how the entry was obtained, so an unknown value
   // must fall to the weaker side rather than being carried through as data.
   const row = withStartup([{ path: CONV, basis: 'guessed' }]);
-  assert.deepEqual(row.startup, [[CONV, 'reconstructed', '', '']]);
+  assert.deepEqual(row.startup, [[CONV, 'reconstructed', '', '', null]]);
 });
 
 test('startupAttention counts sessions, never occurrences', () => {
@@ -956,4 +956,49 @@ test('injectionAcross spans the days it saw and ignores rows with no startup con
   assert.equal(got.from, '2026-08-27');
   assert.equal(got.to, '2026-08-28');
   assert.equal(got.documents[0].sessions, 2);
+});
+
+test('sent is carried, and an absent one never becomes the file size', () => {
+  // The conflation the field exists to end: a receipt that reports only the
+  // document's size claims the whole thing arrived at every rung, so the one
+  // number that could contradict `delivered` agrees with it instead.
+  const got = S.injectionAcross([
+    withStartup([{ path: CONV, via: 'session_hook', basis: 'receipt',
+                   delivered: 'full', sent: 8483, bytes: 8483 }]),
+    withStartup([{ path: CONV, via: 'project_instructions', basis: 'reconstructed',
+                   bytes: 8483 }]),
+  ]);
+  const hook = got.documents.find(d => d.via === 'session_hook');
+  assert.equal(hook.sentMax, 8483);
+  const walk = got.documents.find(d => d.via === 'project_instructions');
+  assert.equal(walk.sentMax, undefined, 'a reconstructed entry knows the file, not the delivery');
+});
+
+test('sent reports the range across rungs, not an average nobody received', () => {
+  const got = S.injectionAcross([
+    withStartup([{ path: SURF, via: 'session_hook', basis: 'receipt',
+                   delivered: 'without_course', sent: 16982 }]),
+    withStartup([{ path: SURF, via: 'session_hook', basis: 'receipt',
+                   delivered: 'primitives_only', sent: 15949 }]),
+    withStartup([{ path: SURF, via: 'session_hook', basis: 'receipt',
+                   delivered: 'omitted', sent: 0 }]),
+  ]);
+  const [d] = got.documents;
+  assert.equal(d.sentMin, 0);
+  assert.equal(d.sentMax, 16982);
+  assert.deepEqual(d.delivered, { without_course: 1, primitives_only: 1, omitted: 1 });
+});
+
+test('sized counts the sessions that reported bytes, apart from those that spoke at all', () => {
+  // Two different silences. `hook_silent` is a session with no receipt; `sized`
+  // is a session with receipts that predate the sent field. Reading the second
+  // as the first would report a working injector as a broken one.
+  const got = S.injectionAcross([
+    withStartup([{ path: CONV, via: 'session_hook', basis: 'receipt', delivered: 'full' }]),
+    withStartup([{ path: CONV, via: 'session_hook', basis: 'receipt',
+                   delivered: 'full', sent: 8483 }]),
+  ]);
+  assert.equal(got.sessions, 2);
+  assert.equal(got.hook_silent, 0, 'both sessions have a receipt');
+  assert.equal(got.sized, 1, 'only one of them reported what it sent');
 });
