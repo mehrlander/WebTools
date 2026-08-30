@@ -13,7 +13,7 @@
 // selects.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -104,6 +104,62 @@ const duplicated = Object.entries(byPath)
 
 const channelTotal = via => documents.filter(d => d.via === via).reduce((t, d) => t + d.bytes, 0);
 
+// ── What actually happened, as against what happens here ──────────────────
+// Everything above measures THIS container. The session store records what
+// reached every past session, so it answers the question the local reading
+// cannot: is the injector delivering what it was built to deliver. Absent for
+// most sessions (the store is a private checkout), and its absence is a missing
+// block rather than an error.
+//
+// Only counts, byte sizes, delivery states and dates cross over. No prompt, no
+// reply, no path this file does not already carry.
+const STORE = process.env.SESSIONS_STORE
+  || path.join(ROOT, '..', 'web-tools-private', 'sessions');
+function observed() {
+  let files = [];
+  try {
+    const walk = d => readdirSync(d, { withFileTypes: true }).flatMap(e =>
+      e.isDirectory() ? walk(path.join(d, e.name))
+        : e.name.endsWith('.json') ? [path.join(d, e.name)] : []);
+    files = walk(path.join(STORE, '2026'));
+  } catch { return null; }
+
+  const seen = [];
+  for (const f of files) {
+    let rec; try { rec = JSON.parse(readFileSync(f, 'utf8')); } catch { continue; }
+    if (Array.isArray(rec.startup_context) && rec.startup_context.length)
+      seen.push({ day: rec.day, sc: rec.startup_context });
+  }
+  if (!seen.length) return null;
+  seen.sort((a, b) => (a.day || '').localeCompare(b.day || ''));
+
+  const per = new Map();
+  let hookSilent = 0;
+  for (const { sc } of seen) {
+    if (!sc.some(e => e.via === 'session_hook')) hookSilent++;
+    for (const e of sc) {
+      const k = e.via + '\u0000' + e.path;
+      const row = per.get(k) || { path: e.path, via: e.via, sessions: 0, delivered: {} };
+      row.sessions++;
+      const d = e.delivered || 'n/a';
+      row.delivered[d] = (row.delivered[d] || 0) + 1;
+      per.set(k, row);
+    }
+  }
+  const both = seen.filter(({ sc }) => {
+    const h = new Set(sc.filter(e => e.via === 'session_hook').map(e => e.path));
+    return sc.some(e => e.via === 'project_instructions' && h.has(e.path));
+  }).length;
+
+  return {
+    store: 'mehrlander/web-tools-private sessions/',
+    sessions: seen.length, scanned: files.length,
+    from: seen[0].day, to: seen[seen.length - 1].day,
+    hook_silent: hookSilent, both_channels: both,
+    documents: [...per.values()].sort((a, b) => b.sessions - a.sessions),
+  };
+}
+
 const out = {
   measured: new Date().toISOString().slice(0, 10),
   note: 'A dated reading, not a derived artifact. The sibling session-*.sh scripts print '
@@ -136,6 +192,7 @@ const out = {
                    3: 'the course, the opening, and every primitive' }[n] };
   }),
   documents, duplicated,
+  observed: observed(),
 };
 
 const text = JSON.stringify(out, null, 2) + '\n';
