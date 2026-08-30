@@ -35,6 +35,21 @@
 -->
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<style>
+/* The pins take taps so they can be armed and grabbed, and the layer under them
+   does not, so the text keeps its own. WHILE A DRAG IS LIVE THEY GO
+   TRANSPARENT: a pin's box is 32px of target sitting over the very text the
+   drag is aiming at, so caretRangeFromPoint answers with the pin and the
+   boundary never moves. A pin dragging ITSELF needs this most, since the aim
+   point tracks the pin. Same rule, same reason, as pages/dictate.html.
+
+   An attribute selector on the ancestor rather than two Tailwind utilities:
+   pointer-events-auto and pointer-events-none have equal specificity and a
+   fixed emission order, so whichever the sheet puts last always won and the
+   override was inert. */
+[x-ref="pins"] [data-edge] { pointer-events: auto; }
+[x-ref="pins"][data-audit-drag] [data-edge] { pointer-events: none; }
+</style>
 <script>
 /* AUDIT:BEGIN */
 window.__audit = {
@@ -876,6 +891,7 @@ window.__audit = {
   await gh.load('kits/swipe-deck.js');
   await gh.load('kits/guide-render.js');   // house markdown type, not prose-sm
   await gh.load('kits/standoff.js');       // the annotation's rules, shared with ops.py
+  await gh.load('kits/dictate.js');        // Dictate.pins: the settled edge-pin treatment
   // md-doc's html() returns '' with no window.marked, which is a silent empty
   // render rather than an error. Found by looking at the pixels.
   window.marked = (await import('https://cdn.jsdelivr.net/npm/marked@12/+esm')).marked;
@@ -990,9 +1006,13 @@ window.__audit = {
       this.at = this.patch.length;
       this.regroup();
       this.menu = null;
-      this.paint();
+      // The selection is set BEFORE the repaint, because paint() is what
+      // schedules placePins and the pins are drawn from the selected unit's
+      // edges. Setting it after left the pins one operation behind: still armed,
+      // still red, still on the boundary the edit had just moved.
       const u = this.units.find(x => x.uid === uid);
       this.sel = u ? { ...u, broken: !!this.unitHtml(u).broken, ref: this.srcRef(u) } : null;
+      this.paint();
     },
     nextOf(uid) { return this.units[this.units.findIndex(u => u.uid === uid) + 1]; },
 
@@ -1101,7 +1121,14 @@ window.__audit = {
           el.style.boxShadow = `inset 2px 0 0 0 ${tint(u.label, .9 * this.dim(u))}`;
           el.style.opacity = this.dim(u);
           if (broken) el.style.outline = '1px dotted rgba(239,68,68,.8)';
-          el.innerHTML = html + (this.view === 'source' ? '' : ' ');
+          // THE SEPARATOR IS ITS OWN NODE, appended after the map runs below.
+          // Concatenated into the HTML it joined the unit's last text node, so
+          // that node read "…templates. " where the source has "…templates.\n\n"
+          // and indexOf failed: the LAST RUN OF EVERY INLINE UNIT went unmapped,
+          // which took its end boundary's pin with it. Found by measuring which
+          // boundaries could be located rather than by looking at the render,
+          // where a missing pin and an unlocatable one are the same picture.
+          el.innerHTML = html;
           // The span's own address. In Source view its text is the raw slice
           // with the leading whitespace trimmed off, so a character position
           // inside it maps back to the document by adding this. In Read view
@@ -1110,6 +1137,7 @@ window.__audit = {
           // Source-view affordance and switches the view rather than guessing.
           el.dataset.uid = u.uid;
           Standoff.mapText(el, this.a.text, u.start);
+          if (this.view !== 'source') el.appendChild(document.createTextNode(' '));
           if (u.uid === this.sel?.uid) {
             el.style.background = tint(u.label, .42);
             el.style.textDecoration = 'underline';
@@ -1137,7 +1165,8 @@ window.__audit = {
     // finger over the words being aimed at, which is what every platform then
     // patches with a floating magnifier. Two taps also survive a scroll, a
     // mis-hit and a change of mind, and a drag survives none of them.
-    armed: null, pins: [],
+    armed: null, pinDrag: null,
+    DEAD_LINES: 1.5,
     // EDGES ARE A READ-VIEW AFFORDANCE. Source shows the bytes, markup and all,
     // and a boundary placed inside `**` or `](url)` leaves one side holding an
     // unclosed delimiter; the rendered view cannot offer one, since markup is
@@ -1180,8 +1209,142 @@ window.__audit = {
       if (!b.height && !b.width) return null;
       return { x: b.left - h.left, y: b.top - h.top, h: b.height || 20 };
     },
+    // The client rect of the collapsed range at a document offset, which is
+    // what the pin painter measures from.
+    rectAt(at) {
+      const hit = Standoff.nodeAt(this.$refs.doc, at);
+      if (!hit) return null;
+      const r = document.createRange();
+      r.setStart(hit.node, hit.offset);
+      r.collapse(true);
+      let b = r.getBoundingClientRect();
+      // A COLLAPSED RANGE AT THE END OF A RUN MEASURES ZERO, which is not the
+      // same as having no position: the boundary at the end of a paragraph is
+      // exactly where the last character stops. Measure that character and take
+      // its trailing edge, which is the same point by another route.
+      if (!b.height && !b.width && hit.offset > 0) {
+        r.setStart(hit.node, hit.offset - 1);
+        r.setEnd(hit.node, hit.offset);
+        const c = r.getBoundingClientRect();
+        if (c.height || c.width)
+          b = { left: c.right, right: c.right, top: c.top, bottom: c.bottom,
+                width: 0, height: c.height, x: c.right, y: c.top };
+      }
+      return (b.height || b.width) ? b : null;
+    },
+    // THE PINS ARE THE DICTATION PAGE'S PINS, painted by Dictate.pins: a ball
+    // on a stem that covers the line, above on the left and below on the right,
+    // red with a light centre when armed. It was settled there against a thumb
+    // and it is one implementation, so this page hands over two rects and gets
+    // the same marker rather than an approximation of it.
+    //
+    // `reach: 0`, the same as pages/dictate.html, and for its reason: the
+    // clearance comes from the drag's vertical deadband, so the reader takes
+    // exactly as much as they need and the pin stays where it is pointing.
+    // `arrows: false`, since this page has a pad.
+    // An edge with no rect gets NO PIN. Two ways that happens and both are
+    // honest: the unit is the document's first or last, so the edge is not a
+    // boundary at all; or the boundary sits in markup, where the render has no
+    // position for it. The second is a legacy condition rather than a gap in
+    // the map: the segmenter cuts at block starts, and a block starts at `## `
+    // or `- **`, which the placement rule now forbids. Drawing a pin at zero
+    // for either puts a marker in the corner pointing at nothing, which is what
+    // the painter does when handed a null rect.
+    unpinned: [],
     placePins() {
-      this.pins = this.edges.map(e => ({ ...e, p: this.pointAt(e.at) })).filter(x => x.p);
+      const layer = this.$refs.pins;
+      if (!layer || typeof Dictate === 'undefined') return;
+      const found = this.edges.map(e => ({ ...e, rect: this.rectAt(e.at) }));
+      this.unpinned = found.filter(e => !e.rect).map(e => e.edge);
+      const rectOf = (which) => found.find(e => e.edge === which && e.rect)?.rect || null;
+      Dictate.pins(layer, {
+        first: rectOf('start'), last: rectOf('end'),
+        armed: this.armed, reach: 0, arrows: false,
+        clip: this.$refs.doc.getBoundingClientRect(),
+      });
+      for (const pin of layer.querySelectorAll('[data-edge]'))
+        if (!rectOf(pin.getAttribute('data-edge'))) pin.remove();
+      if (this.armed && this.unpinned.includes(this.armed)) this.armed = null;
+    },
+
+    // The pin drag, from pages/dictate.html: the aim point is the BAR's centre
+    // carried by the finger's delta, one to one, so what moves under the ball is
+    // what the ball was already marking. `lead` is the ball's own offset from
+    // its stem, measured at the grab, which is what makes the two pins hold back
+    // by different amounts and arrive at the same thumb-below-the-aim distance.
+    dragY(y0, py, cy, lineH, lead = 0) {
+      const buffer = this.DEAD_LINES * lineH + (Math.abs(lead) - lead);
+      const travel = cy - py;
+      const past = travel > 0 ? Math.max(0, travel - buffer) : travel;
+      return y0 + Math.round(past / lineH) * lineH;
+    },
+    pinDown(ev) {
+      const box = ev.target?.closest?.('[data-edge]');
+      if (!box) return;
+      ev.preventDefault(); ev.stopPropagation();
+      const which = box.getAttribute('data-edge');
+      const was = this.armed === which;
+      // MEASURED BEFORE ANYTHING IS REPAINTED. The bar is the pin's first child
+      // and it IS the text line; the painter restyles in place but a repaint
+      // still moves it, so both rects are read now.
+      const bar = box.firstElementChild, dot = box.lastElementChild;
+      const br = bar?.getBoundingClientRect?.(), dr = dot?.getBoundingClientRect?.();
+      const from = br && br.height
+        ? { x: br.left + br.width / 2, y: br.top + br.height / 2, px: ev.clientX, py: ev.clientY }
+        : null;
+      const lead = from && dr && dr.height ? (dr.top + dr.height / 2) - from.y : 0;
+      // Armed on the way DOWN, so the ring is under the finger before it moves
+      // and a drag never has to be told apart from a tap to paint it.
+      this.armed = which; this.pinDrag = which;
+      this.placePins();
+      const e0 = this.edges.find(x => x.edge === which);
+      if (!e0) return;
+      const after = e0.after;
+      const lineH = parseFloat(getComputedStyle(this.$refs.doc).lineHeight) || 26;
+      const EDGE = 6;
+      let moved = false, landed = null;
+      const d = document;
+      const move = (ev2) => {
+        if (!from) return;
+        ev2.preventDefault();
+        if (!moved && Math.abs(ev2.clientX - from.px) < 6 && Math.abs(ev2.clientY - from.py) < 6) return;
+        moved = true;
+        const b = this.$refs.doc.getBoundingClientRect();
+        let ax = from.x + (ev2.clientX - from.px);
+        let ay = this.dragY(from.y, from.py, ev2.clientY, lineH, lead);
+        ax = Math.min(b.right - EDGE, Math.max(b.left + EDGE, ax));
+        ay = Math.min(b.bottom - EDGE, Math.max(b.top + EDGE, ay));
+        const i = this.offsetAt(ax, ay);
+        if (i == null) return;
+        // Moved live and recorded once, the same rule the pad follows: one drag
+        // is one judgment.
+        if (Standoff.ops.move(this.so, this.a.text, { after, to: i }) === null) return;
+        landed = i;
+        this.regroup(); this.paint();
+      };
+      const up = () => {
+        setTimeout(() => { this.pinDrag = null; }, 0);
+        d.removeEventListener('pointermove', move, true);
+        d.removeEventListener('pointerup', up, true);
+        d.removeEventListener('pointercancel', up, true);
+        d.body.style.userSelect = ''; d.body.style.touchAction = '';
+        if (landed != null && landed !== e0.at) {
+          Standoff.ops.move(this.so, this.a.text, { after, to: e0.at });
+          this.regroup();
+          this.armed = null;
+          this.push({ op: 'move', after, to: landed });
+          return;
+        }
+        if (landed != null) { Standoff.ops.move(this.so, this.a.text, { after, to: e0.at }); this.regroup(); }
+        // A TAP IS A DRAG THAT WENT NOWHERE, and it toggles: tap to arm, tap
+        // again to put down.
+        if (was) this.armed = null;
+        this.placePins();
+      };
+      d.body.style.userSelect = 'none'; d.body.style.touchAction = 'none';
+      d.addEventListener('pointermove', move, true);
+      d.addEventListener('pointerup', up, true);
+      d.addEventListener('pointercancel', up, true);
     },
     // Where the last tap landed, recorded on the way down so `hit()` can use it
     // on the way up. One delegated listener, bound once: paint() rebuilds every
@@ -1354,26 +1517,14 @@ window.__audit = {
 
     <div class="relative">
       <div x-ref="doc" class="px-4 py-4" x-show="view!=='standoff'"></div>
-      <!-- The pins sit in a layer over the text, measured against the same
-           container, so scrolling moves both together. A pinhead is a 36px
-           target around a hairline bar: the bar is the boundary, the box is
-           the thumb. -->
-      <template x-for="pin in pins" :key="pin.edge">
-        <button class="absolute z-10 grid place-items-center"
-                :class="padding_ && 'pointer-events-none'"
-                style="width:36px;height:36px;margin-left:-18px"
-                :style="`left:${pin.p.x}px; top:${pin.p.y + pin.p.h/2 - 18}px`"
-                :aria-label="`${pin.edge} boundary`"
-                @click.stop="armed = armed === pin.edge ? null : pin.edge">
-          <span class="rounded-full transition-all"
-                :class="armed===pin.edge ? 'w-3 h-3' : 'w-2 h-2'"
-                :style="`background:${armed===pin.edge ? 'var(--color-primary)' : 'var(--color-base-content)'};
-                         opacity:${armed===pin.edge ? 1 : .5}`"></span>
-          <span class="absolute w-0.5"
-                :style="`height:${pin.p.h + 6}px; background:var(--color-primary);
-                         opacity:${armed===pin.edge ? .9 : .35}`"></span>
-        </button>
-      </template>
+      <!-- The pin layer. It overlays the doc box exactly, takes no taps of its
+           own, and hands each pin back its own: the painter writes the box's
+           whole style attribute, so the exception is a rule here rather than
+           an inline property there. While the pad is driving, the pins stop
+           hit-testing entirely, since the virtual point starts on one. -->
+      <div x-ref="pins" class="absolute inset-0 pointer-events-none"
+           :data-audit-drag="(padding_ || pinDrag) ? '' : null"
+           @pointerdown="pinDown($event)"></div>
     </div>
 
     <!-- The annotation as the thing it is: rows over spans, and the committed
@@ -1431,6 +1582,8 @@ window.__audit = {
         <span class="opacity-60 font-mono" x-text="sel?.words + 'w · ' + sel?.kind"></span>
         <span class="opacity-60 font-mono" x-text="sel?.ref"></span>
         <span class="italic opacity-70" x-show="sel?.note" x-text="sel?.note"></span>
+        <span class="opacity-60" x-show="unpinned.length" x-cloak
+              x-text="unpinned.join(' and ') + ' sits in markup, so it has no place to be dragged'"></span>
         <span class="text-error" x-show="sel?.broken">slice does not close its own markup</span>
         <span class="text-error" x-show="opErr" x-text="opErr"></span>
         <button class="btn btn-ghost btn-xs ml-auto" @click="sel=null; menu=null">close</button>
