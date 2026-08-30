@@ -43,7 +43,8 @@ test('every kit that copies delegates to io.copy and fetches it at load time', (
   // Fetched when the kit loads, never inside the click: a write has to run in
   // the gesture that asked for it, and an await before it can spend the user
   // activation Safari counts.
-  const consumers = ['chat-render.js', 'session-export.js', 'vanilla-demo.js', 'md-doc.js'];
+  const consumers = ['chat-render.js', 'session-export.js', 'vanilla-demo.js', 'md-doc.js',
+                     'row-menu.js'];
   for (const name of consumers) {
     const src = readFileSync(join(KITS, name), 'utf8');
     assert.match(src, /window\.io\.copy\(text\)/, name + ' delegates the write');
