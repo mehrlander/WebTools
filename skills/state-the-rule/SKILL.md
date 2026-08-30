@@ -142,10 +142,29 @@ decided to remove after signing it.
 **The check does not replace the repo's own gates.** Run them too: a lost pointer
 has twice passed `check.py` and been caught by the repo's own derivation.
 
-### 7. Record
+### 7. Record, and keep the annotation
 
-Append one row to `runs.csv` and any surprise to `LOG.md`, then **run the repo's
-generators after that last edit, not before it**. A record that names a governed
+A run is a directory, `runs/<date>-<patient>/`, holding what it consumed beside
+what it produced:
+
+| file | is |
+| --- | --- |
+| `units.jsonl` | step 1's segmentation |
+| `labels.tsv` | step 2's classification, `uid` / `label` / `verdict` |
+| `standoff.json` | the annotation, built from those two |
+
+**The standoff does not contain the document.** It names its target and carries
+a `sha256` of the bytes it was made against, so whether it still describes that
+file is a question with an answer rather than an assumption. Built and joined to
+a source copy for delivery by `tools/build/audit-payload.py` (hub only), which
+refuses to build a payload once the digests part.
+
+Keeping the two inputs is what makes the pass re-runnable rather than only its
+result surviving. `runs/2026-08-29-conventions/` is the worked example, rendered
+by `pages/audit-render.html`.
+
+Then append one row to `runs.csv` and any surprise to `LOG.md`, and **run the
+repo's generators after that last edit, not before it**. A record that names a governed
 file changes that file's derived state, so recording the run is itself an edit
 the generators have to see. The same holds among the generators: one that writes
 a governed file runs before one that measures it.
@@ -167,14 +186,18 @@ tooling.**
   Annotate one to find out; a result near 100% `KEEP` is the signal to stop.
 - Do not fold a doctrine change into a compression. Rewriting what a rule *says*
   is a separate decision from stating it more directly.
-- The tooling's checks are tested (`tools/test/state-the-rule.test.mjs`, in the
-  hub only). The judgment steps are not testable and every figure in `runs.csv`
+- The tooling's checks are tested (`tools/test/state-the-rule.test.mjs`), and a
+  stored run is held to its target and to the page that shows it
+  (`tools/test/audit-standoff.test.mjs`); both hub only. The judgment steps are not testable and every figure in `runs.csv`
   was read by hand.
 
 ## Files
 
-`segment.py` · `check.py` · `seams.py` · `runs.csv` · `LOG.md`
+`segment.py` · `check.py` · `seams.py` · `runs.csv` · `LOG.md` · `runs/<date>-<patient>/`
 
-`reanchor.py` is for the case this pass does not have: an annotation that must
-outlive edits to its source rather than being consumed by one run. Offsets are a
-hint; the quote selector is the anchor. Seven runs have not needed it.
+`reanchor.py` resolves an annotation into an edited document across four tiers
+and reports which one caught each unit, so a run can say how much annotation an
+edit actually cost. Offsets are a hint; the quote selector is the anchor. No run
+has called it yet, but a stored standoff is exactly the case it exists for: the
+digest in `standoff.json` says an annotation has gone stale, and `reanchor.py`
+is what says by how much.
