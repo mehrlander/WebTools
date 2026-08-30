@@ -207,6 +207,18 @@ test('covers: touch keeps the innermost of nested blocks', () => {
   }
 });
 
+test('outlines are document-positioned, so a scroll cannot leave them behind', () => {
+  const w = boot();
+  w.Peek.select(deepest(w, 'One point one point one'));
+  const boxes = [...w.document.querySelectorAll('[data-peek-ui]')]
+    .filter(n => /^2px (solid|dashed)/.test(n.style.border || ''));
+  assert.ok(boxes.length >= 2, 'the hover and selected outlines exist');
+  for (const b of boxes) {
+    assert.equal(b.style.position, 'absolute',
+      'a fixed box is pinned to the viewport and drifts by exactly the scroll');
+  }
+});
+
 test('disable: removes every node it added', () => {
   const w = boot();
   w.Peek.select(deepest(w, 'Two'));

@@ -679,6 +679,17 @@ it, an aligned label grid, the own text clamped, and the subtree indented by
 padding rather than by spaces. `domText` survives as the copy payload, so Copy
 still hands over something a model can read.
 
+**The outlines live in the document, not the viewport.** Every live highlight
+(the pick's hover and staged boxes, the region's rectangle, and its "+ note")
+is `position: absolute` in document coordinates, so it travels with the thing it
+is drawn around and needs no repainting. They were fixed, placed from a viewport
+rect and never repainted, so a scroll left the highlight sitting where the
+element used to be: measured 2026-08-30, a 260px scroll produced exactly 260px
+of drift. The filed notes' outlines were already drawn this way; this makes the
+live ones agree with them. The region's box is the one exception and only while
+the drag is live, where the page cannot scroll anyway and viewport coordinates
+are exact; it pins to the document the moment it stages.
+
 **The trail is tappable**, and it is the only thing in the pane that is. A crumb
 re-points the reading at that ancestor, and where a mode is running it moves the
 outline too, through a `S.restage` hook the pick publishes: a crumb that renames
@@ -877,6 +888,12 @@ annotate's region excerpt already reads, so the two agree about what a region
 covers. That is what `annotate.js`'s DOM
 reading calls; reading the enabled document here would have made the whole kit
 conditional on its own UI.
+
+Its outlines are `position: absolute` in document coordinates. They were fixed
+and repainted from a scroll listener, which works and lags: the box is redrawn
+AFTER the scroll it is reacting to, so it swims against the element on a phone.
+Document coordinates never move relative to what they are drawn around and need
+no listener at all.
 
 The pointer path is a full-screen cover taking `pointerup`, with
 `elementsFromPoint` to see past it. `console/mods/pick.js` does the same job off

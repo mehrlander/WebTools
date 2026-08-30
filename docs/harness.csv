@@ -122,6 +122,7 @@ tools/render/scenarios/map-skills.mjs,"the Map's Skills tab with all three sets 
 tools/render/scenarios/map-tests.mjs,the Map view's Tests tab: the test registry rendered live with assertion names expanded,tools/render/scenarios,63,driver,no,no,no
 tools/render/scenarios/nest-probe.mjs,"probe: a nested self-toss's address bar, and the FAB's actions at depth two",tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/open-drawer.mjs,the FAB drawer open with the take grid scrolled into view,tools/render/scenarios,20,driver,no,no,no
+tools/render/scenarios/outline-follows-page.mjs,scroll the page and check every live outline stays on the thing it is drawn around,tools/render/scenarios,78,driver,no,no,yes
 tools/render/scenarios/paste-address-routes.mjs,,tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/paste-anywhere.mjs,dispatches a real two-flavor ClipboardEvent on a non-Stage view and reports where the app-wide paste routed it,tools/render/scenarios,42,driver,no,no,no
 tools/render/scenarios/paste-button.mjs,"drives the header Paste button from a non-Stage view with window.io stubbed, and reports where it routed",tools/render/scenarios,46,driver,no,no,no

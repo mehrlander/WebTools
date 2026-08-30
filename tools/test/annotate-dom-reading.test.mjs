@@ -248,6 +248,19 @@ test('trail: tapping a crumb re-points the reading at that ancestor', () => {
   assert.equal(A._state.holdEl, w.document.querySelector('ul'));
 });
 
+test('pick outlines are document-positioned, like the filed notes already were', () => {
+  // jsdom has no layout, so the drift itself is measured in
+  // tools/render/scenarios/outline-follows-page.mjs. What is checkable here is
+  // the property that made it possible: a fixed box placed from a viewport rect
+  // and never repainted stays where the element used to be.
+  const w = boot();
+  w.Annotate.startPick();
+  const boxes = [...w.document.querySelectorAll('[data-annotate-ui]')]
+    .filter(n => /^2px (solid|dashed) #facc15|^2px (solid|dashed) rgba?\(/.test(n.style.border || ''));
+  assert.ok(boxes.length >= 1, 'the pick draws outlines');
+  for (const b of boxes) assert.equal(b.style.position, 'absolute');
+});
+
 test('elementOf: every target type resolves through one function', () => {
   const w = boot();
   const A = w.Annotate;
