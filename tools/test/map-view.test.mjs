@@ -125,9 +125,16 @@ test('the Aims tab renders its manifest as Markdown', () => {
   data.aims = { mission: 'M.', goals: [
     { key: 'a', name: 'One', gloss: 'First.' },
     { key: 'b', name: 'Two', gloss: 'Second.' },
+  ], reading: [
+    { path: 'docs/X.md', gloss: 'Hub doc.' },
+    { repo: 'mehrlander/home', path: 'created/Y.md', private: true, gloss: 'Elsewhere.' },
   ] };
   assert.equal(data.aimsMd(),
-    '# Aims\n\n## Mission\n\nM.\n\n## Goals\n\n1. **One.** First.\n2. **Two.** Second.\n');
+    '# Aims\n\n## Mission\n\nM.\n\n## Goals\n\n1. **One.** First.\n2. **Two.** Second.\n'
+    + '\n## Reading\n\n'
+    + '- [docs/X.md](' + data.hubUrl('docs/X.md') + ') Hub doc.\n'
+    + '- [mehrlander/home created/Y.md](https://github.com/mehrlander/home/blob/main/created/Y.md)'
+    + ' (private) Elsewhere.\n');
   data.aims = null;
   assert.equal(data.aimsMd(), '', 'nothing loaded copies nothing rather than a heading');
 });

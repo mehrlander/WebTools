@@ -26,5 +26,37 @@
       "name": "Connected",
       "gloss": "We see the relationships between ideas."
     }
+  ],
+  "reading": [
+    {
+      "path": "docs/CONSTELLATION.md",
+      "gloss": "What goes where across the repos, and why."
+    },
+    {
+      "repo": "mehrlander/home",
+      "path": "created/2026-06-27-constellation-architecture.md",
+      "private": true,
+      "gloss": "The same doctrine worked out on these repos, including why home is the private one."
+    },
+    {
+      "path": "docs/CONVENTIONS.md",
+      "gloss": "How a session works: prose style, standing decisions, status markers."
+    },
+    {
+      "path": "docs/SURFACING.md",
+      "gloss": "How a session's work reaches a reader when chat is the only channel."
+    },
+    {
+      "path": "docs/APP.md",
+      "gloss": "What this app is for, and its own five durable goals."
+    },
+    {
+      "path": "docs/registries.md",
+      "gloss": "How the estate classifies its own material, and who owns each claim."
+    },
+    {
+      "path": "docs/code-layers.md",
+      "gloss": "Which layer a new code file belongs in, and the rule that decides."
+    }
   ]
 }
