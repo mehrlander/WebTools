@@ -151,7 +151,13 @@ what it produced:
 | --- | --- |
 | `units.jsonl` | step 1's segmentation |
 | `labels.tsv` | step 2's classification, `uid` / `label` / `verdict` |
-| `standoff.json` | the annotation, built from those two |
+| `standoff.json` | the annotation: one label per unit, from a declared vocabulary |
+
+**The standoff carries the label, not the verdict.** The label says what a unit
+*is* and is the axis any question over this machine supplies; the verdict is
+what *this* pass decided to do about it, and `check.py` reads it from
+`labels.tsv`. Putting both in the standoff put a second closed vocabulary inside
+the artifact whose whole generality is that its vocabulary is declared.
 
 **The standoff does not contain the document.** It names its target and carries
 a `sha256` of the bytes it was made against, so whether it still describes that

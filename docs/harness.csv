@@ -17,7 +17,7 @@ scripts/stranded-titles.py,,scripts,186,npm:stranded-titles,no,yes,yes
 scripts/sunset-scan.py,scan a repo for SUNSET(YYYY-MM-DD) markers and report the ones now due,scripts,111,npm:sunset,no,yes,yes
 scripts/text-carriers.py,"inventory the CSV and JSON carriers that already hold authored prose, and registry their field names to show how much vocabulary the carriers share",scripts,539,argv,no,yes,yes
 scripts/unclaimed-code.py,"per-layer counts of files, files prose names, and files a test exercises; the code-scan behind code-layers.md",scripts,187,npm:code-scan,no,yes,no
-tools/build/audit-payload.py,"build a standoff annotation from a document plus its segmentation and labels, and the audit/1 delivery payload that carries it into a page",tools/build,106,argv,no,yes,yes
+tools/build/audit-payload.py,"build a standoff annotation from a document plus its segmentation and labels, and the audit/1 delivery payload that carries it into a page",tools/build,112,argv,no,yes,yes
 tools/build/bake.mjs,emit dist/<page>.html: the page's chain inlined into a standalone file,tools/build,53,npm:bake,yes,yes,no
 tools/build/build-lib.mjs,"emit dist/web-tools.js, the pre-build: the whole lib/ as one self-booting offline artifact",tools/build,108,npm:build:lib,yes,yes,yes
 tools/build/build.mjs,"emit dist/<page>.js: a page's gh.load chain frozen offline, through lib/build.js's emitter",tools/build,77,npm:build,yes,yes,no

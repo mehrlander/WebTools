@@ -27,6 +27,12 @@ import sys, json, csv, re, hashlib, pathlib
 
 # state-the-rule's labels. A different question ships a different list, and
 # check.py never reads the label column, so the vocabulary is data.
+#
+# ONE AXIS. The standoff says what each unit IS; labels.tsv's verdict column
+# says what was decided about it, which is a disposition of this question rather
+# than a property of the unit, and it is check.py that reads it. Carrying both
+# here put a second closed vocabulary in an artifact whose whole generality is
+# that its vocabulary is declared.
 VOCAB = [
     ("WHAT",    "declaration", "a rule, a fact of the system, a value it may hold"),
     ("HOW",     "declaration", "syntax, a procedure, an invocation"),
@@ -58,7 +64,7 @@ def build_standoff(doc, run, addr, question):
         a = ann.get(u["uid"], {})
         units.append({"uid": u["uid"], "start": u["start"], "end": u["end"],
                       "kind": u["kind"], "words": u["words"],
-                      "label": a.get("label", ""), "verdict": a.get("verdict", "")})
+                      "label": a.get("label", "")})
     return {"kind": "standoff/1",
             "question": question,
             "target": addr | {"bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()},
