@@ -120,4 +120,53 @@ export default async (page) => {
     bar: window.Annotate._state.selBar.style.display,
     offer: !!document.querySelector('[data-annotate-offer]'),
   }))));
+
+  // ── A selection ACROSS BLOCKS keeps its chip ─────────────────────────────
+  //
+  // The case jsdom cannot answer. Its Selection.toString concatenates text
+  // nodes with no block breaks, so a guard comparing the staged quote against
+  // the selection's own text agrees there and disagrees in a browser the moment
+  // a selection crosses a paragraph. That divergence rebuilt the chip on every
+  // pointerup for large selections only, which is exactly how it was reported:
+  // "when I select across sections the selection gets locked, but for small
+  // selections it does not."
+  console.log('SPAN    ' + JSON.stringify(await page.evaluate(async () => {
+    const box = document.querySelector('[data-src-doc]');
+    const settle = () => new Promise(d => setTimeout(d, 90));
+    const sel = getSelection();
+    const ps = [...box.querySelectorAll('p')];
+    const probe = async (label, a, ao, b, bo) => {
+      sel.removeAllRanges();
+      document.dispatchEvent(new Event('selectionchange'));
+      await settle();
+      const r = document.createRange();
+      r.setStart(a, ao); r.setEnd(b, bo);
+      sel.addRange(r);
+      document.dispatchEvent(new Event('pointerup', { bubbles: true }));
+      await settle();
+      const first = document.querySelector('[data-annotate-offer]');
+      document.dispatchEvent(new Event('pointerup', { bubbles: true }));
+      await settle();
+      return { label, chip: !!first,
+               kept: first === document.querySelector('[data-annotate-offer]'),
+               blockBreaks: /\n/.test(String(sel)) };
+    };
+    // A paragraph's firstChild is not always a text node here (a leading <a>
+    // or <code> makes it an element), and setEnd counts CHILDREN on an element.
+    // Walk to the first text node and clamp to its length.
+    const textIn = (el) => {
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      return w.nextNode();
+    };
+    const at = (el, want) => {
+      const n = textIn(el);
+      return [n, Math.min(want, n.nodeValue.length)];
+    };
+    const [n0, o0] = at(ps[0], 18);
+    const [n1, o1] = at(ps[0], 4);
+    const [n2, o2] = at(ps[2] || ps[1], 20);
+    const one = await probe('one block', n0, 0, n0, o0);
+    const many = await probe('across', n1, o1, n2, o2);
+    return [one, many];
+  })));
 };

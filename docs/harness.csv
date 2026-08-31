@@ -53,7 +53,7 @@ tools/render/scenarios/annotate-dictate-demo.mjs,"the voice-first compose surfac
 tools/render/scenarios/annotate-dom-crumb.mjs,tap the DOM reading's ancestor trail and check the outline follows the crumb,tools/render/scenarios,55,driver,no,no,yes
 tools/render/scenarios/annotate-dom-reading.mjs,drive the annotate card to its DOM reading and step the element pick up its ancestor chain,tools/render/scenarios,85,driver,no,no,yes
 tools/render/scenarios/annotate-double-tap.mjs,"a double tap on a word opening the keyboard with the caret inside that word, and the long press still taking the word: the two gestures that traded places on 2026-08-13, both needing a real caret-from-point that jsdom stubs",tools/render/scenarios,62,driver,no,no,no
-tools/render/scenarios/annotate-drop-stage.mjs,,tools/render/scenarios,124,driver,no,no,no
+tools/render/scenarios/annotate-drop-stage.mjs,"letting go of a stage in all three aims: the ✕, a pick that lands on nothing, a tap on the card that is not a miss, and a selection across blocks keeping its chip",tools/render/scenarios,173,driver,no,no,yes
 tools/render/scenarios/annotate-edit-row.mjs,"the pencil folding a note out of the list while it is open in the composer, and the row coming back on save. Needs a browser: the two states are one DOM apart and the point is that only one copy of the note is on screen at a time",tools/render/scenarios,46,driver,no,no,no
 tools/render/scenarios/annotate-expander.mjs,"the card's own reading of the set, which jsdom cannot photograph: the expander grown UPWARD from the card's pinned bottom edge, the readings strip and the set's actions arriving with it, and a serialization shown at real size. `reading=` picks which of the three (notes | md | json); the scope knob went with the scope chip, since a serialization is of the set",tools/render/scenarios,106,driver,no,no,no
 tools/render/scenarios/annotate-header-centre.mjs,"whether the notes card's reading keys are CENTRED in the header, which no node test can answer: the suite is browser-free and jsdom has no layout engine. Reports the gap either side of the group, to the nearest LAID-OUT neighbour and to the nearest VISIBLE one, since a control holding its place with visibility:hidden occupies layout an eye cannot",tools/render/scenarios,54,driver,no,no,no
@@ -113,7 +113,7 @@ tools/render/scenarios/fab-traffic.mjs,the fab's Traffic tab with a real BOOT ba
 tools/render/scenarios/fab-width-bar.mjs,"the FAB Render tab's width bar, shot on toss-render where the lever is live",tools/render/scenarios,30,driver,no,no,no
 tools/render/scenarios/inbox-demo.mjs,the inbox resolution with the armed redirect button on screen,tools/render/scenarios,36,driver,no,yes,no
 tools/render/scenarios/jumpover-coverage.mjs,the exact-file jump-overs rendered headlessly with seeded rows,tools/render/scenarios,67,driver,no,no,no
-tools/render/scenarios/kind-labels-the-aim.mjs,,tools/render/scenarios,53,driver,no,no,no
+tools/render/scenarios/kind-labels-the-aim.mjs,the aim menu labelling itself from the declared kind,tools/render/scenarios,53,driver,no,no,no
 tools/render/scenarios/map-docs-reads.mjs,the Map's Docs tab with the readership column,tools/render/scenarios,69,driver,no,no,no
 tools/render/scenarios/map-docs.mjs,"the Map's Docs tab, the documentation registry rendered live",tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/map-growth.mjs,"the Map's Growth tab with its corpus strip: a fixture config cache declaring two repos' growth payloads, so the federated selector renders and GROWTH_REPO switches the framed chart",tools/render/scenarios,75,driver,no,no,no
@@ -156,7 +156,7 @@ tools/render/scenarios/routes-pane.mjs,"Renders Activity's Routes pane with real
 tools/render/scenarios/search-cold.mjs,the Files view's cold open: a bare arrival scopes to the browsed repo and walks it,tools/render/scenarios,50,driver,no,no,no
 tools/render/scenarios/search-controls.mjs,"the Files view's scope controls, with the ref picker open",tools/render/scenarios,72,driver,no,no,no
 tools/render/scenarios/search-files.mjs,"the Files view a level into a folder, with a file from it open in the shared viewer",tools/render/scenarios,64,driver,no,no,no
-tools/render/scenarios/section-structure.mjs,,tools/render/scenarios,47,driver,no,no,no
+tools/render/scenarios/section-structure.mjs,"the section rules a markdown aim draws, at two widths",tools/render/scenarios,47,driver,no,no,no
 tools/render/scenarios/session-contents.mjs,"enters the session deck from the outline the page opens on, then opens the deck's own contents list: the rows readable at 390px, the reader marked, and one pager gap per exchange",tools/render/scenarios,65,driver,no,no,no
 tools/render/scenarios/session-exchange-card.mjs,,tools/render/scenarios,58,driver,no,no,no
 tools/render/scenarios/showing-paste-rows.mjs,,tools/render/scenarios,27,driver,no,no,no
