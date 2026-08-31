@@ -111,12 +111,12 @@
     // branch-brief reads compareFields from BranchStatus, so it loads first.
     await gh.load('kits/branch-status.js');
     await gh.load('kits/guide-render.js');
-    // The content-registry reader: the Files pane groups changed files by
+    // The content-registry reader: the file list groups changed files by
     // creation mode where the repo declares data/design/content.csv.
     await gh.load('kits/csv.js');
     await gh.load('kits/content-registry.js');
-    // The route join behind the Look row above the tabs: which of the app's own
-    // views this branch changes. Listed here for the plain chain, as the
+    // The route join behind the Look row above the sections: which of the app's
+    // own views this branch changes. Listed here for the plain chain, as the
     // registry reader above is; the component lazy-loads it either way, which
     // is what keeps it reaching a ?use= preview before this line is deployed.
     await gh.load('kits/route-activity.js');
@@ -201,9 +201,13 @@
         // into the address grammar because it is not part of an address: it
         // names a thing that RESOLVES to one, and the resolution is a call.
         const pr = q.get('pr') || hash.get('pr') || '';
-        // Which pane, and which file. Both are read from either carrier for the
-        // reason `pr` is: they name what to SHOW of an address rather than
+        // Which section, and which file. Both are read from either carrier for
+        // the reason `pr` is: they name what to SHOW of an address rather than
         // being part of one, so the grammar in reviewTarget never sees them.
+        // `pane` no longer picks between two tabs (the branch view stacks its
+        // files above its guide since 2026-08-31); it says which section the
+        // link is about, which scrolls there and, for files, spends the compare
+        // a host would otherwise defer.
         const pane = q.get('pane') || hash.get('pane') || '';
         const file = q.get('file') || hash.get('file') || '';
         const view = { pane: pane === 'files' || pane === 'guide' ? pane : '', file };
@@ -252,7 +256,7 @@
         // `framed` rides through: an embedder supplies its own header, and the
         // view drops the identity it would otherwise repeat.
         this.target = { repo, branch: ref, base, authored, pr: t.pr || '', framed: this.framed,
-                        // `&pane=` picks the pane and `&file=` opens the file
+                        // `&pane=` names a section and `&file=` opens the file
                         // deck on one path; the component owns what each means.
                         pane: t.pane || '', file: t.file || '' };
         window.__branchTarget = this.target;

@@ -106,10 +106,10 @@ reached only by tapping. A link naming a branch the current list no longer holds
 (a filter hides it, or it landed) still opens, as a list of one, since a link
 that resolves to nothing is worse than one with nowhere to swipe.
 
-**Above the panes is the Look row: the branch, running.** Chips naming the app
-views this branch changes, each one an address into the deployed app at the
+**Above both sections is the Look row: the branch, running.** Chips naming the
+app views this branch changes, each one an address into the deployed app at the
 branch's own tip (`app/?use=<sha>&view=<key>`), followed by a render link for
-each page the branch changed. It sits above the tab strip because it is not a
+each page the branch changed. It sits above the heading row because it is not a
 reading of the branch but the branch itself, and because a constant position is
 most of what it is for: a render link was reachable before this, as a dimmed
 icon at the end of a file row and a menu row two taps into a card, and was still
@@ -153,21 +153,47 @@ The same decision the row makes is available at a terminal as
 a lib-only branch; a test holds the two to each other, because two answers to
 "where do I look at this branch" is the state this replaced.
 
-**Its sections are panes, not a scroll.** Guide and Files switch on a
-segmented control under the facts strip, with the count on the Files label, so
-the changed files are one tap from the top instead of below a screen of guide.
-Guide leads when the branch has one; Files leads when it does not. On a narrow
-viewport the file rows also start collapsed, since four open cards is most of a
-phone screen and the dense row list is what is worth seeing first there.
+**Its sections are a scroll, not panes: files above the guide.** Guide and Files
+were a segmented control under the facts strip until 2026-08-31, and the switch
+went because it was answering a question nobody had. The two are not
+alternatives, so a tab made each one the cost of hiding the other: a reader
+checking what a branch touched lost the judgment that says why, and a reader on
+the guide could not see the file it names. Both render now, and the only cost is
+a scroll.
 
-**The Files pane carries the content verdict, and it carries it as a filter.**
-Above the list sit the three counts the estate row's chip shows (`landed`,
-`differs`, `missing`, summing to the total), each one tappable to show only that
-class, which is what the estate chip links into: a reader who taps `11 missing`
-on a row lands here on those eleven files, open as diffs, rather than on a
-tooltip listing paths. Filtering runs above the registry grouping, so one rule
-covers the list, the groups and the file deck instead of each filtering for
-itself, and the Files tab reports what it is showing out of what there is.
+**The order is the decision.** Files lead because the list is what a branch page
+is opened for and the part that cannot be read anywhere else in one place; the
+guide is prose and reads perfectly well below it. That also settles the
+complaint the tabs were introduced for, which was the changed files sitting
+below a full screen of guide. The heading row keeps the count the Files tab
+carried, so "how much is here" is still answered without opening anything, and
+the guide keeps a marker there (its number, with a down arrow) that scrolls to
+it, because a section below the fold needs something at the top saying it is
+there.
+
+**The file rows start collapsed, at every width.** They opened on a wide screen
+with a modest change set while the files were a pane of their own with nothing
+under them. They are not any more: an open card pushes the guide, and four of
+them put it three screens down on a change set the reader could otherwise take
+in at a glance. Closed, the list is the scannable manifest the stacking was for,
+and the diff is one tap on a row or the deck button on the heading row.
+
+**The list is one panel** rather than a bordered box per registry group. Thirty
+files across two or three boxes was a column of borders carrying no information,
+and stacking the sections raises the bar: the list has to hold together tightly
+enough to leave the guide reachable under it. One border, hairline rows, group
+headers as tinted bars inside it.
+
+**It carries the content verdict, and carries it as a filter.** The panel's own
+header row is the three counts the estate row's chip shows (`landed`, `differs`,
+`missing`, summing to the total), each one tappable to show only that class,
+which is what the estate chip links into: a reader who taps `11 missing` on a row
+lands here on those eleven files, open as diffs, rather than on a tooltip listing
+paths. A caption inside the thing it captions is one element instead of two,
+which is the density argument in one row. Filtering runs above the registry
+grouping, so one rule covers the list, the groups and the file deck instead of
+each filtering for itself, and the heading reports what it is showing out of what
+there is.
 
 It is a filter and not a badge per row, for the reason the collapsed-density
 pass took a control off every row: thirty rows are read by scanning, and a glyph

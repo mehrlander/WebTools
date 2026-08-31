@@ -1,8 +1,10 @@
 // alpineComponents/branch-brief.js — what an ADDRESS can ask the view to show.
 //
 // The branch page answers `#gh=owner/repo@branch` and, since 2026-08-26, two
-// more keys: `&pane=` picks the pane and `&file=` opens the file deck on one
-// path. They exist because the surfacing caption stopped enumerating files in
+// more keys: `&pane=` names a section and `&file=` opens the file deck on one
+// path. Since the tabs went on 2026-08-31 both sections always render, so
+// `&pane=` no longer picks between them: it says which one the link is about,
+// which buys a scroll to it and, for `files`, the compare a host would defer. They exist because the surfacing caption stopped enumerating files in
 // chat and started linking here instead, so a reply that wants to point at one
 // file needs an address that lands on that file rather than on a list it sits
 // somewhere in.
@@ -18,10 +20,11 @@
 //   - it fires ONCE, so closing the deck and returning to the list does not
 //     reopen what the reader just dismissed.
 //   - it needs the compare, and the compare is deferred on a hosted mount, so
-//     `&file=` has to ASK for the read rather than assume the pane did.
+//     `&file=` has to ASK for the read rather than assume a section did.
 //
 // The other direction is here too: `pane` rides back up through onMeta, which
-// is what lets the takeover stamp an address naming the pane on screen.
+// is what lets the takeover stamp an address naming the section a reader went
+// to. An opening nobody steered stamps none.
 //
 // No network, no pixels; the same jsdom harness the other branch-brief tests
 // use, with the deck stubbed since swipe-deck is a browser gesture.
@@ -107,27 +110,28 @@ const reset = () => {
   window.BranchBrief.forget();
 };
 
-test('no pane and no file: the guide leads and the diff is not read', async () => {
+test('no pane and no file: nothing is singled out and the diff is not read', async () => {
   reset();
   await mount();
-  assert.equal(data.pane, 'guide');
+  assert.equal(data.pane, '', 'both sections render, so an address that names none names none');
   assert.deepEqual(calls.compare, [], 'a mount that lends facts defers the compare');
   assert.deepEqual(opened, []);
 });
 
-test('&pane=files opens the file list', async () => {
+test('&pane=files asks for the file list', async () => {
   reset();
   await mount({ pane: 'files' });
   assert.equal(data.pane, 'files');
-  assert.deepEqual(calls.compare, ['me/tools@claude/thing'], 'the pane asks for the diff');
-  assert.deepEqual(opened, [], 'a pane is a list, not a deck');
+  assert.deepEqual(calls.compare, ['me/tools@claude/thing'],
+    'which is now the whole of what the key does at load: spend the compare');
+  assert.deepEqual(opened, [], 'naming a section is not opening a deck');
 });
 
 test('&file= opens the deck on that file, and asks for the compare itself', async () => {
   reset();
   await mount({ file: 'lib/kits/file-deck.js' });
   assert.deepEqual(calls.compare, ['me/tools@claude/thing'],
-    'a file address reads the diff even though the pane it landed on would not');
+    'a file address reads the diff even though nothing else on the page asked');
   assert.equal(opened.length, 1);
   assert.equal(opened[0].start, 1, 'the deck opens on the named file, not the first');
   assert.equal(opened[0].files[opened[0].start].path, 'lib/kits/file-deck.js');
@@ -152,19 +156,19 @@ test('&file= fires once, so a dismissed deck stays dismissed', async () => {
   assert.equal(opened.length, 1, 'the option was consumed, not remembered');
 });
 
-test('&file= wins over the pane it was not given', async () => {
+test('&file= wins over the section it was not given', async () => {
   reset();
   await mount({ pane: 'guide', file: 'pages/branch.html' });
-  assert.equal(data.pane, 'guide', 'an explicit pane is still honoured underneath');
+  assert.equal(data.pane, 'guide', 'an explicit section is still honoured underneath');
   assert.equal(opened.length, 1, 'and the deck opens over it');
   assert.equal(opened[0].files[opened[0].start].path, 'pages/branch.html');
 });
 
-test('the pane rides back up through onMeta, so a host can stamp it', async () => {
+test('the section rides back up through onMeta, so a host can stamp it', async () => {
   reset();
   const d = await mount();
-  assert.equal(meta.at(-1).pane, 'guide');
+  assert.equal(meta.at(-1).pane, '', 'an unasked-for opening stamps no section');
   d.setPane('files');
   assert.equal(meta.at(-1).pane, 'files',
-    'switching panes reports, which is what setPane exists for');
+    'asking for one reports, which is what setPane exists for');
 });
