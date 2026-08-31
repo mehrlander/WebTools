@@ -285,7 +285,7 @@
         runFrame.srcdoc = docConsole(cm.getValue());
       };
       cm.setOption('extraKeys', { 'Cmd-Enter': run, 'Ctrl-Enter': run });
-      seamActions.append(iconBtn('ph-play-fill', 'Run', run, true));
+      seamActions.append(iconBtn('ph-play', 'Run', run, true));
       run();
       cfg._run = run;
     }
