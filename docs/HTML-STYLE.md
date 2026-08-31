@@ -55,6 +55,13 @@ On a phone, test it at arm’s length. Decks and documents run `text-xl` with `l
 dense working surfaces run smaller, kept honest by one size per tier rather than by a
 number.
 
+**A short text block balances its lines.** One or two sentences left to wrap
+break wherever the column ends, and the last line is routinely two words: a
+lede, a caption, or a heading reads as broken text before it reads as a
+sentence. Put `text-balance` on any block short enough to be read at a glance
+and `text-pretty` on running copy, which fixes the widow without evening out
+lines that should stay full.
+
 **Content has one size.** The page has two tiers: content and chrome. Everything
 the reader came to read shares a size; reserve `text-xs` and monospace for labels,
 counters, and timestamps. A smaller summary quietly demotes what may matter most.
