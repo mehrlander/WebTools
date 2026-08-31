@@ -28,6 +28,11 @@ import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
 const { window } = makeWindow({ html: '<!doctype html><html><body></body></html>' });
 const doc = window.document;
 const Alpine = await startAlpine(window, [
+  // md-doc rides along because the launcher menu asks it what the page
+  // declared, and a stub would let the fab agree with a shape md-doc does not
+  // actually write. Loading it costs nothing: declare and declaredIn touch no
+  // marked, which the kit only reads inside the parsing paths.
+  'lib/kits/md-doc.js',
   'lib/kits/guide-render.js', 'lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js',
 ]);
 
@@ -63,7 +68,7 @@ test('with nothing declaring one, the menu is the built-in row alone', async () 
   d.openFabMenu();
   assert.equal(d.fabMenu, true);
   assert.equal(d.pageMenu.length, 0,
-    'a page that contributes nothing must not grow a divider under Take a note');
+    'a page that contributes nothing must not grow a divider under the aim rows');
 });
 
 test('a page contributes its rows, and they carry the side they came from', async () => {
@@ -313,3 +318,130 @@ test('the press it consumed does not eat the NEXT ordinary tap', async () => {
   d.onUp({});
   assert.equal(d.open, true, 'so the next tap still opens the drawer');
 });
+
+// ── The aim rows ───────────────────────────────────────────────────────────
+//
+// The menu had one note destination and the card had four aims, so three of
+// them were two taps further in. These check the one that is conditional, since
+// the other three are unconditional rows and a template test would only be
+// re-reading the template.
+
+const rowLabels = (host) =>
+  [...host.querySelectorAll('button span')].map(e => e.textContent.trim()).filter(Boolean);
+
+// A declared markdown render, made the way kits/md-doc.js makes one, so the
+// fab is reading a real declaration rather than a shape a stub agreed to.
+function declareMarkdown() {
+  const box = doc.createElement('div');
+  doc.body.appendChild(box);
+  window.mdDoc.declare(box, {
+    addr: { repo: 'mehrlander/web-tools', ref: 'main', path: 'docs/APP.md' },
+    sections: [{ index: 0, depth: 1, title: 'The Web Tools app', slug: 'the-web-tools-app' }],
+    source: '# The Web Tools app\n',
+  });
+  return box;
+}
+
+test('with nothing declared, the aim rows are the three that work anywhere', async () => {
+  clearPages();
+  const d = await mountFab();
+  d.openFabMenu();
+  await tick(2);
+  assert.equal(d.annKind, null, 'nothing declared, so no kind');
+  const labels = rowLabels(d.$root);
+  assert.ok(labels.includes('Note the page'));
+  assert.ok(labels.includes('Note an element'));
+  assert.ok(labels.includes('Note a region'));
+  assert.ok(!labels.some(l => l.startsWith('Note a markdown')),
+    'an aim that cannot hit anything must not be offered');
+});
+
+test('a declared render puts its own name on the row', async () => {
+  clearPages();
+  const box = declareMarkdown();
+  const d = await mountFab();
+  d.openFabMenu();
+  await tick(2);
+  assert.equal(d.annKind.kind, 'markdown');
+  // The label is the registry's, not this file's: docs/routes-kinds.csv owns
+  // aim_label and kits/md-doc.js carries it onto the declaration.
+  assert.equal(d.annKind.aimLabel, 'Markdown section');
+  assert.ok(rowLabels(d.$root).includes('Note a markdown section'));
+  box.remove();
+});
+
+test('a declaration with no sections offers no row', async () => {
+  clearPages();
+  const box = doc.createElement('div');
+  doc.body.appendChild(box);
+  window.mdDoc.declare(box, { addr: {}, sections: [], source: 'no headings here' });
+  const d = await mountFab();
+  d.openFabMenu();
+  await tick(2);
+  assert.equal(d.annKind, null,
+    'a heading-less markdown file declares, and there is still nothing to aim at');
+  box.remove();
+});
+
+test('each row arms its own aim on the kit, and turns the annotator on first', async () => {
+  clearPages();
+  const calls = [];
+  window.Annotate = {
+    enabled: false,
+    enable() { this.enabled = true; calls.push('enable'); },
+    notePage(o) { calls.push('page:' + JSON.stringify(o)); },
+    startPick(o) { calls.push('pick:' + (o && o.aim ? o.aim : 'el')); },
+    startRegion() { calls.push('region'); },
+    declaredKind: () => null,
+    items: [],
+  };
+  const d = await mountFab();
+  await d.annAim('page');
+  await d.annAim('pick');
+  await d.annAim('section');
+  await d.annAim('region');
+  assert.deepEqual(calls,
+    ['enable', 'page:{"listen":false}', 'pick:el', 'pick:section', 'region'],
+    'the first aim enables and the rest find it already on');
+  delete window.Annotate;
+});
+
+// The toss case, and the bug the probe fixes. subjectReached is set inside
+// detect(), which runs when the DRAWER opens, so before a reader has opened the
+// drawer it is still false: a long press over a readable toss annotated the
+// shell. Measured in a browser 2026-08-31 (toss-render over data-view, the
+// frame holding a declared render, the fab reporting no kind), and held here.
+test('over a toss, the subject frame is probed rather than taken on the scan flag', async () => {
+  clearPages();
+  const framed = doc.implementation.createHTMLDocument('subject');
+  const box = framed.createElement('div');
+  framed.body.appendChild(box);
+  window.mdDoc.declare(box, {
+    addr: { repo: 'mehrlander/web-tools', ref: 'main', path: 'docs/APP.md' },
+    sections: [{ index: 0, depth: 1, title: 'The Web Tools app', slug: 'the-web-tools-app' }],
+    source: '# The Web Tools app\n',
+  });
+  window.__tossFrame = { contentDocument: framed, contentWindow: { document: framed } };
+
+  const d = await mountFab();
+  d.viaToss = true;
+  assert.equal(d.subjectReached, false, 'the drawer has not been opened, so no scan has run');
+  assert.equal(d._annDoc(), framed, 'the frame is readable now, whatever the scan flag says');
+  d.openFabMenu();
+  await tick(2);
+  assert.equal(d.annKind && d.annKind.kind, 'markdown',
+    'the kind is the subject frame\'s, not the shell\'s');
+
+  delete window.__tossFrame;
+});
+
+test('a sealed frame falls back to the shell rather than throwing', async () => {
+  clearPages();
+  window.__tossFrame = { get contentDocument() { throw new Error('cross-origin'); } };
+  const d = await mountFab();
+  d.viaToss = true;
+  assert.equal(d._annDoc(), doc, 'an unreadable subject leaves the shell as all there is');
+  assert.equal(d._declaredKind(), null);
+  delete window.__tossFrame;
+});
+
