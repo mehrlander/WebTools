@@ -17,6 +17,12 @@ let FILES = {};    // registry "<path>" -> parsed JSON
 // size on the entry and most of these tests do not care what it is.
 let TREES = {};
 let SEARCH = null; // response served for /search/code
+// The two knobs the code lane's own diagnosis needs. SEARCH_REJECT stands in
+// for a browser-level rejection (status 0, no response ever seen); RATE is what
+// /rate_limit answers, or null to make that call fail too.
+let SEARCH_REJECT = null;
+let RATE = null;
+let RATE_CALLS = 0;
 let TREE_CALLS = [];
 
 class FakeGH {
@@ -39,7 +45,15 @@ class FakeGH {
       };
       throw Object.assign(new Error('GitHub Error 404'), { status: 404 });
     }
-    if (String(path).startsWith('/search/code') && SEARCH) return SEARCH;
+    if (String(path).startsWith('/search/code')) {
+      if (SEARCH_REJECT) throw SEARCH_REJECT;
+      if (SEARCH) return SEARCH;
+    }
+    if (String(path) === '/rate_limit') {
+      RATE_CALLS++;
+      if (!RATE) throw Object.assign(new Error('Network error on GET /rate_limit: Failed to fetch'), { status: 0 });
+      return RATE;
+    }
     throw Object.assign(new Error('404'), { status: 404 });
   }
 }
@@ -170,6 +184,55 @@ test('code: scope rides the query, fragments become clipped snippets', async () 
   assert.equal(res.total, 1);
   assert.equal(res.hits[0].path, 'lib/x.js');
   assert.match(res.hits[0].frag, /needle sits here/);
+});
+
+// ── The code lane's diagnosis ────────────────────────────────────────────────
+//
+// A rejected fetch is the browser refusing to hand the response over, so the
+// page never sees a status and gh-api can only report "Failed to fetch". These
+// hold the second call that turns that into a reading. `status: 0` is the
+// signal, set by gh-api on exactly that path.
+const REJECTED = () => Object.assign(
+  new Error('Network error on GET /search/code?q=x: Failed to fetch'), { status: 0 });
+const budget = (remaining, limit = 10, inSecs = 42) => ({
+  resources: { code_search: { limit, remaining, reset: Math.round(Date.now() / 1000) + inSecs } },
+});
+
+test('code: a spent code-search limit is named, with the seconds until it resets', async () => {
+  SEARCH_REJECT = REJECTED(); RATE = budget(0); RATE_CALLS = 0;
+  await assert.rejects(ES.code({ q: 'x', scope: 'user:me', token: 'tkn' }), (e) => {
+    assert.match(e.message, /Code search is rate limited: 0 of 10 left, resets in 4[12]s\./);
+    assert.equal(e.status, 0);
+    assert.match(e.cause.message, /Failed to fetch/, 'the browser\'s own words are kept underneath');
+    return true;
+  });
+  assert.equal(RATE_CALLS, 1, 'one extra call, and only on a rejection');
+});
+
+test('code: budget left means the refusal was not the limit, and says so', async () => {
+  SEARCH_REJECT = REJECTED(); RATE = budget(9);
+  await assert.rejects(ES.code({ q: 'x', scope: 'user:me', token: 'tkn' }), (e) => {
+    assert.match(e.message, /Not the rate limit: 9 of 10 left/);
+    assert.match(e.message, /repo scope/, 'and names the thing left to check');
+    return true;
+  });
+});
+
+test('code: when /rate_limit fails too, the host is gone and the original stands', async () => {
+  SEARCH_REJECT = REJECTED(); RATE = null;
+  await assert.rejects(ES.code({ q: 'x', scope: 'user:me', token: 'tkn' }), (e) => {
+    assert.match(e.message, /Failed to fetch/, 'nothing is invented over an unreachable host');
+    return true;
+  });
+});
+
+test('code: a GitHub answer speaks for itself and costs no second call', async () => {
+  SEARCH_REJECT = Object.assign(new Error('GitHub Error 422: Validation Failed'), { status: 422 });
+  RATE = budget(0); RATE_CALLS = 0;
+  await assert.rejects(ES.code({ q: 'x', scope: 'user:me', token: 'tkn' }),
+    /GitHub Error 422: Validation Failed/);
+  assert.equal(RATE_CALLS, 0, 'a status means the page saw the response; there is nothing to diagnose');
+  SEARCH_REJECT = null;
 });
 
 test('sessions: greps what a record quotes, caches the corpus, newest first', async () => {
