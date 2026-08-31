@@ -1645,6 +1645,17 @@ test('the card recognizes a selection and offers it, and the offer outlives the 
     assert.match(S.selQuote.textContent, /quick brown fox/, 'and quotes it back');
     assert.equal(A.staged.type, 'text');
 
+    // AND THE OTHER HALF OF THE STAGE CARRIES THE SAME WAY OUT. The floating
+    // chip beside the text is built from the same offer pair the two aims use,
+    // so its ✕ drops the passage, the bar and the chip together. Before
+    // 2026-08-31 the chip had no ✕ at all: it vanished on its own when the
+    // browser dropped the highlight while the bar kept the stage, which is one
+    // stage answering a tap two ways.
+    const chip = doc.querySelector('[data-annotate-offer]');
+    assert.ok(chip, 'the floating chip is an offer pair');
+    assert.deepEqual([...chip.querySelectorAll('button')].map(b => b.textContent),
+      ['+ note', '✕'], 'take it, or let it go');
+
     // The tap that reaches the card is the tap most likely to have collapsed
     // the selection, so the stage has to survive it.
     sel.removeAllRanges();
