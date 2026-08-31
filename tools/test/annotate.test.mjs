@@ -1656,12 +1656,40 @@ test('the card recognizes a selection and offers it, and the offer outlives the 
     assert.deepEqual([...chip.querySelectorAll('button')].map(b => b.textContent),
       ['+ note', '✕'], 'take it, or let it go');
 
+    // A SECOND POINTERUP OVER THE SAME LIVE SELECTION LEAVES THE CHIP ALONE.
+    // It used to tear it down and build an identical one, which is what made
+    // the tap meant to dismiss the chip rebuild it instead: iOS collapses a
+    // selection as the tap's default action, after this handler has already
+    // run, so the handler sees the passage still selected and re-offers it.
+    doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
+    await new Promise((done) => setTimeout(done, 40));
+    assert.equal(doc.querySelector('[data-annotate-offer]'), chip,
+      'the same passage must keep the same chip, not get a twin');
+
     // The tap that reaches the card is the tap most likely to have collapsed
     // the selection, so the stage has to survive it.
     sel.removeAllRanges();
     doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
     await new Promise((done) => setTimeout(done, 40));
     assert.equal(S.selBar.style.display, 'flex', 'a collapsed selection leaves the offer standing');
+
+    // BUT THE CHIP GOES WITH THE SELECTION, and it does not need a pointerup to
+    // notice. A chip pointing at text that is no longer selected still refuses
+    // pointerdown, which is how it came to swallow the next tap.
+    assert.equal(doc.querySelector('[data-annotate-offer]'), null,
+      'the chip belongs to the selection, not to the stage');
+
+    const again = doc.getElementById('p1').firstChild;
+    const r2 = doc.createRange();
+    r2.setStart(again, 4); r2.setEnd(again, 19);
+    sel.removeAllRanges(); sel.addRange(r2);
+    doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
+    await new Promise((done) => setTimeout(done, 40));
+    assert.ok(doc.querySelector('[data-annotate-offer]'), 'a fresh selection offers again');
+    sel.removeAllRanges();
+    doc.dispatchEvent(new window.Event('selectionchange', { bubbles: true }));
+    assert.equal(doc.querySelector('[data-annotate-offer]'), null,
+      'selectionchange alone clears it, with no pointer event behind it');
 
     const go = [...S.selBar.querySelectorAll('button')].find(b => b.textContent === '+ note');
     go.dispatchEvent(new window.Event('click', { bubbles: true }));
