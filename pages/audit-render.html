@@ -742,7 +742,6 @@ window.__audit = {
     get vocab() { return this.so.vocabulary.filter(v => this.count(v.label)); },
     get sides() { return [...new Set(this.vocab.map(v => v.side))]; },
     count(l) { return this.units.filter(u => u.label === l).length; },
-    gloss(l) { return (this.so.vocabulary.find(v => v.label === l) || {}).gloss || ''; },
     side(l) { return (this.so.vocabulary.find(v => v.label === l) || {}).side || ''; },
     // Words, not units: a one-line NAV pointer and a four-sentence provenance
     // paragraph are one unit each and are not the same amount of document.
@@ -1416,10 +1415,10 @@ window.__audit = {
         <b class="font-mono" x-text="sel?.uid"></b>
         <span class="badge badge-sm border-0"
               :style="`background:rgba(${HUE[sel?.label]},.25)`" x-text="sel?.label"></span>
-        <span class="opacity-60" x-text="gloss(sel?.label)"></span>
-        <span class="badge badge-sm badge-outline" x-text="side(sel?.label)"></span>
         <span class="opacity-60 font-mono" x-text="sel?.words + 'w · ' + sel?.kind"></span>
         <span class="opacity-60 font-mono" x-text="sel?.ref"></span>
+        <span class="opacity-60 font-mono" x-show="sel?.from" x-cloak
+              x-text="'split from ' + String(sel?.from).replace(/^split:/, '')"></span>
         <span class="italic opacity-70" x-show="sel?.note" x-text="sel?.note"></span>
         <span class="opacity-60" x-show="unpinned.length" x-cloak
               x-text="unpinned.join(' and ') + ' sits in markup, so it has no place to be dragged'"></span>
@@ -1523,13 +1522,14 @@ window.__audit = {
           </tbody>
         </table>
         <table class="table table-sm mt-2">
-          <thead><tr><th>label</th><th>units</th><th>words</th><th>side</th></tr></thead>
+          <thead><tr><th>label</th><th>units</th><th>words</th><th>side</th><th>is</th></tr></thead>
           <tbody>
             <template x-for="v in vocab" :key="v.label">
               <tr><td class="font-mono" x-text="v.label"></td>
                   <td class="font-mono" x-text="count(v.label)"></td>
                   <td class="font-mono" x-text="shareOf[v.label] + '%'"></td>
-                  <td class="opacity-60" x-text="v.side"></td></tr>
+                  <td class="opacity-60" x-text="v.side"></td>
+                  <td class="opacity-60" x-text="v.gloss"></td></tr>
             </template>
           </tbody>
         </table>
