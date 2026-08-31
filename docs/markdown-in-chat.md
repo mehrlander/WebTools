@@ -27,7 +27,7 @@ links). Prefer the table when the items should be tappable; the code block
 when alignment matters more than navigation.
 
 This is the layout half of the surfacing conventions' existing "longer, not
-wider" instinct (see the `caption` skill's folder tables and the `tasks`
+wider" instinct (see the `caption` skill's grouped rows and the `tasks`
 board): one item per tight row beats packing several into a wide cell, and
 both beat a bullet cascade.
 

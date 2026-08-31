@@ -271,7 +271,7 @@ def load_vocab(root, override=None):
 # a typed cell that happens to run long. Off-vocabulary is not a finding for
 # these, because they were never trying to be one of the nine.
 VALUE_FIELD = re.compile(
-    r"^(.*_)?(title|name|label|id|key|path|url|agency|fund|item|section|step|"
+    r"^(.*_)?(title|name|label|id|key|path|url|agency|fund|item|section|step|form|"
     r"unit|grain|measure|values?|column_roles|primary_key|reads|via|maps|"
     r"applies_to|carrier|host|from|verdict|deliverable|authoritative|target|record_owner|instead_of|aliases)$", re.I
 )
