@@ -917,7 +917,11 @@ window.__audit = {
           el.style.transition = 'background-color .12s ease';
           el.onpointerenter = () => { if (this.sel?.uid !== u.uid) el.style.background = bgOver; };
           el.onpointerleave = () => { if (this.sel?.uid !== u.uid) el.style.background = bg; };
-          el.style.boxShadow = `inset 2px 0 0 0 ${tint(u.label, .9 * this.dim(u))}`;
+          // The unit's start edge, at the least it can be and still be seen. It is
+          // not decoration: adjacent units sharing a label share a tint, so this
+          // rule is the only thing separating them, and a boundary is the object
+          // ops.py splits and merges. Was 2px at .9, which read as a rail.
+          el.style.boxShadow = `inset 1px 0 0 0 ${tint(u.label, .45 * this.dim(u))}`;
           el.style.opacity = this.dim(u);
           if (broken) el.style.outline = '1px dotted rgba(239,68,68,.8)';
           // THE SEPARATOR IS ITS OWN NODE, appended after the map runs below.
