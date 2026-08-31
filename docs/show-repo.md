@@ -1157,7 +1157,7 @@ measuring something wider than the branch. A tooltip never appears on a phone,
 so on a phone it said nothing at all. Thirteen characters is a real cost on this
 row and it is the right trade, since the alternative was a caveat nobody could
 reach. The general rule it is a case of is now in
-[HTML-STYLE.md](HTML-STYLE.md), and [`scripts/stranded-titles.py`](../scripts/stranded-titles.py)
+[the house style](../skills/daisy-alpine/SKILL.md), and [`scripts/stranded-titles.py`](../scripts/stranded-titles.py)
 counts the remaining cases.
 
 **Stage** sends the files this branch changed to the Stage (one `compare` call,

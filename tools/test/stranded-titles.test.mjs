@@ -1,5 +1,5 @@
 // scripts/stranded-titles.py — the advisory detector for meaning that lives only
-// in a `title` attribute (HTML-STYLE.md: "a tooltip worth having is worth building").
+// in a `title` attribute (the house style: "a tooltip worth having is worth building").
 //
 // What is worth pinning is the CLASSIFIER, not the report. The audit behind
 // PR #447 ran three times by hand before this script existed and was wrong all

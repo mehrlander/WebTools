@@ -1,5 +1,5 @@
 // screenshot.mjs scenario: measure horizontal overflow, which a viewport shot
-// cannot show (HTML-STYLE's "Show pixels" boundary). Reports scrollWidth against
+// cannot show (the house style's "Show pixels" boundary). Reports scrollWidth against
 // clientWidth in both views and inside the doc container.
 export default async function (page) {
   await page.waitForSelector('[x-ref="doc"] div');
