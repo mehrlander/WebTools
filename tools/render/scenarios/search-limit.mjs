@@ -4,10 +4,10 @@
 //   node tools/render/screenshot.mjs app/index.html --query "case=limit" \
 //     --script tools/render/scenarios/search-limit.mjs --width 900
 //
-// `case=limit` spends the code_search bucket; `case=refused` leaves budget on
-// it. The two are the whole point of the second call: the same browser-level
-// "Failed to fetch" resolves to different readings, and neither of them is
-// "Failed to fetch".
+// `case=limit` spends the code_search bucket, `case=refused` leaves budget on
+// it, and `case=unreachable` fails the /rate_limit call too. The three are the
+// whole point of the second call: one browser-level "Failed to fetch" resolves
+// to three different readings, and none of them is "Failed to fetch".
 //
 // Both sides are stubbed on GH.prototype.req, which is the seam the diagnosis
 // runs across: the search rejects with status 0 (what gh-api sets when the
@@ -28,6 +28,9 @@ export default async function (page) {
         throw Object.assign(new Error('Network error on GET ' + path + ': Failed to fetch'), { status: 0 });
       }
       if (String(path) === '/rate_limit') {
+        if (kind === 'unreachable') {
+          throw Object.assign(new Error('Network error on GET /rate_limit: Failed to fetch'), { status: 0 });
+        }
         return { resources: { code_search: {
           limit: 10, remaining: kind === 'limit' ? 0 : 7,
           reset: Math.round(Date.now() / 1000) + 38,
