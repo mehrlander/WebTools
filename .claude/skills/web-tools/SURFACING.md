@@ -46,7 +46,7 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
   **Boundary:** token-gated with the same in-app-browser caveat as `#gh=`; for a tokenless reader, download the bundle and hand it over. A stage is an inline handoff, not a caption row. See `docs/stage.md`, `docs/show-repo.md`, and `.web-tools.json`.
 
 * **Carry content in an envelope.** A curated, annotated set of files, chats, diffs, or search hits that should travel and render together goes in an envelope rather than an ad-hoc format. The carriers are stage, surface (`pages/app.html` estate view), chat-results (`pages/chat-results.html`) and data view (`pages/data-view.html`).
-  **Boundary:** they share the `owner/repo[@ref]:path` grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. Contracts in [`docs/envelopes/`](https://github.com/mehrlander/web-tools/tree/main/docs/envelopes): `docs/envelopes/surface.md`, `docs/envelopes/chat-results.md`, `docs/envelopes/data-view.md`.
+  **Boundary:** they share the `owner/repo[@ref]:path` grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. One contract per carrier in [`docs/envelopes/`](https://github.com/mehrlander/web-tools/tree/main/docs/envelopes).
 
 * **Toss data 📊.** Address a CSV, JSON array, or log through the data route so it opens readable rather than raw: `toss-render.html#data=owner/repo[@ref]:path`. It picks a mode by content (table, tree, preview, code, raw) and leaves every other one a tap away. Bare bytes need no wrapper; an `items` envelope adds several files with a default view and notes for each, and a trailing `#item=<name|index>` opens on one.
   **A PDF has two routes.** `#data=` is the first look: the page drawn, a pager, the real page and byte counts. `#pdf=` is the workbench (`pages/pdf-inspect.html`), down to characters, vector rules and detected table cells. Pick by what the reader is meant to do.
@@ -72,12 +72,10 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
   **Form:**
   ```
   🌿 [<branch>](…/pages/branch.html#gh=<owner>/<repo>@<branch>) · <N> files · [this turn](…/commit/<sha>)
-
-  🥏 [pages/index.html](…)
   ```
   `<N>` is `git diff origin/main...HEAD --name-only | wc -l`. `this turn` is that turn's own commit; drop it where the branch has a single commit. The render line follows unchanged.
 
-  **Addressing one file, or one pane.** `&file=<path>` opens the file deck on that file, which for a changed file beats a `[new]` blob: the slide carries the diff, the file rendered as itself, and the compare bar. `&pane=files` opens on the file list rather than the guide. Address grammar: [show-repo.md](https://github.com/mehrlander/web-tools/blob/main/docs/show-repo.md).
+  **Addressing one file, or one pane.** `&file=<path>` opens the file deck on that file, which for a changed file beats a `[new]` blob: the slide carries the diff, the file itself, and the compare bar. `&pane=files` opens on the file list rather than the guide. Address grammar: [show-repo.md](https://github.com/mehrlander/web-tools/blob/main/docs/show-repo.md).
 
   **Where the enumerated list still applies.** The branch page is token-gated, so a reader with no stored token, or a repo with no deployed page, needs the list. Rows stay uniform, filenames plain, link words tappable, a file's links not repeated within a turn:
 
