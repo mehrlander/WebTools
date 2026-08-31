@@ -102,7 +102,7 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
   **Boundary:** it supplements the caption, never replaces it, and is token-gated like every `#gh=`. 🌿 reads the branch, 🔍 the diff.
 
 * **Close in one order.** Parts that do not apply are skipped; the order never varies: the 🌿 caption line, the render line, 🧭, then exactly one closing state, last.
-  **Boundary:** a reply that changed no files still closes with a state, and nothing follows it.
+  **Boundary:** a reply that changed no files still closes with a state, and nothing follows it. A wake that changed nothing is the exception and says nothing at all: no state, no restated list.
 
 * **Session diff.** Summarize substantial work with `Session diff: [main...branch](url)`.
 
