@@ -53,8 +53,17 @@
     await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
   await gh.load('kits/dictate.js');     // the voice buffer; annotate reads it at the point of use
+  await gh.load('kits/peek.js');        // the DOM reading behind the card's fourth chip
+  await gh.load('kits/src-doc.js');      // the declaration carrier md-doc announces through
+  await gh.load('kits/md-doc.js');      // the declared render: heading menus + section notes
   await gh.load('kits/annotate.js');
   const { marked } = await import('https://cdn.jsdelivr.net/npm/marked@12/+esm');
+  // ON THE WINDOW, not just in scope: kits/md-doc.js lexes headings through
+  // `window.marked` and answers with NO SECTIONS when it cannot find one. A
+  // module-scoped const rendered the page perfectly and split it into nothing,
+  // so the render declared itself, the address worked, and the Section chip
+  // stayed hidden on the one page built to offer it (measured 2026-08-29).
+  window.marked = marked;
 
   const DEFAULT_DOC = 'docs/CONVENTIONS.md';
 
@@ -126,6 +135,22 @@
       if (isMd) {
         el.innerHTML = marked.parse(text);
         el.className = 'max-w-none leading-relaxed';
+        // DECLARE the render, which is what turns this page from a viewer into
+        // the thing the annotator was built against: every heading gets a menu
+        // over that section's SOURCE, and a note anywhere in the box reads
+        // `docs/APP.md § Mechanism (lines 16-28)` instead of a css path.
+        //
+        // The page fetched this markdown and knows exactly where from, so the
+        // address costs nothing to supply. It went without one until
+        // 2026-08-29 purely because nobody wired it: the Section chip was
+        // therefore never offered on the one page built for annotating.
+        if (window.mdDoc) {
+          const sp = parseSpec(name);
+          window.mdDoc.enhance(el, text, this.pasted ? {} : {
+            addr: { repo: sp.repo || 'mehrlander/web-tools', ref: sp.ref || 'main',
+                    path: sp.path, url: blobUrl(name) },
+          });
+        }
       } else {
         el.textContent = '';
         const pre = document.createElement('pre');

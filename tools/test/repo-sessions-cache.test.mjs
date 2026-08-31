@@ -237,6 +237,82 @@ test('docAttention counts distinct sessions per doc and stays uncapped', () => {
   assert.equal(cache.docAttention.length, 61, 'no cap: 60 docs plus the hot one');
 });
 
+// The skill channel. Every fold above counts a file being opened; this one
+// counts a skill being invoked, and they are not the same event. The harness
+// loads a skill body on invocation without touching a file tool, so `files`
+// carries a skill's SKILL.md only when a session opened it to EDIT it. Folding
+// skills out of `files` therefore produces a number that looks like usage and
+// measures authorship, which is why these two channels stay apart.
+
+test('skillCallsOf reads invocation from the Skill call, not from any file read', () => {
+  const r = record({
+    files: { 'web-tools/skills/daisy-alpine/SKILL.md': { edit: 6 } },
+    calls: [
+      { name: 'Skill', arg: { skill: 'dataviz' } },
+      { name: 'Read', arg: 'web-tools/skills/daisy-alpine/SKILL.md' },
+      { name: 'Bash', arg: 'cat web-tools/skills/daisy-alpine/SKILL.md' },
+    ],
+  });
+  assert.deepEqual(S.skillCallsOf(r), { dataviz: 1 },
+    'editing a skill six times is not the skill firing, and reading it is not either');
+});
+
+test('skillCallsOf accepts an argument stored as JSON text, and drops anything else', () => {
+  const r = record({ calls: [
+    { name: 'Skill', arg: '{"skill":"tasks","args":"file a task"}' },
+    { name: 'Skill', arg: 'tasks' },        // bare string: no skill key to read
+    { name: 'Skill', arg: '{not json' },
+    { name: 'Skill', arg: { args: 'no skill named' } },
+    { name: 'Skill' },
+  ] });
+  assert.deepEqual(S.skillCallsOf(r), { tasks: 1 },
+    'a malformed argument is dropped rather than guessed at');
+});
+
+test('a plugin skill and its local twin fold onto one name', () => {
+  const r = record({ calls: [
+    { name: 'Skill', arg: { skill: 'portable:tasks' } },
+    { name: 'Skill', arg: { skill: 'tasks' } },
+  ] });
+  assert.deepEqual(S.skillCallsOf(r), { tasks: 2 },
+    'one library reached two ways is one skill');
+});
+
+test('skillAttention counts distinct sessions per skill and stays uncapped', () => {
+  const mk = (short, day, calls) => record({ short, day, started: `${day}T09:00:00Z`, calls });
+  const many = [];
+  for (let i = 0; i < 60; i++) many.push({ name: 'Skill', arg: { skill: 'lib' + i } });
+  const cache = S.buildCache(null, {
+    'sessions/2026/08/2026-08-01-aaaaaaaa.json': { record: mk('aaaaaaaa', '2026-08-01', [{ name: 'Skill', arg: { skill: 'tasks' } }]), sha: 'a' },
+    'sessions/2026/08/2026-08-02-bbbbbbbb.json': { record: mk('bbbbbbbb', '2026-08-02', [
+      { name: 'Skill', arg: { skill: 'tasks' } },
+      { name: 'Skill', arg: { skill: 'portable:tasks' } },
+    ]), sha: 'b' },
+    'sessions/2026/08/2026-08-03-cccccccc.json': { record: mk('cccccccc', '2026-08-03', many), sha: 'c' },
+  }, null, '2026-08-05T18:00:00Z');
+
+  const tasks = cache.skillAttention.find(a => a.path === 'tasks');
+  assert.equal(tasks.sessions, 2, 'two sessions invoked it');
+  assert.equal(tasks.count, 3, 'three calls across them');
+  assert.equal(tasks.last, '2026-08-02T09:00:00Z');
+  assert.equal(cache.skillAttention.length, 61,
+    'no cap: a skill that fired once must not fall off the list that reports never firing');
+});
+
+test('the skill fold never leaks into the doc fold, or the reverse', () => {
+  const cache = S.buildCache(null, {
+    'sessions/2026/08/2026-08-01-aaaaaaaa.json': { record: record({
+      files: { 'web-tools/docs/a.md': { read: 1 }, 'web-tools/skills/x/SKILL.md': { edit: 2 } },
+      calls: [{ name: 'Skill', arg: { skill: 'x' } }],
+    }), sha: 'a' },
+  }, null, '2026-08-05T18:00:00Z');
+
+  assert.deepEqual(cache.docAttention.map(a => a.path), ['web-tools/docs/a.md'],
+    'a skill file is not a doc');
+  assert.deepEqual(cache.skillAttention.map(a => a.path), ['x'],
+    'and the skill rollup is keyed by name, never by path');
+});
+
 test('a row built by an older summarizer is stale even when its sha never moves', () => {
   const p = 'sessions/2026/08/2026-08-05-b8fae678.json';
   const cache = S.buildCache(null, { [p]: { record: record(), sha: 'sha1' } }, null, '2026-08-05T18:00:00Z');

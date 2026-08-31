@@ -96,17 +96,17 @@
     return gh.decode(content);
   };
 
-  // What an item opens in when it doesn't say. The viewer's function form of
-  // defaultMode gets the file, so the choice can read the content, not just
-  // the extension: a JSON array is a table, a JSON object is a tree. Anything
-  // unavailable for the file falls back to raw inside the viewer's resolver,
-  // so this never has to check what a mode supports.
-  const AUTO_VIEW = (f) => {
-    if (f.ext === 'json') return f.content.trim().startsWith('[') ? 'table' : 'tree';
-    if (f.ext === 'csv' || f.ext === 'tsv') return 'table';
-    if (f.ext === 'md') return 'preview';
-    return 'raw';
-  };
+  // What an item opens in when it doesn't say. ViewRegistry.READ_MODE owns
+  // that policy for the whole estate and this page is its fourth reader.
+  //
+  // It was a private AUTO_VIEW until 2026-08-31, and the copy had drifted three
+  // ways: an unknown extension opened raw here and as code there, the JSON
+  // table test read only the first character where the owner parses and
+  // requires every element to be an object, and the owner's 300KB guard
+  // (Prism highlights synchronously) was missing entirely. READ_MODE's answer
+  // wins on all three. The viewer's resolver still falls back where a mode is
+  // unavailable for the file, so this never has to check what a mode supports.
+  const AUTO_VIEW = (f) => window.ViewRegistry.READ_MODE(f);
 
   window.app = () => ({
     payload: null,

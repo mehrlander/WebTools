@@ -46,3 +46,10 @@ That is the general shape of every failure recorded on this page: not a link tha
 ## Viewer context
 
 Both 🥏 forms assume something about where the link opens, and the table's `viewer` axis is the short version. The long version worth keeping: the Claude app's in-app browser keeps its own storage, so the `ghToken` is not guaranteed there (historically absent, though it can be entered, after which `#gh=` works). Treat the token as possibly absent in the app. When it is, bake the page self-contained (`bake-page` skill) and publish it as a 📦 artifact, which renders on Claude sign-in with no token; 🥏 `#gz=` is the no-build fallback. Matrix and pipeline: [docs/artifacts.md](artifacts.md).
+
+## What a kind is doing on this tab
+
+The `subject` axis says a file needs a renderer. [`docs/routes-kinds.csv`](routes-kinds.csv) says which file, which renderer, and what a note can be pinned to inside it once it is open. That last clause is why it belongs here rather than beside the annotator: **showing does not end when the pixels land.** A link that reaches a markdown file and a link that reaches a PDF have put the reader in two different places, and what each can do next differs for the same reason the link did.
+
+The boundary that took finding: a kind is neither a page type nor a route. Markdown has no route of its own and is the kind with the most built on it; the `data` route carries five kinds; a PDF has two routes. So the tables join by column and stay separate by key, the arrangement [`registries.md`](registries.md) calls inheriting. The `subject` and `shown_by` cells are checked against the frame and the mechanism table by `routes-manifest.test.mjs`, so the association is a join rather than a resemblance.
+

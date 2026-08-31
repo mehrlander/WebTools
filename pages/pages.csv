@@ -1,5 +1,6 @@
 top,group,label,title,href,thumb,code,note
 main,,annotate,Annotate,annotate.html,thumbs/annotate.png,https://github.com/mehrlander/web-tools/blob/main/pages/annotate.html,
+main,,audit-render,Audit render,audit-render.html,thumbs/audit-render.png,https://github.com/mehrlander/web-tools/blob/main/pages/audit-render.html,
 main,,bench,Bench,bench.html,thumbs/bench.png,https://github.com/mehrlander/web-tools/blob/main/pages/bench.html,
 main,,branch,Branch,branch.html,thumbs/branch.png,https://github.com/mehrlander/web-tools/blob/main/pages/branch.html,
 main,,chat-results,Chat Search Results,chat-results.html,thumbs/chat-results.png,https://github.com/mehrlander/web-tools/blob/main/pages/chat-results.html,
@@ -16,6 +17,7 @@ main,,inquiry,Inquiry,inquiry.html,thumbs/inquiry.png,https://github.com/mehrlan
 main,,launcher,Popup Launcher · setup,launcher.html,thumbs/launcher.png,https://github.com/mehrlander/web-tools/blob/main/pages/launcher.html,"Popup launcher setup — paste a token, copy out the bookmarklet."
 main,,links,Links,links.html,thumbs/links.png,https://github.com/mehrlander/web-tools/blob/main/pages/links.html,"home's bookmarks board: a pinned rail, areas of links, and an area's markdown dossier, all editable in place."
 main,,pdf-inspect,PDF Inspect,pdf-inspect.html,thumbs/pdf-inspect.png,https://github.com/mehrlander/web-tools/blob/main/pages/pdf-inspect.html,
+main,,peek,Peek — DOM under a selection,peek.html,thumbs/peek.png,https://github.com/mehrlander/web-tools/blob/main/pages/peek.html,
 main,,repo-atlas,Repo Atlas,repo-atlas.html,thumbs/repo-atlas.png,https://github.com/mehrlander/web-tools/blob/main/pages/repo-atlas.html,"Zoomable treemap map of any GitHub repo — files as tiles, sized by bytes or count."
 main,,review,Review,review.html,thumbs/review.png,https://github.com/mehrlander/web-tools/blob/main/pages/review.html,"A branch changeset or file, reviewed: CM6 diffs vs a base, links, patch dumps — the 🔍 target."
 main,,session,Session,session.html,thumbs/session.png,https://github.com/mehrlander/web-tools/blob/main/pages/session.html,
