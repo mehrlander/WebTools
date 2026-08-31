@@ -184,7 +184,7 @@ test('the ask is filled on its BODY, so the icon stays out of the tint', () => {
   assert.equal(u.className, '', 'and the ask no longer carries one either');
   const fill = u.querySelector('.relative');
   assert.ok(/color-mix/.test(fill.style.background), 'the fill is on the body');
-  assert.equal(fill.style.marginLeft, '10px', 'starting right of the gutter the icon sits in');
+  assert.equal(fill.style.marginLeft, '17px', 'starting right of the gutter the icon sits in');
   assert.ok(!/bg-primary/.test(u.className), 'and no longer on the frame');
   const prose = a.querySelector('[data-flow="prose"]');
   assert.equal(prose.style.fontSize, '13px', 'the size step, as a style: it has to beat prose-sm on the same element');
@@ -246,12 +246,22 @@ test('a reply hangs on its lead; the ask puts the lead in a gutter instead', () 
   const u = dense({ role: 'user', md: 'a turn' });
   const lead = u.querySelector('i.ph').parentElement;
   assert.equal(lead.style.position, 'absolute', 'the ask\'s icon leaves the flow');
-  assert.equal(lead.style.left, '-10px', 'into the gutter, offset by the fill\'s own margin');
+  assert.equal(lead.style.left, '-17px', 'into the gutter, offset by the fill\'s own margin');
   // The body's padding is the fill's HUG now, not the hang: 5px of breathing
   // room inside the tint rather than 17px of clearance for a glyph that is no
   // longer in the flow.
   assert.equal(u.querySelector('.relative').style.paddingLeft, '5px', 'the hug, not the hang');
   assert.equal(u.querySelector('pre').style.textIndent, '0px', 'and no pull-back');
+
+  // THE GUTTER IS THE REPLY'S TEXT COLUMN, which is what makes it read as air
+  // after the glyph rather than as a second indent: the fill's left edge lands
+  // on the one vertical the card already had. Held as an equality rather than
+  // as two literals, because the pair is the rule and either number alone is
+  // not. At 10 the fill started one pixel inside the icon's own 11px box, so
+  // there was no gap at all and the tint arrived touching the glyph.
+  assert.equal(u.querySelector('.relative').style.marginLeft,
+    a.querySelector('.relative').style.paddingLeft,
+    'the ask\'s fill starts where the reply\'s text does');
 
   // Full size hangs nothing: its head is its own row.
   const full = cr.message({ role: 'user', md: 'a turn' }, { collapse: 0 });
@@ -292,7 +302,7 @@ test('an ask keeps its fill even where the lead could not fold', () => {
   assert.ok(standaloneHead(el), 'the fallback head is in play');
   const fill = el.querySelector('.relative');
   assert.ok(/color-mix/.test(fill.style.background), 'and the ask is still tinted');
-  assert.equal(fill.style.marginLeft, '10px');
+  assert.equal(fill.style.marginLeft, '17px');
   // The gutter is the half that needs a lead, so it stays gated.
   assert.equal(el.querySelector('i.ph').parentElement.style.position, '',
     'with no lead to fold, nothing is positioned into the gutter');
