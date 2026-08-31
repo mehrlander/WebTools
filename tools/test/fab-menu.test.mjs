@@ -28,11 +28,12 @@ import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
 const { window } = makeWindow({ html: '<!doctype html><html><body></body></html>' });
 const doc = window.document;
 const Alpine = await startAlpine(window, [
-  // md-doc rides along because the launcher menu asks it what the page
-  // declared, and a stub would let the fab agree with a shape md-doc does not
-  // actually write. Loading it costs nothing: declare and declaredIn touch no
-  // marked, which the kit only reads inside the parsing paths.
-  'lib/kits/md-doc.js',
+  // The declaration pair rides along because the launcher menu asks what the
+  // page declared, and a stub would let the fab agree with a shape the kits do
+  // not actually write. src-doc first: md-doc declares through it. Loading them
+  // costs nothing, since declare and declaredIn touch no marked, which md-doc
+  // only reads inside the parsing paths.
+  'lib/kits/src-doc.js', 'lib/kits/md-doc.js',
   'lib/kits/guide-render.js', 'lib/alpineComponents/path-picker.js', 'lib/alpineComponents/fab.js',
 ]);
 

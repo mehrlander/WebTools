@@ -330,19 +330,59 @@ test('the kinds table and the viewer classifier agree', () => {
   }
 });
 
-test("md-doc's declared kind matches its row", () => {
-  const block = mdDocSrc.match(/const KIND = Object\.freeze\(\{([\s\S]*?)\n {2}\}\);/);
-  assert.ok(block, 'the KIND literal is gone from lib/kits/md-doc.js');
+// Every kind that names a kit inlines its own row there, the way toss-render
+// inlines TOSS_ROUTES: the registry declares, the code carries a copy so no
+// render path takes a fetch, and adding to one alone fails here.
+function inlinedKind(src, file) {
+  const block = src.match(/const KIND = Object\.freeze\(\{([\s\S]*?)\n {2}\}\);/);
+  assert.ok(block, 'the KIND literal is gone from ' + file);
   const lit = {};
   for (const [, k, v] of block[1].matchAll(/(\w+):\s*'((?:[^'\\]|\\.)*)'/g)) lit[k] = v.replace(/\\'/g, "'");
-  const row = manifest.kinds.find(k => k.kind === 'markdown');
-  assert.ok(row, 'no markdown row in docs/routes-kinds.csv');
-  assert.equal(lit.kind, row.kind);
-  assert.equal(lit.label, row.label);
-  assert.equal(lit.aim, row.aim);
-  assert.equal(lit.aimLabel, row.aim_label);
-  assert.equal(lit.aimHint, row.aim_hint);
-  assert.ok(row.unit.startsWith(lit.unit), `unit: "${row.unit}" does not open with "${lit.unit}"`);
+  return lit;
+}
+
+test('every kind that names a kit inlines its own row there', () => {
+  const declaring = manifest.kinds.filter(k => k.kit);
+  assert.ok(declaring.length >= 2, 'a contract with one implementer is a rename');
+  for (const row of declaring) {
+    const src = readFileSync(path.join(repoRoot, row.kit), 'utf8');
+    const lit = inlinedKind(src, row.kit);
+    assert.equal(lit.kind, row.kind, row.kit + ': kind');
+    assert.equal(lit.label, row.label, row.kit + ': label');
+    assert.equal(lit.aim, row.aim, row.kit + ': aim');
+    assert.equal(lit.aimLabel, row.aim_label, row.kit + ': aim_label');
+    assert.equal(lit.aimHint, row.aim_hint, row.kit + ': aim_hint');
+    assert.ok(row.unit.startsWith(lit.unit),
+      `${row.kit}: unit "${row.unit}" does not open with "${lit.unit}"`);
+  }
+});
+
+// The optional half of the contract, stated as a check so it cannot quietly
+// become mandatory. A kind with an aim has to name what that aim is called and
+// what its hint says, since kits/annotate.js draws the row from those two and
+// an empty label would paint a blank control. A kind WITHOUT one carries
+// neither: source code declines the gesture half because a line range is what
+// an ordinary text selection already spans.
+test('a kind names its aim completely, or carries no aim at all', () => {
+  for (const k of manifest.kinds) {
+    if (k.aim) {
+      assert.ok(k.aim_label, k.kind + ': an aim with no label paints a blank row');
+      assert.ok(k.aim_hint, k.kind + ': an aim with no hint');
+      assert.ok(k.kit, k.kind + ': an aim needs a kit to define its units');
+    } else {
+      assert.equal(k.aim_label, '', k.kind + ': a label for an aim that does not exist');
+      assert.equal(k.aim_hint, '', k.kind + ': a hint for an aim that does not exist');
+    }
+  }
+});
+
+// The carrier is the one place the aim rule lives, and both conditions have to
+// be in it: a kind declaring an aim, and units for that aim to hit. Split
+// across the kits it would be re-derived by every kind that ever declares.
+test('the aim test is the carrier\'s, and tests both halves', () => {
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/src-doc.js'), 'utf8');
+  assert.match(src, /st\.kind && st\.kind\.aim && st\.units > 0/,
+    'kits/src-doc.js no longer tests both the declared aim and the unit count');
 });
 
 // The classification policy has ONE owner, and this is the check that keeps it

@@ -72,7 +72,7 @@ routes-kinds,exclusive,recorded,,none,column,yes,yes,"set where the viewer modul
 routes-kinds,view,recorded,,none,column,yes,,the viewer module id this kind opens in; blank where the kind has its own page rather than a mode
 routes-kinds,route,recorded,,none,column,no,,the toss route that addresses this kind; blank where none does
 routes-kinds,shown_by,recorded,,value,column,yes,,"the showing mechanisms that reach this kind, semicolon-separated"
-routes-kinds,kit,recorded,,none,column,no,,the kit that defines this kind's units; blank where nothing does yet
+routes-kinds,kit,recorded,,none,column,no,,"the kit that DECLARES this kind, carrying its row and resolving a position to its units; blank where nothing declares it yet, which a kit merely knowing the format does not"
 routes-kinds,unit,recorded,,none,column,yes,,what one aimable piece of this kind is
 routes-kinds,address,recorded,,none,column,yes,,what a position inside this kind reads as in the source's terms
 routes-kinds,aim,recorded,,none,column,yes,,the annotate aim this kind adds beyond the universal three; blank means only those three

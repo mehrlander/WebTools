@@ -25,6 +25,9 @@ import { marked } from 'marked';
 
 const { window } = makeWindow();
 window.marked = marked;
+// The carrier first: md-doc declares THROUGH kits/src-doc.js, which owns the
+// attribute, the property and the announcement for every kind that declares.
+new Function('window', 'document', readFileSync(path.join(repoRoot, 'lib/kits/src-doc.js'), 'utf8'))(window, window.document);
 new Function('window', 'document', readFileSync(path.join(repoRoot, 'lib/kits/md-doc.js'), 'utf8'))(window, window.document);
 const mdDoc = window.mdDoc;
 

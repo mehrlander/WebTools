@@ -29,6 +29,7 @@ window.marked = marked;
 // it puts there rather than defining a second one (tools/test/one-escape-helper).
 window.eval(readFileSync(path.join(repoRoot, 'lib/vanilla-bundle.js'), 'utf8'));
 window.eval(readFileSync(path.join(repoRoot, 'lib/kits/peek.js'), 'utf8'));
+loadKit('src-doc.js', { window });
 loadKit('md-doc.js', { window });
 loadKit('annotate.js', { window });
 const A = window.Annotate;

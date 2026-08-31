@@ -181,9 +181,15 @@ test('Showing carries the kinds, and the sparse cells survive the parse', () => 
   // tab of its own. routes-manifest.test.mjs checks they RESOLVE; this checks
   // the app is handed them at all.
   assert.ok(md.shown_by.split(';').filter(Boolean).length > 0);
+  // Source code is the second kind, and it is the one that shows the aim column
+  // is optional rather than unfilled: it declares (so it has a kit) and offers
+  // no gesture of its own, since a line range is what a text selection already
+  // spans. `delimited` is the other shape, a kind nothing declares yet.
   const code = kinds.find(k => k.kind === 'code');
+  assert.equal(code.kit, 'lib/kits/code-doc.js');
   assert.equal(code.aim, '', 'a kind with no added aim carries an empty cell, not a missing one');
-  assert.equal(code.kit, '');
+  assert.equal(kinds.find(k => k.kind === 'delimited').kit, '',
+    'a kind nothing declares yet carries a blank, which the card renders as absence');
 });
 
 test('with no ?use=, both manifests are read at main', () => {
