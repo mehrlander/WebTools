@@ -15,7 +15,7 @@
 
 <div x-data="themes" class="min-h-dvh grid grid-rows-[auto_1fr_auto] grid-cols-[minmax(0,1fr)] @container">
 
-  <header class="sticky top-0 z-30 bg-base-100/95 backdrop-blur border-b border-base-300">
+  <header class="sticky top-0 z-30 bg-base-100/90 backdrop-blur border-b border-base-300">
     <div class="px-4 pt-3 pb-2 flex items-center gap-2 flex-wrap">
       <span class="text-lg font-semibold mr-1">Themes</span>
       <div class="flex items-center gap-0.5 rounded-lg bg-base-200/60 p-0.5 flex-wrap" role="tablist">
@@ -56,7 +56,7 @@
           <div class="flex items-baseline gap-2 flex-wrap mb-2">
             <template x-for="(f, fi) in c.files" :key="f">
               <span class="text-base">
-                <span x-show="fi" class="text-base-content/25">·</span>
+                <span x-show="fi" class="text-base-content/20">·</span>
                 <span class="text-base-content/40" x-text="dir(f)"></span><span class="font-medium" x-text="base(f)"></span>
               </span>
             </template>
@@ -64,7 +64,7 @@
           <template x-for="e in c.edges" :key="e.a + e.b">
             <div class="flex items-baseline gap-2 py-0.5">
               <span class="tabular-nums text-sm shrink-0 w-7 text-right"
-                    :class="e.reg === 'none' ? 'text-primary font-semibold' : 'text-base-content/35'" x-text="e.w"></span>
+                    :class="e.reg === 'none' ? 'text-primary font-semibold' : 'text-base-content/30'" x-text="e.w"></span>
               <span class="text-base text-base-content/70 leading-6">&ldquo;<span x-text="e.atoms[0]"></span>&rdquo;</span>
             </div>
           </template>
@@ -97,9 +97,9 @@
         <div class="border-l-2 pl-3" :class="e.reg === 'none' ? 'border-primary' : 'border-base-300'">
           <div class="flex items-baseline gap-2 flex-wrap">
             <span class="tabular-nums text-sm shrink-0"
-                  :class="e.reg === 'none' ? 'text-primary font-semibold' : 'text-base-content/35'" x-text="e.w"></span>
+                  :class="e.reg === 'none' ? 'text-primary font-semibold' : 'text-base-content/30'" x-text="e.w"></span>
             <span class="text-base"><span class="text-base-content/40" x-text="dir(e.a)"></span><span x-text="base(e.a)"></span></span>
-            <i class="ph ph-arrows-left-right text-base-content/25"></i>
+            <i class="ph ph-arrows-left-right text-base-content/20"></i>
             <span class="text-base"><span class="text-base-content/40" x-text="dir(e.b)"></span><span x-text="base(e.b)"></span></span>
           </div>
           <template x-for="(a, ai) in e.atoms" :key="ai">
@@ -129,7 +129,7 @@
             <div class="flex items-baseline gap-2 flex-wrap">
               <span class="tabular-nums text-sm text-primary font-semibold" x-text="pick.w"></span>
               <span class="text-base" x-text="pick.a"></span>
-              <i class="ph ph-arrows-left-right text-base-content/25"></i>
+              <i class="ph ph-arrows-left-right text-base-content/20"></i>
               <span class="text-base" x-text="pick.b"></span>
             </div>
             <p class="text-base text-base-content/70 leading-7 mt-1">&ldquo;<span x-text="pick.atoms[0]"></span>&rdquo;</p>
@@ -140,8 +140,8 @@
 
   </main>
 
-  <footer class="sticky bottom-0 bg-base-100/95 backdrop-blur border-t border-base-300 px-4 py-2
-                 flex items-center gap-3 flex-wrap text-sm text-base-content/45 tabular-nums">
+  <footer class="sticky bottom-0 bg-base-100/90 backdrop-blur border-t border-base-300 px-4 py-2
+                 flex items-center gap-3 flex-wrap text-sm text-base-content/40 tabular-nums">
     <span><span x-text="data.scanned"></span> markdown files</span>
     <span><span x-text="data.shingle"></span>-word windows</span>
     <span class="text-primary">accent: named by no registry row</span>
