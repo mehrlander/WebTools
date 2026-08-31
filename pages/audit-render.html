@@ -1041,9 +1041,32 @@ window.__audit = {
     },
     // The client rect of the collapsed range at a document offset, which is
     // what the pin painter measures from.
-    rectAt(at) {
-      const hit = Standoff.nodeAt(this.$refs.doc, at);
+    rectAt(at, which) {
+      // A BOUNDARY IS SHARED: it ends one unit and starts the next, and
+      // Standoff.nodeAt answers with the FIRST span containing the offset,
+      // which is the earlier one. Its rendered run is followed by the
+      // separator text node and both units' padding, so the mark landed 8 to
+      // 9px short of the text it opens, measured at 390 and 1280 alike. The
+      // later span's offset 0 is the same boundary at the place a reader sees
+      // it, so prefer it and keep nodeAt for the end of a paragraph, where
+      // there is no later span to ask.
+      let hit = Standoff.nodeAt(this.$refs.doc, at);
       if (!hit) return null;
+      // Landing at the END of a run means the boundary is a junction. Which
+      // side of it the mark belongs on depends on which edge is being drawn:
+      // a START edge OPENS the selected unit, so it belongs at that unit's
+      // first character, while an END edge CLOSES it and belongs at its last.
+      // nodeAt always answers with the earlier run, which is right for an end
+      // and 8 to 9px short for a start. An exact data-src match cannot find
+      // the later run either: mapText trims the slice's leading whitespace, so
+      // its data-src sits past the boundary by whatever white space separated
+      // them. Step to the next run instead.
+      if (which === 'start' && hit.offset >= hit.node.length) {
+        const runs = [...this.$refs.doc.querySelectorAll('[data-src]:not([data-atomic])')]
+          .map(sp => sp.firstChild).filter(n => n && n.nodeType === 3);
+        const next = runs[runs.indexOf(hit.node) + 1];
+        if (next) hit = { node: next, offset: 0 };
+      }
       const r = document.createRange();
       r.setStart(hit.node, hit.offset);
       r.collapse(true);
@@ -1084,7 +1107,7 @@ window.__audit = {
     placePins() {
       const layer = this.$refs.pins;
       if (!layer || typeof Dictate === 'undefined') return;
-      const found = this.edges.map(e => ({ ...e, rect: this.rectAt(e.at) }));
+      const found = this.edges.map(e => ({ ...e, rect: this.rectAt(e.at, e.edge) }));
       this.unpinned = found.filter(e => !e.rect).map(e => e.edge);
       const rectOf = (which) => found.find(e => e.edge === which && e.rect)?.rect || null;
       Dictate.pins(layer, {
