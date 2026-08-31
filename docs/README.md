@@ -22,7 +22,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`APP.md`](APP.md) — the Web Tools app: mission, durable goals, and the name split
 - [`CONSTELLATION.md`](CONSTELLATION.md) — the portable kernel of the what-goes-where doctrine
 - [`CONVENTIONS.md`](CONVENTIONS.md) — the portable working conventions: the general-behavior hub
-- [`HTML-STYLE.md`](HTML-STYLE.md) — the house style for pages: what to build, as against how
+- [`HTML-STYLE.md`](HTML-STYLE.md) — a pointer to the house style, kept for the names the style guide is asked for: the rules themselves moved into the daisy-alpine skill on 2026-08-31, where they fire on page work unprompted, and the mechanics beside it
 - [`MARKETPLACE.md`](MARKETPLACE.md) *(orphan)* — the plugin marketplace: how the set is published and subscribed to
 - [`PORTABLE.md`](PORTABLE.md) — the portable set: what travels, and how to adopt it
 - [`README.md`](README.md) — the docs folder's front door: the generated index of this registry
@@ -113,5 +113,5 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`mcp-server-routing.md`](github/mcp-server-routing.md) *(record, orphan)* — two GitHub MCP servers at once: the 2026-07-15 observation, superseded
 - [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) — why a merged branch stops being a live workspace: merged means closed
 
-12 shared statements are registered in
+13 shared statements are registered in
 [`owners.csv`](owners.csv), with each repetition in [`repetitions.csv`](repetitions.csv).

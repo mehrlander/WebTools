@@ -1,133 +1,123 @@
 ---
 name: daisy-alpine
-description: The binding house style for every HTML page built here, and the DaisyUI 5 / Tailwind CSS 4 / Alpine.js mechanics for building it. This is the HTML style guide, the page style guide, the house rules for what a page looks like. Read it BEFORE laying out any page and BEFORE any general design, dashboard, or charting skill, which recommend what these rules forbid: no stat cards, no KPI tiles, no explanatory prose on the page, browsing takes the full viewport, type sized for reading. Use when creating or reviewing an HTML page, artifact, single-file web app, dashboard, interactive prototype, web UI component, or browser tool; when asked why a page looks wrong or how pages here should look; and whenever the user mentions the style guide, house style, page layout, or stat cards. Also covers DaisyUI component syntax, Alpine.js V3 patterns, tooltips, and migration notes from Alpine V2.
+description: The binding house style for every HTML page built here: what a page looks like, not how it is built. This is the HTML style guide, the page style guide, the house rules for what a page looks like. Read it BEFORE laying out any page and BEFORE any general design, dashboard, or charting skill, which recommend what these rules forbid: no stat cards, no KPI tiles, no explanatory prose on the page, browsing takes the full viewport, type sized for reading. Use when creating or reviewing an HTML page, artifact, single-file web app, dashboard, interactive prototype, web UI component, or browser tool; when asked why a page looks wrong or how pages here should look; and whenever the user mentions the style guide, house style, page layout, or stat cards. The DaisyUI 5 / Tailwind CSS 4 / Alpine.js mechanics for building it, including component syntax, tooltips, CDN loading and the traps that compile to nothing, are in references/mechanics.md beside this file.
 ---
 
-# DaisyUI + Alpine.js Reference
+# HTML house style
 
-Component reference and patterns for building browser-based UI with DaisyUI 5 (Tailwind CSS 4) and Alpine.js.
+What pages built here look like. How to build them, meaning the DaisyUI,
+Tailwind and Alpine mechanics, is
+[`references/mechanics.md`](references/mechanics.md) beside this file. The names
+this is asked for, and why a doc has to carry the words a stranger would search,
+are at
+[`docs/HTML-STYLE.md`](https://github.com/mehrlander/web-tools/blob/main/docs/HTML-STYLE.md).
 
-## House style: read this before laying out a page
-
-This file covers **how to build**. These cover **what to build**, and they are not
-preferences to weigh. Each one is here because the same correction kept being issued
-by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-tools`.
-
-**These override any general design, dashboard, or charting skill, including a
+These are standing decisions. If a correction recurs, write it down instead of
+relitigating it per page
+([CONVENTIONS.md](https://github.com/mehrlander/web-tools/blob/main/docs/CONVENTIONS.md#standing-decisions-write-the-answer-down-not-just-the-question)).
+**They override any general design, dashboard, or charting skill, including a
 bundled one.** That is not a courtesy note: on 2026-08-29 a session loaded the
 bundled `dataviz` skill, whose form heuristic offers "a stat tile or hero number"
 as a legitimate answer, and shipped a page of stat cards while this file sat
 unloaded. A general skill recommending what rule 1 forbids is the expected case,
 not a conflict to weigh. Load the local rule first.
 
-1. **No stat cards.** A row of tiles, each a label over a big number, is the default
-   output of a model asked to build a dashboard and is nearly always wrong. It takes
-   the top of the page and the reader's attention and returns no relationship for it:
-   a tile isolates its number by construction, with no comparison, baseline, or
-   denominator, and meaning in data lives in relationships. That is what makes it an
-   easy button, glossy and shallow in one gesture, the cheapest thing that photographs
-   like rigor. Put a headline figure in the header as one compact line or behind a
-   control, and where figures deserve room give them a form that holds a comparison.
-   Treat any `stats`, `stat-value`, or KPI-tile grid as a defect.
-2. **No explanatory prose.** GitHub doesn't explain and neither should we. Use structure,
-   labels, and controls to show relationships: a range control starting at 2015 says the
-   data starts in 2015. Explanatory prose is unfinished work: unused ideas, loitering.
-   Its tell is text narrowed to a reading column (`max-w-*` plus `mx-auto`, `max-w-prose`,
-   `container mx-auto`); what you will usually find is that the text does not belong on
-   the page at all.
-3. **Browsing is a full-viewport takeover.** A deck, gallery, diff, or result set is
-   `fixed inset-0` with `grid-rows-[auto_1fr_auto]`: thin header, content, thin
-   footer. Not a boxed widget with page furniture around it. **A page another
-   page may embed takes the same shape without the fixed root:** `min-h-dvh`
-   plus `sticky top-0`/`sticky bottom-0` chrome over normal flow, because a
-   fixed root inside an iframe measures against the outer viewport on Safari and
-   its right-hand column is cut off in any host narrower than the window.
-4. **Type is for reading, not for fitting.** If type shrank to fit, the layout is wrong,
-   not the type. Decks and documents run `text-xl`+ with `leading-8`; dense working
-   surfaces run smaller. Two tiers only, content and chrome: everything the reader came
-   to read gets the same size, and `text-xs` belongs to counters, timestamps, and labels.
-5. **A short text block balances its lines.** One or two sentences left to wrap
-   break wherever the column ends, and the last line is routinely two words, so a
-   lede or a caption reads as broken text before it reads as a sentence. Put
-   `text-balance` on any block short enough to be read at a glance, `text-pretty`
-   on running copy.
-6. **Content starts at the top.** Never vertically centre a slide because it looks
-   balanced when short; across a deck it moves the first line on every card.
-7. **One accent, and it means something.** Colour carries information, not decoration.
-   In a comparison, each side keeps a fixed treatment across every view.
-8. **A tooltip worth having is worth building.** Prefer text on the page. Do not use
-   `cursor-help`, daisyUI's `tooltip`, or `data-tip`; this overrides
-   `references/daisyui.md`. Use `title` only for simple, nonessential labels, like a
-   word in a mockup. Give icon-only controls an `aria-label`.
+## The rules
 
-   Custom tooltips must work on every screen size. Enable hover only when
-   `(hover: hover) and (pointer: fine)` match: open after about 140 ms and close
-   about 220 ms after leaving both the control and tooltip. Tapping the control must
-   toggle the tooltip using its actual visibility, not a separate state flag.
-   Dismiss on Escape or a capture-phase `pointerdown` outside the control and
-   tooltip; do not rely on `@click.outside` alone.
+**1. No stat cards.** A row of tiles, each a label over a big number, is the
+default output of a model asked to build a dashboard and is nearly always wrong.
+It spends the page's best space and the reader's first attention on numbers
+stripped of meaning: no comparison, baseline, denominator, or movement. That is
+what makes it the easy button, glossy and shallow in one gesture, the cheapest
+thing that photographs like rigor. Put a headline figure in the header as one
+compact line or behind a control, and where figures deserve room give them a
+form that holds a comparison. Treat any `stats`, `stat-value`, or KPI-tile grid
+as a defect.
 
-## References
+**2. No explanatory prose.** GitHub doesn't explain and neither should we. Use
+structure, labels, and controls to show relationships: a range control starting
+at 2015 says the data starts in 2015. Explanatory prose is unfinished work:
+unused ideas, loitering.
 
-- **DaisyUI 5 components**: See `references/daisyui.md` for complete component syntax, class names, and usage rules
-- **Alpine.js V3 patterns**: See `references/alpine-v3.md` for V3 API and key differences from V2
-- **Reactivity cost in long lists**: See `references/reactivity-cost.md` for the per-row binding pattern that scales badly with N, the direct-DOM fix, and the DOM-reuse gotcha
-- **Full demo**: See `references/demo-sortable.html` for a complete working example demonstrating CDN usage, DaisyUI components, Alpine.js patterns, Phosphor Icons, and third-party library integration
+**3. Don't narrow text to a reading column.** The pattern is `max-w-*` plus
+`mx-auto`, usually `max-w-2xl` through `max-w-4xl`, or `max-w-prose` at 65ch;
+`container mx-auto` is the same move. It is the tell for rule 2, and what you
+will usually find is that the text does not belong on the page at all.
 
-## Key Conventions
+**4. Browsing takes the viewport.** A deck, gallery, diff, or result set uses
+`fixed inset-0 grid grid-rows-[auto_1fr_auto]`: thin header, content, thin
+footer. The content gets the screen and chrome gets the bars. An embedded deck
+is small on a desktop and useless on a phone.
 
-1. Use CDN delivery (jsDelivr for Tailwind/DaisyUI/libraries, unpkg for Alpine): no build step
-2. Single-file artifacts: inline styles and scripts
-3. DaisyUI semantic colors (`primary`, `base-100`, etc.) over Tailwind color names
-4. Alpine's `x-data`, `x-show`, `x-bind` for reactivity: no React
-5. Use Phosphor Icons via CDN for iconography: no inline SVGs
-6. No `<style>` blocks: no vanilla CSS, no `<style type="text/tailwindcss">`, no `@apply`. Generally, avoid all efforts to override styles in third-party components.
-7. A daisyUI semantic colour works only in the utility families daisyUI itself ships. `bg-base-200`, `text-base-content`, and `border-base-300` resolve; `divide-base-200` does not, because daisyUI ships no `divide-*` and Tailwind has no `base-200` in its own colour theme, so the utility compiles to nothing and is dropped silently. Tailwind v4 then defaults `border-color` to `currentColor` (v3 defaulted to `gray-200`), so `divide-y` alone paints hairlines in the **text colour**: black lines where a faint grey was intended. The same trap waits in `ring-*`, `outline-*`, and `accent-*`. Separate rows with `gap`, or write the border explicitly (`[&>*+*]:border-t [&>*+*]:border-base-200`). A Tailwind palette name (`divide-slate-300`) also works and is the tell: if swapping the colour name fixes it, the semantic name was never compiling. Inside an `x-for`, reach for the index rather than the adjacency selector; see 8.
-9. **Structural selectors are wrong inside an `x-for`, including the adjacency fix above.** Alpine inserts each clone *after* the `<template>` rather than replacing it, so the template stays in the DOM and occupies the parent's first child slot. Measured with jsdom against the real runtime, three rows in a bare parent:
+**5. A tenant page uses normal flow.** Any page another page may embed, whether
+an appendix, a toss render, or a stage preview, takes the same shape without the
+fixed root: `min-h-dvh` plus sticky chrome over document scrolling. Reserve
+`fixed inset-0` for known top-level pages. On iOS a fixed child measures against
+the outer viewport and its right-hand column is cut off inside a narrower
+iframe, and headless Chromium will not reveal it. Sticky chrome has two costs:
+save and restore document scroll when a detail view replaces a long list, and
+drop `viewport-fit=cover` unless the page is genuinely edge-to-edge.
 
-   ```
-   children: template,span,span,span
-   :first-child matches a clone?  false      (the template is :first-child)
-   :last-child  matches a clone?  true       (only while nothing follows the loop)
-   :scope > * + * hits:           span,span,span
-   ```
+**6. Type is for reading, not for fitting.** If type shrank to fit, the layout is
+wrong, not the type. On a phone, test it at arm's length. Decks and documents run
+`text-xl`+ with `leading-8`; dense working surfaces run smaller, kept honest by
+one size per tier rather than by a number.
 
-   So `first:` matches nothing at all, `last:` matches only when the loop is the last thing in its parent (add a footer under it and that silently stops too), and `[&>*+*]:border-t` puts a border on **every** row including the first, because the first clone's preceding sibling is the template. All three compile and all three are real CSS, so nothing warns; the rule just lands on the wrong element or on none.
+**7. Content has one size.** The page has two tiers, content and chrome.
+Everything the reader came to read shares a size; `text-xs` and monospace belong
+to labels, counters, and timestamps. A smaller summary quietly demotes what may
+matter most.
 
-   Take the position from the loop, which is the one source that knows it: `x-for="(row, i) in rows"` then `:class="{ 'border-t border-base-200': i }"`. Or separate with `gap` on a flex/grid parent, which is ordinal-free. Reserve `first:`/`last:`/`[&>*+*]:` for static markup.
+**8. A short text block balances its lines.** One or two sentences left to wrap
+break wherever the column ends, and the last line is routinely two words: a lede,
+a caption, or a heading reads as broken text before it reads as a sentence. Put
+`text-balance` on any block short enough to be read at a glance and `text-pretty`
+on running copy, which fixes the widow without evening out lines that should stay
+full.
 
-10. **A daisyUI control does not fill its parent, and a phone is where you find out.** `.input` and `.textarea` compute to `width: clamp(3rem, 20rem, 100%)`, so in a column narrower than 20rem they look correct and in a wider one they stop short while their label runs on. Measured at a 390px viewport: the label 342px, the field 320px, a ragged right edge down the whole form. Put `w-full` on every input, textarea, and select rather than relying on the flex parent to stretch it, since `align-self: stretch` does not apply to an item with an explicit width.
+**9. Content starts at the top.** Never vertically centre a slide because it
+looks balanced when short; across a deck it moves the first line on every card,
+forcing the reader to find it again.
 
-11. **Size a pane by its container, not by the viewport.** A pane that is half a screen on desktop and the whole screen on a phone cannot be laid out with `sm:`/`lg:`, which ask how wide the *window* is: the same `lg:grid-cols-6` that reads well full-width puts six columns in a 360px column when the pane is split. Put `@container` on the column and use `@md:`/`@xl:`, which ask how wide the *column* is. The variants degrade to one column where they are unsupported, which is the safe direction.
+**10. One accent, and it means something.** Colour carries information, not
+decoration. Assign it by semantic role, and in a comparison lock each side's
+treatment across every view. Where two concerns compete for the accent, let a
+control pick which one is marked rather than spending a second colour.
 
-12. **Tailwind v4 layers its utilities; the typography stylesheet is unlayered, and unlayered wins.** `.prose{max-width:65ch}` therefore beats `.max-w-none` on the cascade-layer rule rather than on specificity, and nothing in the class list looks wrong. Reach for `!max-w-none`, or keep the 65ch measure on purpose and centre the column. Prefer `lib/kits/guide-render.js` for anything new, which brings its own CSS and sidesteps this; do not convert a working surface just for symmetry.
+**11. A tooltip worth having is worth building.** Prefer text on the page. Do not
+use `cursor-help`, daisyUI's `tooltip`, or `data-tip`; this overrides
+`references/daisyui.md`. Use `title` only for simple, nonessential labels, like a
+word in a mockup, and give icon-only controls an `aria-label`. `npm run
+stranded-titles` lists facts parked in a `title`. The mechanics of a compliant
+one, hover thresholds and dismissal, are in
+[`references/mechanics.md`](references/mechanics.md).
 
-## CDN Patterns
+## The shape a browsing page takes
 
-Use jsDelivr `combine` to bundle multiple packages in a single request. Tailwind, DaisyUI, icons, and any other libraries go through jsDelivr. Alpine goes through unpkg; when plugins join, a jsDelivr combine keeps them one tag with core last.
-
-### Scripts (jsDelivr combine)
-```html
-<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web,npm/clipboard"></script>
+```text
+fixed inset-0  grid-rows-[auto_1fr_auto]
+├── header   identity, compact figure, controls, counter
+├── content  the thing; large, top-aligned, scrollable
+└── footer   previous, progress, next
 ```
 
-### Styles (jsDelivr combine)
-```html
-<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
-```
+Use dots for roughly 25 items or fewer, then a progress bar. Support arrow keys,
+Escape, and the phone back button. Put filters in a header dropdown, not a chip
+row that consumes the viewport.
 
-### Alpine + plugins (jsDelivr combine, defer)
-```html
-<script defer src="https://cdn.jsdelivr.net/combine/npm/@alpinejs/collapse/dist/cdn.min.js,npm/@alpinejs/sort/dist/cdn.min.js,npm/alpinejs/dist/cdn.min.js"></script>
-```
+## Where the numbers went
 
-Alpine core must load last when combining with plugins. Use `defer` so Alpine initializes after the DOM is ready.
+Put supporting analysis one tap away. An info dialog can hold tables, methods,
+and limits; the header keeps one compact line such as
+`62/100 category · 35/100 systems · 0/100 schema`.
 
-### Phosphor Icons
+## What this does not cover
 
-Use `<i class="ph ph-icon-name">` for regular weight, `ph-bold`, `ph-fill`, etc. for variants. Avoids inline SVGs entirely.
-```html
-<i class="ph ph-caret-down"></i>
-<i class="ph ph-file-text"></i>
-<i class="ph ph-check"></i>
-```
+**Themes are separate.** A named palette and font are worth settling, but they do
+not repair stat cards, page prose, or small type. Those are composition failures.
+
+**Mechanics are separate**, and they are the other half of building a page here:
+[`references/mechanics.md`](references/mechanics.md) for the stack, the CDN
+pattern, and the class-level traps that compile to nothing;
+`references/daisyui.md` and `references/alpine-v3.md` for component and
+directive syntax.
