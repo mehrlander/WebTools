@@ -417,3 +417,126 @@ test('a bare arrival lists the browsed repo rather than landing on nothing', asy
   el.remove();
   store.repo = ''; store.ref = ''; store.defaultRef = '';
 });
+
+// ── The deck ─────────────────────────────────────────────────────────────────
+//
+// The pane and the deck are ONE position, which is the whole claim worth
+// testing here: the deck opens on the file the pane has open, every slide
+// writes that file back to `open`, and `open` is what the list highlights and
+// what the address carries. swipeDeck is stubbed, so this tests the wiring and
+// not the kit, which has its own suite.
+let DECK = null;
+window.swipeDeck = {
+  top: () => null,
+  drill: (_p, o) => { DECK = { o, calls: [] }; return handleFor(o); },
+  open: (o) => { DECK = { o, calls: [] }; return handleFor(o); },
+};
+const handleFor = (o) => ({
+  deck: { active: () => o.start || 0 },
+  close() { o.onClose?.(); },
+  setTitle(t) { DECK.calls.push(['title', t]); },
+  setSubtitle(t) { DECK.calls.push(['subtitle', t]); },
+  setIcon(t) { DECK.calls.push(['icon', t]); },
+  setLink(l) { DECK.calls.push(['link', l]); },
+});
+
+test('the deck opens over the file hits, at the file the pane has open', async () => {
+  DECK = null;
+  ANSWER = {
+    hits: [{ repo: 'me/tools', ref: 'dev', path: 'lib/a.js' },
+           { repo: 'me/tools', ref: 'dev', path: 'lib/kits/b.js' },
+           { repo: 'me/tools', ref: 'dev', path: 'lib/c.js' }],
+    total: 3, truncated: false, errors: [],
+  };
+  data.mode = 'names'; data.q = 'lib'; data.repo = 'me/tools'; data.ref = 'dev';
+  await data.run();
+  await data.openHit(data.hits[1]);
+  await tick();
+
+  await data.openDeck();
+  assert.equal(DECK.o.count, 3);
+  assert.equal(DECK.o.start, 1, 'the deck opens where the reader was standing');
+  assert.equal(data.deckOpening, false);
+
+  // The header: the filename is the title, the location the subtitle, and the
+  // one door out is GitHub at the ref the hit was found on.
+  assert.equal(DECK.o.title, 'b.js');
+  assert.equal(DECK.o.subtitle, 'tools@dev · lib/kits');
+  assert.equal(DECK.o.link.href, 'https://github.com/me/tools/blob/dev/lib/kits/b.js');
+  // And a contents list, since three (or fifty) hits outrun the footer's dots.
+  // These three span two folders, so each row states which.
+  assert.deepEqual(j(DECK.o.index(0)), { title: 'a.js', subtitle: 'tools@dev · lib', icon: 'ph-file' });
+  assert.equal(DECK.o.index(1).subtitle, 'tools@dev · lib/kits');
+});
+
+test('a slide moves the pane, the list and the address with it', async () => {
+  const synced = shell._synced;
+  DECK.o.onSlide(2);
+  assert.deepEqual(j(data.open), { repo: 'me/tools', ref: 'dev', path: 'lib/c.js' });
+  assert.equal(data.isOpen(data.hits[2]), true, 'the list highlights what the deck is on');
+  assert.ok(shell._synced > synced, 'and the address follows');
+  assert.deepEqual(DECK.calls.filter(c => c[0] === 'title').at(-1), ['title', 'c.js']);
+
+  DECK.o.onClose();
+  assert.equal(data._deck, null);
+  assert.deepEqual(j(data.open), { repo: 'me/tools', ref: 'dev', path: 'lib/c.js' },
+    'dismissing leaves the reader on the file the deck stopped at');
+});
+
+test('a hit with no ref decks at HEAD, and folders are not in the deck', async () => {
+  DECK = null;
+  ANSWER = {
+    hits: [{ repo: 'me/tools', ref: '', path: 'README.md' }],
+    total: 1, truncated: false, errors: [],
+  };
+  data.mode = 'contents'; data.q = 'thing'; data.repo = 'me/tools'; data.ref = '';
+  await data.run();
+  data.closeFile();
+  // A folder row rides the list and not the deck: fileHits is the readable set.
+  data.hits = [{ key: 'd:lib', kind: 'dir', path: 'lib' }, ...data.hits];
+  await data.openDeck();
+  assert.equal(DECK.o.count, 1);
+  // Unspecified means the repo's default branch, which GitHub resolves as HEAD;
+  // guessing 'main' would 404 on a repo that calls it something else.
+  assert.equal(DECK.o.link.href, 'https://github.com/me/tools/blob/HEAD/README.md');
+  assert.equal(DECK.o.subtitle, 'tools', 'no ref and no directory leaves only the repo');
+  DECK.o.onClose();
+});
+
+test('the deck snapshots its list, so a re-run underneath cannot desync count from render', async () => {
+  DECK = null;
+  ANSWER = {
+    hits: [{ repo: 'me/tools', ref: 'dev', path: 'x.js' }, { repo: 'me/tools', ref: 'dev', path: 'y.js' }],
+    total: 2, truncated: false, errors: [],
+  };
+  data.mode = 'names'; data.q = 'js'; data.repo = 'me/tools'; data.ref = 'dev';
+  await data.run();
+  await data.openDeck();
+  assert.equal(DECK.o.count, 2);
+
+  ANSWER = { hits: [{ repo: 'me/tools', ref: 'dev', path: 'z.js' }], total: 1, truncated: false, errors: [] };
+  await data.run();
+  assert.equal(data.fileHits.length, 1, 'the list moved');
+  assert.equal(data._deckFiles.length, 2, 'the deck did not');
+  DECK.o.onSlide(1);
+  assert.deepEqual(j(data.open), { repo: 'me/tools', ref: 'dev', path: 'y.js' });
+  DECK.o.onClose();
+});
+test('a deck of one folder lists bare filenames', async () => {
+  DECK = null;
+  ANSWER = {
+    hits: [{ repo: 'me/tools', ref: 'dev', path: 'lib/a.js' },
+           { repo: 'me/tools', ref: 'dev', path: 'lib/b.js' }],
+    total: 2, truncated: false, errors: [],
+  };
+  data.mode = 'names'; data.q = 'lib'; data.repo = 'me/tools'; data.ref = 'dev';
+  await data.run();
+  data.closeFile();
+  await data.openDeck();
+  // The location is what the header says while reading; on the list it would be
+  // the same string on every row, spending the width the filename wanted.
+  assert.equal(DECK.o.index(0).subtitle, '');
+  assert.equal(DECK.o.title, 'a.js');
+  assert.equal(DECK.o.subtitle, 'tools@dev · lib', 'the header still says where');
+  DECK.o.onClose();
+});
