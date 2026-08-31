@@ -53,6 +53,41 @@ const budgetFor = siblings => CEILING - BASE_RESERVE - siblings * PER_SIBLING;
 // invokes it.
 const BUDGET = budgetFor(0);
 
+// ── The rung window, derived rather than pinned ────────────────────────────
+//
+// The middle rung needs a budget that selects it, and that budget used to be a
+// hand-picked constant: the midpoint of a window measured by hand, under a
+// comment listing the three times the window had moved and an instruction to
+// re-pick it when it moved again. Nothing re-derived it. On 2026-08-31 a
+// 66-byte edit to the primitives walked the body up the window until the stale
+// midpoint selected the last rung instead of the middle one, and the failure
+// read as a budget breach when the real delivery was fine and the constant was
+// simply out of date.
+//
+// So the window is bisected here instead. Rung is a non-increasing step
+// function of the budget, so each edge is one bisection: about 30 invocations
+// at ~36ms, which is cheaper than one wrong diagnosis.
+const rungOf = out => /PARTIAL LOAD/.test(out) ? 3
+  : /ALSO NOT INCLUDED, to fit the channel/.test(out) ? 2 : 1;
+const rungCache = new Map();
+const rungAt = budget => {
+  if (!rungCache.has(budget)) rungCache.set(budget, rungOf(
+    run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: String(budget) })));
+  return rungCache.get(budget);
+};
+// The smallest budget whose rung is n or wider.
+const firstAtMost = n => {
+  let lo = 0, hi = CEILING;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (rungAt(mid) <= n) hi = mid; else lo = mid + 1;
+  }
+  return lo;
+};
+const RUNG2_LO = firstAtMost(2);
+const RUNG2_HI = firstAtMost(1);
+const MID_BUDGET = String((RUNG2_LO + RUNG2_HI) >> 1);
+
 test('the injected payload fits the channel', () => {
   assert.ok([CEILING, BASE_RESERVE, PER_SIBLING].every(Number.isFinite) && BUDGET > 0,
     'the derivation parses out of the script, so this cannot pass against a stale copy');
@@ -126,8 +161,18 @@ test('it carries every primitive and none of the course', () => {
 // 1,341 bytes back out and walked the window down by 1,342. Measured after all
 // three, this rung is chosen for a budget in [25534, 26429); pick the midpoint so
 // a small future edit does not walk the test off either edge silently.
+test('the middle rung spans enough budget to survive an ordinary edit', () => {
+  // The window's width is essentially the front matter, since that is what this
+  // rung drops. Narrowing toward zero means the middle rung has stopped being a
+  // rung and the ladder goes straight from everything to CONVENTIONS.md alone,
+  // which is the cliff it was added to prevent. Measured 2026-08-31 at 895.
+  assert.ok(RUNG2_HI > RUNG2_LO, 'the middle rung is reachable at some budget');
+  assert.ok(RUNG2_HI - RUNG2_LO >= 300,
+    `the middle rung spans only ${RUNG2_HI - RUNG2_LO} bytes, collapsing toward the cliff`);
+});
+
 test('over budget it drops the front matter before it drops a single rule', () => {
-  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '25981' });
+  const out = run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: MID_BUDGET });
   assert.match(out, /ALSO NOT INCLUDED, to fit the channel/,
     'the second rung says what it withheld, as the first one does');
   assert.doesNotMatch(out, /PARTIAL LOAD/, 'and it is not the last rung');
@@ -267,7 +312,7 @@ test('each receipt reports the bytes it actually sent, per rung', () => {
   assert.ok(wide.sent > 0 && wide.sent < wide.bytes,
     'and even the widest rung withholds the course, so sent is short of it');
 
-  const mid = receiptsOf(run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: '25981' }));
+  const mid = receiptsOf(run('inject-conventions.sh', { WEB_TOOLS_INJECT_BUDGET: MID_BUDGET }));
   assert.equal(mid['SURFACING.md'].delivered, 'primitives_only');
   assert.ok(mid['SURFACING.md'].sent < wide.sent, 'a narrower rung sends less');
   assert.equal(mid['CONVENTIONS.md'].sent, mid['CONVENTIONS.md'].bytes,
