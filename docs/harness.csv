@@ -51,7 +51,10 @@ tools/render/scenarios/annotate-caret-wrap.mjs,"a sweep of 560 caret positions i
 tools/render/scenarios/annotate-cursor-pad.mjs,"the cursor pad mid-drag, in both its subjects: the caret walking back through wrapped lines, and (STATE=pin) an armed selection edge dragged by the same gesture, which is what retired the arrow cluster. The half jsdom cannot see, since it maps a virtual point to an offset through caret-from-point",tools/render/scenarios,53,driver,no,no,yes
 tools/render/scenarios/annotate-demo.mjs,"a text selection annotated end to end: bubble, draft, saved note, painted highlight",tools/render/scenarios,68,driver,no,no,no
 tools/render/scenarios/annotate-dictate-demo.mjs,"the voice-first compose surface with SpeechRecognition stubbed: committed text, a live interim, the punctuation bar, and a resume across a pause, which is the case that shows the period and the capital coming back off together",tools/render/scenarios,67,driver,no,no,no
+tools/render/scenarios/annotate-dom-crumb.mjs,tap the DOM reading's ancestor trail and check the outline follows the crumb,tools/render/scenarios,55,driver,no,no,yes
+tools/render/scenarios/annotate-dom-reading.mjs,drive the annotate card to its DOM reading and step the element pick up its ancestor chain,tools/render/scenarios,85,driver,no,no,yes
 tools/render/scenarios/annotate-double-tap.mjs,"a double tap on a word opening the keyboard with the caret inside that word, and the long press still taking the word: the two gestures that traded places on 2026-08-13, both needing a real caret-from-point that jsdom stubs",tools/render/scenarios,62,driver,no,no,no
+tools/render/scenarios/annotate-drop-stage.mjs,"letting go of a stage in all three aims: the ✕, a pick that lands on nothing, a tap on the card that is not a miss, and a selection across blocks keeping its chip",tools/render/scenarios,173,driver,no,no,yes
 tools/render/scenarios/annotate-edit-row.mjs,"the pencil folding a note out of the list while it is open in the composer, and the row coming back on save. Needs a browser: the two states are one DOM apart and the point is that only one copy of the note is on screen at a time",tools/render/scenarios,46,driver,no,no,no
 tools/render/scenarios/annotate-expander.mjs,"the card's own reading of the set, which jsdom cannot photograph: the expander grown UPWARD from the card's pinned bottom edge, the readings strip and the set's actions arriving with it, and a serialization shown at real size. `reading=` picks which of the three (notes | md | json); the scope knob went with the scope chip, since a serialization is of the set",tools/render/scenarios,106,driver,no,no,no
 tools/render/scenarios/annotate-header-centre.mjs,"whether the notes card's reading keys are CENTRED in the header, which no node test can answer: the suite is browser-free and jsdom has no layout engine. Reports the gap either side of the group, to the nearest LAID-OUT neighbour and to the nearest VISIBLE one, since a control holding its place with visibility:hidden occupies layout an eye cannot",tools/render/scenarios,54,driver,no,no,no
@@ -59,10 +62,12 @@ tools/render/scenarios/annotate-in-place.mjs,"annotate's three touch-only paths:
 tools/render/scenarios/annotate-keyboard-mode.mjs,"the composer with the keyboard open: whether the way out wears a microphone, and whether the mic still holds its slot",tools/render/scenarios,98,driver,no,no,no
 tools/render/scenarios/annotate-page-note.mjs,"the page-level note through the real path (Page chip, typed, saved) plus the two controls it shipped with: the review button reading the drawer's state, and the launcher's long-press menu",tools/render/scenarios,51,driver,no,no,no
 tools/render/scenarios/annotate-row-keys.mjs,"a note row's three floating keys and the edit one of them leads to: edit, copy and remove sitting over the note where a kebab menu used to open, and the note reopened in the composer with its text loaded",tools/render/scenarios,35,driver,no,no,no
+tools/render/scenarios/annotate-section-reading.mjs,drive the section aim's markdown reading and step its rank hierarchy,tools/render/scenarios,67,driver,no,no,no
 tools/render/scenarios/annotate-select-text.mjs,"the composer's own selection driven the way a thumb drives it: long press to take a word, tap to arm a pin, tap to place it",tools/render/scenarios,85,driver,no,no,no
 tools/render/scenarios/annotate-select.mjs,a note selected by clicking its highlight in the document rather than its row,tools/render/scenarios,63,driver,no,no,no
 tools/render/scenarios/annotate-stitch.mjs,"the composer pad's stitch key: a caret dropped in a sentence gap turns the full-stop cell into the cell that takes one back, and one tap drops the mark and the capital the pause invented",tools/render/scenarios,38,driver,no,no,no
 tools/render/scenarios/annotate-tap-canvas.mjs,"a tap on the blank canvas below the text, which jsdom cannot judge: whether it reaches a listener at all, and whether the painted rects say it missed the words",tools/render/scenarios,103,driver,no,no,no
+tools/render/scenarios/annotate-touch-scroll.mjs,"drag real touch events through CDP and check every state still scrolls, the page included",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/annotate-triple-tap.mjs,"the buffer scrolled to its newest line in a box of whole lines, then three taps in a run taking the whole thing",tools/render/scenarios,102,driver,no,no,no
 tools/render/scenarios/annotate-units-demo.mjs,"the two unit modes, element pick and region drag, driven through real pointer events",tools/render/scenarios,54,driver,no,no,no
 tools/render/scenarios/audit-deck.mjs,"the audit render in the swipe deck, one document section per slide",tools/render/scenarios,23,driver,no,no,no
@@ -117,6 +122,7 @@ tools/render/scenarios/fab-traffic.mjs,the fab's Traffic tab with a real BOOT ba
 tools/render/scenarios/fab-width-bar.mjs,"the FAB Render tab's width bar, shot on toss-render where the lever is live",tools/render/scenarios,30,driver,no,no,no
 tools/render/scenarios/inbox-demo.mjs,the inbox resolution with the armed redirect button on screen,tools/render/scenarios,36,driver,no,yes,no
 tools/render/scenarios/jumpover-coverage.mjs,the exact-file jump-overs rendered headlessly with seeded rows,tools/render/scenarios,67,driver,no,no,no
+tools/render/scenarios/kind-labels-the-aim.mjs,the aim menu labelling itself from the declared kind,tools/render/scenarios,53,driver,no,no,no
 tools/render/scenarios/map-docs-cold.mjs,"the Map's Docs tab sorted coldest first, with the unresolved-reads strip: the ordering and the misspelled paths that make the readership column answerable",tools/render/scenarios,93,driver,no,no,no
 tools/render/scenarios/map-docs-reads.mjs,the Map's Docs tab with the readership column,tools/render/scenarios,73,driver,no,no,no
 tools/render/scenarios/map-docs.mjs,"the Map's Docs tab, the documentation registry rendered live",tools/render/scenarios,52,driver,no,no,no
@@ -132,12 +138,14 @@ tools/render/scenarios/map-skills.mjs,"the Map's Skills tab with all three sets 
 tools/render/scenarios/map-tests.mjs,the Map view's Tests tab: the test registry rendered live with assertion names expanded,tools/render/scenarios,63,driver,no,no,no
 tools/render/scenarios/nest-probe.mjs,"probe: a nested self-toss's address bar, and the FAB's actions at depth two",tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/open-drawer.mjs,the FAB drawer open with the take grid scrolled into view,tools/render/scenarios,20,driver,no,no,no
+tools/render/scenarios/outline-follows-page.mjs,scroll the page and check every live outline stays on the thing it is drawn around,tools/render/scenarios,78,driver,no,no,yes
 tools/render/scenarios/paste-address-routes.mjs,,tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/paste-anywhere.mjs,dispatches a real two-flavor ClipboardEvent on a non-Stage view and reports where the app-wide paste routed it,tools/render/scenarios,42,driver,no,no,no
 tools/render/scenarios/paste-button.mjs,"drives the header Paste button from a non-Stage view with window.io stubbed, and reports where it routed",tools/render/scenarios,46,driver,no,no,no
 tools/render/scenarios/paste-empty-toast.mjs,"What the header's Paste button says when the clipboard is empty: an info toast, never the error colour it used to raise.",tools/render/scenarios,31,driver,no,no,no
 tools/render/scenarios/paste-kinds-probe.mjs,puts four transform-shaped payloads through the paste intake and reports the name and preview mode each gets,tools/render/scenarios,54,driver,no,no,yes
 tools/render/scenarios/paste-script-probe.mjs,,tools/render/scenarios,83,driver,no,no,no
+tools/render/scenarios/peek-walk.mjs,drive kits/peek.js through a four-tap ancestor walk and report the selector at each rung,tools/render/scenarios,63,driver,no,yes,yes
 tools/render/scenarios/pick-md.mjs,"end-to-end reproduction of pick-a-file-in-the-fab, reporting what the frame did",tools/render/scenarios,76,driver,no,no,no
 tools/render/scenarios/project-board-review.mjs,"the project Board pane's typed read, seeded token-free",tools/render/scenarios,198,driver,no,yes,no
 tools/render/scenarios/project-board.mjs,the project view's Board pill with task links resolved into the shell viewer,tools/render/scenarios,72,driver,no,no,no
@@ -159,6 +167,7 @@ tools/render/scenarios/routes-pane.mjs,"Renders Activity's Routes pane with real
 tools/render/scenarios/search-cold.mjs,the Files view's cold open: a bare arrival scopes to the browsed repo and walks it,tools/render/scenarios,50,driver,no,no,no
 tools/render/scenarios/search-controls.mjs,"the Files view's scope controls, with the ref picker open",tools/render/scenarios,72,driver,no,no,no
 tools/render/scenarios/search-files.mjs,"the Files view a level into a folder, with a file from it open in the shared viewer",tools/render/scenarios,64,driver,no,no,no
+tools/render/scenarios/section-structure.mjs,"the section rules a markdown aim draws, at two widths",tools/render/scenarios,47,driver,no,no,no
 tools/render/scenarios/session-contents.mjs,"enters the session deck from the outline the page opens on, then opens the deck's own contents list: the rows readable at 390px, the reader marked, and one pager gap per exchange",tools/render/scenarios,65,driver,no,no,no
 tools/render/scenarios/session-exchange-card.mjs,,tools/render/scenarios,58,driver,no,no,no
 tools/render/scenarios/showing-paste-rows.mjs,,tools/render/scenarios,27,driver,no,no,no

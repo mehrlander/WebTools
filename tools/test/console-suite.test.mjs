@@ -178,6 +178,56 @@ test('pick: swallows the click so page handlers never fire', () => {
   w.glom.pick.done();
 });
 
+// A phone sends pointerup and, for a non-interactive element, no click at all.
+// jsdom has no PointerEvent, so these are plain Events with the coordinates
+// set by hand, which is the shape the handlers actually read.
+const ptr = (w, el, type, x = 0, y = 0) => {
+  const e = new w.Event(type, { bubbles: true, cancelable: true });
+  e.clientX = x; e.clientY = y;
+  el.dispatchEvent(e);
+};
+
+test('pick: a tap selects with no click, the way a phone sends it', () => {
+  const w = boot();
+  const [alpha] = w.q('#cards div');
+  w.glom.clear();
+  w.glom.pick();
+  ptr(w, alpha, 'pointerdown', 5, 5);
+  ptr(w, alpha, 'pointerup', 5, 5);
+  assert.deepEqual(texts(w.glom.get()), ['alpha']);
+  w.glom.pick.done();
+});
+
+test('pick: a click echoing its own pointerup does not toggle twice', () => {
+  const w = boot();
+  const [alpha] = w.q('#cards div');
+  w.glom.clear();
+  w.glom.pick();
+  ptr(w, alpha, 'pointerdown', 5, 5);
+  ptr(w, alpha, 'pointerup', 5, 5);
+  alpha.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
+  assert.deepEqual(texts(w.glom.get()), ['alpha'], 'still in the set, not toggled back out');
+  w.glom.pick.done();
+});
+
+test('pick: a pointerup that ended a scroll is not a tap', () => {
+  const w = boot();
+  const [alpha] = w.q('#cards div');
+  w.glom.clear();
+  w.glom.pick();
+  ptr(w, alpha, 'pointerdown', 5, 5);
+  ptr(w, alpha, 'pointermove', 5, 90);      // travelled well past the slop
+  ptr(w, alpha, 'pointerup', 5, 90);
+  assert.equal(w.glom.get().length, 0);
+  // And a cancelled pointer, which is how a browser announces it took the
+  // gesture for a scroll before any distance showed up.
+  ptr(w, alpha, 'pointerdown', 5, 5);
+  ptr(w, alpha, 'pointercancel', 5, 5);
+  ptr(w, alpha, 'pointerup', 5, 5);
+  assert.equal(w.glom.get().length, 0);
+  w.glom.pick.done();
+});
+
 // ---- infer: selector synthesis -------------------------------------------
 
 test('infer: shared classes give an exact selector', () => {

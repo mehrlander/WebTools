@@ -580,6 +580,16 @@ is `docs/APP.md § Mechanism (lines 16-28)` rather than a css path, and its
 `section` targeting mode is raised from this menu, since the heading is the one
 thing that knows which section it opens.
 
+The declaration also carries the kind's own vocabulary, from the `KIND` literal
+here, which is why the annotator's aim reads **Markdown section** rather than
+the implementation's word for it. `docs/routes-kinds.csv` is the owner of that
+row and `tools/test/routes-manifest.test.mjs` holds the two together; the same
+arrangement `docs/routes-routes.csv` has with toss-render's inlined
+`TOSS_ROUTES`. Declaring is what a render OPTS INTO, and a render that skips it
+is indistinguishable from a page with no markdown on it: `pages/data-view.html`
+called `contain()` alone until 2026-08-31 and so offered neither the heading
+menus nor the Section aim, on the same files the file deck gave both.
+
 **Enhance** is render's second half, for markup another renderer produced.
 `guide-render.js` renders a doc with the link re-aiming a guide body needs, and
 the Files pane reads markdown through it; that reader wants the containment and
@@ -598,6 +608,16 @@ for the iOS clipboard path. The copy control carries `data-annotate-ui`, which
 is how `annotate.js` knows to keep it out of the text a note is anchored in.
 `chat-render.js` keeps its own copy of the table wrap, deliberately: it is a
 standalone script a page can drop in from jsDelivr with nothing else.
+
+
+**Sections nest, and the hierarchy is arithmetic rather than a walk.** `chain`
+gives a section's ancestors by rank (innermost first, the shape `Peek.chainOf`
+uses so one renderer serves both), `children` the sections exactly one rank
+finer before a peer closes the run, `headOf` the heading node for any section
+index, and `stats` what a passage holds counted in markdown's units: words,
+paragraphs, list items, code blocks, tables, quotes, links. Counted off the
+SOURCE, so a fence full of hyphens is one code block rather than the list it
+resembles.
 
 ### annotate.js
 
@@ -645,18 +665,118 @@ grows upward from the card's bottom edge, pinning that edge first so a card
 that has been dragged (which re-anchors it to the top) grows the same
 direction as one that has not.
 
-What opens is one window of a fixed height, the same for all three readings and
-the same empty as full, with the body scrolling inside it: the list, or either
-serialization exactly as Copy hands it over, of the whole set or of the one
-selected note, which is the reading no other surface offers. The window is 55%
-of the viewport and never past 440px, so the card stays a window over the
-document rather than a takeover of it. One row carries both choices, which
-reading and what it is a reading of: the three format chips, then a scope chip
-labelled by the selection (`Note 2`) that swaps on a tap, then a copy key,
-which is a glyph and no word because the chips beside it are the qualifier. The
-footer is Save jot and Clear, and there is no status line: Save jot reports on
-its own label, and every other message it used to carry announced something
-the reader had just watched happen and then stayed.
+What opens is one window of a fixed height, the same for every reading and the
+same empty as full, with the body scrolling inside it. The window is 55% of the
+viewport and never past 440px, so the card stays a window over the document
+rather than a takeover of it. One row carries the format chips and then a copy
+key, which is a glyph and no word because the chips beside it are the
+qualifier. The footer is Save jot and Clear, and there is no status line: Save
+jot reports on its own label, and every other message it used to carry
+announced something the reader had just watched happen and then stayed.
+
+**Four readings, and the fourth is not of the set.** The list, then markdown and
+JSON exactly as Copy hands them over, then **DOM** (2026-08-29): the element the
+note is pinned to, its selector and how many nodes that selector matches, its
+box, layout and tree position, then its subtree and the ancestors containing it.
+
+**And it is DRAWN, not printed.** The other two readings ARE bytes, so a `<pre>`
+is the honest shape for them: what is on screen is what Copy hands over. This
+one is a description, and it first shipped as a monospace blob holding its
+columns with `padEnd(9)`, which is a serialization pretending to be a layout and
+loses the pretence the moment a value wraps. It has its own pane now: the tag as
+a pill with its id and classes as chips, the ancestor trail as a scrolling row,
+the selector in a box with a green `unique` or amber `N matches` verdict beside
+it, an aligned label grid, the own text clamped, and the subtree indented by
+padding rather than by spaces. `domText` survives as the copy payload, so Copy
+still hands over something a model can read.
+
+**The outlines live in the document, not the viewport.** Every live highlight
+(the pick's hover and staged boxes, the region's rectangle, and its "+ note")
+is `position: absolute` in document coordinates, so it travels with the thing it
+is drawn around and needs no repainting. They were fixed, placed from a viewport
+rect and never repainted, so a scroll left the highlight sitting where the
+element used to be: measured 2026-08-30, a 260px scroll produced exactly 260px
+of drift. The filed notes' outlines were already drawn this way; this makes the
+live ones agree with them. The region's box is the one exception and only while
+the drag is live, where the page cannot scroll anyway and viewport coordinates
+are exact; it pins to the document the moment it stages.
+
+**The trail is tappable**, and it is the only thing in the pane that is. A crumb
+re-points the reading at that ancestor, and where a mode is running it moves the
+outline too, through a `S.restage` hook the pick publishes: a crumb that renames
+the pane while the highlight stays three levels down is two answers to one
+question. The subject is always the last crumb, so the trail scrolls to its end
+after every draw.
+
+**A section reads in markdown's units, and steps through markdown's hierarchy.**
+Section was excluded from this reading at first, on the grounds that it would
+answer with an `h2` in a div where the reader is asking about a passage. That was
+the right observation and the wrong fix: a section gets its own reading rather
+than none. It shows the rank and title, the source address with its line span,
+the size in words, what the passage HOLDS (paragraphs, list items, code blocks,
+tables, links), the slug, the first lines of the source with its hashes intact,
+and the subsections under it.
+
+The two structures over a rendered markdown document **do not agree**, which is
+the whole reason this is a second reading rather than a relabelled first.
+`### Form` is inside `## Marker` inside `# Status` in markdown, and all three are
+flat siblings in the DOM. So the repeat tap and the trail walk `mdDoc.chain`,
+which is arithmetic over the ranks `split` already knows, and `mdDoc.headOf`
+reaches the heading node of a section other than the located one. The aim carries
+its KIND for the same reason: a heading element can be aimed at either way and
+the node alone cannot say which was meant.
+
+Structure cannot be a reading of the set, because "what is this element and what
+contains it" is a question about one node and eight notes have no single answer
+to it. **The subject is the LIVE AIM first**: the node a pick has staged, or the
+rectangle a region has drawn, then the selected note, then the draft being
+written, then the most recent note.
+
+That order is the correction the reading needed, and both halves of it were
+measured wrong first. It keyed on the filed note, so a reader aiming at things
+watched the pane say "select a note" through an entire pick, cycling included:
+the answer arrived only after the question had stopped being asked. And with one
+note filed and nothing selected it showed instructions where an answer was
+expected.
+
+**A rectangle gets its own answer**, since it is not a node: what it covers,
+through `Peek.covers`. Contained roots where there are any, the text blocks it
+touches where there are none, and the heading says which. Contain alone is
+useless on a phone, where a box drawn with a thumb is narrower than any block in
+a text column and the precise answer is almost always empty.
+
+**Both aims open the card on it**, Region when the box is drawn and Element when
+the aim is chosen. Each is one deliberate act with one question behind it, and
+the pane that answers should be open before the first tap rather than found
+afterwards. What is still refused is expanding on every TAP, which would grow
+the card under a reader mid-gesture. Section stays out too: its notes are about
+markdown SOURCE and its aim resolves to the heading that owns a run, so this
+reading would answer with an `h2` where the reader is asking about a passage.
+
+The "+ note" offer moves out of the card's way when they do, through one shared
+`placeOffer`: two candidate tops in the caller's order, then a fallback clear of
+the card's top edge. Measured at 430px, the region's had been landing at 528
+inside a card spanning 488 to 928 and could not be tapped at all, which made the
+answer cost the control it was an answer about. The element pick's offer had the
+same latent clash, sitting 30px above whatever it outlined.
+
+Two consequences of not being of the set. An empty set does not empty it, where
+markdown and JSON go bare. And the copy key is offered on a draft with nothing
+filed yet, since `copyShown` takes what is on screen.
+
+`kits/peek.js` is what it calls, and it is a soft dependency the way `dictate.js`
+is: load `annotate.js` alone and every other reading works with the chip simply
+absent. Peek's computations read the element's own document and need no
+`enable()`, so nothing of Peek's own UI is mounted by asking. Both loaders chain
+the trio, and the FAB's `_loadAnnotate` treats either extra as best-effort: a
+failure costs one chip, not the notes.
+
+**The element pick steps up.** A second tap within 14px of the last one selects
+the parent, then its parent, wrapping at `<body>`: the same gesture and the same
+slop as `peek.js`, and the fix for the complaint this mode always invited, that
+a tap lands on the smallest node under the finger. Section mode is exempt, since
+its own resolve already answers with the heading that owns a section and
+stepping would leave the aim the chip is named for.
 
 **The FAB drawer's Notes tab is retired** (2026-08-25). It was the only place a
 set could be READ until the expander existed, which made it a second
@@ -713,6 +833,89 @@ Dictate.available(win)              // is there a recognizer there
 `win` is a parameter rather than a global read because the annotator points it
 at a frame's window: the kit runs in the shell realm and dictates into a
 document it does not own.
+
+### peek.js
+
+What is under the pointer, and what contains it. Point at something and the page
+answers with the element; point again in the same spot and it answers with that
+element's parent, then its parent, up to `<body>` and around.
+
+**The chain is the unit, not the element.** A tap builds the ancestor chain from
+the hit node to `<body>` and parks at index 0; everything after that moves an
+index rather than re-querying, so stepping is exact and reversible and the
+outline growing is all the feedback the gesture needs. The step is a *proximity*
+test (a tap within 14px of the last one steps up) because a phone has no Alt and
+no hover, and it wraps because on a touch screen there is no other way back from
+an overshoot.
+
+```js
+window.Peek.enable({ doc, onSelect })   // doc defaults to this one
+window.Peek.select(el) / .up() / .down() / .to(i)
+window.Peek.current() / .chain()
+window.Peek.facts(el) / .tree(el, {depth, nodes}) / .html(el) / .json()
+await window.Peek.copy('facts'|'tree'|'html'|'json'|'selector')
+```
+
+Four readings of one node, because "what is this" has four answers depending on
+why you are asking: **facts** (identity, the selector *and its match count*, the
+box, layout, tree position), **tree** (the subtree as an indented outline, depth-
+and node-capped: structure plus own text with the attribute noise dropped),
+**html** (the exact `outerHTML`, truncated on screen and whole on copy), and
+**json** (the facts as a record, for a model or a note).
+
+`layout` reports what kind of box it is rather than one `display`. A flex or grid
+CONTAINER names its own axis, gaps and alignment; a flex or grid CHILD names its
+parent's mode and its own side of that contract, since `display: block` for
+something a grid is placing says nothing at all. Defaults are dropped throughout,
+so a row of `normal` and `auto` never reaches the panel.
+
+Two things it does that are easy to get wrong, both measured on 2026-08-29:
+
+- **The selector pins siblings by position, not by climbing.** Prefixing
+  ancestors separates cousins and never separates siblings, since two `<li>` with
+  the same classes have the same ancestor path by construction. The first
+  algorithm climbed to `<body>` still matching two, then fell back to something
+  matching three. Each segment now carries `:nth-child(n)` only where its atom is
+  ambiguous among its own siblings, which both terminates and stays readable.
+- **The panel docks away from the tap point.** A panel that grows over the point
+  just tapped eats the repeat tap, and the second tap landed on the breadcrumb
+  strip instead of stepping up. It docks off the *point*, not the selection: the
+  point is fixed for the length of a walk, where the selection grows to fill the
+  screen and would flip the dock under the reader.
+
+**It is a library before it is a UI.** Every computation reads the element's own
+document rather than the enabled one, so `facts()`, `tree()`, `html()`,
+`chainOf()`, `atom()`, `selectorFor()` and `covers()` work on any element or
+rectangle in any document with no `enable()`, no cover and no panel.
+
+`covers(rect, {doc, mode})` is the rectangle half, in document coordinates so a
+live drag and a filed region note ask the same question. `contain` returns the
+covered elements whose parent is not covered, which is `console/mods/lasso.js`'s
+selection-roots rule; `touch` returns the text blocks the box overlaps, keeping
+the innermost where they nest. Blocks rather than whatever element is deepest,
+because a box over prose overlaps the links inside it and "three `<a>` elements"
+is a true answer to a question nobody drew a box to ask. The block set is the one
+annotate's region excerpt already reads, so the two agree about what a region
+covers. That is what `annotate.js`'s DOM
+reading calls; reading the enabled document here would have made the whole kit
+conditional on its own UI.
+
+Its outlines are `position: absolute` in document coordinates. They were fixed
+and repainted from a scroll listener, which works and lags: the box is redrawn
+AFTER the scroll it is reacting to, so it swims against the element on a phone.
+Document coordinates never move relative to what they are drawn around and need
+no listener at all.
+
+The pointer path is a full-screen cover taking `pointerup`, with
+`elementsFromPoint` to see past it. `console/mods/pick.js` does the same job off
+`mousemove` + `click`, which does not work on iOS; `annotate.js` carries the
+field report and the fix, and this is that fix extracted. Self-contained on
+purpose, and it does duplicate about twenty lines of `console/base.js`'s `sig`
+and `rect`: base.js is a DevTools paste installing a dozen globals, this is a
+`gh.load` kit installing one, and sharing would mean one adopting the other's
+distribution. The page half is [`pages/peek.html`](../../pages/peek.html), whose fixtures are chosen so each structure buries the thing you would actually want several levels under whatever your finger lands on;
+the browser facts (pointer path, outlines, auto-dock) are driven by
+`tools/render/scenarios/peek-walk.mjs`, since jsdom has no layout.
 
 ### wsl-core.js
 

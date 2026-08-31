@@ -17,6 +17,7 @@ main,,inquiry,Inquiry,inquiry.html,thumbs/inquiry.png,https://github.com/mehrlan
 main,,launcher,Popup Launcher · setup,launcher.html,thumbs/launcher.png,https://github.com/mehrlander/web-tools/blob/main/pages/launcher.html,"Popup launcher setup — paste a token, copy out the bookmarklet."
 main,,links,Links,links.html,thumbs/links.png,https://github.com/mehrlander/web-tools/blob/main/pages/links.html,"home's bookmarks board: a pinned rail, areas of links, and an area's markdown dossier, all editable in place."
 main,,pdf-inspect,PDF Inspect,pdf-inspect.html,thumbs/pdf-inspect.png,https://github.com/mehrlander/web-tools/blob/main/pages/pdf-inspect.html,
+main,,peek,Peek — DOM under a selection,peek.html,thumbs/peek.png,https://github.com/mehrlander/web-tools/blob/main/pages/peek.html,
 main,,repo-atlas,Repo Atlas,repo-atlas.html,thumbs/repo-atlas.png,https://github.com/mehrlander/web-tools/blob/main/pages/repo-atlas.html,"Zoomable treemap map of any GitHub repo — files as tiles, sized by bytes or count."
 main,,review,Review,review.html,thumbs/review.png,https://github.com/mehrlander/web-tools/blob/main/pages/review.html,"A branch changeset or file, reviewed: CM6 diffs vs a base, links, patch dumps — the 🔍 target."
 main,,session,Session,session.html,thumbs/session.png,https://github.com/mehrlander/web-tools/blob/main/pages/session.html,

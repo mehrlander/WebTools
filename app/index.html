@@ -1747,7 +1747,10 @@ function loadMarked(){
       document.head.appendChild(s);
     }),
     window.mdDoc ? Promise.resolve()
-      : (window.gh?.load ? window.gh.load('kits/md-doc.js').catch(() => {}) : Promise.resolve()),
+      : (window.gh?.load
+          ? window.gh.load('kits/src-doc.js')
+              .then(() => window.gh.load('kits/md-doc.js')).catch(() => {})
+          : Promise.resolve()),
   ]);
 }
 // One markdown string → the prose markup these views hang on x-html. The

@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 29 are named by CLAUDE.md,
-6 by a skill, 19 by a page or component. The remaining 17 are
+6 by a skill, 20 by a page or component. The remaining 17 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -55,6 +55,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`registries.csv`](registries.csv) — every registry the estate declares: its file, target, scope, and gate
 - [`registries.md`](registries.md) — the metadata model: targets, scopes, properties, declarations, assertions; ownership not overlay; the registry and catalog reduction
 - [`repetitions.csv`](repetitions.csv) — where each registered statement is said again, how it relates, and what holds it
+- [`routes-kinds.csv`](routes-kinds.csv) — the content kinds: what a subject is, what opens it, and what a note can aim at inside it
 - [`routes-modes.csv`](routes-modes.csv) — the delivery modes toss-render accepts, and the trust posture each buys
 - [`routes-paste.csv`](routes-paste.csv) — what a paste becomes on each surface that reads the clipboard, and what each one declines to
 - [`routes-routes.csv`](routes-routes.csv) — the toss routes: which content type opens in which renderer page

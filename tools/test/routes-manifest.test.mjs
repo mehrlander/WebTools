@@ -232,3 +232,168 @@ test('docs/showing.md does not repeat a paragraph within itself', () => {
   const dupes = [...seen].filter(([, n]) => n > 1).map(([p]) => p.slice(0, 60));
   assert.equal(dupes.join(' | '), '', 'paragraph repeated verbatim: ' + dupes.join(' | '));
 });
+
+// ── Kinds: what is being shown, and what that buys once it is on screen ─────
+//
+// docs/routes-kinds.csv is the fourth carrier, added 2026-08-31. The three
+// above answer how a subject reaches a viewer; this one answers what the
+// subject IS, which is the question three separate pieces of code were each
+// answering privately: ViewRegistry.READ_MODE (which mode a file opens in),
+// the toss routes (which page addresses it), and kits/md-doc.js's declaration
+// (what units a note can be pinned to inside it).
+//
+// The `subject` and `shown_by` columns are the join to the showing frame, and
+// `route` is the join to the routes table. They are checked here rather than
+// described anywhere, so the association cannot rot into three tables that
+// merely sit on one tab.
+manifest.kinds = parseCsv(read('routes-kinds.csv'));
+
+const viewerSrc = readFileSync(path.join(repoRoot, 'lib/alpineComponents/viewer.js'), 'utf8');
+const mdDocSrc = readFileSync(path.join(repoRoot, 'lib/kits/md-doc.js'), 'utf8');
+
+// The KIND_VIEW literal, read the same strict way as TOSS_ROUTES: a shape this
+// cannot parse comes back short and fails loudly rather than passing on half.
+function kindViews(src) {
+  const block = src.match(/KIND_VIEW: \{([\s\S]*?)\n {2}\},/);
+  assert.ok(block, 'KIND_VIEW literal not found in lib/alpineComponents/viewer.js');
+  const out = {};
+  for (const [, k, v] of block[1].matchAll(/(\w+):\s*'([^']+)'/g)) out[k] = v;
+  const declared = (block[1].match(/\w+:\s*'/g) || []).length;
+  assert.equal(Object.keys(out).length, declared, 'a KIND_VIEW pair did not parse');
+  return out;
+}
+
+// Every kind KIND() can return. Collected from its `return '...'` literals,
+// which is what makes "the classifier answers something the table does not
+// carry" a failure rather than a surprise in the app.
+function classifierKinds(src) {
+  const block = src.match(/ {2}KIND\(f\) \{([\s\S]*?)\n {2}\},/);
+  assert.ok(block, 'KIND(f) not found in lib/alpineComponents/viewer.js');
+  // Read whole `return` statements, then the string literals inside them. A
+  // bare `/return '(\w+)'/` misses the branch that decides two kinds at once
+  // (`return isRowArray(...) ? 'records' : 'tree'`), and missing a branch here
+  // would let the classifier answer something no row carries.
+  const out = new Set();
+  for (const [, stmt] of block[1].matchAll(/return ([^;]+);/g)) {
+    for (const [, lit] of stmt.matchAll(/'([^']+)'/g)) out.add(lit);
+  }
+  return out;
+}
+
+test('kinds table: fields, and the subject axis it is written against', () => {
+  assert.ok(manifest.kinds.length > 1);
+  const axis = manifest.showing.axes.subject;
+  for (const k of manifest.kinds) {
+    assert.ok(k.kind && k.label && k.detect, k.kind + ': kind/label/detect');
+    assert.ok(axis.includes(k.subject),
+      `${k.kind}: subject "${k.subject}" is not a value of the showing axis`);
+  }
+  const keys = manifest.kinds.map(k => k.kind);
+  assert.equal(new Set(keys).size, keys.length, 'duplicate kind key');
+});
+
+test('every kind joins to the mechanisms and routes beside it', () => {
+  const mechanisms = new Set(manifest.showing.mechanisms.map(m => m.key));
+  const routes = new Set(manifest.routes.map(r => r.key));
+  for (const k of manifest.kinds) {
+    for (const m of k.shown_by.split(';').filter(Boolean)) {
+      assert.ok(mechanisms.has(m), `${k.kind}: shown_by names no such mechanism: ${m}`);
+    }
+    if (k.route) assert.ok(routes.has(k.route), `${k.kind}: route does not exist: ${k.route}`);
+    if (k.kit) {
+      assert.ok(existsSync(path.join(repoRoot, k.kit)), `${k.kind}: kit missing on disk: ${k.kit}`);
+    }
+  }
+});
+
+test('the kinds table and the viewer classifier agree', () => {
+  const views = kindViews(viewerSrc);
+  const fromTable = Object.fromEntries(
+    manifest.kinds.filter(k => k.view).map(k => [k.kind, k.view]));
+  assert.deepEqual(views, fromTable,
+    'docs/routes-kinds.csv and ViewRegistry.KIND_VIEW have drifted; the CSV is the owner');
+
+  // Every mode a kind names has to be a module the viewer actually has, or the
+  // table is promising a view that resolves to the raw fallback.
+  const modules = new Set([...viewerSrc.matchAll(/^ {6}id: '([a-z]+)',/gm)].map(m => m[1]));
+  for (const k of manifest.kinds) {
+    if (k.view) assert.ok(modules.has(k.view), `${k.kind}: no such viewer module: ${k.view}`);
+  }
+
+  // The classifier may not answer anything the table does not carry, and a row
+  // with a view is a row the classifier has to be able to reach.
+  const answered = classifierKinds(viewerSrc);
+  const tabled = new Set(manifest.kinds.map(k => k.kind));
+  for (const a of answered) assert.ok(tabled.has(a), 'KIND() returns an untabled kind: ' + a);
+  for (const k of manifest.kinds) {
+    if (k.view) assert.ok(answered.has(k.kind), 'no classifier branch reaches kind: ' + k.kind);
+  }
+});
+
+// Every kind that names a kit inlines its own row there, the way toss-render
+// inlines TOSS_ROUTES: the registry declares, the code carries a copy so no
+// render path takes a fetch, and adding to one alone fails here.
+function inlinedKind(src, file) {
+  const block = src.match(/const KIND = Object\.freeze\(\{([\s\S]*?)\n {2}\}\);/);
+  assert.ok(block, 'the KIND literal is gone from ' + file);
+  const lit = {};
+  for (const [, k, v] of block[1].matchAll(/(\w+):\s*'((?:[^'\\]|\\.)*)'/g)) lit[k] = v.replace(/\\'/g, "'");
+  return lit;
+}
+
+test('every kind that names a kit inlines its own row there', () => {
+  const declaring = manifest.kinds.filter(k => k.kit);
+  assert.ok(declaring.length >= 2, 'a contract with one implementer is a rename');
+  for (const row of declaring) {
+    const src = readFileSync(path.join(repoRoot, row.kit), 'utf8');
+    const lit = inlinedKind(src, row.kit);
+    assert.equal(lit.kind, row.kind, row.kit + ': kind');
+    assert.equal(lit.label, row.label, row.kit + ': label');
+    assert.equal(lit.aim, row.aim, row.kit + ': aim');
+    assert.equal(lit.aimLabel, row.aim_label, row.kit + ': aim_label');
+    assert.equal(lit.aimHint, row.aim_hint, row.kit + ': aim_hint');
+    assert.ok(row.unit.startsWith(lit.unit),
+      `${row.kit}: unit "${row.unit}" does not open with "${lit.unit}"`);
+  }
+});
+
+// The optional half of the contract, stated as a check so it cannot quietly
+// become mandatory. A kind with an aim has to name what that aim is called and
+// what its hint says, since kits/annotate.js draws the row from those two and
+// an empty label would paint a blank control. A kind WITHOUT one carries
+// neither: source code declines the gesture half because a line range is what
+// an ordinary text selection already spans.
+test('a kind names its aim completely, or carries no aim at all', () => {
+  for (const k of manifest.kinds) {
+    if (k.aim) {
+      assert.ok(k.aim_label, k.kind + ': an aim with no label paints a blank row');
+      assert.ok(k.aim_hint, k.kind + ': an aim with no hint');
+      assert.ok(k.kit, k.kind + ': an aim needs a kit to define its units');
+    } else {
+      assert.equal(k.aim_label, '', k.kind + ': a label for an aim that does not exist');
+      assert.equal(k.aim_hint, '', k.kind + ': a hint for an aim that does not exist');
+    }
+  }
+});
+
+// The carrier is the one place the aim rule lives, and both conditions have to
+// be in it: a kind declaring an aim, and units for that aim to hit. Split
+// across the kits it would be re-derived by every kind that ever declares.
+test('the aim test is the carrier\'s, and tests both halves', () => {
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/src-doc.js'), 'utf8');
+  assert.match(src, /st\.kind && st\.kind\.aim && st\.units > 0/,
+    'kits/src-doc.js no longer tests both the declared aim and the unit count');
+});
+
+// The classification policy has ONE owner, and this is the check that keeps it
+// that way. It was the Files view's private READ_MODE until 2026-08-15, moved
+// to ViewRegistry when the stage wanted it, and a third copy (AUTO_VIEW, on
+// pages/data-view.html) went on disagreeing until 2026-08-31: unknown
+// extensions, the JSON table test, and the size guard all differed. A private
+// re-implementation is what this forbids, by name.
+test('no page keeps a private copy of the read-mode policy', () => {
+  const dataView = readFileSync(path.join(repoRoot, 'pages/data-view.html'), 'utf8');
+  assert.match(dataView, /ViewRegistry\.READ_MODE/, 'data-view no longer delegates the policy');
+  assert.doesNotMatch(dataView, /ext === 'csv'|startsWith\('\['\)/,
+    'pages/data-view.html has grown its own classifier again');
+});
