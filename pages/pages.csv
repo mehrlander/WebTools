@@ -1,5 +1,6 @@
 top,group,label,title,href,thumb,code,note
 main,,annotate,Annotate,annotate.html,thumbs/annotate.png,https://github.com/mehrlander/web-tools/blob/main/pages/annotate.html,
+main,,audit-render,Audit render,audit-render.html,thumbs/audit-render.png,https://github.com/mehrlander/web-tools/blob/main/pages/audit-render.html,
 main,,bench,Bench,bench.html,thumbs/bench.png,https://github.com/mehrlander/web-tools/blob/main/pages/bench.html,
 main,,branch,Branch,branch.html,thumbs/branch.png,https://github.com/mehrlander/web-tools/blob/main/pages/branch.html,
 main,,chat-results,Chat Search Results,chat-results.html,thumbs/chat-results.png,https://github.com/mehrlander/web-tools/blob/main/pages/chat-results.html,

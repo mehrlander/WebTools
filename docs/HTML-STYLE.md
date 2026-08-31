@@ -1,9 +1,19 @@
 # HTML house style (portable)
 
-What pages built here look like, not how they are built. The canonical source is
-`mehrlander/web-tools` at `docs/HTML-STYLE.md`. Mechanics live in the
+**This is the style guide. Asked for "the style guide", "the HTML style guide",
+or "the page style guide", this is the file.** What pages built here look like,
+not how they are built. The canonical source is `mehrlander/web-tools` at
+`docs/HTML-STYLE.md`. Mechanics live in the
 [daisy-alpine skill](../skills/daisy-alpine/SKILL.md). Local `CLAUDE.md` rules
 win.
+
+The names are stated because the file did not carry them and could not be found
+by them: searching "style guide" across the estate returned
+[google-style-clarity](../skills/google-style-clarity/SKILL.md), which is the
+guide for **prose**, and searching "html style" returned nothing, the hyphen in
+the filename splitting the phrase. **A document has to be findable by the words
+someone who has not read it would use**, which are rarely the words it uses
+about itself.
 
 These are standing decisions. If a correction recurs, write it down instead of
 relitigating it per page

@@ -1,0 +1,1704 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit render</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🎨</text></svg>">
+<!--
+  audit-render.html — a document coloured by what each of its units IS.
+
+  The audit pass (skills/state-the-rule, doc-audit's fourth question) puts one
+  label on every unit of a document. This page is where you look at the result:
+  the whole document, every unit tinted, a legend that filters, and the density
+  figure that says whether the document is worth a rewrite at all.
+
+  IT ASSUMES NO PARTICULAR MARKDOWN VIEWER, and that is the point of the design.
+  Units carry (start, end) into the source; kits/md-doc.js's split() carries
+  (start, end, startLine, endLine) for sections of the same source. Both speak
+  SOURCE OFFSETS, so joining them is arithmetic rather than DOM matching, and
+  any renderer that can say what it is a rendering OF can host the tint. That is
+  md-doc's DECLARE job, and enhance() applies it over markup another renderer
+  made. The deck view is the proof: kits/swipe-deck.js is a container, not a
+  viewer, so the same units light up one section per slide with nothing changed.
+
+  Two views, and the difference between them is a finding rather than a setting:
+    source  the markdown itself, every unit tinted. Exact by construction.
+    read    each unit rendered as markdown. A unit whose slice does not close
+            its own inline markup CANNOT be rendered alone, and the page says so
+            rather than rendering it broken. Those fallbacks are segmentation
+            artifacts worth seeing: a code span split across two units, a list
+            number that became a unit of its own.
+
+  Payload: audit/1, from ?src=<spec>, #gz=<base64url>, or the embedded default.
+  Built by tools/build/audit-payload.py (--inject refreshes the block below).
+-->
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<style>
+/* The pins take taps so they can be armed and grabbed, and the layer under them
+   does not, so the text keeps its own. WHILE A DRAG IS LIVE THEY GO
+   TRANSPARENT: a pin's box is 32px of target sitting over the very text the
+   drag is aiming at, so caretRangeFromPoint answers with the pin and the
+   boundary never moves. A pin dragging ITSELF needs this most, since the aim
+   point tracks the pin. Same rule, same reason, as pages/dictate.html.
+
+   An attribute selector on the ancestor rather than two Tailwind utilities:
+   pointer-events-auto and pointer-events-none have equal specificity and a
+   fixed emission order, so whichever the sheet puts last always won and the
+   override was inert. */
+[x-ref="pins"] [data-edge] { pointer-events: auto; }
+[x-ref="pins"][data-audit-drag] [data-edge] { pointer-events: none; }
+</style>
+<script>
+/* AUDIT:BEGIN */
+window.__audit = {
+ "kind": "audit/1",
+ "title": "CONVENTIONS.md",
+ "standoff": {
+  "kind": "standoff/1",
+  "question": "is this unit binding?",
+  "self": {
+   "path": "skills/state-the-rule/runs/2026-08-29-conventions/standoff.json",
+   "repo": "mehrlander/web-tools"
+  },
+  "target": {
+   "path": "docs/CONVENTIONS.md",
+   "repo": "mehrlander/web-tools",
+   "ref": "main",
+   "url": "https://github.com/mehrlander/web-tools/blob/main/docs/CONVENTIONS.md",
+   "bytes": 8483,
+   "sha256": "8403967519728e472428b2b5e7d1bf2742bbcf028a8add3b675112a456bf1c2e"
+  },
+  "vocabulary": [
+   {
+    "label": "WHAT",
+    "side": "declaration",
+    "gloss": "a rule, a fact of the system, a value it may hold"
+   },
+   {
+    "label": "HOW",
+    "side": "declaration",
+    "gloss": "syntax, a procedure, an invocation"
+   },
+   {
+    "label": "WHY-OP",
+    "side": "hinge",
+    "gloss": "a reason that changes how the rule applies at a boundary"
+   },
+   {
+    "label": "WHY-MOT",
+    "side": "explanation",
+    "gloss": "a reason that makes the rule feel right but changes nothing"
+   },
+   {
+    "label": "PROV",
+    "side": "explanation",
+    "gloss": "when it changed, what it replaced, what failed"
+   },
+   {
+    "label": "EVID",
+    "side": "explanation",
+    "gloss": "a measurement, a probe, an observation"
+   },
+   {
+    "label": "NAV",
+    "side": "apparatus",
+    "gloss": "a pointer to the document or gate that owns something"
+   },
+   {
+    "label": "META",
+    "side": "apparatus",
+    "gloss": "a statement about this document"
+   }
+  ],
+  "units": [
+   {
+    "uid": "conven-001",
+    "start": 0,
+    "end": 32,
+    "kind": "heading",
+    "words": 4,
+    "label": "META"
+   },
+   {
+    "uid": "conven-002",
+    "start": 34,
+    "end": 119,
+    "kind": "sent",
+    "words": 12,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-003",
+    "start": 119,
+    "end": 239,
+    "kind": "sent",
+    "words": 14,
+    "label": "NAV"
+   },
+   {
+    "uid": "conven-004",
+    "start": 239,
+    "end": 291,
+    "kind": "sent",
+    "words": 8,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-005",
+    "start": 293,
+    "end": 372,
+    "kind": "sent",
+    "words": 13,
+    "label": "META"
+   },
+   {
+    "uid": "conven-006",
+    "start": 372,
+    "end": 412,
+    "kind": "sent",
+    "words": 8,
+    "label": "META"
+   },
+   {
+    "uid": "conven-007",
+    "start": 414,
+    "end": 616,
+    "kind": "sent",
+    "words": 30,
+    "label": "NAV"
+   },
+   {
+    "uid": "conven-008",
+    "start": 616,
+    "end": 795,
+    "kind": "sent",
+    "words": 19,
+    "label": "NAV"
+   },
+   {
+    "uid": "conven-009",
+    "start": 797,
+    "end": 829,
+    "kind": "sent",
+    "words": 5,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-010",
+    "start": 829,
+    "end": 892,
+    "kind": "sent",
+    "words": 8,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-011",
+    "start": 894,
+    "end": 917,
+    "kind": "heading",
+    "words": 4,
+    "label": "META"
+   },
+   {
+    "uid": "conven-012",
+    "start": 919,
+    "end": 1017,
+    "kind": "sent",
+    "words": 14,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-013",
+    "start": 1019,
+    "end": 1065,
+    "kind": "sent",
+    "words": 7,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-014",
+    "start": 1065,
+    "end": 1131,
+    "kind": "sent",
+    "words": 10,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-015",
+    "start": 1131,
+    "end": 1211,
+    "kind": "sent",
+    "words": 15,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-016",
+    "start": 1211,
+    "end": 1291,
+    "kind": "sent",
+    "words": 15,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-017",
+    "start": 1291,
+    "end": 1455,
+    "kind": "sent",
+    "words": 21,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-018",
+    "start": 1457,
+    "end": 1524,
+    "kind": "heading",
+    "words": 11,
+    "label": "META"
+   },
+   {
+    "uid": "conven-019",
+    "start": 1526,
+    "end": 1781,
+    "kind": "sent",
+    "words": 47,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-020",
+    "start": 1781,
+    "end": 1817,
+    "kind": "sent",
+    "words": 7,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-021",
+    "start": 1819,
+    "end": 1904,
+    "kind": "sent",
+    "words": 16,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-022",
+    "start": 1904,
+    "end": 2180,
+    "kind": "sent",
+    "words": 31,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-023a",
+    "start": 2182,
+    "end": 2276,
+    "kind": "sent",
+    "words": 16,
+    "label": "WHAT",
+    "from": "split:conven-023"
+   },
+   {
+    "uid": "conven-023b",
+    "start": 2276,
+    "end": 2360,
+    "kind": "sent",
+    "words": 15,
+    "label": "WHY-OP",
+    "from": "split:conven-023"
+   },
+   {
+    "uid": "conven-024",
+    "start": 2362,
+    "end": 2393,
+    "kind": "heading",
+    "words": 5,
+    "label": "META"
+   },
+   {
+    "uid": "conven-025",
+    "start": 2395,
+    "end": 2477,
+    "kind": "sent",
+    "words": 16,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-026",
+    "start": 2477,
+    "end": 2645,
+    "kind": "sent",
+    "words": 22,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-027",
+    "start": 2645,
+    "end": 2678,
+    "kind": "sent",
+    "words": 3,
+    "label": "NAV"
+   },
+   {
+    "uid": "conven-028",
+    "start": 2680,
+    "end": 2711,
+    "kind": "sent",
+    "words": 5,
+    "label": "META"
+   },
+   {
+    "uid": "conven-029",
+    "start": 2713,
+    "end": 2966,
+    "kind": "table",
+    "words": 58,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-030a",
+    "start": 2968,
+    "end": 3011,
+    "kind": "sent",
+    "words": 7,
+    "label": "WHAT",
+    "from": "split:conven-030"
+   },
+   {
+    "uid": "conven-030b",
+    "start": 3011,
+    "end": 3075,
+    "kind": "sent",
+    "words": 12,
+    "label": "WHY-OP",
+    "from": "split:conven-030"
+   },
+   {
+    "uid": "conven-031",
+    "start": 3075,
+    "end": 3099,
+    "kind": "sent",
+    "words": 3,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-032",
+    "start": 3101,
+    "end": 3276,
+    "kind": "sent",
+    "words": 32,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-033",
+    "start": 3278,
+    "end": 3372,
+    "kind": "code",
+    "words": 12,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-034",
+    "start": 3372,
+    "end": 3429,
+    "kind": "sent",
+    "words": 6,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-035",
+    "start": 3429,
+    "end": 3546,
+    "kind": "sent",
+    "words": 19,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-036",
+    "start": 3546,
+    "end": 3631,
+    "kind": "sent",
+    "words": 12,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-037",
+    "start": 3633,
+    "end": 3809,
+    "kind": "sent",
+    "words": 32,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-038",
+    "start": 3809,
+    "end": 3873,
+    "kind": "sent",
+    "words": 11,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-039",
+    "start": 3873,
+    "end": 3931,
+    "kind": "sent",
+    "words": 11,
+    "label": "WHY-OP"
+   },
+   {
+    "uid": "conven-040",
+    "start": 3933,
+    "end": 4100,
+    "kind": "sent",
+    "words": 25,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-041",
+    "start": 4102,
+    "end": 4301,
+    "kind": "code",
+    "words": 21,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-042",
+    "start": 4301,
+    "end": 4347,
+    "kind": "sent",
+    "words": 9,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-043",
+    "start": 4347,
+    "end": 4442,
+    "kind": "sent",
+    "words": 16,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-044a",
+    "start": 4442,
+    "end": 4477,
+    "kind": "sent",
+    "words": 5,
+    "label": "WHAT",
+    "from": "split:conven-044"
+   },
+   {
+    "uid": "conven-044b",
+    "start": 4477,
+    "end": 4524,
+    "kind": "sent",
+    "words": 7,
+    "label": "WHY-OP",
+    "from": "split:conven-044"
+   },
+   {
+    "uid": "conven-045a",
+    "start": 4526,
+    "end": 4572,
+    "kind": "sent",
+    "words": 7,
+    "label": "WHAT",
+    "from": "split:conven-045"
+   },
+   {
+    "uid": "conven-045b",
+    "start": 4572,
+    "end": 4682,
+    "kind": "sent",
+    "words": 19,
+    "label": "WHY-OP",
+    "from": "split:conven-045"
+   },
+   {
+    "uid": "conven-046a",
+    "start": 4684,
+    "end": 4794,
+    "kind": "sent",
+    "words": 18,
+    "label": "WHAT",
+    "from": "split:conven-046"
+   },
+   {
+    "uid": "conven-046b",
+    "start": 4794,
+    "end": 4852,
+    "kind": "sent",
+    "words": 10,
+    "label": "WHY-MOT",
+    "from": "split:conven-046"
+   },
+   {
+    "uid": "conven-047a",
+    "start": 4852,
+    "end": 4880,
+    "kind": "sent",
+    "words": 5,
+    "label": "WHAT",
+    "from": "split:conven-047"
+   },
+   {
+    "uid": "conven-047b",
+    "start": 4880,
+    "end": 4984,
+    "kind": "sent",
+    "words": 17,
+    "label": "WHY-OP",
+    "from": "split:conven-047"
+   },
+   {
+    "uid": "conven-048",
+    "start": 4986,
+    "end": 5044,
+    "kind": "heading",
+    "words": 12,
+    "label": "META"
+   },
+   {
+    "uid": "conven-049",
+    "start": 5046,
+    "end": 5405,
+    "kind": "sent",
+    "words": 58,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-050",
+    "start": 5407,
+    "end": 5711,
+    "kind": "sent",
+    "words": 36,
+    "label": "NAV"
+   },
+   {
+    "uid": "conven-051",
+    "start": 5713,
+    "end": 5748,
+    "kind": "heading",
+    "words": 8,
+    "label": "META"
+   },
+   {
+    "uid": "conven-052",
+    "start": 5750,
+    "end": 5804,
+    "kind": "sent",
+    "words": 13,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-053",
+    "start": 5804,
+    "end": 5867,
+    "kind": "sent",
+    "words": 10,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-054",
+    "start": 5867,
+    "end": 5935,
+    "kind": "sent",
+    "words": 12,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-055",
+    "start": 5937,
+    "end": 5983,
+    "kind": "heading",
+    "words": 7,
+    "label": "META"
+   },
+   {
+    "uid": "conven-056",
+    "start": 5985,
+    "end": 6138,
+    "kind": "sent",
+    "words": 30,
+    "label": "WHY-OP"
+   },
+   {
+    "uid": "conven-057",
+    "start": 6138,
+    "end": 6235,
+    "kind": "sent",
+    "words": 17,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-058",
+    "start": 6237,
+    "end": 6239,
+    "kind": "sent",
+    "words": 1,
+    "label": "META"
+   },
+   {
+    "uid": "conven-059",
+    "start": 6239,
+    "end": 6304,
+    "kind": "sent",
+    "words": 13,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-060",
+    "start": 6304,
+    "end": 6307,
+    "kind": "sent",
+    "words": 1,
+    "label": "META"
+   },
+   {
+    "uid": "conven-061",
+    "start": 6307,
+    "end": 6398,
+    "kind": "sent",
+    "words": 16,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-062",
+    "start": 6398,
+    "end": 6425,
+    "kind": "sent",
+    "words": 5,
+    "label": "WHY-OP"
+   },
+   {
+    "uid": "conven-063",
+    "start": 6425,
+    "end": 6428,
+    "kind": "sent",
+    "words": 1,
+    "label": "META"
+   },
+   {
+    "uid": "conven-064",
+    "start": 6428,
+    "end": 6496,
+    "kind": "sent",
+    "words": 11,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-065a",
+    "start": 6498,
+    "end": 6603,
+    "kind": "sent",
+    "words": 20,
+    "label": "WHAT",
+    "from": "split:conven-065"
+   },
+   {
+    "uid": "conven-065b",
+    "start": 6603,
+    "end": 6713,
+    "kind": "sent",
+    "words": 19,
+    "label": "WHY-MOT",
+    "from": "split:conven-065"
+   },
+   {
+    "uid": "conven-066",
+    "start": 6713,
+    "end": 6863,
+    "kind": "sent",
+    "words": 25,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-067",
+    "start": 6863,
+    "end": 6964,
+    "kind": "sent",
+    "words": 21,
+    "label": "HOW"
+   },
+   {
+    "uid": "conven-068",
+    "start": 6964,
+    "end": 7119,
+    "kind": "sent",
+    "words": 10,
+    "label": "NAV"
+   },
+   {
+    "uid": "conven-069a",
+    "start": 7121,
+    "end": 7160,
+    "kind": "sent",
+    "words": 6,
+    "label": "WHAT",
+    "from": "split:conven-069"
+   },
+   {
+    "uid": "conven-069b",
+    "start": 7160,
+    "end": 7225,
+    "kind": "sent",
+    "words": 12,
+    "label": "WHY-OP",
+    "from": "split:conven-069"
+   },
+   {
+    "uid": "conven-070a",
+    "start": 7225,
+    "end": 7256,
+    "kind": "sent",
+    "words": 5,
+    "label": "WHAT",
+    "from": "split:conven-070"
+   },
+   {
+    "uid": "conven-070b",
+    "start": 7256,
+    "end": 7422,
+    "kind": "sent",
+    "words": 27,
+    "label": "WHY-OP",
+    "from": "split:conven-070"
+   },
+   {
+    "uid": "conven-071a",
+    "start": 7424,
+    "end": 7489,
+    "kind": "sent",
+    "words": 12,
+    "label": "WHY-OP",
+    "from": "split:conven-071"
+   },
+   {
+    "uid": "conven-071b",
+    "start": 7489,
+    "end": 7575,
+    "kind": "sent",
+    "words": 18,
+    "label": "WHAT",
+    "from": "split:conven-071"
+   },
+   {
+    "uid": "conven-072",
+    "start": 7577,
+    "end": 7590,
+    "kind": "heading",
+    "words": 3,
+    "label": "META"
+   },
+   {
+    "uid": "conven-073",
+    "start": 7592,
+    "end": 7682,
+    "kind": "sent",
+    "words": 15,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-074",
+    "start": 7682,
+    "end": 7770,
+    "kind": "sent",
+    "words": 16,
+    "label": "WHY-MOT"
+   },
+   {
+    "uid": "conven-075",
+    "start": 7770,
+    "end": 7843,
+    "kind": "sent",
+    "words": 13,
+    "label": "WHY-OP"
+   },
+   {
+    "uid": "conven-076",
+    "start": 7845,
+    "end": 7927,
+    "kind": "sent",
+    "words": 14,
+    "label": "NAV"
+   },
+   {
+    "uid": "conven-077",
+    "start": 7927,
+    "end": 8145,
+    "kind": "sent",
+    "words": 26,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-078",
+    "start": 8147,
+    "end": 8185,
+    "kind": "heading",
+    "words": 6,
+    "label": "META"
+   },
+   {
+    "uid": "conven-079",
+    "start": 8187,
+    "end": 8223,
+    "kind": "sent",
+    "words": 7,
+    "label": "WHAT"
+   },
+   {
+    "uid": "conven-080",
+    "start": 8223,
+    "end": 8391,
+    "kind": "sent",
+    "words": 25,
+    "label": "WHY-OP"
+   },
+   {
+    "uid": "conven-081",
+    "start": 8391,
+    "end": 8472,
+    "kind": "sent",
+    "words": 13,
+    "label": "WHAT"
+   }
+  ]
+ },
+ "text": "# Working conventions (portable)\n\nRemote-sandbox conventions for Claude Code web sessions; output is strictly via chat. The canonical source is `mehrlander/web-tools` at `docs/CONVENTIONS.md`, loaded by `@`-import or the `web-tools` skill. Substitute the current repo into all URL templates.\n\nThis hub holds behavior that applies whether or not anything is being surfaced. Two companions load as one set with it:\n\n- **[SURFACING.md](SURFACING.md)** — the surfacing system: the primitives that make session work visible in chat (no setup), plus the surfacing course (the guide-PR lifecycle, idle until you open a PR).\n- **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)** — installation, the plugin, and the full catalog of what travels from the hub to any repo.\n\n**Prose style:** zero em dashes. Use colons, commas, semicolons, parentheses, or new sentences.\n\n## Scope and precedence\n\n**Local `CLAUDE.md` wins wherever it conflicts with these defaults.** Beyond that, name the units:\n\n- A **session** can span several repositories. A repository's conventions apply to work done in that repository.\n- A **workstream** is one repository plus its branch and the PR that tracks it. A single session may run several at once (three repos on one branch name, say).\n- The **branch anchor**, **guide PR**, and **wrap-up** in [SURFACING.md](SURFACING.md) are per-workstream: \"the branch\" and \"the PR\" always mean this workstream's.\n\n## Standing decisions: write the answer down, not just the question\n\n**A consistency ask is not a fork.** When a treatment is approved in one place and the instruction is to apply it elsewhere (\"do the same on X so it's consistent\"), apply it to every surface it plausibly covers, show the pixels, and name what was assumed. Do not ask which surface was meant.\n\nA recurring fork becomes a standing decision the moment a doc states it as a default. Name it in `CLAUDE.md` or the relevant portable doc (this file, [SURFACING.md](SURFACING.md), [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)), and a session that hits it takes the default and notes the assumption rather than raising it fresh.\n\n**A repo fielding the same question has a missing standing decision, not a tool to disable.** Asking is a model choice, not a gated call, so a `permissions.deny` cannot reach it.\n\n## Status: frozen, stale, wrong\n\nMaterial that is preserved on purpose, or that has aged, says so where it is read. Three flavors: **`Frozen`** (preserved on purpose; the living version has moved on), **`Stale`** (no longer accurate), **`Wrong`** (flatly incorrect, not merely aged). Operated by `/portable:markers`.\n\nTwo carriers, split by subject:\n\n| | Subject | Says | Covers |\n| --- | --- | --- | --- |\n| **Marker** | a claim, in prose | this passage is preserved, aged, or wrong | markdown only |\n| **Declaration** | a file path | this artifact is frozen: do not edit or rebuild it | any file type |\n\n`Stale` and `Wrong` have no path analogue, since a paragraph can be wrong while its file is perfectly live. Only `Frozen` overlaps.\n\n**Marker.** Inline for one claim, or a GFM alert for a whole file or section (`> [!NOTE]` for `Frozen`, `> [!WARNING]` for the other two), with the flavor in the bold lead-in:\n\n```markdown\n**Stale 2026-07-20 → ../timeline.md:** the dates here predate the reschedule.\n```\n\nShape: `**Flavor YYYY[-MM[-DD]] [(note)] [→ target]:**`. The target is optional and may be a path, a markdown link, or prose; only path-shaped targets are existence-checked. A `status: frozen 2026-07-06; note` frontmatter line is the optional metadata layer.\n\n**Annotate, do not rewrite:** a dated file stays put as a record, so when one of its claims ages, mark the claim rather than editing the record into agreement with the present. **Only a record gets a marker**; fix a living document instead. The tell: a banner describing text no longer in the file.\n\n**Declaration.** `.paths.json`, which may sit at a repo root **or any workspace root**, with entries relative to its own directory and the nearest declaration winning.\n\n```json\n{\n  \"frozen\": [\n    \"research/budget-dive/dashboard.html\",\n    { \"path\": \"app/studies/\", \"since\": \"2026-07-05\", \"why\": \"task 0016: pinned exhibits\",\n      \"except\": [\"*/tools/*\"] }\n  ]\n}\n```\n\nA bare string is shorthand for `{ \"path\": ... }`; a trailing `/` covers a directory; `except` is `fnmatch` against the path below the entry. `except` is required in practice: a frozen folder routinely contains live inputs.\n\n**A marker cannot do the declaration's job.** A GFM alert renders in markdown and nowhere else, so `.html`, `.js`, and `.csv` artifacts can never carry one.\n\n**The one cross-check, and it runs one way:** a markdown file declared frozen should carry a `Frozen` banner, because the JSON is invisible to someone opening the file. The reverse does not hold, since a `Frozen` marker inside a living document annotates one claim and implies nothing about the file.\n\n## Venues: this session is not the only place work can run\n\nBesides this sandbox, work can run in a local Claude Code CLI, in Cowork on the desktop, through **Dispatch** (a phone-to-desktop relay, attended: the machine must be awake with the app open), on GitHub's hosted runners, on a **self-hosted runner** on your own machine (unattended: it queues while the machine sleeps), and in a Claude Code Remote environment.\n\nBefore concluding that something cannot be done from here, or scoping an answer to the venues visible from inside the sandbox, read [venues.md](https://github.com/mehrlander/web-tools/blob/main/docs/venues.md): what each reaches, and the attended-versus-unattended split that decides where a job belongs.\n\n## Leave it nicer than you found it\n\nAdding to a doc is a pass over it, not just an append. New material has to match the surrounding voice and structure. Go a step further and tighten related material while you are there.\n\n## Prose that describes state is unimplemented\n\nA document that restates what an app derives, or what a check enforces, is carrying a copy, and the copy is the half that ages with nothing to report it. Before adding to a doc, and whenever one has outgrown its subject, ask three questions in order:\n\n1. **Is this a fact the app derives?** Delete it and link the view.\n2. **Is this a rule the suite enforces?** Delete the description, keep a pointer to the gate. The test is the statement.\n3. **Does another document already own it?** Delete it and link there.\n\n**There is no fourth question that saves a passage, and a reason is not exempt because it is a reason.** Nearly every sentence in a bloated document is a reason somebody chose something, which is how it got bloated. What earns its place is the **criterion** inside a reason: the condition, threshold, or named exception that changes how the rule applies at an edge. Lift that into the rule and the rest goes to the PR body or the dated record that owns the decision. Operated by [`state-the-rule`](https://github.com/mehrlander/web-tools/blob/main/skills/state-the-rule/SKILL.md), which carries the labels and the checks.\n\nTwo habits: **Render before you cut**, since a definition that exists only in a tooltip is not rendered. And **look inside the file**: a paragraph repeated verbatim within one document is invisible to a cross-file duplicate scanner by construction, and to a word cap because it fits inside the budget.\n\nThe cut is only safe when something will notice it being undone, so leave a gate behind: a pointer the doc must keep, and a ceiling it must stay under.\n\n## Keep focus\n\nWhen asked to look for improvements, be wary of ideas that address a hypothetical problem. A simple, clear fix is worth making; the trap is speculative work that goes off course. The test points only at tasks you conceive, not a specific user request.\n\nThe `tasks` skill owns the filing rules; load `/tasks` before writing a task file. A friction observation goes to the repo's snags log (web-tools: [`SNAGS.md`](https://github.com/mehrlander/web-tools/blob/main/docs/SNAGS.md)), one line with a `→` to the fixing doc; the third recurrence earns a task.\n\n## Adding your own, without clobbering\n\nThe install owns only what it ships. Plugin skills are namespaced (`/portable:caption`), so a same-named skill of yours coexists; the fallback fetch hook writes a fixed file list and touches nothing else. Your own skills and any `CLAUDE.md` text below the import are never overwritten.\n"
+};
+/* AUDIT:END */
+</script>
+<script type="module">
+  // ?use=<branch|tag|sha> picks which ref the lib chain loads from; defaults to
+  // main. gh-api.js auto-boots window.gh from its import URL or __ghBlobBoot.
+  // This is the house block, copied rather than rewritten: a hand-rolled one
+  // shipped with `{ref, base}` where gh-api wants `{repo, ref}`, and nothing
+  // caught it because no test sets `use`. The toss's own #gh= route injects
+  // use=<ref> through its params shim, so tapping a branch toss was the first
+  // time this branch had ever run.
+  const p = new URLSearchParams(location.search);
+  const ref = p.get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  }
+  await gh.load('vanilla-bundle.js');   // window.esc; the suite gates local copies
+  await gh.load('kits/md-doc.js');
+  await gh.load('kits/swipe-deck.js');
+  await gh.load('kits/guide-render.js');   // house markdown type, not prose-sm
+  await gh.load('kits/standoff.js');       // the annotation's rules, shared with ops.py
+  await gh.load('kits/dictate.js');        // Dictate.pins: the settled edge-pin treatment
+  // md-doc's html() returns '' with no window.marked, which is a silent empty
+  // render rather than an error. Found by looking at the pixels.
+  window.marked = (await import('https://cdn.jsdelivr.net/npm/marked@12/+esm')).marked;
+
+  // One hue per label. Side decides the family; the label picks the shade.
+  const HUE = { WHAT: '16,185,129', HOW: '13,148,136', 'WHY-OP': '245,158,11',
+                'WHY-MOT': '244,63,94', PROV: '219,39,119', EVID: '192,38,211',
+                NAV: '79,70,229', META: '148,163,184' };
+  const tint = (l, a) => `rgba(${HUE[l] || '148,163,184'},${a})`;
+
+  // A unit renders alone only if its slice closes what it opens. Where it does
+  // not, the split ran through inline markup, which is a finding.
+  const balanced = (s) => (s.match(/`/g) || []).length % 2 === 0
+                       && (s.match(/\*\*/g) || []).length % 2 === 0
+                       && (s.match(/\[/g) || []).length === (s.match(/\]/g) || []).length;
+
+  window.auditPage = () => ({
+    a: null, view: 'read', off: {}, sel: null, sections: [], ref: '',
+    async init() {
+      this.ref = (typeof gh !== 'undefined' && gh.ref) || '';
+      let payload = window.__audit;
+      const spec = p.get('src') || new URLSearchParams(location.hash.slice(1)).get('src');
+      if (spec) payload = JSON.parse((await gh.get(spec)).text);
+      this.a = payload;
+      this.sections = mdDoc.split(this.a.text);
+      this.base = JSON.parse(JSON.stringify(this.a.standoff));
+      this.regroup();
+      this.$nextTick(() => { this.bindDoc(); this.paint(); });
+    },
+    // Blocks: consecutive units with no blank line between them. Derived from
+    // units, so every grain edit rebuilds it; paint() reads blocks and would
+    // otherwise keep rendering the units a split just replaced.
+    regroup() {
+      let blocks = [], cur = null;
+      for (const u of this.units) {
+        const gap = cur ? this.a.text.slice(cur.at(-1).end, u.start) : '';
+        if (!cur || /\n\s*\n/.test(gap)) { cur = [u]; blocks.push(cur); } else cur.push(u);
+      }
+      this.blocks = blocks;
+    },
+    get vocab() { return this.so.vocabulary.filter(v => this.count(v.label)); },
+    get sides() { return [...new Set(this.vocab.map(v => v.side))]; },
+    count(l) { return this.units.filter(u => u.label === l).length; },
+    gloss(l) { return (this.so.vocabulary.find(v => v.label === l) || {}).gloss || ''; },
+    side(l) { return (this.so.vocabulary.find(v => v.label === l) || {}).side || ''; },
+    // Words, not units: a one-line NAV pointer and a four-sentence provenance
+    // paragraph are one unit each and are not the same amount of document.
+    wordsOn(side) {
+      return this.units.filter(u => this.side(u.label) === side)
+                       .reduce((n, u) => n + u.words, 0);
+    },
+    pctOn(side) { return Math.round(100 * this.wordsOn(side) / (this.words || 1)); },
+    get words() { return this.units.reduce((n, u) => n + u.words, 0); },
+    get shareOf() {
+      const t = this.words || 1;
+      return Object.fromEntries(this.vocab.map(v => [v.label,
+        Math.round(100 * this.units.filter(u => u.label === v.label)
+                            .reduce((n, u) => n + u.words, 0) / t)]));
+    },
+    HUE,
+    get so() { return this.a.standoff; },
+    get units() { return this.so.units; },
+    get raw() { return JSON.stringify(this.so, null, 1); },
+    get srcHref() { return 'data:application/json;charset=utf-8,' + encodeURIComponent(this.raw); },
+    slice(u) { return this.a.text.slice(u.start, u.end).trim(); },
+    // The uid's prefix is the document, which every row on this page shares.
+    // Only the ordinal distinguishes them, and the full uid wrapped to two
+    // lines on a phone to carry the half that never varies.
+    num(u) { return u.uid.split('-').pop(); },
+
+    // EDITING. Every rule about a standoff (the invariants, the four
+    // operations, the serialization, where a save may land) lives in
+    // lib/kits/standoff.js, and skills/state-the-rule/ops.py is the same rules
+    // in Python. This page is the view: it decides what to offer and where to
+    // put it, and delegates what an operation MEANS.
+    patch: [], at: 0, base: null, menu: null, boundaries: [], opErr: '',
+    // UNDO IS FREE, and it is free because the patch is declarative. The
+    // annotation on screen is `apply(base, patch.slice(0, at))`, so stepping
+    // back is decrementing a number and replaying: no inverse operation to
+    // write, none to get wrong, and the two implementations stay one rule.
+    // `at` is the cursor into the patch, not its length: a new operation after
+    // an undo truncates the redo tail the way every editor does.
+    get canUndo() { return this.at > 0; },
+    get canRedo() { return this.at < this.patch.length; },
+    replay(n) {
+      const r = Standoff.apply(this.base, this.patch.slice(0, n), this.a.text);
+      if (r.complaints.length) { this.opErr = r.complaints[0]; return false; }
+      this.a.standoff = r.so;
+      this.at = n;
+      this.opErr = '';
+      this.regroup();
+      const keep = this.sel && this.units.find(u => u.uid === this.sel.uid);
+      this.sel = keep ? { ...keep, ref: this.srcRef(keep) } : null;
+      this.armed = null;
+      this.paint();
+      return true;
+    },
+    undo() { if (this.canUndo) this.replay(this.at - 1); },
+    redo() { if (this.canRedo) this.replay(this.at + 1); },
+    push(op) {
+      // Applied to the live annotation so the view moves under your thumb, then
+      // checked and rolled back if it broke something. Same rule ops.py runs on
+      // a whole patch: valid against its base, or it does not stand.
+      const before = JSON.parse(JSON.stringify(this.units));
+      const uid = Standoff.ops[op.op]?.(this.so, this.a.text, op) ?? null;
+      const bad = uid === null ? [`${op.op} ${op.uid ?? op.after} was refused`]
+                              : Standoff.check(this.so, this.a.text);
+      if (bad.length) { this.so.units = before; this.opErr = bad[0]; return; }
+      this.opErr = '';
+      this.patch.length = this.at;      // a new move drops the redo tail
+      this.patch.push(op);
+      this.at = this.patch.length;
+      this.regroup();
+      this.menu = null;
+      // The selection is set BEFORE the repaint, because paint() is what
+      // schedules placePins and the pins are drawn from the selected unit's
+      // edges. Setting it after left the pins one operation behind: still armed,
+      // still red, still on the boundary the edit had just moved.
+      const u = this.units.find(x => x.uid === uid);
+      this.sel = u ? { ...u, broken: !!this.unitHtml(u).broken, ref: this.srcRef(u) } : null;
+      this.paint();
+    },
+    nextOf(uid) { return this.units[this.units.findIndex(u => u.uid === uid) + 1]; },
+
+    // Split candidates are the connectives the measurement said matter: 40% of
+    // prose units carry one, with a rule on one side and its reason on the
+    // other. Offering those beats a caret, which a phone does not really have.
+    //
+    // The connective rides with the SECOND half, so the boundary is a
+    // lookahead: splitting after "because" leaves the rule ending on a dangling
+    // connective and the reason unable to say it is one.
+    openSplit(u) {
+      const t = this.a.text;
+      const re = /[.!?][*`)\]]*\s+|;\s+|:\s+|,\s+(?=so\b|because\b|since\b|which is why\b)/g;
+      const body = t.slice(u.start, u.end);
+      this.boundaries = [...body.matchAll(re)]
+        .map(m => ({ at: u.start + m.index + m[0].length,
+                     lead: body.slice(Math.max(0, m.index - 26), m.index + m[0].length).trim(),
+                     rest: body.slice(m.index + m[0].length, m.index + m[0].length + 40).trim() }))
+        .filter(b => b.at > u.start && b.at < u.end);
+      this.menu = 'split';
+    },
+    get applied() { return this.patch.slice(0, this.at); },
+    get patchJson() { return JSON.stringify(this.applied, null, 1); },
+    get patchHref() { return 'data:application/json;charset=utf-8,' + encodeURIComponent(this.patchJson); },
+
+    // SAVING. The page writes to the ref it is READING: you previewed a branch,
+    // you edited, the edit lands on that branch. Standoff.saveTarget owns which
+    // refs qualify and says why when none does.
+    saving: false, saved: '', saveErr: '',
+    get where() { return Standoff.saveTarget(this.so, this.ref); },
+    get target() { return this.where.ref; },
+    get whyNoSave() { return this.where.why; },
+    async save() {
+      if (this.saving || !this.target) return;
+      this.saving = true; this.saveErr = ''; this.saved = '';
+      try {
+        if (!gh.save) await gh.load('gh-store.js');
+        // The patch rides in the commit message rather than in a file of its
+        // own: the judgment belongs to the change that carries it, and each
+        // unit already records its own `from`.
+        const head = `standoff: ${this.at} operation${this.at === 1 ? '' : 's'} `
+                   + `on ${this.so.target.path}`;
+        await gh.save(this.so.self.path, Standoff.serialize(this.so),
+                      `${head}\n\n${Standoff.describe(this.applied).join('\n')}\n`);
+        this.saved = `${this.units.length} units to ${this.target}`;
+        this.base = JSON.parse(JSON.stringify(this.so));
+        this.patch = []; this.at = 0;
+      } catch (e) {
+        this.saveErr = e.message || String(e);
+      } finally {
+        this.saving = false;
+      }
+    },
+    dim(u) { return this.off[u.label] ? .12 : 1 },
+    get unrenderable() {
+      return this.units.filter(u => u.kind === 'sent'
+        && !balanced(this.a.text.slice(u.start, u.end).trim())).length;
+    },
+    toggle(l) { this.off[l] = !this.off[l]; this.paint(); },
+    srcRef(u) {
+      const s = [...this.sections].reverse().find(s => s.start <= u.start);
+      return s ? `${this.so.target.path || this.a.title} § ${s.title} (lines ${s.startLine}-${s.endLine})` : this.a.title;
+    },
+    unitHtml(u) {
+      const raw = this.a.text.slice(u.start, u.end).trim();
+      if (this.view === 'source') return { html: esc(raw), broken: false };
+      if (!balanced(raw)) return { html: esc(raw), broken: true };
+      const out = mdDoc.html(raw, { proseClass: '' });
+      // A unit is inline IFF markdown produced exactly one <p>; everything else
+      // is a block and needs a block wrapper, or the parser hoists it out of the
+      // <span> and leaves the tint behind as an empty stripe.
+      //
+      // Structural, not a tag whitelist, because the whitelist was wrong three
+      // times running: first tables and fences, then list bullets (kind `sent`
+      // but rendering to <ul>), then tables again once mdDoc.contain() started
+      // wrapping them in <div data-md-scroll>. Asking the parse settles all of
+      // them and the next one.
+      const t = document.createElement('template');
+      t.innerHTML = out;
+      const kids = [...t.content.children];
+      if (kids.length === 1 && kids[0].tagName === 'P')
+        return { html: kids[0].innerHTML, block: false };
+      return { html: out, block: true };
+    },
+    paint(host) {
+      const host_ = host || this.$refs.doc;
+      if (!host_) return;
+      host_.innerHTML = '';
+      // The type classes go on an inner element, never on the host: paint() does
+      // not own its container's layout, and assigning className to the host wiped
+      // the padding the page and the deck slide had each given it.
+      const box = document.createElement('div');
+      box.className = this.view === 'source'
+        ? 'whitespace-pre-wrap font-mono text-base leading-7'
+        : GuideRender.bodyClass();
+      host_.appendChild(box);
+      for (const b of this.blocks) {
+        const wrap = document.createElement(this.view === 'source' ? 'div' : 'div');
+        wrap.className = this.view === 'source' ? 'mb-3' : 'mb-4';
+        for (const u of b) {
+          const { html, broken, block: isBlock } = this.unitHtml(u);
+          const block = this.view === 'read' && isBlock;
+          const el = document.createElement(block ? 'div' : 'span');
+          el.className = `cursor-pointer px-0.5 ${block ? 'py-1 my-2' : ''}`;
+          el.style.background = tint(u.label, .18 * this.dim(u));
+          el.style.boxShadow = `inset 2px 0 0 0 ${tint(u.label, .9 * this.dim(u))}`;
+          el.style.opacity = this.dim(u);
+          if (broken) el.style.outline = '1px dotted rgba(239,68,68,.8)';
+          // THE SEPARATOR IS ITS OWN NODE, appended after the map runs below.
+          // Concatenated into the HTML it joined the unit's last text node, so
+          // that node read "…templates. " where the source has "…templates.\n\n"
+          // and indexOf failed: the LAST RUN OF EVERY INLINE UNIT went unmapped,
+          // which took its end boundary's pin with it. Found by measuring which
+          // boundaries could be located rather than by looking at the render,
+          // where a missing pin and an unlocatable one are the same picture.
+          el.innerHTML = html;
+          // The span's own address. In Source view its text is the raw slice
+          // with the leading whitespace trimmed off, so a character position
+          // inside it maps back to the document by adding this. In Read view
+          // the text is RENDERED, and no such map exists: `**bold**` is four
+          // characters the reader cannot see, which is why edge editing is a
+          // Source-view affordance and switches the view rather than guessing.
+          el.dataset.uid = u.uid;
+          Standoff.mapText(el, this.a.text, u.start);
+          if (this.view !== 'source') el.appendChild(document.createTextNode(' '));
+          if (u.uid === this.sel?.uid) {
+            el.style.background = tint(u.label, .42);
+            el.style.textDecoration = 'underline';
+            el.style.textDecorationThickness = '2px';
+            el.style.textUnderlineOffset = '3px';
+            el.style.textDecorationColor = tint(u.label, .95);
+          }
+          el.onclick = () => this.hit(u, broken);
+          wrap.appendChild(el);
+          if (this.view === 'source') wrap.appendChild(document.createTextNode('\n'));
+        }
+        box.appendChild(wrap);
+      }
+      this.$nextTick(() => this.placePins());
+    },
+
+    // ── EDGES ────────────────────────────────────────────────────────────────
+    // A BOUNDARY IS THE OBJECT, not an edge: the end of one unit is the start of
+    // the next, so there is one draggable thing per junction and the partition
+    // survives by construction. Overlap is therefore not a mode this offers, and
+    // since 2026-08-30 it is also a complaint the checker makes.
+    //
+    // TAP TO ARM, NOT DRAG TO EXTEND, which is lib/kits/annotate.js's measured
+    // answer for the same problem on the same phone: dragging a handle puts the
+    // finger over the words being aimed at, which is what every platform then
+    // patches with a floating magnifier. Two taps also survive a scroll, a
+    // mis-hit and a change of mind, and a drag survives none of them.
+    armed: null, pinDrag: null,
+    DEAD_LINES: 1.5,
+    // EDGES ARE A READ-VIEW AFFORDANCE. Source shows the bytes, markup and all,
+    // and a boundary placed inside `**` or `](url)` leaves one side holding an
+    // unclosed delimiter; the rendered view cannot offer one, since markup is
+    // in no text node and an inline construct is atomic. Two views that
+    // disagreed about what is legal would be worse than one that edits.
+    get edges() {
+      if (!this.sel || this.view !== 'read') return [];
+      const i = this.units.findIndex(u => u.uid === this.sel.uid);
+      const out = [];
+      if (i > 0) out.push({ edge: 'start', after: this.units[i - 1].uid, at: this.units[i].start });
+      if (i >= 0 && i < this.units.length - 1)
+        out.push({ edge: 'end', after: this.units[i].uid, at: this.units[i].end });
+      return out;
+    },
+    // A tap in the text is two different requests, and which one is a state the
+    // reader set by tapping a pinhead. Armed: put this boundary here. Otherwise:
+    // make that unit the active one.
+    hit(u, broken) {
+      if (this.armed) {
+        const e = this.edges.find(x => x.edge === this.armed);
+        const off = this.lastTapOffset;
+        if (e && off != null) this.push({ op: 'move', after: e.after, to: off });
+        this.armed = null;
+        return;
+      }
+      this.sel = { ...u, broken, ref: this.srcRef(u) };
+      this.paint();
+    },
+    offsetAt(x, y) { return Standoff.offsetAt(document, x, y); },
+    // The inverse, for placing a pinhead: a collapsed Range at the offset,
+    // measured against the doc container so the pins scroll with the text.
+    pointAt(at) {
+      const host = this.$refs.doc;
+      const hit = Standoff.nodeAt(host, at);
+      if (!hit) return null;
+      const r = document.createRange();
+      r.setStart(hit.node, hit.offset);
+      r.collapse(true);
+      const b = r.getBoundingClientRect(), h = host.getBoundingClientRect();
+      if (!b.height && !b.width) return null;
+      return { x: b.left - h.left, y: b.top - h.top, h: b.height || 20 };
+    },
+    // The client rect of the collapsed range at a document offset, which is
+    // what the pin painter measures from.
+    rectAt(at) {
+      const hit = Standoff.nodeAt(this.$refs.doc, at);
+      if (!hit) return null;
+      const r = document.createRange();
+      r.setStart(hit.node, hit.offset);
+      r.collapse(true);
+      let b = r.getBoundingClientRect();
+      // A COLLAPSED RANGE AT THE END OF A RUN MEASURES ZERO, which is not the
+      // same as having no position: the boundary at the end of a paragraph is
+      // exactly where the last character stops. Measure that character and take
+      // its trailing edge, which is the same point by another route.
+      if (!b.height && !b.width && hit.offset > 0) {
+        r.setStart(hit.node, hit.offset - 1);
+        r.setEnd(hit.node, hit.offset);
+        const c = r.getBoundingClientRect();
+        if (c.height || c.width)
+          b = { left: c.right, right: c.right, top: c.top, bottom: c.bottom,
+                width: 0, height: c.height, x: c.right, y: c.top };
+      }
+      return (b.height || b.width) ? b : null;
+    },
+    // THE PINS ARE THE DICTATION PAGE'S PINS, painted by Dictate.pins: a ball
+    // on a stem that covers the line, above on the left and below on the right,
+    // red with a light centre when armed. It was settled there against a thumb
+    // and it is one implementation, so this page hands over two rects and gets
+    // the same marker rather than an approximation of it.
+    //
+    // `reach: 0`, the same as pages/dictate.html, and for its reason: the
+    // clearance comes from the drag's vertical deadband, so the reader takes
+    // exactly as much as they need and the pin stays where it is pointing.
+    // `arrows: false`, since this page has a pad.
+    // An edge with no rect gets NO PIN. Two ways that happens and both are
+    // honest: the unit is the document's first or last, so the edge is not a
+    // boundary at all; or the boundary sits in markup, where the render has no
+    // position for it. The second is a legacy condition rather than a gap in
+    // the map: the segmenter cuts at block starts, and a block starts at `## `
+    // or `- **`, which the placement rule now forbids. Drawing a pin at zero
+    // for either puts a marker in the corner pointing at nothing, which is what
+    // the painter does when handed a null rect.
+    unpinned: [],
+    placePins() {
+      const layer = this.$refs.pins;
+      if (!layer || typeof Dictate === 'undefined') return;
+      const found = this.edges.map(e => ({ ...e, rect: this.rectAt(e.at) }));
+      this.unpinned = found.filter(e => !e.rect).map(e => e.edge);
+      const rectOf = (which) => found.find(e => e.edge === which && e.rect)?.rect || null;
+      Dictate.pins(layer, {
+        first: rectOf('start'), last: rectOf('end'),
+        armed: this.armed, reach: 0, arrows: false,
+        clip: this.$refs.doc.getBoundingClientRect(),
+      });
+      for (const pin of layer.querySelectorAll('[data-edge]'))
+        if (!rectOf(pin.getAttribute('data-edge'))) pin.remove();
+      if (this.armed && this.unpinned.includes(this.armed)) this.armed = null;
+    },
+
+    // The pin drag, from pages/dictate.html: the aim point is the BAR's centre
+    // carried by the finger's delta, one to one, so what moves under the ball is
+    // what the ball was already marking. `lead` is the ball's own offset from
+    // its stem, measured at the grab, which is what makes the two pins hold back
+    // by different amounts and arrive at the same thumb-below-the-aim distance.
+    dragY(y0, py, cy, lineH, lead = 0) {
+      const buffer = this.DEAD_LINES * lineH + (Math.abs(lead) - lead);
+      const travel = cy - py;
+      const past = travel > 0 ? Math.max(0, travel - buffer) : travel;
+      return y0 + Math.round(past / lineH) * lineH;
+    },
+    pinDown(ev) {
+      const box = ev.target?.closest?.('[data-edge]');
+      if (!box) return;
+      ev.preventDefault(); ev.stopPropagation();
+      const which = box.getAttribute('data-edge');
+      const was = this.armed === which;
+      // MEASURED BEFORE ANYTHING IS REPAINTED. The bar is the pin's first child
+      // and it IS the text line; the painter restyles in place but a repaint
+      // still moves it, so both rects are read now.
+      const bar = box.firstElementChild, dot = box.lastElementChild;
+      const br = bar?.getBoundingClientRect?.(), dr = dot?.getBoundingClientRect?.();
+      const from = br && br.height
+        ? { x: br.left + br.width / 2, y: br.top + br.height / 2, px: ev.clientX, py: ev.clientY }
+        : null;
+      const lead = from && dr && dr.height ? (dr.top + dr.height / 2) - from.y : 0;
+      // Armed on the way DOWN, so the ring is under the finger before it moves
+      // and a drag never has to be told apart from a tap to paint it.
+      this.armed = which; this.pinDrag = which;
+      this.placePins();
+      const e0 = this.edges.find(x => x.edge === which);
+      if (!e0) return;
+      const after = e0.after;
+      const lineH = parseFloat(getComputedStyle(this.$refs.doc).lineHeight) || 26;
+      const EDGE = 6;
+      let moved = false, landed = null;
+      const d = document;
+      const move = (ev2) => {
+        if (!from) return;
+        ev2.preventDefault();
+        if (!moved && Math.abs(ev2.clientX - from.px) < 6 && Math.abs(ev2.clientY - from.py) < 6) return;
+        moved = true;
+        const b = this.$refs.doc.getBoundingClientRect();
+        let ax = from.x + (ev2.clientX - from.px);
+        let ay = this.dragY(from.y, from.py, ev2.clientY, lineH, lead);
+        ax = Math.min(b.right - EDGE, Math.max(b.left + EDGE, ax));
+        ay = Math.min(b.bottom - EDGE, Math.max(b.top + EDGE, ay));
+        const i = this.offsetAt(ax, ay);
+        if (i == null) return;
+        // Moved live and recorded once, the same rule the pad follows: one drag
+        // is one judgment.
+        if (Standoff.ops.move(this.so, this.a.text, { after, to: i }) === null) return;
+        landed = i;
+        this.regroup(); this.paint();
+      };
+      const up = () => {
+        setTimeout(() => { this.pinDrag = null; }, 0);
+        d.removeEventListener('pointermove', move, true);
+        d.removeEventListener('pointerup', up, true);
+        d.removeEventListener('pointercancel', up, true);
+        d.body.style.userSelect = ''; d.body.style.touchAction = '';
+        if (landed != null && landed !== e0.at) {
+          Standoff.ops.move(this.so, this.a.text, { after, to: e0.at });
+          this.regroup();
+          this.armed = null;
+          this.push({ op: 'move', after, to: landed });
+          return;
+        }
+        if (landed != null) { Standoff.ops.move(this.so, this.a.text, { after, to: e0.at }); this.regroup(); }
+        // A TAP IS A DRAG THAT WENT NOWHERE, and it toggles: tap to arm, tap
+        // again to put down.
+        if (was) this.armed = null;
+        this.placePins();
+      };
+      d.body.style.userSelect = 'none'; d.body.style.touchAction = 'none';
+      d.addEventListener('pointermove', move, true);
+      d.addEventListener('pointerup', up, true);
+      d.addEventListener('pointercancel', up, true);
+    },
+    // Where the last tap landed, recorded on the way down so `hit()` can use it
+    // on the way up. One delegated listener, bound once: paint() rebuilds every
+    // span, so a per-span listener would be re-bound on every repaint.
+    lastTapOffset: null,
+    bindDoc() {
+      const host = this.$refs.doc;
+      if (!host || host.dataset.bound) return;
+      host.dataset.bound = '1';
+      host.addEventListener('pointerdown', (e) => {
+        this.lastTapOffset = this.offsetAt(e.clientX, e.clientY);
+      });
+      // One source of position beats two that must agree, so the pins are
+      // re-measured rather than offset. Cheap: at most two of them.
+      addEventListener('scroll', () => this.placePins(), { passive: true });
+      addEventListener('resize', () => this.placePins());
+    },
+
+    // ── THE PAD ──────────────────────────────────────────────────────────────
+    // A relative pointer, not a scrubber. The drag moves a VIRTUAL POINT that
+    // starts at the armed pin, and each move asks the browser what offset sits
+    // under it, so wrapped lines and proportional type come out right without
+    // arithmetic over the buffer.
+    //
+    // The gain depends on how fast the finger moves: creep and the boundary
+    // creeps, well under 1:1, which is the precision the pad exists for; flick
+    // and it runs ahead. Overshoot on a flick, crawl back a character at a time,
+    // both without lifting. The four numbers are the whole feel of the control,
+    // and they are lib/kits/annotate.js's, which is where they were tuned.
+    padding_: false, padPt: null, padBase: null,
+    PAD: { slow: 0.45, fast: 2.4, v0: 0.12, v1: 1.5 },
+    padDown(ev) {
+      const e = this.edges.find(x => x.edge === this.armed);
+      if (!e) return;
+      const p = this.pointAt(e.at), h = this.$refs.doc.getBoundingClientRect();
+      if (!p) return;
+      ev.target.setPointerCapture?.(ev.pointerId);
+      this.padding_ = true;
+      this.padPt = { x: p.x + h.left, y: p.y + h.top + p.h / 2 };
+      this.padBase = { after: e.after, from: e.at, last: ev, t: performance.now() };
+      document.body.style.userSelect = 'none';
+    },
+    padMove(ev) {
+      if (!this.padding_) return;
+      ev.preventDefault();
+      const b = this.padBase, now = performance.now();
+      const dx = ev.clientX - b.last.clientX, dy = ev.clientY - b.last.clientY;
+      const dt = Math.max(1, now - b.t);
+      const v = Math.hypot(dx, dy) / dt, P = this.PAD;
+      const t = Math.min(1, Math.max(0, (v - P.v0) / (P.v1 - P.v0)));
+      const gain = P.slow + t * (P.fast - P.slow);
+      this.padPt = { x: this.padPt.x + dx * gain, y: this.padPt.y + dy * gain };
+      b.last = ev; b.t = now;
+      // Nothing under the point is not a failure: the point keeps moving and
+      // the boundary holds until text is under it again. Walking x back to the
+      // line end was tried and is the wrong reading, since past the end of a
+      // line the next character is on the NEXT line, and the point reaches it
+      // by moving down the way a finger would.
+      const off = this.offsetAt(this.padPt.x, this.padPt.y);
+      if (off != null) {
+        // Moved on the live annotation, not recorded: one drag is one judgment,
+        // so the patch gets a single `move` when the finger lifts.
+        if (Standoff.ops.move(this.so, this.a.text, { after: b.after, to: off }) !== null) {
+          this.regroup(); this.paint();
+        }
+      }
+    },
+    padUp() {
+      if (!this.padding_) return;
+      this.padding_ = false;
+      document.body.style.userSelect = '';
+      const b = this.padBase, e = this.edges.find(x => x.edge === this.armed);
+      const to = e ? e.at : b.from;
+      // Put it back, then let push() make the one real operation, so the page
+      // and a patch replayed by ops.py end in the same place.
+      Standoff.ops.move(this.so, this.a.text, { after: b.after, to: b.from });
+      this.regroup();
+      if (to !== b.from) this.push({ op: 'move', after: b.after, to });
+      else this.paint();
+    },
+    // The deck is a CONTAINER, not a viewer: one section per slide, same units,
+    // same paint(). Nothing about the audit changes to ride it.
+    deck() {
+      const secs = this.sections;
+      swipeDeck.open({
+        count: secs.length, title: this.a.title, subtitle: this.so.question, icon: 'ph-cards',
+        render: (i, slide) => {
+          const s = secs[i];
+          const head = document.createElement('div');
+          head.className = 'px-4 pt-4 pb-2 text-xs opacity-60';
+          const inSec = this.units.filter(u => u.start >= s.start && u.start < s.end);
+          const w = inSec.reduce((n, u) => n + u.words, 0);
+          const exp = inSec.filter(u => this.side(u.label) === 'explanation')
+                           .reduce((n, u) => n + u.words, 0);
+          head.textContent = `${s.title} · ${inSec.length} units · ${w ? Math.round(100 * exp / w) : 0}% explanation`;
+          const body = document.createElement('div');
+          body.className = 'px-4 pb-6 overflow-y-auto';
+          slide.append(head, body);
+          const save = this.blocks;
+          this.blocks = save.filter(b => b[0].start >= s.start && b[0].start < s.end);
+          this.paint(body);
+          this.blocks = save;
+        },
+      });
+    },
+  });
+  await gh.load('alpine-bundle.js');
+</script>
+</head>
+<body class="bg-base-100 min-h-dvh" x-data="auditPage()" x-init="init()">
+<template x-if="a">
+  <div>
+
+    <!-- Tenant chrome: this page is routinely tossed inside an iframe, so it
+         sticks rather than taking the viewport, and it does not narrow itself
+         to a reading column. The figure is one compact line, not stat cards:
+         the reading that gives those numbers meaning is one tap away, under
+         Reading. -->
+    <header class="sticky top-0 z-20 bg-base-100/90 backdrop-blur border-b border-base-300">
+      <div class="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span class="font-semibold" x-text="a.title"></span>
+        <span class="text-xs opacity-60" x-text="so.question"></span>
+        <span class="text-xs font-mono opacity-70"
+              x-text="`${units.length} units · ${words.toLocaleString()} words · ${pctOn('explanation')}% explanation`"></span>
+        <a class="text-xs link link-primary" :href="so.target.url" x-show="so.target.url">source</a>
+        <div class="join ml-auto">
+          <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
+                  @click="view='source'; paint()">Source</button>
+          <button class="join-item btn btn-xs" :class="view==='read' && 'btn-active'"
+                  @click="view='read'; paint()">Read</button>
+          <button class="join-item btn btn-xs" :class="view==='standoff' && 'btn-active'"
+                  @click="view='standoff'">Standoff</button>
+        </div>
+        <button class="btn btn-xs btn-ghost" @click="deck()"><i class="ph ph-cards"></i> Sections</button>
+        <button class="btn btn-xs btn-ghost" @click="$refs.reading.showModal()">Reading</button>
+        <div class="join" x-show="patch.length" x-cloak>
+          <button class="join-item btn btn-xs" :disabled="!canUndo" @click="undo()"
+                  aria-label="undo"><i class="ph ph-arrow-counter-clockwise"></i></button>
+          <button class="join-item btn btn-xs btn-primary" @click="$refs.patch.showModal()">
+            patch <span class="font-mono" x-text="at + (canRedo ? '/' + patch.length : '')"></span></button>
+          <button class="join-item btn btn-xs" :disabled="!canRedo" @click="redo()"
+                  aria-label="redo"><i class="ph ph-arrow-clockwise"></i></button>
+        </div>
+      </div>
+
+      <!-- The legend is the explanation. Each chip carries the treatment it
+           names, so a label chip is tinted as its units are. Tapping one dims
+           its units in place rather than hiding them, which keeps the document
+           readable while one category is set aside. -->
+      <div class="px-4 pb-2 flex flex-wrap items-center gap-1">
+        <template x-for="v in vocab" :key="v.label">
+          <button class="btn btn-xs gap-1.5 border-0"
+                  :style="`background:rgba(${HUE[v.label]},${off[v.label]?0.05:0.22});
+                           box-shadow:inset 2px 0 0 0 rgba(${HUE[v.label]},${off[v.label]?0.2:0.9})`"
+                  :class="off[v.label] && 'opacity-40'"
+                  @click="toggle(v.label)">
+            <span x-text="v.label"></span>
+            <span class="opacity-60 font-mono" x-text="count(v.label)"></span>
+          </button>
+        </template>
+        <span class="w-px h-4 bg-base-300 mx-1"></span>
+        <span class="btn btn-xs btn-ghost no-animation cursor-default gap-1.5"
+              style="outline:1px dotted rgba(239,68,68,.8)"
+              x-show="view==='read' && unrenderable">
+          <span>slice does not close</span>
+          <span class="opacity-60 font-mono" x-text="unrenderable"></span>
+        </span>
+      </div>
+    </header>
+
+    <div class="relative">
+      <div x-ref="doc" class="px-4 py-4" x-show="view!=='standoff'"></div>
+      <!-- The pin layer. It overlays the doc box exactly, takes no taps of its
+           own, and hands each pin back its own: the painter writes the box's
+           whole style attribute, so the exception is a rule here rather than
+           an inline property there. While the pad is driving, the pins stop
+           hit-testing entirely, since the virtual point starts on one. -->
+      <div x-ref="pins" class="absolute inset-0 pointer-events-none"
+           :data-audit-drag="(padding_ || pinDrag) ? '' : null"
+           @pointerdown="pinDown($event)"></div>
+    </div>
+
+    <!-- The annotation as the thing it is: rows over spans, and the committed
+         bytes underneath. The page never re-derives this; the builder copies
+         standoff.json in verbatim, so what is on screen is what is in the file. -->
+    <div class="px-4 py-4" x-show="view==='standoff'" x-cloak>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs font-mono mb-3">
+        <span x-text="so.kind"></span>
+        <a class="link link-primary" :href="so.target.url" x-text="so.target.path"></a>
+        <span x-text="so.target.bytes + ' bytes'"></span>
+        <span class="opacity-60" x-text="'sha256 ' + so.target.sha256.slice(0,16)"></span>
+        <a class="link" :href="srcHref" download="standoff.json">download</a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="table table-xs">
+          <thead><tr><th class="text-right">#</th>
+                     <th class="text-right">start</th><th class="text-right">end</th>
+                     <th>kind</th><th class="text-right">w</th>
+                     <th>label</th><th>note</th><th>text</th></tr></thead>
+          <tbody>
+            <template x-for="u in units" :key="u.uid">
+              <tr class="cursor-pointer hover:bg-base-200"
+                  @click="sel={...u, ref: srcRef(u)}; armed=null">
+                <td class="font-mono text-right" x-text="num(u)"></td>
+                <td class="font-mono opacity-60 text-right whitespace-nowrap" x-text="u.start"></td>
+                <td class="font-mono opacity-60 text-right whitespace-nowrap" x-text="u.end"></td>
+                <td class="opacity-60" x-text="u.kind"></td>
+                <td class="font-mono opacity-60 text-right" x-text="u.words"></td>
+                <td><span class="rounded px-1 whitespace-nowrap"
+                          :style="`background:rgba(${HUE[u.label]},.25)`" x-text="u.label"></span></td>
+                <td class="italic opacity-70 max-w-40 truncate" x-text="u.note || ''"></td>
+                <td class="max-w-md truncate" x-text="slice(u)"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      <details class="mt-4">
+        <summary class="cursor-pointer text-xs opacity-60">standoff.json, verbatim</summary>
+        <pre class="mt-2 text-xs overflow-x-auto bg-base-200 p-3 rounded" x-text="raw"></pre>
+      </details>
+    </div>
+
+    <!-- Above the shared FAB (z-80), which is fixed to this same corner and was
+         covering the split candidates. dictate.html's sheet takes the corner the
+         same way: while a page's own bottom UI is up, it owns the bottom. -->
+    <div class="sticky bottom-0 z-[90] bg-base-200 border-t border-base-300 px-4 py-2 text-xs"
+         x-show="sel" x-cloak>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 items-baseline">
+        <b class="font-mono" x-text="sel?.uid"></b>
+        <span class="badge badge-sm border-0"
+              :style="`background:rgba(${HUE[sel?.label]},.25)`" x-text="sel?.label"></span>
+        <span class="opacity-60" x-text="gloss(sel?.label)"></span>
+        <span class="badge badge-sm badge-outline" x-text="side(sel?.label)"></span>
+        <span class="opacity-60 font-mono" x-text="sel?.words + 'w · ' + sel?.kind"></span>
+        <span class="opacity-60 font-mono" x-text="sel?.ref"></span>
+        <span class="italic opacity-70" x-show="sel?.note" x-text="sel?.note"></span>
+        <span class="opacity-60" x-show="unpinned.length" x-cloak
+              x-text="unpinned.join(' and ') + ' sits in markup, so it has no place to be dragged'"></span>
+        <span class="text-error" x-show="sel?.broken">slice does not close its own markup</span>
+        <span class="text-error" x-show="opErr" x-text="opErr"></span>
+        <button class="btn btn-ghost btn-xs ml-auto" @click="sel=null; menu=null">close</button>
+      </div>
+
+      <div class="flex items-center gap-2 mt-2" x-show="armed" x-cloak>
+        <button class="btn btn-sm btn-primary touch-none select-none"
+                @pointerdown="padDown($event)" @pointermove="padMove($event)"
+                @pointerup="padUp()" @pointercancel="padUp()">
+          <i class="ph ph-crosshair"></i> drag the edge
+        </button>
+        <span class="opacity-60 font-mono" x-text="edges.find(e=>e.edge===armed)?.at"></span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1 mt-2">
+        <button class="btn btn-xs" x-show="view!=='read'"
+                @click="view='read'; paint()">Edges</button>
+        <button class="btn btn-xs" @click="openSplit(sel)">Split</button>
+        <button class="btn btn-xs" :disabled="!nextOf(sel?.uid)"
+                @click="push({op:'merge',uid:sel.uid})">Merge next</button>
+        <button class="btn btn-xs" :class="menu==='label' && 'btn-active'"
+                @click="menu = menu==='label' ? null : 'label'">Relabel</button>
+        <button class="btn btn-xs" :class="menu==='note' && 'btn-active'"
+                @click="menu = menu==='note' ? null : 'note'">Note</button>
+      </div>
+
+      <div class="flex flex-wrap gap-1 mt-2" x-show="menu==='label'">
+        <template x-for="v in so.vocabulary" :key="v.label">
+          <button class="btn btn-xs border-0" :class="v.label===sel?.label && 'ring-1 ring-base-content'"
+                  :style="`background:rgba(${HUE[v.label]},.22)`"
+                  @click="push({op:'relabel',uid:sel.uid,label:v.label})" x-text="v.label"></button>
+        </template>
+      </div>
+
+      <div class="mt-2" x-show="menu==='note'">
+        <input class="input input-xs input-bordered w-full" placeholder="what the label cannot say"
+               :value="sel?.note || ''" @keydown.enter="push({op:'note',uid:sel.uid,text:$event.target.value})">
+      </div>
+
+      <div class="mt-2 space-y-1" x-show="menu==='split'">
+        <template x-if="!boundaries.length">
+          <span class="opacity-60">no clause boundary inside this unit</span>
+        </template>
+        <template x-for="b in boundaries" :key="b.at">
+          <button class="btn btn-xs btn-block justify-start font-normal h-auto py-1 text-left"
+                  @click="push({op:'split',uid:sel.uid,at:b.at})">
+            <span class="opacity-50" x-text="'…' + b.lead"></span>
+            <span class="text-primary">▸</span>
+            <span x-text="b.rest + '…'"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <!-- The patch is the artifact of an editing session: what you decided,
+         reviewable as a list of judgments rather than as a JSON diff. -->
+    <dialog class="modal" x-ref="patch">
+      <div class="modal-box max-w-2xl">
+        <div class="flex items-center gap-2 mb-2 text-xs">
+          <span class="font-mono" x-text="at + ' of ' + patch.length + ' applied'"></span>
+          <a class="link" :href="patchHref" download="patch.json">download</a>
+          <button class="link" @click="navigator.clipboard?.writeText(patchJson)">copy</button>
+          <button class="link text-error ml-auto" @click="location.reload()">discard</button>
+        </div>
+        <pre class="text-xs overflow-x-auto bg-base-200 p-3 rounded" x-text="patchJson"></pre>
+
+        <!-- Two ways out, and the page says which one is open. Saving writes
+             the edited standoff to the ref being read; where that ref is main
+             there is nothing to write to, and the command below is the route. -->
+        <div class="flex flex-wrap items-center gap-2 mt-3 text-xs">
+          <button class="btn btn-sm btn-primary" x-show="target" :disabled="!!saving"
+                  @click="save()">
+            <span x-text="saving ? 'saving…' : 'save to ' + target"></span>
+          </button>
+          <span class="opacity-60" x-show="whyNoSave" x-text="whyNoSave"></span>
+          <span class="text-success" x-show="saved" x-text="'saved ' + saved"></span>
+          <span class="text-error" x-show="saveErr" x-text="saveErr"></span>
+        </div>
+        <p class="text-xs opacity-60 mt-2 font-mono">
+          python3 skills/state-the-rule/ops.py &lt;standoff.json&gt; patch.json &lt;doc.md&gt; --write
+        </p>
+        <form method="dialog" class="modal-backdrop"><button class="btn btn-sm btn-block mt-3">close</button></form>
+      </div>
+    </dialog>
+
+    <!-- Where the numbers went: the header carries the figure, the reading that
+         makes it mean something lives here, one tap away. -->
+    <dialog class="modal" x-ref="reading">
+      <div class="modal-box max-w-lg">
+        <table class="table table-sm">
+          <thead><tr><th>side</th><th>units</th><th>words</th></tr></thead>
+          <tbody>
+            <template x-for="sd in sides" :key="sd">
+              <tr><td x-text="sd"></td>
+                  <td class="font-mono" x-text="units.filter(u => side(u.label) === sd).length"></td>
+                  <td class="font-mono" x-text="pctOn(sd) + '%'"></td></tr>
+            </template>
+          </tbody>
+        </table>
+        <table class="table table-sm mt-2">
+          <thead><tr><th>label</th><th>units</th><th>words</th><th>side</th></tr></thead>
+          <tbody>
+            <template x-for="v in vocab" :key="v.label">
+              <tr><td class="font-mono" x-text="v.label"></td>
+                  <td class="font-mono" x-text="count(v.label)"></td>
+                  <td class="font-mono" x-text="shareOf[v.label] + '%'"></td>
+                  <td class="opacity-60" x-text="v.side"></td></tr>
+            </template>
+          </tbody>
+        </table>
+        <form method="dialog" class="modal-backdrop"><button class="btn btn-sm btn-block mt-3">close</button></form>
+      </div>
+    </dialog>
+
+  </div>
+</template>
+</body>
+</html>

@@ -18,7 +18,11 @@ export default async function (page) {
   const ok = await page.evaluate((regText) => {
     if (!window.Alpine || !window.__shell || !window.GH) return 'no shell';
 
-    const docs = JSON.parse(regText).documents.map(d => d.path);
+    // Parsed through the app's own CSV kit, as loadDocsReg does. This read
+    // JSON.parse(regText).documents until 2026-08-30 and had been throwing
+    // since the table moved out of docs.json: nothing gates a scenario, so a
+    // broken one stays quiet until somebody runs it.
+    const docs = window.Csv.rows(regText).map(d => d.path);
     // A plausible spread: the two biggest docs read often, a tail read once or
     // twice, and everything else untouched.
     const busy = docs.filter(p => !/CONVENTIONS|SURFACING/.test(p)).slice(0, 12);

@@ -1,0 +1,808 @@
+{
+ "kind": "standoff/1",
+ "question": "is this unit binding?",
+ "self": {
+  "path": "skills/state-the-rule/runs/2026-08-29-conventions/standoff.json",
+  "repo": "mehrlander/web-tools"
+ },
+ "target": {
+  "path": "docs/CONVENTIONS.md",
+  "repo": "mehrlander/web-tools",
+  "ref": "main",
+  "url": "https://github.com/mehrlander/web-tools/blob/main/docs/CONVENTIONS.md",
+  "bytes": 8483,
+  "sha256": "8403967519728e472428b2b5e7d1bf2742bbcf028a8add3b675112a456bf1c2e"
+ },
+ "vocabulary": [
+  {
+   "label": "WHAT",
+   "side": "declaration",
+   "gloss": "a rule, a fact of the system, a value it may hold"
+  },
+  {
+   "label": "HOW",
+   "side": "declaration",
+   "gloss": "syntax, a procedure, an invocation"
+  },
+  {
+   "label": "WHY-OP",
+   "side": "hinge",
+   "gloss": "a reason that changes how the rule applies at a boundary"
+  },
+  {
+   "label": "WHY-MOT",
+   "side": "explanation",
+   "gloss": "a reason that makes the rule feel right but changes nothing"
+  },
+  {
+   "label": "PROV",
+   "side": "explanation",
+   "gloss": "when it changed, what it replaced, what failed"
+  },
+  {
+   "label": "EVID",
+   "side": "explanation",
+   "gloss": "a measurement, a probe, an observation"
+  },
+  {
+   "label": "NAV",
+   "side": "apparatus",
+   "gloss": "a pointer to the document or gate that owns something"
+  },
+  {
+   "label": "META",
+   "side": "apparatus",
+   "gloss": "a statement about this document"
+  }
+ ],
+ "units": [
+  {
+   "uid": "conven-001",
+   "start": 0,
+   "end": 32,
+   "kind": "heading",
+   "words": 4,
+   "label": "META"
+  },
+  {
+   "uid": "conven-002",
+   "start": 34,
+   "end": 119,
+   "kind": "sent",
+   "words": 12,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-003",
+   "start": 119,
+   "end": 239,
+   "kind": "sent",
+   "words": 14,
+   "label": "NAV"
+  },
+  {
+   "uid": "conven-004",
+   "start": 239,
+   "end": 291,
+   "kind": "sent",
+   "words": 8,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-005",
+   "start": 293,
+   "end": 372,
+   "kind": "sent",
+   "words": 13,
+   "label": "META"
+  },
+  {
+   "uid": "conven-006",
+   "start": 372,
+   "end": 412,
+   "kind": "sent",
+   "words": 8,
+   "label": "META"
+  },
+  {
+   "uid": "conven-007",
+   "start": 414,
+   "end": 616,
+   "kind": "sent",
+   "words": 30,
+   "label": "NAV"
+  },
+  {
+   "uid": "conven-008",
+   "start": 616,
+   "end": 795,
+   "kind": "sent",
+   "words": 19,
+   "label": "NAV"
+  },
+  {
+   "uid": "conven-009",
+   "start": 797,
+   "end": 829,
+   "kind": "sent",
+   "words": 5,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-010",
+   "start": 829,
+   "end": 892,
+   "kind": "sent",
+   "words": 8,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-011",
+   "start": 894,
+   "end": 917,
+   "kind": "heading",
+   "words": 4,
+   "label": "META"
+  },
+  {
+   "uid": "conven-012",
+   "start": 919,
+   "end": 1017,
+   "kind": "sent",
+   "words": 14,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-013",
+   "start": 1019,
+   "end": 1065,
+   "kind": "sent",
+   "words": 7,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-014",
+   "start": 1065,
+   "end": 1131,
+   "kind": "sent",
+   "words": 10,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-015",
+   "start": 1131,
+   "end": 1211,
+   "kind": "sent",
+   "words": 15,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-016",
+   "start": 1211,
+   "end": 1291,
+   "kind": "sent",
+   "words": 15,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-017",
+   "start": 1291,
+   "end": 1455,
+   "kind": "sent",
+   "words": 21,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-018",
+   "start": 1457,
+   "end": 1524,
+   "kind": "heading",
+   "words": 11,
+   "label": "META"
+  },
+  {
+   "uid": "conven-019",
+   "start": 1526,
+   "end": 1781,
+   "kind": "sent",
+   "words": 47,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-020",
+   "start": 1781,
+   "end": 1817,
+   "kind": "sent",
+   "words": 7,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-021",
+   "start": 1819,
+   "end": 1904,
+   "kind": "sent",
+   "words": 16,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-022",
+   "start": 1904,
+   "end": 2180,
+   "kind": "sent",
+   "words": 31,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-023a",
+   "start": 2182,
+   "end": 2276,
+   "kind": "sent",
+   "words": 16,
+   "label": "WHAT",
+   "from": "split:conven-023"
+  },
+  {
+   "uid": "conven-023b",
+   "start": 2276,
+   "end": 2360,
+   "kind": "sent",
+   "words": 15,
+   "label": "WHY-OP",
+   "from": "split:conven-023"
+  },
+  {
+   "uid": "conven-024",
+   "start": 2362,
+   "end": 2393,
+   "kind": "heading",
+   "words": 5,
+   "label": "META"
+  },
+  {
+   "uid": "conven-025",
+   "start": 2395,
+   "end": 2477,
+   "kind": "sent",
+   "words": 16,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-026",
+   "start": 2477,
+   "end": 2645,
+   "kind": "sent",
+   "words": 22,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-027",
+   "start": 2645,
+   "end": 2678,
+   "kind": "sent",
+   "words": 3,
+   "label": "NAV"
+  },
+  {
+   "uid": "conven-028",
+   "start": 2680,
+   "end": 2711,
+   "kind": "sent",
+   "words": 5,
+   "label": "META"
+  },
+  {
+   "uid": "conven-029",
+   "start": 2713,
+   "end": 2966,
+   "kind": "table",
+   "words": 58,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-030a",
+   "start": 2968,
+   "end": 3011,
+   "kind": "sent",
+   "words": 7,
+   "label": "WHAT",
+   "from": "split:conven-030"
+  },
+  {
+   "uid": "conven-030b",
+   "start": 3011,
+   "end": 3075,
+   "kind": "sent",
+   "words": 12,
+   "label": "WHY-OP",
+   "from": "split:conven-030"
+  },
+  {
+   "uid": "conven-031",
+   "start": 3075,
+   "end": 3099,
+   "kind": "sent",
+   "words": 3,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-032",
+   "start": 3101,
+   "end": 3276,
+   "kind": "sent",
+   "words": 32,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-033",
+   "start": 3278,
+   "end": 3372,
+   "kind": "code",
+   "words": 12,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-034",
+   "start": 3372,
+   "end": 3429,
+   "kind": "sent",
+   "words": 6,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-035",
+   "start": 3429,
+   "end": 3546,
+   "kind": "sent",
+   "words": 19,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-036",
+   "start": 3546,
+   "end": 3631,
+   "kind": "sent",
+   "words": 12,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-037",
+   "start": 3633,
+   "end": 3809,
+   "kind": "sent",
+   "words": 32,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-038",
+   "start": 3809,
+   "end": 3873,
+   "kind": "sent",
+   "words": 11,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-039",
+   "start": 3873,
+   "end": 3931,
+   "kind": "sent",
+   "words": 11,
+   "label": "WHY-OP"
+  },
+  {
+   "uid": "conven-040",
+   "start": 3933,
+   "end": 4100,
+   "kind": "sent",
+   "words": 25,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-041",
+   "start": 4102,
+   "end": 4301,
+   "kind": "code",
+   "words": 21,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-042",
+   "start": 4301,
+   "end": 4347,
+   "kind": "sent",
+   "words": 9,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-043",
+   "start": 4347,
+   "end": 4442,
+   "kind": "sent",
+   "words": 16,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-044a",
+   "start": 4442,
+   "end": 4477,
+   "kind": "sent",
+   "words": 5,
+   "label": "WHAT",
+   "from": "split:conven-044"
+  },
+  {
+   "uid": "conven-044b",
+   "start": 4477,
+   "end": 4524,
+   "kind": "sent",
+   "words": 7,
+   "label": "WHY-OP",
+   "from": "split:conven-044"
+  },
+  {
+   "uid": "conven-045a",
+   "start": 4526,
+   "end": 4572,
+   "kind": "sent",
+   "words": 7,
+   "label": "WHAT",
+   "from": "split:conven-045"
+  },
+  {
+   "uid": "conven-045b",
+   "start": 4572,
+   "end": 4682,
+   "kind": "sent",
+   "words": 19,
+   "label": "WHY-OP",
+   "from": "split:conven-045"
+  },
+  {
+   "uid": "conven-046a",
+   "start": 4684,
+   "end": 4794,
+   "kind": "sent",
+   "words": 18,
+   "label": "WHAT",
+   "from": "split:conven-046"
+  },
+  {
+   "uid": "conven-046b",
+   "start": 4794,
+   "end": 4852,
+   "kind": "sent",
+   "words": 10,
+   "label": "WHY-MOT",
+   "from": "split:conven-046"
+  },
+  {
+   "uid": "conven-047a",
+   "start": 4852,
+   "end": 4880,
+   "kind": "sent",
+   "words": 5,
+   "label": "WHAT",
+   "from": "split:conven-047"
+  },
+  {
+   "uid": "conven-047b",
+   "start": 4880,
+   "end": 4984,
+   "kind": "sent",
+   "words": 17,
+   "label": "WHY-OP",
+   "from": "split:conven-047"
+  },
+  {
+   "uid": "conven-048",
+   "start": 4986,
+   "end": 5044,
+   "kind": "heading",
+   "words": 12,
+   "label": "META"
+  },
+  {
+   "uid": "conven-049",
+   "start": 5046,
+   "end": 5405,
+   "kind": "sent",
+   "words": 58,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-050",
+   "start": 5407,
+   "end": 5711,
+   "kind": "sent",
+   "words": 36,
+   "label": "NAV"
+  },
+  {
+   "uid": "conven-051",
+   "start": 5713,
+   "end": 5748,
+   "kind": "heading",
+   "words": 8,
+   "label": "META"
+  },
+  {
+   "uid": "conven-052",
+   "start": 5750,
+   "end": 5804,
+   "kind": "sent",
+   "words": 13,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-053",
+   "start": 5804,
+   "end": 5867,
+   "kind": "sent",
+   "words": 10,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-054",
+   "start": 5867,
+   "end": 5935,
+   "kind": "sent",
+   "words": 12,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-055",
+   "start": 5937,
+   "end": 5983,
+   "kind": "heading",
+   "words": 7,
+   "label": "META"
+  },
+  {
+   "uid": "conven-056",
+   "start": 5985,
+   "end": 6138,
+   "kind": "sent",
+   "words": 30,
+   "label": "WHY-OP"
+  },
+  {
+   "uid": "conven-057",
+   "start": 6138,
+   "end": 6235,
+   "kind": "sent",
+   "words": 17,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-058",
+   "start": 6237,
+   "end": 6239,
+   "kind": "sent",
+   "words": 1,
+   "label": "META"
+  },
+  {
+   "uid": "conven-059",
+   "start": 6239,
+   "end": 6304,
+   "kind": "sent",
+   "words": 13,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-060",
+   "start": 6304,
+   "end": 6307,
+   "kind": "sent",
+   "words": 1,
+   "label": "META"
+  },
+  {
+   "uid": "conven-061",
+   "start": 6307,
+   "end": 6398,
+   "kind": "sent",
+   "words": 16,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-062",
+   "start": 6398,
+   "end": 6425,
+   "kind": "sent",
+   "words": 5,
+   "label": "WHY-OP"
+  },
+  {
+   "uid": "conven-063",
+   "start": 6425,
+   "end": 6428,
+   "kind": "sent",
+   "words": 1,
+   "label": "META"
+  },
+  {
+   "uid": "conven-064",
+   "start": 6428,
+   "end": 6496,
+   "kind": "sent",
+   "words": 11,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-065a",
+   "start": 6498,
+   "end": 6603,
+   "kind": "sent",
+   "words": 20,
+   "label": "WHAT",
+   "from": "split:conven-065"
+  },
+  {
+   "uid": "conven-065b",
+   "start": 6603,
+   "end": 6713,
+   "kind": "sent",
+   "words": 19,
+   "label": "WHY-MOT",
+   "from": "split:conven-065"
+  },
+  {
+   "uid": "conven-066",
+   "start": 6713,
+   "end": 6863,
+   "kind": "sent",
+   "words": 25,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-067",
+   "start": 6863,
+   "end": 6964,
+   "kind": "sent",
+   "words": 21,
+   "label": "HOW"
+  },
+  {
+   "uid": "conven-068",
+   "start": 6964,
+   "end": 7119,
+   "kind": "sent",
+   "words": 10,
+   "label": "NAV"
+  },
+  {
+   "uid": "conven-069a",
+   "start": 7121,
+   "end": 7160,
+   "kind": "sent",
+   "words": 6,
+   "label": "WHAT",
+   "from": "split:conven-069"
+  },
+  {
+   "uid": "conven-069b",
+   "start": 7160,
+   "end": 7225,
+   "kind": "sent",
+   "words": 12,
+   "label": "WHY-OP",
+   "from": "split:conven-069"
+  },
+  {
+   "uid": "conven-070a",
+   "start": 7225,
+   "end": 7256,
+   "kind": "sent",
+   "words": 5,
+   "label": "WHAT",
+   "from": "split:conven-070"
+  },
+  {
+   "uid": "conven-070b",
+   "start": 7256,
+   "end": 7422,
+   "kind": "sent",
+   "words": 27,
+   "label": "WHY-OP",
+   "from": "split:conven-070"
+  },
+  {
+   "uid": "conven-071a",
+   "start": 7424,
+   "end": 7489,
+   "kind": "sent",
+   "words": 12,
+   "label": "WHY-OP",
+   "from": "split:conven-071"
+  },
+  {
+   "uid": "conven-071b",
+   "start": 7489,
+   "end": 7575,
+   "kind": "sent",
+   "words": 18,
+   "label": "WHAT",
+   "from": "split:conven-071"
+  },
+  {
+   "uid": "conven-072",
+   "start": 7577,
+   "end": 7590,
+   "kind": "heading",
+   "words": 3,
+   "label": "META"
+  },
+  {
+   "uid": "conven-073",
+   "start": 7592,
+   "end": 7682,
+   "kind": "sent",
+   "words": 15,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-074",
+   "start": 7682,
+   "end": 7770,
+   "kind": "sent",
+   "words": 16,
+   "label": "WHY-MOT"
+  },
+  {
+   "uid": "conven-075",
+   "start": 7770,
+   "end": 7843,
+   "kind": "sent",
+   "words": 13,
+   "label": "WHY-OP"
+  },
+  {
+   "uid": "conven-076",
+   "start": 7845,
+   "end": 7927,
+   "kind": "sent",
+   "words": 14,
+   "label": "NAV"
+  },
+  {
+   "uid": "conven-077",
+   "start": 7927,
+   "end": 8145,
+   "kind": "sent",
+   "words": 26,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-078",
+   "start": 8147,
+   "end": 8185,
+   "kind": "heading",
+   "words": 6,
+   "label": "META"
+  },
+  {
+   "uid": "conven-079",
+   "start": 8187,
+   "end": 8223,
+   "kind": "sent",
+   "words": 7,
+   "label": "WHAT"
+  },
+  {
+   "uid": "conven-080",
+   "start": 8223,
+   "end": 8391,
+   "kind": "sent",
+   "words": 25,
+   "label": "WHY-OP"
+  },
+  {
+   "uid": "conven-081",
+   "start": 8391,
+   "end": 8472,
+   "kind": "sent",
+   "words": 13,
+   "label": "WHAT"
+  }
+ ]
+}

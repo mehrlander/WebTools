@@ -41,6 +41,7 @@
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
     const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
+    if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
     const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
     try { await import(url); } finally { URL.revokeObjectURL(url); }
   } else {
