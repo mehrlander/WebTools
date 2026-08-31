@@ -13,11 +13,18 @@
 // instead. If someone restyles the door in the kit, this fails and names every
 // file that has to follow.
 //
-// There are two copies as of 2026-08-27. branch-brief's is the door into a
+// There are three copies as of 2026-08-31. branch-brief's is the door into a
 // branch's FILES; session-brief's is the door into a session's CARDS, and it
 // exists because that view was lifted out of pages/session.html to be mounted
-// per slide in the Sessions pane. A third would join the table below and need
-// no other change here, which is the point of the table.
+// per slide in the Sessions pane; search-view's is the door into the FILES a
+// search just found. A fourth joins the table below and needs no other change
+// here, which is the point of the table.
+//
+// `pending` is the one thing a row can decline. Two of the doors render before
+// their collection has been counted (a branch whose compare has not been read,
+// a session whose cards have not been fetched) and so need the uncounted
+// wording as well; search-view's only ever renders over a list already in hand,
+// so requiring that string would be requiring a literal nothing can display.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -37,6 +44,9 @@ const DOORS = [
     anchor: 'openFileDeck(0)', noun: 'file', count: "plural(deckFiles.length, 'file')" },
   { what: 'Session brief', file: 'lib/alpineComponents/session-brief.js',
     anchor: 'openDeck()', noun: 'card', count: "plural(cards, 'card')" },
+  { what: 'Files search', file: 'lib/alpineComponents/search-view.js',
+    anchor: 'openDeck()', noun: 'file', count: "plural(fileHits.length, 'file')",
+    pending: false },
 ];
 
 const src = (d) => readFileSync(path.join(repoRoot, d.file), 'utf8');
@@ -68,9 +78,10 @@ for (const d of DOORS) {
       `${d.file}'s deck button must carry ${entry.icon}`);
   });
 
-  test(`${d.what} wears the wording the kit owns, in both of its states`, () => {
+  test(`${d.what} wears the wording the kit owns`, () => {
     // Pending: the collection has not been read, so there is no count to give.
-    assert.ok(src(d).includes(`'${entry.title(0, d.noun)}'`),
+    // Skipped where the door cannot render before the count exists.
+    if (d.pending !== false) assert.ok(src(d).includes(`'${entry.title(0, d.noun)}'`),
       `the no-count title must read: ${entry.title(0, d.noun)}`);
     // Counted: assembled around plural(), so the two ends are checked rather
     // than the expression, which is Alpine's to spell.
