@@ -127,6 +127,7 @@ const measure = async (page, md) => page.evaluate((md) => {
     const replyLines = runs(reply.querySelector('.relative'));
     const f = fill.getBoundingClientRect();
     done({
+      iconLeft: rel(icon.getBoundingClientRect().left),
       iconRight: rel(icon.getBoundingClientRect().right),
       fillLeft: rel(f.left),
       fillRight: rel(f.right),
@@ -208,8 +209,19 @@ try {
   console.log(`\n  line boxes: ${noPin} unpinned, ${withPin.lineCount} pinned`);
   check(withPin.lineCount === noPin, 'the pin does not re-wrap the text it measured');
 
-  // The body the pin declines.
+  // ONE ICON COLUMN. The glyph is positioned against the fill, and `absolute`
+  // resolves against the nearest positioned ancestor rather than the element it
+  // was put in, so a body that carries a `relative` host of its own moved the
+  // lead without moving anything else. Reported from a rendered card: one long
+  // ask among short ones, its icon a padding's width right of the rest.
   const paste = await measure(page, PASTE.md);
+  const iconLefts = [];
+  for (const { md } of ASKS) iconLefts.push((await measure(page, md)).iconLeft);
+  iconLefts.push(paste.iconLeft);
+  console.log(`\n  icon column: ${iconLefts.join(', ')}`);
+  check(new Set(iconLefts).size === 1,
+    `every ask's glyph sits on one column (${iconLefts.join(', ')})`);
+
   console.log(`\n  ${PASTE.name}: footer ${paste.hasFooter}, fill ${paste.fillLeft} → ${paste.fillRight}, `
     + `widest run ends ${paste.textRight}`);
   check(paste.hasFooter, 'the long paste grows the footer row');

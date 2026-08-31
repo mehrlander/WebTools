@@ -60,8 +60,12 @@ test('the head folds into the turn\'s first line, so a turn costs no chrome row'
   const el = dense({ role: 'user', md: 'why do three tables carry a label?', ts: '22:56:11' });
   assert.equal(standaloneHead(el), undefined, 'no chrome row above the text');
   const pre = el.querySelector('pre');
-  assert.ok(pre.querySelector('i.ph'), 'the lead sits inside the first block');
+  // The ask's lead is positioned into the gutter rather than folded inline, so
+  // for that one role the fold shows as an ABSENT chrome row over a body that
+  // opens on its own words. The reply below still folds its lead into the text.
   assert.ok(pre.textContent.startsWith('why do three'), 'and the text opens it');
+  assert.equal(el.querySelector('i.ph').parentElement.parentElement,
+    el.querySelector('.relative'), 'the lead is in the fill, not in the flow');
   const a = dense({ role: 'assistant', md: 'Not a bug. The badge renders a kind.', ts: '22:58:30' });
   assert.equal(standaloneHead(a), undefined);
   assert.ok(a.querySelector('p').textContent.startsWith('Not a bug.'), 'a reply opens on its own sentence too');
@@ -194,14 +198,30 @@ test('the ask is filled on its BODY, so the icon stays out of the tint', () => {
   assert.ok(/border-l-2/.test(cr.message({ role: 'assistant', md: 'x' }, { collapse: 0 }).className));
 });
 
-test('a raw user turn folds its head into the <pre>, where the text is', () => {
-  // A user turn renders as typed, so its whole body is one <pre> and there are
-  // no blocks to pick from. The lead-in goes in the pre itself.
-  const el = dense({ role: 'user', md: 'why do only three tables have the label?', ts: '22:56:11' });
-  assert.equal(standaloneHead(el), undefined);
-  const pre = el.querySelector('pre');
-  assert.equal(pre.firstElementChild?.querySelector('i.ph')?.tagName, 'I', 'the lead is the pre\'s first child');
-  assert.ok(pre.textContent.includes('why do only three'), 'and the typed text runs on from it');
+test('the ask\'s glyph sits on one column, whichever body the paste built', () => {
+  // `absolute` resolves against the nearest POSITIONED ancestor, which is not
+  // the element the lead was prepended into. A paste over RAW_INLINE wraps its
+  // text in a `relative` host of its own, so a lead left inside that <pre>
+  // measured from there and landed one padding right of every other glyph: a
+  // card holding one long ask among short ones had a ragged icon column, which
+  // is the one thing the gutter exists to keep straight. Parenting the lead to
+  // the fill makes the containing block the box the offset is named after.
+  //
+  // Held as SAMENESS across the two bodies rather than as a coordinate, since
+  // jsdom lays nothing out and the coordinate was never the claim. The pixels
+  // are in tools/test/chat-render-ask-fill.mjs.
+  const short = dense({ role: 'user', md: 'why do only three tables have the label?' });
+  const long = dense({ role: 'user', md: 'tiny\n'.repeat(600) });
+  assert.ok(long.querySelector('button'), 'the long paste built the body with the footer row');
+  for (const [name, el] of [['a short ask', short], ['a long paste', long]]) {
+    assert.equal(standaloneHead(el), undefined, `${name}: no chrome row`);
+    const fill = el.querySelector('.relative');
+    const lead = el.querySelector('i.ph').parentElement;
+    assert.equal(lead.parentElement, fill, `${name}: the lead hangs off the fill itself`);
+    assert.equal(lead.style.left, '-17px', `${name}: at the one offset`);
+  }
+  assert.ok(short.querySelector('pre').textContent.includes('why do only three'),
+    'and the typed text is still the pre\'s');
 });
 
 test('the lead is tinted for the two conversation roles, and only those', () => {
