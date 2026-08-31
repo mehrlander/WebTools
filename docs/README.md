@@ -22,7 +22,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`APP.md`](APP.md) — the Web Tools app: mission, durable goals, and the name split
 - [`CONSTELLATION.md`](CONSTELLATION.md) — the portable kernel of the what-goes-where doctrine
 - [`CONVENTIONS.md`](CONVENTIONS.md) — the portable working conventions: the general-behavior hub
-- [`HTML-STYLE.md`](HTML-STYLE.md) — the style guide for pages (the HTML style guide, the house style): what to build, as against how
+- [`HTML-STYLE.md`](HTML-STYLE.md) — the house style for pages: what to build, as against how
 - [`MARKETPLACE.md`](MARKETPLACE.md) *(orphan)* — the plugin marketplace: how the set is published and subscribed to
 - [`PORTABLE.md`](PORTABLE.md) — the portable set: what travels, and how to adopt it
 - [`README.md`](README.md) — the docs folder's front door: the generated index of this registry

@@ -172,6 +172,34 @@ test('a heading with no blank line under it does not swallow its section', () =>
   assert.ok(units.every(u => u.words < 20), 'no unit swallowed the section');
 });
 
+// Found by rolling this segmenter up against doc-audit's paragraph segmenter,
+// which masks fences before it splits at all. A fence recognised only when it
+// opens a block misses two shapes: one opened inside a list item, and one whose
+// body holds a blank line, which the block splitter shreds into pieces carrying
+// no fence marker. Both let template text be annotated as though it were a rule.
+test('a fence is one unit whether or not it opens its block', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'str-'));
+  const f = join(dir, 'x.md');
+  writeFileSync(f, ['* **A rule.** It has a form:', '  ```bash', '  echo hi',
+                    '  ```', '  **Boundary:** and an edge.', '',
+                    '```markdown', 'Placeholder line.', '',
+                    'Second placeholder.', '```', '', 'Real prose after.'
+                   ].join('\n'));
+  const units = execFileSync('python3', [join(SKILL, 'segment.py'), f, '1', '99'],
+                             { encoding: 'utf8' }).trim().split('\n').map(JSON.parse);
+  rmSync(dir, { recursive: true, force: true });
+  const code = units.filter(u => u.kind === 'code');
+  assert.equal(code.length, 2, `both fences are code units, got ${code.length}`);
+  assert.ok(code[0].text.includes('echo hi'),
+    'a fence opened inside a list item is still one code unit');
+  assert.ok(code[1].text.includes('Second placeholder'),
+    'a blank line inside a fence body does not split it into prose');
+  assert.ok(!units.some(u => u.kind !== 'code' && u.text.includes('Placeholder')),
+    'no fence body line is segmented as prose');
+  assert.ok(units.some(u => u.kind !== 'code' && u.text.includes('Boundary')),
+    'prose after a mid-block fence is still segmented');
+});
+
 // The defect the contract check structurally cannot see: the neighbour of a
 // removed unit survives, so the contract counts it honoured. Three runs found
 // these by hand before seams.py existed.
@@ -217,4 +245,169 @@ test('seams.py reports a heading that swallowed the line under it', () => {
     { encoding: 'utf8' });
   rmSync(dir, { recursive: true, force: true });
   assert.match(out, /heading-absorbed/, 'the heading line carries a sentence');
+});
+
+// ── ops.py: the patch ──────────────────────────────────────────────────────
+// The page applies each operation optimistically and ops.py is the authority
+// that validates and writes, so what the two must agree on is the RESULT of a
+// patch. These pin the half nobody can see in a screenshot: what a bad patch
+// does to the file it was pointed at.
+
+const DOC = 'Close the lid, because the contents spoil.\n\nCheck it twice.';
+
+function standoff(dir) {
+  const doc = join(dir, 'doc.md');
+  writeFileSync(doc, DOC);
+  const so = {
+    kind: 'standoff/1',
+    target: { path: 'doc.md' },
+    vocabulary: [{ label: 'WHAT', side: 'declaration' },
+                 { label: 'WHY-MOT', side: 'explanation' }],
+    units: [
+      { uid: 'u-001', start: 0, end: 42, kind: 'sent', words: 7, label: 'WHAT' },
+      { uid: 'u-002', start: 44, end: 59, kind: 'sent', words: 3, label: 'WHAT' },
+    ],
+  };
+  const sf = join(dir, 'so.json');
+  writeFileSync(sf, JSON.stringify(so));
+  return { doc, sf };
+}
+
+// Returns { status, out, so } so a test can assert on both the exit and the
+// file: a refusal that still wrote is the failure worth catching.
+function patch(ops, write = true) {
+  const dir = mkdtempSync(join(tmpdir(), 'ops-'));
+  const { doc, sf } = standoff(dir);
+  const pf = join(dir, 'patch.json');
+  writeFileSync(pf, JSON.stringify(ops));
+  const args = [join(SKILL, 'ops.py'), sf, pf, doc];
+  if (write) args.push('--write');
+  let status = 0, out = '';
+  try { out = execFileSync('python3', args, { encoding: 'utf8', stdio: 'pipe' }); }
+  catch (e) { status = e.status; out = (e.stderr || '') + (e.stdout || ''); }
+  const so = JSON.parse(readFileSync(sf, 'utf8'));
+  rmSync(dir, { recursive: true, force: true });
+  return { status, out, so };
+}
+
+test('a split leaves the two halves tiling the parent span', () => {
+  const { so } = patch([{ op: 'split', uid: 'u-001', at: 15 }]);
+  const [a, b] = so.units;
+  assert.equal(a.uid, 'u-001a');
+  assert.equal(b.uid, 'u-001b');
+  assert.deepEqual([a.start, a.end, b.start, b.end], [0, 15, 15, 42]);
+  assert.equal(a.from, 'split:u-001', 'the halves record what they came from');
+});
+
+test('a split at a boundary outside the unit is refused', () => {
+  const { status, out, so } = patch([{ op: 'split', uid: 'u-001', at: 200 }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /not inside/);
+  assert.equal(so.units.length, 2, 'the file is untouched');
+});
+
+// The one that matters: an operation is checked after it is applied, so a patch
+// whose LAST step is bad must not leave the earlier steps on disk.
+test('a patch is refused whole, not applied up to the bad operation', () => {
+  const { status, so } = patch([{ op: 'split', uid: 'u-001', at: 15 },
+                                { op: 'relabel', uid: 'u-001a', label: 'NOPE' }]);
+  assert.notEqual(status, 0);
+  assert.equal(so.units.length, 2, 'the good split did not survive the bad relabel');
+  assert.equal(so.units[0].uid, 'u-001');
+});
+
+test('a label outside the declared vocabulary is refused', () => {
+  const { status, out } = patch([{ op: 'relabel', uid: 'u-001', label: 'WHY-OP' }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /vocabulary/);
+});
+
+test('an unknown operation is refused rather than skipped', () => {
+  const { status, out } = patch([{ op: 'reword', uid: 'u-001', text: 'no' }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /unknown operation/);
+});
+
+test('the last unit has nothing to merge with', () => {
+  const { status, out } = patch([{ op: 'merge', uid: 'u-002' }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /nothing follows/);
+});
+
+// A merge that kept either side's kind would be stating something false about
+// the span it now covers, and the kind is what the page styles on.
+test('a merge across two kinds reports mixed, not one of them', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ops-'));
+  const { doc, sf } = standoff(dir);
+  const so = JSON.parse(readFileSync(sf, 'utf8'));
+  so.units[1].kind = 'heading';
+  writeFileSync(sf, JSON.stringify(so));
+  const pf = join(dir, 'p.json');
+  writeFileSync(pf, JSON.stringify([{ op: 'merge', uid: 'u-001' }]));
+  execFileSync('python3', [join(SKILL, 'ops.py'), sf, pf, doc, '--write']);
+  const after = JSON.parse(readFileSync(sf, 'utf8'));
+  rmSync(dir, { recursive: true, force: true });
+  assert.equal(after.units.length, 1);
+  assert.equal(after.units[0].kind, 'mixed');
+  assert.equal(after.units[0].end, 59, 'the survivor covers both spans');
+});
+
+test('a note is set and cleared through the same operation', () => {
+  const set = patch([{ op: 'note', uid: 'u-001', text: 'the reason is fused in' }]);
+  assert.equal(set.so.units[0].note, 'the reason is fused in');
+  const cleared = patch([{ op: 'note', uid: 'u-001', text: 'x' },
+                         { op: 'note', uid: 'u-001', text: '' }]);
+  assert.ok(!('note' in cleared.so.units[0]), 'an empty note removes the key');
+});
+
+// Without --write the run is a dry run, which is what makes a patch reviewable
+// before it lands.
+test('without --write nothing is written', () => {
+  const { status, out, so } = patch([{ op: 'split', uid: 'u-001', at: 15 }], false);
+  assert.equal(status, 0);
+  assert.match(out, /2 units -> 3/);
+  assert.equal(so.units.length, 2);
+});
+
+// ── the boundary ───────────────────────────────────────────────────────────
+// A boundary is the object a reader moves: the end of one unit is the start of
+// the next, so one operation moves both and the partition survives by
+// construction rather than by a rule.
+
+test('moving a boundary moves both units and keeps the partition', () => {
+  const { so } = patch([{ op: 'move', after: 'u-001', to: 30 }]);
+  assert.deepEqual([so.units[0].start, so.units[0].end], [0, 30]);
+  assert.deepEqual([so.units[1].start, so.units[1].end], [30, 59]);
+  assert.equal(so.units[0].from, 'move:u-001/u-002');
+  assert.equal(so.units[1].from, 'move:u-001/u-002');
+});
+
+test('a boundary outside the pair it separates is refused', () => {
+  const { status, out } = patch([{ op: 'move', after: 'u-001', to: 200 }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /outside/);
+});
+
+test('the last unit has no boundary after it', () => {
+  const { status, out } = patch([{ op: 'move', after: 'u-002', to: 50 }]);
+  assert.notEqual(status, 0);
+  assert.match(out, /no boundary after it/);
+});
+
+// The complaint nothing made until 2026-08-30: the gap check only looks
+// forward, so a unit starting BEFORE its predecessor ended passed every gate.
+// The edge drag is what made one easy to create.
+test('an overlap is reported, not just a gap', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ops-'));
+  const { doc, sf } = standoff(dir);
+  const so = JSON.parse(readFileSync(sf, 'utf8'));
+  so.units[1].start = 30;                       // twelve characters in both
+  writeFileSync(sf, JSON.stringify(so));
+  const pf = join(dir, 'p.json');
+  writeFileSync(pf, JSON.stringify([{ op: 'note', uid: 'u-001', text: 'x' }]));
+  let out = '';
+  try { execFileSync('python3', [join(SKILL, 'ops.py'), sf, pf, doc], { encoding: 'utf8', stdio: 'pipe' }); }
+  catch (e) { out = (e.stderr || '') + (e.stdout || ''); }
+  rmSync(dir, { recursive: true, force: true });
+  assert.match(out, /u-002: overlaps the unit before it by 12 chars/);
 });

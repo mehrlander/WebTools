@@ -1,8 +1,9 @@
 slug,title,count,last_seen,seen,targets
+untracked-file-invisible-to-the-suite,a local green over a file the scanner never enumerated,3,2026-08-30,2026-08-28;2026-08-29;2026-08-30,../scripts/text-carriers.py;../tools/test/text-vocabulary-conformance.test.mjs
 opacity-step-off-the-tens,"a class that generates nothing, so the text meant to recede advances",3,2026-08-19,2026-08-19;2026-08-19;2026-08-19,HTML-STYLE.md
 mcp-body-escaping,"the GitHub MCP mangles link shapes in a PR body, on write as well as read",3,2026-08-16,2026-08-05;2026-08-05;2026-08-16,SURFACING.md
+hand-rolled-use-block-boots-nothing,"a copied boot block was rewritten instead, and shipped blank",2,2026-08-30,2026-08-22;2026-08-30,loader.md;../tools/test/use-boot-block.test.mjs
 house-style-not-consulted,"built a page with stat cards, page prose, and small type, against a doc that forbids all three",2,2026-08-29,2026-08-04;2026-08-29,HTML-STYLE.md
-untracked-file-invisible-to-the-suite,a local green over a file the scanner never enumerated,2,2026-08-29,2026-08-28;2026-08-29,../scripts/text-carriers.py;../tools/test/text-vocabulary-conformance.test.mjs
 daisy-divide-paints-black,"hairlines come out black, not grey",2,2026-08-22,2026-07-28;2026-08-22,../skills/daisy-alpine/SKILL.md
 claude-logomark-copied,the standard session mark is six inline copies with no owner,2,2026-08-21,2026-08-09;2026-08-21,code-layers.md
 cached-read-feeds-a-write,a fresh-looking read hands back the sha it just replaced,2,2026-08-16,2026-08-13;2026-08-16,../lib/gh-api.js
@@ -10,6 +11,7 @@ mcp-approval-is-often-routing,an approval prompt that is really a wall,2,2026-08
 ci-watch-on-blocked-api,a curl watch loop on the GitHub API waits forever,2,2026-08-14,2026-08-10;2026-08-14,environment/capabilities.md
 headless-shot-prose-flat,typography CSS misses in screenshots,2,2026-08-14,2026-08-07;2026-08-14,environment/testing.md
 x-data-scope-shadows-component-names,"a mount's config read a component, not the host's field",2,2026-08-14,2026-08-14;2026-08-14,show-repo.md;HTML-STYLE.md
+showing-blocks-a-new-page-on-its-own-favicon,a page added on the branch always trips the shell rule,1,2026-08-30,2026-08-30,showing.md;../scripts/showing.py
 crawl-is-the-only-clock,a merged manifest change did not reach the nav,1,2026-08-28,2026-08-28,manifest.md
 showing-whitelists-pages-only,the render-link script named two pages the branch never touched,1,2026-08-28,2026-08-28,showing.md;../scripts/showing.py
 combine-serves-cjs,"a jsDelivr /combine/ spec served the CommonJS build, and the local mirror hid it",1,2026-08-26,2026-08-26,doc-growth.md

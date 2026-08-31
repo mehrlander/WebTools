@@ -36,8 +36,18 @@ def prose_units(block, bstart, base_off, out):
         out.append((base_off + bstart + sm.start(), base_off + bstart + sm.end(),
                     'sent', unguard(seg).strip()))
 
+# A fenced region is masked off BEFORE blocks are cut, not recognised as a block
+# that happens to start with ```. Two reasons, both found by rolling this
+# segmenter up against doc-audit's paragraph segmenter, which has always done it
+# this way: a fence can open inside a list item, so its block does not start with
+# one; and a fence body can contain blank lines, so the block splitter shreds it
+# into pieces that carry no fence marker at all. That is what let the guide-PR
+# template's placeholder lines be annotated as though they were rules.
+FENCED = re.compile(r'(?ms)^[ \t]*```.*?^[ \t]*```[^\n]*\n?')
+
+
 def block_units(block, bstart, base_off, out):
-    if block.lstrip().startswith('```'):
+    if block.lstrip().startswith('```'):   # an unterminated fence FENCED missed
         out.append((base_off + bstart, base_off + bstart + len(block), 'code', block))
         return
     if block.lstrip().startswith('|'):
@@ -62,14 +72,22 @@ def block_units(block, bstart, base_off, out):
         return
     prose_units(block, bstart, base_off, out)
 
-def units(text, base_off):
-    out = []
+def blocks(text, off, base_off, out):
     # split into blocks on blank lines, keeping offsets
     for m in re.finditer(r'(?s)(.+?)(\n\s*\n|\Z)', text):
         block = m.group(1)
         if not block.strip():
             continue
-        block_units(block, m.start(1), base_off, out)
+        block_units(block, off + m.start(1), base_off, out)
+
+
+def units(text, base_off):
+    out, pos = [], 0
+    for m in FENCED.finditer(text):
+        blocks(text[pos:m.start()], pos, base_off, out)
+        out.append((base_off + m.start(), base_off + m.end(), 'code', m.group(0)))
+        pos = m.end()
+    blocks(text[pos:], pos, base_off, out)
     return out
 
 if __name__ == '__main__':
