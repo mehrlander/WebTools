@@ -72,6 +72,12 @@ control-flow entries, so for anything else this is the sole source.
 - `assets/builder.js`: the device-side serializer for the legacy
   `Copy-ActionFromJson` receiver. Read only when rebuilding that shortcut.
 
+## Not this skill
+
+Delivering a shortcut, rather than composing one, is [`shortcut-links`](../shortcut-links/SKILL.md):
+installing, running remotely, opening a settings page, and the return channel.
+This skill ends at the clipboard.
+
 ## Extending
 
 `docs/shortcuts-format-notes.md` in the repo carries the format: control flow,
