@@ -906,8 +906,17 @@ window.__audit = {
           const { html, broken, block: isBlock } = this.unitHtml(u);
           const block = this.view === 'read' && isBlock;
           const el = document.createElement(block ? 'div' : 'span');
-          el.className = `cursor-pointer px-0.5 ${block ? 'py-1 my-2' : ''}`;
-          el.style.background = tint(u.label, .18 * this.dim(u));
+          el.className = `cursor-pointer px-0.5 ${block ? 'py-1 my-2 w-fit max-w-full' : ''}`;
+          // Lighter than it was, with the weight moved to hover: the tint marks
+          // which label a unit carries and does not need to shout it, and the
+          // hover is what says the unit is a target. Inline styles rather than a
+          // rule, because the colour is per-label and set here already.
+          const bg = tint(u.label, .11 * this.dim(u));
+          const bgOver = tint(u.label, .26 * this.dim(u));
+          el.style.background = bg;
+          el.style.transition = 'background-color .12s ease';
+          el.onpointerenter = () => { if (this.sel?.uid !== u.uid) el.style.background = bgOver; };
+          el.onpointerleave = () => { if (this.sel?.uid !== u.uid) el.style.background = bg; };
           el.style.boxShadow = `inset 2px 0 0 0 ${tint(u.label, .9 * this.dim(u))}`;
           el.style.opacity = this.dim(u);
           if (broken) el.style.outline = '1px dotted rgba(239,68,68,.8)';
@@ -929,7 +938,7 @@ window.__audit = {
           Standoff.mapText(el, this.a.text, u.start);
           if (this.view !== 'source') el.appendChild(document.createTextNode(' '));
           if (u.uid === this.sel?.uid) {
-            el.style.background = tint(u.label, .42);
+            el.style.background = tint(u.label, .34);
             el.style.textDecoration = 'underline';
             el.style.textDecorationThickness = '2px';
             el.style.textUnderlineOffset = '3px';
