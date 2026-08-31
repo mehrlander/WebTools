@@ -169,7 +169,7 @@ tools/render/scenarios/search-cold.mjs,the Files view's cold open: a bare arriva
 tools/render/scenarios/search-controls.mjs,"the Files view's scope controls, with the ref picker open",tools/render/scenarios,72,driver,no,no,no
 tools/render/scenarios/search-deck.mjs,"the Files view's hits read in the swipe deck: the header naming the file, and the contents list under sheet=1",tools/render/scenarios,71,driver,no,no,no
 tools/render/scenarios/search-files.mjs,"the Files view a level into a folder, with a file from it open in the shared viewer",tools/render/scenarios,64,driver,no,no,no
-tools/render/scenarios/search-limit.mjs,"what the Contents lane says when the code-search fetch is rejected: the spent limit under case=limit, the refusal under case=refused",tools/render/scenarios,52,driver,no,no,no
+tools/render/scenarios/search-limit.mjs,"what the Contents lane says when the code-search fetch is rejected, one case per reading: case=limit, case=refused, case=unreachable",tools/render/scenarios,55,driver,no,no,no
 tools/render/scenarios/section-structure.mjs,"the section rules a markdown aim draws, at two widths",tools/render/scenarios,47,driver,no,no,no
 tools/render/scenarios/session-contents.mjs,"enters the session deck from the outline the page opens on, then opens the deck's own contents list: the rows readable at 390px, the reader marked, and one pager gap per exchange",tools/render/scenarios,65,driver,no,no,no
 tools/render/scenarios/session-exchange-card.mjs,,tools/render/scenarios,58,driver,no,no,no
