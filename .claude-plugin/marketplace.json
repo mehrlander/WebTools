@@ -48,7 +48,7 @@
       "name": "daisy-alpine",
       "source": "./skills/daisy-alpine",
       "strict": false,
-      "description": "DaisyUI 5 + Tailwind 4 + Alpine.js reference for single-file HTML artifacts. Model-invocable, so it triggers on matching artifact work without being asked.",
+      "description": "The HTML house style (the style guide for pages: no stat cards, no page prose, browsing takes the viewport) plus the DaisyUI 5 + Tailwind 4 + Alpine.js mechanics. Model-invocable, so it triggers on matching artifact work without being asked, and it leads with the binding half because a description selling syntax reference is one a model declines when it already knows the syntax.",
       "author": {
         "name": "mehrlander"
       },
