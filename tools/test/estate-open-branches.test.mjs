@@ -120,6 +120,34 @@ test('openBranches: open PRs and stranded branches only, freshest first', () => 
     ['me/tools/feat/a', 'me/tools/feat/b', 'me/home/fresh']);
 });
 
+// ── The line that says what the branch is FOR ────────────────────────────
+// It was the tip commit's subject alone, which answers a different question:
+// what happened last here. Measured over the committed crawl on 2026-08-31,
+// the tip and the PR title differ on 81% of the branches that have both, and
+// 23% of tips are merge commits, which name no work at all. The title is
+// already cached per branch and was already rendered into the PR link's title
+// attribute, where a phone never reaches it.
+test('the branch line prefers the PR title, and falls back to the tip subject', () => {
+  const [a, b, fresh] = data.openBranches;
+  assert.deepEqual(plain_(data.branchLine(a)), { text: 'PR a', pr: true },
+    'a branch with a PR is named by its PR');
+  assert.deepEqual(plain_(data.branchLine(b)), { text: 'work b', pr: false },
+    'and one without falls back to the tip, marked as a commit line');
+  assert.deepEqual(plain_(data.branchLine(fresh)), { text: 'PR fresh', pr: true },
+    'including a PR the scan never reached');
+  assert.equal(data.branchLine({ repo: 'me/tools', name: 'x' }), null,
+    'a branch with neither says nothing rather than an empty line');
+});
+
+// A closed or merged PR still names the work. `rowPR` prefers the open PR and
+// falls back to the last one of any state, which is the whole reason the line
+// reaches 80% of branches rather than the 3% that are open right now.
+test('the line takes a merged PR\'s title, not only an open one', () => {
+  const row = { repo: 'me/tools', name: 'gone', subject: 'Merge origin/main',
+                prLast: { number: 4, state: 'closed', title: 'the work it shipped' } };
+  assert.deepEqual(plain_(data.branchLine(row)), { text: 'the work it shipped', pr: true });
+});
+
 test('a row takes its start from whichever compare the crawl ran', () => {
   const [a, b, fresh] = data.openBranches;
   assert.equal(a.first, '2026-07-05T00:00:00Z');      // the PR head's compare
@@ -702,6 +730,52 @@ test('the turns card is the transcript, and its head answers the tap', () => {
     'and its own unit, so the head does not call them plain turns');
   assert.equal(data.rowCard.aside, '48 assistant',
     'the half the row never showed, which the list card was carrying');
+});
+
+// ── Unrecorded: the one scope that is about the OTHER pane ───────────────
+// A branch whose commit trailer names a session the recorder's store no longer
+// holds is not sessionless. The Sessions pane draws it as a stub, an
+// eight-character id with no ask and no reply, so the branch row is the only
+// account of what it was. Measured over the committed crawl: 139 of 441
+// branches (31%), of which 126 are stubs and 13 reach nothing at all.
+//
+// Held against sessionTree's own placement rather than re-derived, since the
+// two reading the same rows differently is the failure this shape invites.
+test('Unrecorded selects the branches no session record stands behind', () => {
+  const prev = data.branchScope;
+  data.sessionRows_ = [
+    { id: 's1', agent: 'https://claude.ai/code/session_aaa', repos: [] },
+    { id: 's2', agent: '', repos: [{ name: 'tools', branch: 'feat/b' }] },
+  ];
+  data.activity['me/tools'].scan.branches[0].sessions = ['https://claude.ai/code/session_aaa'];
+  // feat/b reaches a record by NAME; old/landed names a session the store never kept.
+  data.activity['me/tools'].scan.branches[2].sessions = ['https://claude.ai/code/session_zzz'];
+  data.branchScope = 'unrecorded';
+  const got = names(data.openBranches);
+  assert.ok(!got.includes('me/tools/feat/a'), 'a branch whose session URL is in the store is recorded');
+  assert.ok(!got.includes('me/tools/feat/b'), 'and so is one a record names by branch');
+  assert.ok(got.includes('me/tools/old/landed'),
+    'a trailer naming a session with no record behind it is UNrecorded, not sessionless');
+  assert.ok(got.includes('me/home/fresh'), 'and a branch naming no session at all');
+
+  // The tree is the other reader of the same derivation. Anything it places
+  // under a record must be absent here, or the two panes disagree about which
+  // branches the archive can speak for.
+  const placed = new Set();
+  for (const n of data.sessionTree.nodes) {
+    if (n.kind !== 'record') continue;
+    for (const c of n.children) placed.add(c.repo + '/' + c.name);
+  }
+  // The cross-check is only a check if it saw something: an empty `placed`
+  // would pass the loop below without comparing anything, which is how a
+  // vacuous assertion ships.
+  assert.ok(placed.size >= 2, 'the tree placed at least the two recorded branches, so there is something to compare');
+  for (const k of placed) assert.ok(!got.includes(k), k + ' is placed under a record and must not be Unrecorded');
+
+  data.branchScope = prev;
+  data.sessionRows_ = [];
+  delete data.activity['me/tools'].scan.branches[0].sessions;
+  delete data.activity['me/tools'].scan.branches[2].sessions;
 });
 
 test('the tools card lists the per-tool breakdown and owns the failure count', () => {
