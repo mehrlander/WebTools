@@ -700,7 +700,7 @@ test('the toggle is per card, so moving between triggers opens rather than close
   data.closeRowCard();
 });
 
-test('the prose cards toggle too, reply and states alike', () => {
+test('the prose cards toggle too, turns and states alike', () => {
   const row = { ...window.RepoSessionsCache.summarize(rec(), 'sha1'),
                 states: [['ready', '🟢 **Ready:** go.', '12:00:00']], state: 'ready' };
   data.closeRowCard();
@@ -708,9 +708,9 @@ test('the prose cards toggle too, reply and states alike', () => {
   assert.equal(data.rowCard?.kind, 'prose');
   data.openSessionCard(row, 'state', null);
   assert.equal(data.rowCard, null);
-  data.openSessionCard(row, 'reply', null);
-  assert.equal(data.rowCard?.cls, 'reply');
-  data.openSessionCard(row, 'reply', null);
+  data.openSessionCard(row, 'turns', null);
+  assert.equal(data.rowCard?.cls, 'turns');
+  data.openSessionCard(row, 'turns', null);
   assert.equal(data.rowCard, null);
 });
 
@@ -936,9 +936,9 @@ test('the state is the session\'s own claim, not the rail\'s rollup of its branc
 // Closes first: the trigger TOGGLES now, so a helper that opens the same card
 // twice in a row would close it the second time. Each test is its own
 // scenario and wants a fresh open, not a second tap.
-const replyCard = (row) => {
+const transcriptCard = (row) => {
   data.closeRowCard();
-  data.openSessionCard(row, 'reply', null);
+  data.openSessionCard(row, 'turns', null);
   return data.rowCard;
 };
 const roles = (c) => c.turns.map(t => t.role[0]).join('');
@@ -950,7 +950,7 @@ test('the card is the ask, the scroll back, and the reply, in that order', () =>
                     { at: '2026-08-05T15:00:00Z', text: 'and now this' }],
           replies: [{ at: '2026-08-05T14:00:00Z', text: 'partway' },
                     { at: '2026-08-05T16:00:00Z', text: 'and here is what came of it' }] }), 'x');
-  const c = replyCard(row);
+  const c = transcriptCard(row);
   assert.equal(c.kind, 'prose', 'prose, not a list: it has no count to show');
   assert.equal(roles(c), 'uauа'.replace('а', 'a'), 'ask, answer, ask, closing reply');
   assert.equal(c.turns[0].md, 'do the thing', 'the WHOLE ask; the row truncates it');
@@ -966,7 +966,7 @@ test('every turn carries the clock the deck prints beside it', () => {
     rec({ schema: 4, opening_ask: 'ask',
           prompts: [{ at: '2026-08-05T13:51:08Z', text: 'ask' }],
           replies: [{ at: '2026-08-05T16:49:16Z', text: 'answer' }] }), 'x');
-  const c = replyCard(row);
+  const c = transcriptCard(row);
   assert.equal(c.turns[0].ts, '13:51:08');
   assert.equal(c.turns.at(-1).ts, '16:49:16');
 });
@@ -981,7 +981,7 @@ test('a record with no replies says its text is a tail, rather than passing it o
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 2, last_message: 'the tail of the last turn' }), 'x');
   assert.equal(row.replyCut, 'tail');
-  const c = replyCard(row);
+  const c = transcriptCard(row);
   assert.equal(c.turns.at(-1).md, 'the tail of the last turn');
   assert.equal(c.turns.at(-1).label, 'final turn, tail only');
   assert.equal(c.turns.at(-1).ts, '', 'and no clock, because a schema-3 record kept none');
@@ -993,7 +993,7 @@ test('the closing reply reaches the card whole, and claims no trim', () => {
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, replies: [{ at: 'z', text: 'x'.repeat(2000) }] }), 'x');
   assert.equal(row.reply.length, 2000, 'byte for byte');
-  const c = replyCard(row);
+  const c = transcriptCard(row);
   assert.equal(c.label, 'closing reply', 'no "trimmed": nothing was');
   assert.equal(c.turns.at(-1).label, 'closing reply');
   assert.ok(!c.turns.at(-1).dropped, 'and no chip on its last line; the renderer draws one off this');
@@ -1008,9 +1008,9 @@ test('a row built by an older pass says so, rather than reading as current', () 
   // version and 113 behind it.
   const S = window.RepoSessionsCache;
   const row = S.summarize(rec({ schema: 4, replies: [{ at: 'z', text: 'the answer' }] }), 'x');
-  assert.equal(replyCard(row).staleV, 0, 'a fresh row claims nothing');
+  assert.equal(transcriptCard(row).staleV, 0, 'a fresh row claims nothing');
   const old = { ...row, v: S.ROW_V - 2 };
-  assert.equal(replyCard(old).staleV, S.ROW_V - 2, 'and a stale one names the version it is on');
+  assert.equal(transcriptCard(old).staleV, S.ROW_V - 2, 'and a stale one names the version it is on');
 });
 
 test('a row with no reply yet still opens, on the ask, and says why', () => {
@@ -1019,7 +1019,7 @@ test('a row with no reply yet still opens, on the ask, and says why', () => {
   // field. Every ask opens now; the absence is stated rather than performed.
   const row = window.RepoSessionsCache.summarize(rec({ schema: 3 }), 'x');
   assert.equal(row.reply, '', 'no reply on the row');
-  const c = replyCard(row);
+  const c = transcriptCard(row);
   assert.equal(c.label, 'opening ask', 'the header names what it actually has');
   assert.equal(roles(c), 'u', 'the ask alone');
   assert.equal(c.pending, true, 'and the body draws the why off this');
@@ -1033,7 +1033,7 @@ test('the truncated scroll back is reported on the card, not silently dropped', 
   }
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, opening_ask: 'ask 0', prompts, replies }), 'x');
-  const c = replyCard(row);
+  const c = transcriptCard(row);
   assert.equal(c.priorCut, true);
   assert.equal(c.turns.length, window.RepoSessionsCache.TURNS_KEPT + 2,
     'the cap, plus the two ends the row carries itself');
@@ -1051,7 +1051,7 @@ test('the card mounts through the deck\'s own renderer, once per card', async ()
   };
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, replies: [{ at: 'z', text: 'the answer' }] }), 'x');
-  const c = replyCard(row);
+  const c = transcriptCard(row);
   await data.mountReplyCard(c);
   assert.equal(calls.length, c.turns.length, 'one message() per turn');
   assert.equal(calls.at(-1).md, 'the answer');
@@ -1070,7 +1070,7 @@ test('the panel and the anchor read one height, never two', async () => {
   // which reads as a card that does not scroll rather than one misplaced.
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, replies: [{ at: 'z', text: 'the answer' }] }), 'x');
-  replyCard(row);
+  transcriptCard(row);
   await Alpine.nextTick();
   const want = data.rowCardMaxH();
   assert.equal(data.rowCardAt.height, want, 'the anchor is told the real height');
@@ -1103,7 +1103,7 @@ test('no renderer means an empty host, not a thrown card', async () => {
   delete window.chatRender;
   const row = window.RepoSessionsCache.summarize(
     rec({ schema: 4, replies: [{ at: 'z', text: 'unrendered' }] }), 'x');
-  const c = replyCard(row);
+  const c = transcriptCard(row);
   await data.mountReplyCard(c);          // must not throw
   assert.equal(c.turns.at(-1).md, 'unrendered', 'and the card still holds the text');
 });
