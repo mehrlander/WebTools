@@ -27,12 +27,23 @@ legitimately restate what superseded it), as are generated projections and
 the plugin's vendored copies of the conventions (byte-identical by a hook,
 gated elsewhere, and they would drown the report).
 
+The same pass builds a weighted graph and, until 2026-08-31, printed the top
+20 edges and dropped it. `--emit` writes the whole thing to docs/themes.json,
+which the Map view's Themes tab reads: clusters of that graph are themes, and
+which clusters exist is a function of the weight threshold, so the payload
+carries every edge and the reader carries the dial.
+
 Usage:
-  python3 scripts/duplicated-claims.py [PATH]   # default: whole repo
+  python3 scripts/duplicated-claims.py [PATH]        # default: whole repo
+  python3 scripts/duplicated-claims.py --emit P      # write the graph to P
+  python3 scripts/duplicated-claims.py --emit P --check   # bytes, do not write
   npm run claims-scan
+  npm run themes-graph
 """
 
+import argparse
 import csv
+import json
 import re
 import subprocess
 import sys
@@ -54,6 +65,9 @@ EXCLUDE_PATHS = {
     "docs/README.md", "pages/README.md", "tracker/board.md",
 }
 TOP = 20            # report at most this many pairs
+QUOTED = 3          # runs carried per edge in the emitted graph;
+                    # `quoted` is docs/text-fields.csv's name for
+                    # verbatim source text carried into a row
 
 FENCE = re.compile(r"^(```|~~~)")
 TABLE_OR_HR = re.compile(r"^\s*[|\-=+*_ ]+\s*$|^\s*\|")
@@ -90,10 +104,58 @@ def prose(text: str) -> str:
     return " ".join(out)
 
 
+def runs(shingles):
+    """Overlapping windows chained into maximal contiguous stretches.
+
+    Consecutive windows cut from one repeated sentence share nine of ten words,
+    so the raw list shows that sentence once per window with the frame slid
+    along it. A run is the sentence, which is the unit worth reading and worth
+    counting as one repetition.
+    """
+    words = {s: s.split() for s in shingles}
+    nxt, heads = {}, set(shingles)
+    for a, wa in words.items():
+        tail = " ".join(wa[1:])
+        for b, wb in words.items():
+            if a != b and tail == " ".join(wb[:-1]):
+                nxt[a] = b
+                heads.discard(b)
+                break
+    out, seen = [], set()
+    for head in sorted(heads) or sorted(shingles):
+        if head in seen:
+            continue
+        cur, acc = head, words[head][:]
+        seen.add(cur)
+        while cur in nxt and nxt[cur] not in seen:
+            cur = nxt[cur]
+            seen.add(cur)
+            acc.append(words[cur][-1])
+        out.append(" ".join(acc))
+    return sorted(out, key=lambda r: -len(r.split()))
+
+
+def payload(files, hits):
+    """The graph as committed data. No registry membership rides here: which
+    pairs a registry names is owners.csv's to say, and the app joins the two."""
+    edges = [{"a": a, "b": b, "w": n, "quoted": runs(shs)[:QUOTED]}
+             for n, (a, b), shs in hits]
+    nodes = sorted({x for e in edges for x in (e["a"], e["b"])})
+    return {"shingle": SHINGLE, "floor": SHARED_MIN, "scanned": len(files),
+            "nodes": nodes, "edges": edges}
+
+
 def main(argv):
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("scope", nargs="?", default=".", help="path to scan (default: the repo)")
+    ap.add_argument("--emit", metavar="PATH", help="write the weighted graph as JSON")
+    ap.add_argument("--check", action="store_true",
+                    help="with --emit, compare bytes and exit 1 when stale")
+    args = ap.parse_args(argv[1:])
+
     root = Path(subprocess.run(["git", "rev-parse", "--show-toplevel"],
                                capture_output=True, text=True).stdout.strip())
-    scope = argv[1] if len(argv) > 1 else "."
+    scope = args.scope
     files = subprocess.run(["git", "ls-files", "--", scope],
                            capture_output=True, text=True, cwd=root
                            ).stdout.splitlines()
@@ -121,6 +183,23 @@ def main(argv):
 
     hits = sorted(((len(v), k, v) for k, v in pairs.items() if len(v) >= SHARED_MIN),
                   reverse=True)
+
+    if args.emit:
+        # Sorted keys and a fixed separator: the artifact has to be byte-stable
+        # or the commit hook writes churn and derived-artifacts.test.mjs cannot
+        # hold it to its source.
+        text = json.dumps(payload(files, hits), separators=(",", ":"), sort_keys=True) + "\n"
+        out = Path(args.emit)
+        if args.check:
+            if not out.exists() or out.read_text(encoding="utf-8") != text:
+                print(f"{args.emit} is stale; run: npm run themes-graph", file=sys.stderr)
+                return 1
+            return 0
+        out.write_text(text, encoding="utf-8")
+        print(f"themes-graph: {len(payload(files, hits)['nodes'])} nodes, "
+              f"{len(hits)} edges -> {args.emit}")
+        return 0
+
     print(f"duplicated-claims scan: {len(files)} files scanned "
           f"({len(records)} record-status docs excluded via docs.csv), "
           f"{len(hits)} pair(s) at >= {SHARED_MIN} shared {SHINGLE}-word windows "

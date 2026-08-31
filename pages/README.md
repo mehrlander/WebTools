@@ -132,7 +132,6 @@ the link-dense text twin of the visual index above.
 | `haptics-probe` | Haptics probe | [view](https://mehrlander.github.io/web-tools/pages/scratch/haptics-probe.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/haptics-probe.html) |
 | `review-proto` | Review · styling prototype | [view](https://mehrlander.github.io/web-tools/pages/scratch/review-proto.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/review-proto.html) |
 | `sidebar-drawer-mwe` | Sidebar Drawer MWE | [view](https://mehrlander.github.io/web-tools/pages/scratch/sidebar-drawer-mwe.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/sidebar-drawer-mwe.html) |
-| `themes-proto` | Themes | [view](https://mehrlander.github.io/web-tools/pages/scratch/themes-proto.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/scratch/themes-proto.html) |
 
 ## pages/show-repo/
 
