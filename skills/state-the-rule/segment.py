@@ -33,7 +33,18 @@ def prose_units(block, bstart, base_off, out):
         seg = sm.group(0)
         if not seg.strip():
             continue
-        out.append((base_off + bstart + sm.start(), base_off + bstart + sm.end(),
+        # The sentence ender is matched with a LOOKAHEAD, so the whitespace
+        # after it is never consumed and arrives as the next match's leading
+        # run. The text was already stripped here; the offsets were not, so a
+        # unit's span claimed space its own text disowned. Measured on
+        # CONVENTIONS.md: of 35 abutting pairs, 30 had the separator inside the
+        # following unit and 5 inside the preceding one, which is a boundary
+        # sitting in a different place depending on which sentence you ask.
+        # Trim the span to the text, and the space between sentences goes
+        # unclaimed exactly as the blank line between paragraphs already does.
+        a = sm.start() + (len(seg) - len(seg.lstrip()))
+        b = sm.end() - (len(seg) - len(seg.rstrip()))
+        out.append((base_off + bstart + a, base_off + bstart + b,
                     'sent', unguard(seg).strip()))
 
 # A fenced region is masked off BEFORE blocks are cut, not recognised as a block
