@@ -464,7 +464,7 @@ the string: the path picker died on `repo.split is not a function` on every page
 carrying a fab. `$data` is the same proxy and does not help; hand the callback a
 real component reference. Folded in from the log's tail on 2026-08-26, where it
 sat as an unslugged bullet crediting its sighting to nothing. *(seen: 2026-08-14)*
-→ [HTML-STYLE.md](HTML-STYLE.md)
+→ [the house style](../skills/daisy-alpine/SKILL.md)
 
 
 ### fetched-ref-behind-remote: a merge preflight certifies a merge GitHub refuses
@@ -695,7 +695,7 @@ Getting a defensible list means reading daisyUI's own stylesheet for the
 families it ships, not measuring a rendered page. Left at recurrence two on the
 log's own rule that the third earns the systematic fix.
 *(seen: 2026-07-28, 2026-08-22)*
-→ [../skills/daisy-alpine/SKILL.md](../skills/daisy-alpine/SKILL.md)
+→ [the mechanics reference](../skills/daisy-alpine/references/mechanics.md)
 
 ---
 
@@ -738,12 +738,12 @@ a horizontally scrollable ancestor or every carousel slide reads as a fault.
 The cause here was the usual one, a scroll track as a grid item taking
 `min-width: auto` from its 100 `min-w-full` slides; `min-w-0` is the fix, the
 horizontal twin of the `min-h-0` already applied to the row. *(seen: 2026-08-04)*
-→ [HTML-STYLE.md](HTML-STYLE.md)
+→ [the house style](../skills/daisy-alpine/SKILL.md)
 
 ### house-style-not-consulted: built a page with stat cards, page prose, and small type, against a doc that forbids all three
-[HTML-STYLE.md](HTML-STYLE.md) exists precisely because
-these corrections recur, and the `daisy-alpine` skill carries "No stat cards"
-as its first rule and is installed ambient so it fires on artifact work
+The house style exists precisely because these corrections recur, and the
+`daisy-alpine` skill carries "No stat cards" as its first rule and is installed
+ambient so it fires on artifact work
 unprompted. It did not fire, and the session did not invoke it either, so the
 page was built and shipped before anyone looked at the rule. Availability is
 not invocation, which the estate already knows about `/web-tools`: **load the
@@ -757,7 +757,7 @@ skill's defaults are not the house style; load the local rule before a general
 one that overlaps it.** Neither scanner covers the gap either:
 `stranded-titles.py` and `dead-opacity.py` default to `lib/`, `app/`, `pages/`,
 so a page built in `dump/` is checked by nothing. *(seen: 2026-08-04, 2026-08-29)*
-→ [HTML-STYLE.md](HTML-STYLE.md)
+→ [the house style](../skills/daisy-alpine/SKILL.md)
 
 ### allowlist-table-trusted-stale: trusted the network allowlist table instead of re-probing it
 The
@@ -923,7 +923,7 @@ variants (`sm:`, `lg:`) answer the wrong question there, and Tailwind's
 `@container` plus `@md:`/`@xl:` answer the right one, degrading to one column
 where unsupported. Both rules now sit with the other composition rules.
 *(seen: 2026-08-06)*
-→ [HTML-STYLE.md](HTML-STYLE.md)
+→ [the house style](../skills/daisy-alpine/SKILL.md)
 
 ### status-audit-skipped-index: the status audit silently dropped every marker in a file named `index.md`
 `status.py` carried `SKIP_NAMES = {"index.md"}`, added because a
@@ -972,7 +972,7 @@ thing meant to recede advances. About 120 occurrences are live in `lib/` and
 never drawn and leave the branch list's state on its rail alone. Use tens.
 Three sightings in one day: one text colour, one fill, and one straggler a hand
 sweep had left behind. *(seen: 2026-08-19 ×3)*
-→ [HTML-STYLE.md](HTML-STYLE.md), and the gate at
+→ [the house style](../skills/daisy-alpine/SKILL.md), and the gate at
 [../scripts/dead-opacity.py](../scripts/dead-opacity.py)
 
 **2026-08-19, corrected and closed by a gate.** Two claims above are narrower

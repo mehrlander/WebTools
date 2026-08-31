@@ -18,13 +18,10 @@ which is why it survives review. Enforced by `npm run opacity-scan`
 (`scripts/dead-opacity.py`), gated in `tools/test/dead-opacity.test.mjs`, which
 also carries the measurement.
 
-**A Phosphor class names an icon or renders nothing at all.** The class resolves
-to a `:before` rule keyed by name, so a name the font does not carry leaves a
-zero-width blank: no console error, no fallback glyph. Weights are font
-FAMILIES, so the pair is `{weight} ph-{name}` and never `ph-play-fill`; and a
-plausible name from another icon family (Octicons' `git-compare`, Font Awesome's
-`arrow-down-to-bracket`) is not a Phosphor name. Enforced by `npm run icon-scan`
-(`scripts/blank-icons.py`), gated in `tools/test/blank-icons.test.mjs`.
+**A Phosphor class names an icon or renders nothing at all**, silently. The
+[`phosphor-icons` skill](../../phosphor-icons/SKILL.md) owns that rule and the
+two ways to get the name wrong; `npm run icon-scan` (`scripts/blank-icons.py`)
+enforces it, gated in `tools/test/blank-icons.test.mjs`.
 
 **A bound boolean attribute takes `!!`.** `:disabled="!!row.busy"`, never
 `:disabled="row.busy"`. Alpine's `x-bind` coerces an undefined result to `''`
