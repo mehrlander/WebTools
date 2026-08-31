@@ -27,6 +27,11 @@ legitimately restate what superseded it), as are generated projections and
 the plugin's vendored copies of the conventions (byte-identical by a hook,
 gated elsewhere, and they would drown the report).
 
+Each pair is also asked whether its shared text STATES A RULE, which is the
+duplication worth reviewing first: two files repeating a description can only
+go stale, while two files stating a rule can be obeyed differently and both
+are binding while they disagree.
+
 The same pass builds a weighted graph and, until 2026-08-31, printed the top
 20 edges and dropped it. `--emit` writes the whole thing to docs/themes.json,
 which the Map view's Themes tab reads: clusters of that graph are themes, and
@@ -135,11 +140,28 @@ def runs(shingles):
     return sorted(out, key=lambda r: -len(r.split()))
 
 
+# A shared passage that STATES A RULE is the duplication worth reviewing first.
+# Two files repeating a description can only go out of date; two files stating a
+# rule can be obeyed differently, and both are binding while they disagree. The
+# markers are the words a rule is written with, not a topic list, so this stays
+# a property of the text rather than a judgment about the subject.
+RULE = re.compile(
+    r"\b(?:must|never|always|should|shall|cannot|can't|do not|don't|doesn't|"
+    r"required|forbidden|prefer|avoid|instead of|rather than|only)\b")
+
+
+def states_a_rule(quoted):
+    return any(RULE.search(q) for q in quoted)
+
+
 def payload(files, hits):
     """The graph as committed data. No registry membership rides here: which
     pairs a registry names is owners.csv's to say, and the app joins the two."""
-    edges = [{"a": a, "b": b, "w": n, "quoted": runs(shs)[:QUOTED]}
-             for n, (a, b), shs in hits]
+    edges = []
+    for n, (a, b), shs in hits:
+        quoted = runs(shs)[:QUOTED]
+        edges.append({"a": a, "b": b, "w": n, "quoted": quoted,
+                      "rule": states_a_rule(quoted)})
     nodes = sorted({x for e in edges for x in (e["a"], e["b"])})
     return {"shingle": SHINGLE, "floor": SHARED_MIN, "scanned": len(files),
             "nodes": nodes, "edges": edges}
