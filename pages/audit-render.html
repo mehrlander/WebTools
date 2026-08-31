@@ -690,6 +690,23 @@ window.__audit = {
   const HUE = { WHAT: '16,185,129', HOW: '13,148,136', 'WHY-OP': '245,158,11',
                 'WHY-MOT': '244,63,94', PROV: '219,39,119', EVID: '192,38,211',
                 NAV: '79,70,229', META: '148,163,184' };
+  // How a unit is drawn. One tint per label either way; these decide what the
+  // tint is spent on. Kept as data because the point is to compare them.
+  const MARKS = {
+    fill:      { bg: .11, over: .26, sel: .34, tick: .45, under: 0 },
+    underline: { bg: 0,   over: .10, sel: .16, tick: 0,   under: .65 },
+    separator: { bg: 0,   over: .10, sel: .16, tick: .75, under: 0 },
+  };
+
+  const WORD = /[\w'\u2019-]/;
+  const snapWord = (text, i) => {
+    if (i <= 0 || i >= text.length) return i;
+    if (!WORD.test(text[i - 1]) || !WORD.test(text[i])) return i;   // already between words
+    let l = i; while (l > 0 && WORD.test(text[l - 1])) l--;
+    let r = i; while (r < text.length && WORD.test(text[r])) r++;
+    return (i - l) <= (r - i) ? l : r;
+  };
+
   const tint = (l, a) => `rgba(${HUE[l] || '148,163,184'},${a})`;
 
   // A unit renders alone only if its slice closes what it opens. Where it does
@@ -699,7 +716,7 @@ window.__audit = {
                        && (s.match(/\[/g) || []).length === (s.match(/\]/g) || []).length;
 
   window.auditPage = () => ({
-    a: null, view: 'read', off: {}, sel: null, sections: [], ref: '',
+    a: null, view: 'read', mark: 'fill', off: {}, sel: null, sections: [], ref: '',
     async init() {
       this.ref = (typeof gh !== 'undefined' && gh.ref) || '';
       let payload = window.__audit;
@@ -907,22 +924,23 @@ window.__audit = {
           const block = this.view === 'read' && isBlock;
           const el = document.createElement(block ? 'div' : 'span');
           el.className = `cursor-pointer px-0.5 ${block ? 'w-fit max-w-full' : ''}`;
-          // Lighter than it was, with the weight moved to hover: the tint marks
-          // which label a unit carries and does not need to shout it, and the
-          // hover is what says the unit is a target. Inline styles rather than a
-          // rule, because the colour is per-label and set here already.
-          const bg = tint(u.label, .11 * this.dim(u));
-          const bgOver = tint(u.label, .26 * this.dim(u));
+          // The tint says which label a unit carries; hover says it is a target.
+          // Whichever treatment is on, the end marks matter as much as the start:
+          // adjacent units sharing a label share a tint, and a boundary is the
+          // object ops.py splits and merges.
+          const m = MARKS[this.mark] || MARKS.fill, a = this.dim(u);
+          const bg = m.bg ? tint(u.label, m.bg * a) : '';
+          const bgOver = tint(u.label, m.over * a);
+          const shadow = [
+            m.tick && `inset 1px 0 0 0 ${tint(u.label, m.tick * a)}`,
+            m.tick && `inset -1px 0 0 0 ${tint(u.label, m.tick * a)}`,
+            m.under && `inset 0 -2px 0 0 ${tint(u.label, m.under * a)}`,
+          ].filter(Boolean).join(', ');
           el.style.background = bg;
           el.style.transition = 'background-color .12s ease';
           el.onpointerenter = () => { if (this.sel?.uid !== u.uid) el.style.background = bgOver; };
           el.onpointerleave = () => { if (this.sel?.uid !== u.uid) el.style.background = bg; };
-          // The unit's start edge, at the least it can be and still be seen. It is
-          // not decoration: adjacent units sharing a label share a tint, so this
-          // rule is the only thing separating them, and a boundary is the object
-          // ops.py splits and merges. Was 2px at .9, which read as a rail.
-          const edge = tint(u.label, .45 * this.dim(u));
-          el.style.boxShadow = `inset 1px 0 0 0 ${edge}, inset -1px 0 0 0 ${edge}`;
+          el.style.boxShadow = shadow;
           el.style.opacity = this.dim(u);
           if (broken) el.style.outline = '1px dotted rgba(239,68,68,.8)';
           // THE SEPARATOR IS ITS OWN NODE, appended after the map runs below.
@@ -943,7 +961,7 @@ window.__audit = {
           Standoff.mapText(el, this.a.text, u.start);
           if (this.view !== 'source') el.appendChild(document.createTextNode(' '));
           if (u.uid === this.sel?.uid) {
-            el.style.background = tint(u.label, .34);
+            el.style.background = tint(u.label, m.sel * this.dim(u));
             el.style.textDecoration = 'underline';
             el.style.textDecorationThickness = '2px';
             el.style.textUnderlineOffset = '3px';
@@ -999,7 +1017,16 @@ window.__audit = {
       this.sel = { ...u, broken, ref: this.srcRef(u) };
       this.paint();
     },
-    offsetAt(x, y) { return Standoff.offsetAt(document, x, y); },
+    // A boundary lands between words, never inside one. caretRangeFromPoint
+    // answers in characters, which is finer than any judgement being made here:
+    // a unit divides a sentence at a word, and a pin parked mid-word reads as a
+    // slip every time. Snapping to the nearer end of the word under the pointer
+    // keeps the drag continuous and the result legible. All three placers go
+    // through here (drag, tap, pad), so they agree.
+    offsetAt(x, y) {
+      const i = Standoff.offsetAt(document, x, y);
+      return i == null ? null : snapWord(this.a.text, i);
+    },
     // The inverse, for placing a pinhead: a collapsed Range at the offset,
     // measured against the doc container so the pins scroll with the text.
     pointAt(at) {
@@ -1281,6 +1308,14 @@ window.__audit = {
                   @click="view='read'; paint()">Read</button>
           <button class="join-item btn btn-xs" :class="view==='standoff' && 'btn-active'"
                   @click="view='standoff'">Standoff</button>
+        </div>
+        <div class="join" x-show="view!=='standoff'" x-cloak aria-label="unit treatment">
+          <button class="join-item btn btn-xs" :class="mark==='fill' && 'btn-active'"
+                  @click="mark='fill'; paint()">Fill</button>
+          <button class="join-item btn btn-xs" :class="mark==='underline' && 'btn-active'"
+                  @click="mark='underline'; paint()">Underline</button>
+          <button class="join-item btn btn-xs" :class="mark==='separator' && 'btn-active'"
+                  @click="mark='separator'; paint()">Separators</button>
         </div>
         <button class="btn btn-xs btn-ghost" @click="deck()"><i class="ph ph-cards"></i> Sections</button>
         <button class="btn btn-xs btn-ghost" @click="$refs.reading.showModal()">Reading</button>
