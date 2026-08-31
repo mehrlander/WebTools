@@ -112,6 +112,7 @@ tools/render/scenarios/fab-traffic.mjs,the fab's Traffic tab with a real BOOT ba
 tools/render/scenarios/fab-width-bar.mjs,"the FAB Render tab's width bar, shot on toss-render where the lever is live",tools/render/scenarios,30,driver,no,no,no
 tools/render/scenarios/inbox-demo.mjs,the inbox resolution with the armed redirect button on screen,tools/render/scenarios,36,driver,no,yes,no
 tools/render/scenarios/jumpover-coverage.mjs,the exact-file jump-overs rendered headlessly with seeded rows,tools/render/scenarios,67,driver,no,no,no
+tools/render/scenarios/kind-labels-the-aim.mjs,,tools/render/scenarios,53,driver,no,no,no
 tools/render/scenarios/map-docs-reads.mjs,the Map's Docs tab with the readership column,tools/render/scenarios,69,driver,no,no,no
 tools/render/scenarios/map-docs.mjs,"the Map's Docs tab, the documentation registry rendered live",tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/map-growth.mjs,"the Map's Growth tab with its corpus strip: a fixture config cache declaring two repos' growth payloads, so the federated selector renders and GROWTH_REPO switches the framed chart",tools/render/scenarios,75,driver,no,no,no

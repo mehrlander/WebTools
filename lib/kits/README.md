@@ -580,6 +580,16 @@ is `docs/APP.md § Mechanism (lines 16-28)` rather than a css path, and its
 `section` targeting mode is raised from this menu, since the heading is the one
 thing that knows which section it opens.
 
+The declaration also carries the kind's own vocabulary, from the `KIND` literal
+here, which is why the annotator's aim reads **Markdown section** rather than
+the implementation's word for it. `docs/routes-kinds.csv` is the owner of that
+row and `tools/test/routes-manifest.test.mjs` holds the two together; the same
+arrangement `docs/routes-routes.csv` has with toss-render's inlined
+`TOSS_ROUTES`. Declaring is what a render OPTS INTO, and a render that skips it
+is indistinguishable from a page with no markdown on it: `pages/data-view.html`
+called `contain()` alone until 2026-08-31 and so offered neither the heading
+menus nor the Section aim, on the same files the file deck gave both.
+
 **Enhance** is render's second half, for markup another renderer produced.
 `guide-render.js` renders a doc with the link re-aiming a guide body needs, and
 the Files pane reads markdown through it; that reader wants the containment and

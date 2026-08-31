@@ -65,6 +65,19 @@ routes-routes,path,recorded,,value,column,yes,,the renderer page
 routes-routes,renders,recorded,,value,column,yes,,the content type this route is for
 routes-routes,doc,recorded,,value,column,yes,,the envelope contract the route honors
 routes-routes,example,recorded,,value,column,yes,,a worked address
+routes-kinds,label,recorded,,value,column,yes,,the kind's display name
+routes-kinds,subject,recorded,,value,column,yes,,which value of the showing frame's subject axis a link to this kind takes
+routes-kinds,detect,recorded,,value,column,yes,,"the rule that recognizes this kind, as ViewRegistry.KIND applies it"
+routes-kinds,exclusive,recorded,,none,column,yes,yes,"set where the viewer module is the only one that can display the file, so it outranks any default mode a host sets"
+routes-kinds,view,recorded,,none,column,yes,,the viewer module id this kind opens in; blank where the kind has its own page rather than a mode
+routes-kinds,route,recorded,,none,column,no,,the toss route that addresses this kind; blank where none does
+routes-kinds,shown_by,recorded,,value,column,yes,,"the showing mechanisms that reach this kind, semicolon-separated"
+routes-kinds,kit,recorded,,none,column,no,,the kit that defines this kind's units; blank where nothing does yet
+routes-kinds,unit,recorded,,none,column,yes,,what one aimable piece of this kind is
+routes-kinds,address,recorded,,none,column,yes,,what a position inside this kind reads as in the source's terms
+routes-kinds,aim,recorded,,none,column,yes,,the annotate aim this kind adds beyond the universal three; blank means only those three
+routes-kinds,aim_label,recorded,,none,column,yes,,"what that aim is called in the annotator, carried here so the kit holds no strings of its own"
+routes-kinds,aim_hint,recorded,,none,column,yes,,the one line under that aim in the menu
 showing-mechanisms,glyph,recorded,,value,column,yes,,the marker the caption uses
 showing-mechanisms,label,recorded,,value,column,yes,,the mechanism name a reader sees
 showing-mechanisms,form,recorded,,none,column,yes,,the address shape; absent where the mechanism is not a URL
