@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 29 are named by CLAUDE.md,
-6 by a skill, 20 by a page or component. The remaining 17 are
+6 by a skill, 24 by a page or component. The remaining 13 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -23,7 +23,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`CONSTELLATION.md`](CONSTELLATION.md) — the portable kernel of the what-goes-where doctrine
 - [`CONVENTIONS.md`](CONVENTIONS.md) — the portable working conventions: the general-behavior hub
 - [`HTML-STYLE.md`](HTML-STYLE.md) — the house style for pages: what to build, as against how
-- [`MARKETPLACE.md`](MARKETPLACE.md) *(orphan)* — the plugin marketplace: how the set is published and subscribed to
+- [`MARKETPLACE.md`](MARKETPLACE.md) — the plugin marketplace: how the set is published and subscribed to
 - [`PORTABLE.md`](PORTABLE.md) — the portable set: what travels, and how to adopt it
 - [`README.md`](README.md) — the docs folder's front door: the generated index of this registry
 - [`SHARE.md`](SHARE.md) *(orphan)* — the copy-paste prompt that points another session at the portable docs
@@ -33,7 +33,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`aims.json`](aims.json) — the mission the estate's material serves and the five goals it is held to
 - [`app-routes.csv`](app-routes.csv) — the app's own destinations: every address, what it is for, and which files draw it
 - [`artifacts.md`](artifacts.md) — Claude Code artifacts and the link-choice matrix
-- [`branch-overlay.md`](branch-overlay.md) *(orphan)* — the branch overlay: the takeover, file substitution, the sidebar's second ref, and drop-on-a-branch
+- [`branch-overlay.md`](branch-overlay.md) — the branch overlay: the takeover, file substitution, the sidebar's second ref, and drop-on-a-branch
 - [`code-layers.md`](code-layers.md) — the code layers and the admission rule that sorts a new file into one of them
 - [`doc-growth.md`](doc-growth.md) *(orphan)* — the doc-growth chart: what it plots, how to point it at a repo, and the traps that make it lie
 - [`docs.csv`](docs.csv) — the documentation registry: what each file under docs/ is, on four axes
@@ -106,9 +106,9 @@ marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/github/
 
-- [`README.md`](github/README.md) *(orphan)* — the github folder's front door: renderer, git treatment, MCP routing, surfacing
+- [`README.md`](github/README.md) — the github folder's front door: renderer, git treatment, MCP routing, surfacing
 - [`github-surfacing.md`](github/github-surfacing.md) — GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks
-- [`markdown.md`](github/markdown.md) *(orphan)* — what GitHub's static renderer turns markdown into
+- [`markdown.md`](github/markdown.md) — what GitHub's static renderer turns markdown into
 - [`mcp-server-routing.md`](github/mcp-server-routing.md) *(record, orphan)* — two GitHub MCP servers at once: the 2026-07-15 observation, superseded
 - [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) — why a merged branch stops being a live workspace: merged means closed
 
