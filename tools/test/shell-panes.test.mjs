@@ -113,3 +113,45 @@ test('no pane is declared that the nav cannot reach', () => {
     assert.ok(reachable.has(key), `data-pane="${key}" is unreachable from estateNav`);
   }
 });
+
+// ── The Activity group's front door ──────────────────────────────────────
+// The group opened on Branches because Branches was the pane that existed
+// first. The front door answers "what have I been doing", which is the
+// session's question, and the Sessions pane nests the Branches row itself
+// under the session that made it, so nothing is lost by arriving there.
+//
+// The compatibility half matters as much as the move: ?view=activity is a
+// live address, and every deep link into the Branches pane (a branch-detail
+// event, a repo's abandoned set, the branch-count badge) still goes there.
+test('the Activity nav and the signed-in front door both open Sessions', () => {
+  const { shell } = makeShell();
+  const activity = shell.estateNav.find(v => v.label === 'Activity');
+  assert.ok(activity, 'the Activity stop is still in the nav');
+  assert.equal(activity.view, 'sessions', 'its identity is the pane it opens');
+  assert.ok(activity.views.includes('activity'),
+    'and Branches still keeps the stop lit, so the group is one stop');
+
+  activity.go();
+  assert.equal(shell.view, 'sessions', 'tapping Activity lands on Sessions');
+
+  shell.view = 'estate';
+  shell.hasToken = () => true;
+  shell.goDashboard();
+  assert.equal(shell.view, 'sessions', 'and so does the signed-in front door');
+
+  shell.view = 'estate';
+  shell.hasToken = () => false;
+  shell.goDashboard();
+  assert.equal(shell.view, 'estate', 'a signed-out viewer still lands on Repos');
+});
+
+// The pane draws session rows AND a branch tile under each, so arriving on it
+// with a cold branch cache would draw current sessions over stale branches.
+test('arriving at Sessions warms both caches it renders', () => {
+  const { shell } = makeShell();
+  const called = [];
+  shell.warmSessionsCache = () => { called.push('sessions'); };
+  shell.arrivalActivityRefresh = () => { called.push('activity'); };
+  shell.goSessions();
+  assert.deepEqual(called.sort(), ['activity', 'sessions']);
+});

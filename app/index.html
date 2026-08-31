@@ -5415,7 +5415,12 @@ function app(){ return {
   // The dashboard front door: Open for a signed-in viewer (the richer
   // all-repo read), Repos for a signed-out one (Open is token-gated, so it
   // would land on an empty state). Brand tap and a bare open route here.
-  goDashboard(){ this.hasToken() ? this.goActivity() : this.goEstate(); },
+  // SESSIONS, not Branches, for a signed-in viewer. Both are Activity panes and
+  // the group opened on Branches because Branches was the pane that existed
+  // first. The front door should answer "what have I been doing", which is the
+  // session's question; a branch is what a session left behind, and the Sessions
+  // pane nests the branch row itself under the session that made it.
+  goDashboard(){ this.hasToken() ? this.goSessions() : this.goEstate(); },
   // The header's app-level nav: the estate's own views, in
   // display order (Activity first). Repo-sourced app views ride behind it as a
   // second group (appNav below), separated by a hairline, so the header carries
@@ -5439,8 +5444,13 @@ function app(){ return {
   // Both old keys still route (?view=todo and ?view=jots land on Lists).
   get estateNav(){
     return [
-      { view: 'activity', views: ['activity', 'sessions', 'chats', 'routes', 'state'],
-        icon: 'ph-pulse',    label: 'Activity', go: () => this.goActivity() },
+      // `views` is the set that keeps this entry lit and `view` is only its
+      // identity, so moving the door to Sessions is the `go` and the `view`;
+      // ?view=activity still resolves to Branches, and the pill row still
+      // leads with it, since a chip that moves is a target a reader has to
+      // learn twice.
+      { view: 'sessions', views: ['sessions', 'activity', 'chats', 'routes', 'state'],
+        icon: 'ph-pulse',    label: 'Activity', go: () => this.goSessions() },
       { view: 'todo', views: ['todo', 'jots'],
         icon: 'ph-list-checks', label: 'Lists',  go: () => this.goTodo() },
       { view: 'estate',   icon: 'ph-squares-four', label: 'Repos',    go: () => this.goEstate() },
@@ -5705,7 +5715,17 @@ function app(){ return {
   // Activity's other pill: the sessions that made the branches. Kicks its own
   // throttled crawl on visit, the way Open kicks the activity crawl, so the
   // cache warms itself and a cold one is one tap from being warm.
-  goSessions(){ this.estateSeen = true; this.view = 'sessions'; this.warmSessionsCache(); this.syncUrl(); },
+  // TWO CACHES, because this pane renders two. The session records are its
+  // rows and the branch cache is its tiles: every session nests the Branches
+  // pane's own row under it, so arriving here on a cold branch cache draws
+  // current sessions over stale branches. Cheap to ask for: a non-forced
+  // refresh returns skipped inside CRAWL_FLOOR_MS and joins any crawl already
+  // in flight, so a pill tap costs nothing the floor has not already paid.
+  goSessions(){
+    this.estateSeen = true; this.view = 'sessions';
+    this.warmSessionsCache(); this.arrivalActivityRefresh?.();
+    this.syncUrl();
+  },
   // The sessions half of the arrival kick, and it exists because the plain
   // refreshSessionsCache call it replaces was SILENT. A crawl that commits a
   // new cache has changed nothing the reader can see until the pane re-reads
