@@ -245,3 +245,64 @@ test('a filed section note reads as a section, not as its heading element', () =
   A.disable(); host.remove();
 });
 
+// ── The structure overlay ──────────────────────────────────────────────────
+//
+// jsdom has no layout, so every getBoundingClientRect is zeros and unionRect
+// (which drops rects with no width and no height) answers null for everything.
+// The marks are therefore stubbed into existence here: what is checked is the
+// SHAPE of the overlay, one rule per section indented by rank, and its
+// lifecycle. Where it actually lands on a page is a browser question and is
+// driven by tools/render/scenarios, which measured 9 rules over 9 sections at
+// two indents and the boundary dropping at 390px where it would not fit.
+const stubLayout = () => {
+  let top = 0;
+  for (const el of doc.querySelectorAll('[data-src-doc] *')) {
+    const y = (top += 20);
+    el.getBoundingClientRect = () => ({ left: 40, top: y, right: 340, bottom: y + 18,
+                                        width: 300, height: 18, x: 40, y });
+  }
+  const box = doc.querySelector('[data-src-doc]');
+  if (box) box.getBoundingClientRect = () => ({ left: 40, top: 0, right: 340, bottom: top,
+                                                width: 300, height: top, x: 40, y: 0 });
+};
+
+const ruleMarks = () => [...doc.querySelectorAll('[data-annotate-ui]')]
+  .filter(e => e.style.width === '2px');
+
+test('arming the section aim draws one rule per section, indented by rank', () => {
+  const host = render();
+  A.enable();
+  stubLayout();
+  A.startPick({ aim: 'section' });
+  const box = doc.querySelector('[data-src-doc]');
+  const secs = box.__srcDoc.sections;
+  const rules = ruleMarks();
+  assert.equal(rules.length, secs.length, 'a rule per section');
+
+  // Rank, not DOM depth: a `##` sits inside a `#` and its rule steps in, even
+  // though the two headings are flat siblings in the render.
+  const lefts = rules.map(r => parseInt(r.style.left, 10));
+  const byDepth = new Map();
+  secs.forEach((sec, i) => byDepth.set(sec.depth, lefts[i]));
+  const depths = [...byDepth.keys()].sort((a, b) => a - b);
+  assert.ok(depths.length > 1, 'the fixture needs nesting for this to say anything');
+  for (let i = 1; i < depths.length; i++) {
+    assert.ok(byDepth.get(depths[i]) > byDepth.get(depths[i - 1]),
+      `depth ${depths[i]} must sit right of depth ${depths[i - 1]}`);
+  }
+  A.disable(); host.remove();
+});
+
+test('the rules belong to the section aim, not to the annotator', () => {
+  const host = render();
+  A.enable();
+  stubLayout();
+  A.startPick({ aim: 'section' });
+  assert.ok(ruleMarks().length > 0);
+  A.startPick();                       // the element aim: same mode slot, no structure
+  assert.equal(ruleMarks().length, 0,
+    'an aim that reaches the whole page marks no region');
+  A.disable(); host.remove();
+  assert.equal(ruleMarks().length, 0, 'and nothing survives the mode');
+});
+
