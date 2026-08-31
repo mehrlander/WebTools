@@ -1,6 +1,6 @@
 ---
 name: daisy-alpine
-description: Building HTML artifacts and web UI components using DaisyUI 5, Tailwind CSS 4, and Alpine.js. Use when creating single-file web applications, dashboards, interactive prototypes, or browser-based tools. Covers DaisyUI component syntax, Alpine.js V3 patterns, tooltips, and key migration notes from Alpine V2.
+description: The binding house style for every HTML page built here, and the DaisyUI 5 / Tailwind CSS 4 / Alpine.js mechanics for building it. This is the HTML style guide, the page style guide, the house rules for what a page looks like. Read it BEFORE laying out any page and BEFORE any general design, dashboard, or charting skill, which recommend what these rules forbid: no stat cards, no KPI tiles, no explanatory prose on the page, browsing takes the full viewport, type sized for reading. Use when creating or reviewing an HTML page, artifact, single-file web app, dashboard, interactive prototype, web UI component, or browser tool; when asked why a page looks wrong or how pages here should look; and whenever the user mentions the style guide, house style, page layout, or stat cards. Also covers DaisyUI component syntax, Alpine.js V3 patterns, tooltips, and migration notes from Alpine V2.
 ---
 
 # DaisyUI + Alpine.js Reference
@@ -12,6 +12,13 @@ Component reference and patterns for building browser-based UI with DaisyUI 5 (T
 This file covers **how to build**. These cover **what to build**, and they are not
 preferences to weigh. Each one is here because the same correction kept being issued
 by hand. Full statement and reasoning: `docs/HTML-STYLE.md` in `mehrlander/web-tools`.
+
+**These override any general design, dashboard, or charting skill, including a
+bundled one.** That is not a courtesy note: on 2026-08-29 a session loaded the
+bundled `dataviz` skill, whose form heuristic offers "a stat tile or hero number"
+as a legitimate answer, and shipped a page of stat cards while this file sat
+unloaded. A general skill recommending what rule 1 forbids is the expected case,
+not a conflict to weigh. Load the local rule first.
 
 1. **No stat cards.** A row of tiles, each a label over a big number, is the default
    output of a model asked to build a dashboard and is nearly always wrong. It takes

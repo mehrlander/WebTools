@@ -8,7 +8,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeWindow } from './bootstrap.mjs';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { makeWindow, repoRoot } from './bootstrap.mjs';
 import { loadKit } from './bootstrap.mjs';
 
 const { window } = makeWindow({
@@ -1645,12 +1647,86 @@ test('the card recognizes a selection and offers it, and the offer outlives the 
     assert.match(S.selQuote.textContent, /quick brown fox/, 'and quotes it back');
     assert.equal(A.staged.type, 'text');
 
+    // AND THE OTHER HALF OF THE STAGE CARRIES THE SAME WAY OUT. The floating
+    // chip beside the text is built from the same offer pair the two aims use,
+    // so its ✕ drops the passage, the bar and the chip together. Before
+    // 2026-08-31 the chip had no ✕ at all: it vanished on its own when the
+    // browser dropped the highlight while the bar kept the stage, which is one
+    // stage answering a tap two ways.
+    const chip = doc.querySelector('[data-annotate-offer]');
+    assert.ok(chip, 'the floating chip is an offer pair');
+    assert.deepEqual([...chip.querySelectorAll('button')].map(b => b.textContent),
+      ['+ note', '✕'], 'take it, or let it go');
+
+    // A SECOND POINTERUP OVER THE SAME LIVE SELECTION LEAVES THE CHIP ALONE.
+    // It used to tear it down and build an identical one, which is what made
+    // the tap meant to dismiss the chip rebuild it instead: iOS collapses a
+    // selection as the tap's default action, after this handler has already
+    // run, so the handler sees the passage still selected and re-offers it.
+    doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
+    await new Promise((done) => setTimeout(done, 40));
+    assert.equal(doc.querySelector('[data-annotate-offer]'), chip,
+      'the same passage must keep the same chip, not get a twin');
+
     // The tap that reaches the card is the tap most likely to have collapsed
     // the selection, so the stage has to survive it.
     sel.removeAllRanges();
     doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
     await new Promise((done) => setTimeout(done, 40));
     assert.equal(S.selBar.style.display, 'flex', 'a collapsed selection leaves the offer standing');
+
+    // BUT THE CHIP GOES WITH THE SELECTION, and it does not need a pointerup to
+    // notice. A chip pointing at text that is no longer selected still refuses
+    // pointerdown, which is how it came to swallow the next tap.
+    assert.equal(doc.querySelector('[data-annotate-offer]'), null,
+      'the chip belongs to the selection, not to the stage');
+
+    const again = doc.getElementById('p1').firstChild;
+    const r2 = doc.createRange();
+    r2.setStart(again, 4); r2.setEnd(again, 19);
+    sel.removeAllRanges(); sel.addRange(r2);
+    doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
+    await new Promise((done) => setTimeout(done, 40));
+    const fresh = doc.querySelector('[data-annotate-offer]');
+    assert.ok(fresh, 'a fresh selection offers again');
+
+    // ACROSS A BLOCK BOUNDARY, which is where the first version of this guard
+    // failed: it compared the staged quote against `String(sel)`, and in a
+    // BROWSER those are not the same string, since a selection's text carries
+    // block breaks and `exact` is cut from the annotator's text index, which
+    // does not. So the guard agreed inside one paragraph and disagreed the
+    // moment a selection crossed one.
+    //
+    // AND THIS ASSERTION CANNOT SEE THAT. jsdom's Selection.toString
+    // concatenates text nodes with no block breaks at all ("First para
+    // here.HeadSecond"), so both strings agree here and the broken guard passes
+    // this test: checked by running it against the old comparison, which failed
+    // nothing. The behavioral gate is the browser scenario
+    // (tools/render/scenarios/annotate-drop-stage.mjs); what holds it HERE is
+    // the structural check below, that the comparison never goes through
+    // `String(sel)` again. Kept anyway, since it holds the same-passage rule
+    // for the single-block case that jsdom can answer for.
+    const wide = doc.createRange();
+    wide.setStart(doc.getElementById('p1').firstChild, 4);
+    wide.setEnd(doc.getElementById('p2').firstChild, 20);
+    sel.removeAllRanges(); sel.addRange(wide);
+    doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
+    await new Promise((done) => setTimeout(done, 40));
+    const spanning = doc.querySelector('[data-annotate-offer]');
+    assert.ok(spanning, 'a selection across blocks is offered');
+    assert.notEqual(spanning, fresh, 'and it is a different passage, so a new chip');
+    doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
+    await new Promise((done) => setTimeout(done, 40));
+    assert.equal(doc.querySelector('[data-annotate-offer]'), spanning,
+      'a repeat pointerup over the same multi-block selection keeps its chip');
+
+    sel.removeAllRanges(); sel.addRange(r2);
+    doc.dispatchEvent(new window.Event('pointerup', { bubbles: true }));
+    await new Promise((done) => setTimeout(done, 40));
+    sel.removeAllRanges();
+    doc.dispatchEvent(new window.Event('selectionchange', { bubbles: true }));
+    assert.equal(doc.querySelector('[data-annotate-offer]'), null,
+      'selectionchange alone clears it, with no pointer event behind it');
 
     const go = [...S.selBar.querySelectorAll('button')].find(b => b.textContent === '+ note');
     go.dispatchEvent(new window.Event('click', { bubbles: true }));
@@ -2066,4 +2142,20 @@ test('a note being edited is not also a row underneath it', () => {
 
   A.clear();
   A.disable();
+});
+
+// The comparison the case above cannot reach. Both sides have to come from
+// targetForRange, so the strings are cut the same way; comparing a staged quote
+// against the live selection's own text is the bug, not a style choice.
+test('the staged-passage guard never compares against the raw selection string', () => {
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/annotate.js'), 'utf8');
+  // The CODE, not the paragraph above it: that paragraph names the wrong
+  // comparison in order to warn about it, and matching prose would fail on the
+  // warning rather than on the bug.
+  const guard = src.match(/\n {6}const was = S\.sel[\s\S]*?hideSelBtn\(\);/);
+  assert.ok(guard, 'the idempotence guard is gone from onSelectionEnd');
+  assert.doesNotMatch(guard[0], /String\(sel\)|sel\.toString\(\)/,
+    'a selection\'s own text carries block breaks that quote.exact does not');
+  assert.match(guard[0], /target\.quote\.exact/,
+    'compare through targetForRange on both sides');
 });

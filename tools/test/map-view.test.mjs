@@ -49,6 +49,7 @@ const routesJson = readFileSync(path.join(repoRoot, 'docs', 'routes.json'), 'utf
 // and every row assertion below would pass on nothing.
 const routesModesCsv = readFileSync(path.join(repoRoot, 'docs', 'routes-modes.csv'), 'utf8');
 const routesRoutesCsv = readFileSync(path.join(repoRoot, 'docs', 'routes-routes.csv'), 'utf8');
+const routesKindsCsv = readFileSync(path.join(repoRoot, 'docs', 'routes-kinds.csv'), 'utf8');
 const mechanismsCsv = readFileSync(path.join(repoRoot, 'docs', 'showing-mechanisms.csv'), 'utf8');
 const docsCsv = readFileSync(path.join(repoRoot, 'docs', 'docs.csv'), 'utf8');
 const surfCsv = readFileSync(path.join(repoRoot, 'docs', 'surfacing.csv'), 'utf8');
@@ -80,6 +81,7 @@ window.GH = class {
     if (p === 'docs/routes.json') return { text: routesJson };
     if (p === 'docs/routes-modes.csv') return { text: routesModesCsv };
     if (p === 'docs/routes-routes.csv') return { text: routesRoutesCsv };
+    if (p === 'docs/routes-kinds.csv') return { text: routesKindsCsv };
     if (p === 'docs/showing-mechanisms.csv') return { text: mechanismsCsv };
     if (p === 'docs/docs.csv') return { text: docsCsv };
     if (p === 'docs/surfacing.csv') return { text: surfCsv };
@@ -162,6 +164,32 @@ test('Showing loads on demand, not at mount', async () => {
   const before = data.routes;
   await data.loadRoutes();
   assert.equal(data.routes, before, 'a second open reuses the loaded manifest');
+});
+
+// The kinds table is the fourth carrier the Showing tab assembles, and the one
+// whose cells are mostly blank: `aim` is carried by one kind of eleven and `kit`
+// by three. Every x-show in the template tests the string, so this checks that
+// the sparse rows survive the parse rather than that the tab has content.
+test('Showing carries the kinds, and the sparse cells survive the parse', () => {
+  const kinds = data.routes.kinds;
+  assert.ok(kinds.length > 8, 'the kinds table did not load');
+  const md = kinds.find(k => k.kind === 'markdown');
+  assert.equal(md.aim, 'section');
+  assert.equal(md.aim_label, 'Markdown section');
+  assert.equal(md.kit, 'lib/kits/md-doc.js');
+  // The join columns, which are what put this table on this tab rather than a
+  // tab of its own. routes-manifest.test.mjs checks they RESOLVE; this checks
+  // the app is handed them at all.
+  assert.ok(md.shown_by.split(';').filter(Boolean).length > 0);
+  // Source code is the second kind, and it is the one that shows the aim column
+  // is optional rather than unfilled: it declares (so it has a kit) and offers
+  // no gesture of its own, since a line range is what a text selection already
+  // spans. `delimited` is the other shape, a kind nothing declares yet.
+  const code = kinds.find(k => k.kind === 'code');
+  assert.equal(code.kit, 'lib/kits/code-doc.js');
+  assert.equal(code.aim, '', 'a kind with no added aim carries an empty cell, not a missing one');
+  assert.equal(kinds.find(k => k.kind === 'delimited').kit, '',
+    'a kind nothing declares yet carries a blank, which the card renders as absence');
 });
 
 test('with no ?use=, both manifests are read at main', () => {
