@@ -901,12 +901,12 @@ window.__audit = {
       host_.appendChild(box);
       for (const b of this.blocks) {
         const wrap = document.createElement(this.view === 'source' ? 'div' : 'div');
-        wrap.className = this.view === 'source' ? 'mb-3' : 'mb-4';
+        wrap.className = this.view === 'source' ? 'mb-3' : '';
         for (const u of b) {
           const { html, broken, block: isBlock } = this.unitHtml(u);
           const block = this.view === 'read' && isBlock;
           const el = document.createElement(block ? 'div' : 'span');
-          el.className = `cursor-pointer px-0.5 ${block ? 'py-1 my-2 w-fit max-w-full' : ''}`;
+          el.className = `cursor-pointer px-0.5 ${block ? 'w-fit max-w-full' : ''}`;
           // Lighter than it was, with the weight moved to hover: the tint marks
           // which label a unit carries and does not need to shout it, and the
           // hover is what says the unit is a target. Inline styles rather than a
@@ -921,7 +921,8 @@ window.__audit = {
           // not decoration: adjacent units sharing a label share a tint, so this
           // rule is the only thing separating them, and a boundary is the object
           // ops.py splits and merges. Was 2px at .9, which read as a rail.
-          el.style.boxShadow = `inset 1px 0 0 0 ${tint(u.label, .45 * this.dim(u))}`;
+          const edge = tint(u.label, .45 * this.dim(u));
+          el.style.boxShadow = `inset 1px 0 0 0 ${edge}, inset -1px 0 0 0 ${edge}`;
           el.style.opacity = this.dim(u);
           if (broken) el.style.outline = '1px dotted rgba(239,68,68,.8)';
           // THE SEPARATOR IS ITS OWN NODE, appended after the map runs below.
