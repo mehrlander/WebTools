@@ -34,7 +34,7 @@ const toCsv = (rows) => {
 // copies of .claude-plugin/marketplace.json anyway.
 const manifest = {
   items: [
-    { kind: 'skill', command: '/portable:caption', path: '.claude/skills/caption/SKILL.md', title: 'caption', role: 'the caption', use: 'plugin' },
+    { kind: 'skill', command: '/portable:tasks', path: '.claude/skills/tasks/SKILL.md', title: 'tasks', role: 'the tracker', use: 'plugin' },
     { kind: 'doc', path: 'docs/CONVENTIONS.md', title: 'Working conventions', role: 'the conventions', use: 'live' },
     { kind: 'script', path: 'scripts/sunset-scan.py', title: 'sunset-scan.py', role: 'sunset markers', use: 'on-demand' },
   ],
@@ -145,7 +145,7 @@ test('the set groups into plugin / docs / scripts sections', () => {
   const secs = data.setSections;
   // [...] rebuilds the realm-crossed array on this side for deepEqual.
   assert.deepEqual([...secs.map(s => s.label)], ['In the plugin', 'Docs', 'Scripts']);
-  assert.equal(secs[0].items[0].title, 'caption');
+  assert.equal(secs[0].items[0].title, 'tasks');
 });
 
 

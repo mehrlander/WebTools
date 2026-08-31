@@ -17,7 +17,7 @@ The mechanisms, what each reaches and misses, and the rule for picking one are *
 
 **So do not decide it by reading. Run it:** `npm run showing` reads the branch's
 changed files and prints the render line to paste, or an honest no-link with the
-reason ([`scripts/showing.py`](scripts/showing.py); `/caption` calls it). It
+reason ([`scripts/showing.py`](scripts/showing.py)). It
 happened again on 2026-08-22, with the `?use=` trap itself in context, which is
 why the last rule this section stated in prose is now executable. The honesty
 rule survives, since no script supplies it: only a page renders this way, for a
