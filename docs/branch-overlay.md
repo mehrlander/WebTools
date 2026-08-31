@@ -167,9 +167,30 @@ guide is prose and reads perfectly well below it. That also settles the
 complaint the tabs were introduced for, which was the changed files sitting
 below a full screen of guide. The heading row keeps the count the Files tab
 carried, so "how much is here" is still answered without opening anything, and
-the guide keeps a marker there (its number, with a down arrow) that scrolls to
-it, because a section below the fold needs something at the top saying it is
-there.
+the guide keeps a marker there that scrolls to it, because a section below the
+fold needs something at the top saying it is there. The marker carries the PR
+number everywhere and the PR **title** where the row has width for it: the
+number says a guide exists, the title says what the branch is about, which is
+the one thing worth learning without scrolling. The title is the first thing
+dropped at 390px, where four controls to the right leave the row nothing to
+spend, and the tooltip carries both halves at every width.
+
+**The list caps its rows, because its length is the guide's distance.** At
+390px a sixty-file branch put the guide's top at 2309px, 2.7 screens from the
+head; twenty rows puts it near 1050px, one flick. Past the cap the panel ends in
+a **Show N more files** row that lifts it, and a collapsed registry group draws
+no rows and so spends none of the budget, which is what lets a repo whose
+generated output starts collapsed show more of its authored half rather than
+less. It is a drawing rule and not a filter: the group header still reports the
+group's own size, and the file deck still pages every file in an open group
+whether or not the cap drew its row.
+
+A max-height with its own scrollbar was the first design and loses on two
+counts. A card expands *inside* the panel, so a diff would open into a bounded
+box inside the page's own scroller, which is the nested-scroller shape the
+file-review pass already rejected at 1280px; and the panel clips, since rounded
+corners need `overflow-hidden`, so a row's dropdown would be cut by the box
+scrolling it. A row budget costs one tap and none of that.
 
 **The file rows start collapsed, at every width.** They opened on a wide screen
 with a modest change set while the files were a pane of their own with nothing
