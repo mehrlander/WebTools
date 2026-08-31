@@ -21,6 +21,27 @@ Icons inherit `font-size` and `color`, so Tailwind utilities work directly:
 <i class="ph-bold ph-check text-success text-xl"></i>
 ```
 
+## A wrong name renders as nothing
+
+There is no fallback glyph and no console error. The class resolves to a
+`:before` rule keyed by the name, so a name the font does not carry leaves a
+zero-width blank: the element is present, sized, and empty. That reads as a
+logic bug and gets debugged as one, so measure the element's width before
+suspecting the state that controls it.
+
+Two ways to get there, and only the first is recoverable by machine:
+
+- **A weight used as a suffix.** `ph-play-fill` is not a name; weights are font
+  families, so it is `ph-fill ph-play`.
+- **A name from another icon family.** Octicons has `git-compare` and `repo`,
+  Font Awesome has `arrow-down-to-bracket`, and all three are plausible enough
+  to type. Check the manifest below rather than trusting recall.
+
+In web-tools, `npm run icon-scan` ([`scripts/blank-icons.py`](https://github.com/mehrlander/web-tools/blob/main/scripts/blank-icons.py))
+resolves every `ph-` name in the tree against the installed stylesheet and the
+suite gates it. Elsewhere, the same check is a grep against
+`node_modules/@phosphor-icons/web/src/regular/style.css`.
+
 ## Icon Manifest
 
 Three categories determine what class names are valid.

@@ -18,6 +18,7 @@
     "registries-reach": "node tools/build/registries-reach.mjs",
     "claims-scan": "python3 scripts/duplicated-claims.py",
     "opacity-scan": "python3 scripts/dead-opacity.py",
+    "icon-scan": "python3 scripts/blank-icons.py",
     "bool-attr-scan": "python3 scripts/bound-boolean-attrs.py",
     "stranded-titles": "python3 scripts/stranded-titles.py",
     "showing": "python3 scripts/showing.py",
