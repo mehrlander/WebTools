@@ -684,15 +684,24 @@ const SESSION_ROW = () => ({
   tokens: { output: 84200, input: 1900, cache_read: 7400000, cache_write: 120000 },
 });
 
-test('the turns card separates the two halves the title used to hold', () => {
+test('the turns card is the transcript, and its head answers the tap', () => {
+  // It opened a two-row list once (user turns, assistant messages), which held
+  // one fact the row did not: the assistant half. The transcript moved here
+  // from the ask line, since what opens is every turn of the conversation and
+  // the ask is only the first of them, and the assistant half rides the head.
+  //
+  // THE HEAD STATES WHAT THE READER TAPPED. A prose card otherwise counts the
+  // turns it was handed, which here is both roles and only the last
+  // TURNS_KEPT, so deriving would answer a glyph reading 12 with some other
+  // number entirely.
   const row = SESSION_ROW();
   data.openSessionCard(row, 'turns', null);
-  assert.equal(data.rowCard.kind, 'list');
-  assert.equal(data.rowCard.label, 'user turns');
-  assert.deepEqual(plain_(data.rowCard.rows),
-    [{ label: 'user turns', n: 12 }, { label: 'assistant messages', n: 48 }]);
-  assert.equal(data.rowCardSummary.count, 12,
-    'the head states the number the row showed, not the sum of the two');
+  assert.equal(data.rowCard.kind, 'prose');
+  assert.equal(data.rowCardSummary.count, 12, 'the glyph\'s own number');
+  assert.deepEqual(plain_(data.rowCard.unit), ['user turn', 'user turns'],
+    'and its own unit, so the head does not call them plain turns');
+  assert.equal(data.rowCard.aside, '48 assistant',
+    'the half the row never showed, which the list card was carrying');
 });
 
 test('the tools card lists the per-tool breakdown and owns the failure count', () => {
