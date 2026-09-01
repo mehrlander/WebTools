@@ -344,3 +344,39 @@ why the gate is on the palettes rather than on a screenshot.
 are all spent on the active lens; `text-decoration` was not, which is why the
 verdict could arrive beside the label rather than displacing it. A `DROP` is
 struck through under either lens.
+
+## 2026-09-01 — `1. ` is not a sentence, and the render was the only thing that said so
+
+**The fifth guard was missing.** `GUARD` protected `e.g.`, `i.e.`, `etc.`, `vs.`
+and a decimal point, and the decimal one needs a digit on **both** sides, so a
+list marker slipped through: `1. ` is a digit, a period and a space, which the
+sentence splitter read as a sentence ending after "1". Every numbered item became
+two units, one holding the marker and one holding the item.
+
+**Nothing in the annotation was wrong, which is why nothing caught it.** The
+units tiled, every span resolved, every label was declared, and a bare `1.` got
+labelled `META` because that is the best a labeller can do with it. The check
+suite passed on all of it. The defect existed only in the render: a marker alone
+is an `<ol>` with an empty `<li>` and an item without its marker is a bare
+paragraph, so a three-step list drew as three empty numbers over three
+unindented sentences. It was reported from a screenshot.
+
+**The stored run was repaired with the machine's own operations**, three merges
+and three relabels through `ops.py`, rather than by re-segmenting. Re-segmenting
+would have been correct and would have discarded ten patched units and every
+label; a patch keeps both and records the judgment. `labels.tsv` and
+`units.jsonl` were then regenerated from the result, since both describe the
+current grain.
+
+**A second, smaller thing came out of the same spot.** A sentence taken from
+INSIDE a list item is a legitimate unit that also does not render as one: the
+marker went to the first sentence, so every later sentence hung unindented under
+the item it belongs to. The page now wraps such a continuation in a marker-less
+list, which gives it the item's indent by construction rather than by a padding
+constant guessed to match the prose styles.
+
+**The general shape, since the segmenter will meet it again: a grain defect can
+be invisible to every invariant and visible only when rendered.** The invariants
+are about the partition; whether a unit can stand alone is a different question,
+and the only two things asking it are `balanced()` and a person looking at the
+page.

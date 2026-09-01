@@ -473,38 +473,24 @@ window.__audit = {
    {
     "uid": "conven-058",
     "start": 4244,
-    "end": 4246,
-    "kind": "sent",
-    "words": 1,
-    "label": "META",
-    "verdict": "KEEP"
-   },
-   {
-    "uid": "conven-059",
-    "start": 4247,
     "end": 4311,
     "kind": "sent",
-    "words": 13,
+    "words": 14,
     "label": "WHAT",
-    "verdict": "KEEP"
+    "verdict": "KEEP",
+    "from": "merge:conven-058+conven-059",
+    "why": "the merged unit is the rule, not the META the bare marker had to be given"
    },
    {
     "uid": "conven-060",
     "start": 4312,
-    "end": 4314,
-    "kind": "sent",
-    "words": 1,
-    "label": "META",
-    "verdict": "KEEP"
-   },
-   {
-    "uid": "conven-061",
-    "start": 4315,
     "end": 4405,
     "kind": "sent",
-    "words": 16,
+    "words": 17,
     "label": "WHAT",
-    "verdict": "KEEP"
+    "verdict": "KEEP",
+    "from": "merge:conven-060+conven-061",
+    "why": "the merged unit is the rule"
    },
    {
     "uid": "conven-062",
@@ -518,20 +504,13 @@ window.__audit = {
    {
     "uid": "conven-063",
     "start": 4433,
-    "end": 4435,
-    "kind": "sent",
-    "words": 1,
-    "label": "META",
-    "verdict": "KEEP"
-   },
-   {
-    "uid": "conven-064",
-    "start": 4436,
     "end": 4503,
     "kind": "sent",
-    "words": 11,
+    "words": 12,
     "label": "WHAT",
-    "verdict": "KEEP"
+    "verdict": "KEEP",
+    "from": "merge:conven-063+conven-064",
+    "why": "the merged unit is the rule"
    },
    {
     "uid": "conven-065a",
@@ -788,6 +767,10 @@ window.__audit = {
     underline: { bg: 0,   over: .10, sel: .16, tick: 0,   under: .65 },
     separator: { bg: 0,   over: .10, sel: .16, tick: .75, under: 0 },
   };
+
+  // The same `\d+\.` skills/state-the-rule/segment.py guards and BULLET splits
+  // on, so the page and the segmenter agree on what a list marker is.
+  const MARKER = /^[ \t]{0,3}(?:[-*+]|\d+\.)[ \t]/;
 
   const WORD = /[\w'\u2019-]/;
   const snapWord = (text, i) => {
@@ -1058,8 +1041,22 @@ window.__audit = {
       for (const b of this.blocks) {
         const wrap = document.createElement(this.view === 'source' ? 'div' : 'div');
         wrap.className = this.view === 'source' ? 'mb-3' : '';
+        // Does this block open with a list marker? Its units are rendered one at
+        // a time, so only the unit CARRYING the marker renders as a list item.
+        const listBlock = MARKER.test(this.a.text.slice(b[0].start, b[0].start + 8));
         for (const u of b) {
-          const { html, broken, block: isBlock } = this.unitHtml(u);
+          let { html, broken, block: isBlock } = this.unitHtml(u);
+          // A CONTINUATION IS A SENTENCE FROM INSIDE A LIST ITEM. It is a
+          // legitimate unit and it does not render as one: the marker went to
+          // the first sentence, so every later sentence rendered as prose and
+          // hung unindented under the item it belongs to. A marker-less list
+          // gives it the item's indent BY CONSTRUCTION, which a padding
+          // constant guessed to match the prose styles would not.
+          if (this.view === 'read' && listBlock && !broken
+              && !MARKER.test(this.a.text.slice(u.start, u.start + 8))) {
+            html = `<ol style="list-style:none"><li>${html}</li></ol>`;
+            isBlock = true;
+          }
           const block = this.view === 'read' && isBlock;
           const el = document.createElement(block ? 'div' : 'span');
           el.className = `cursor-pointer px-0.5 ${block ? 'w-fit max-w-full' : ''}`;

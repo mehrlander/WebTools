@@ -416,38 +416,24 @@
   {
    "uid": "conven-058",
    "start": 4244,
-   "end": 4246,
-   "kind": "sent",
-   "words": 1,
-   "label": "META",
-   "verdict": "KEEP"
-  },
-  {
-   "uid": "conven-059",
-   "start": 4247,
    "end": 4311,
    "kind": "sent",
-   "words": 13,
+   "words": 14,
    "label": "WHAT",
-   "verdict": "KEEP"
+   "verdict": "KEEP",
+   "from": "merge:conven-058+conven-059",
+   "why": "the merged unit is the rule, not the META the bare marker had to be given"
   },
   {
    "uid": "conven-060",
    "start": 4312,
-   "end": 4314,
-   "kind": "sent",
-   "words": 1,
-   "label": "META",
-   "verdict": "KEEP"
-  },
-  {
-   "uid": "conven-061",
-   "start": 4315,
    "end": 4405,
    "kind": "sent",
-   "words": 16,
+   "words": 17,
    "label": "WHAT",
-   "verdict": "KEEP"
+   "verdict": "KEEP",
+   "from": "merge:conven-060+conven-061",
+   "why": "the merged unit is the rule"
   },
   {
    "uid": "conven-062",
@@ -461,20 +447,13 @@
   {
    "uid": "conven-063",
    "start": 4433,
-   "end": 4435,
-   "kind": "sent",
-   "words": 1,
-   "label": "META",
-   "verdict": "KEEP"
-  },
-  {
-   "uid": "conven-064",
-   "start": 4436,
    "end": 4503,
    "kind": "sent",
-   "words": 11,
+   "words": 12,
    "label": "WHAT",
-   "verdict": "KEEP"
+   "verdict": "KEEP",
+   "from": "merge:conven-063+conven-064",
+   "why": "the merged unit is the rule"
   },
   {
    "uid": "conven-065a",
