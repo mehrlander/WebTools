@@ -218,3 +218,19 @@ test('no checkbox survives anywhere in the list', () => {
     .filter(b => !b.closest('.hidden'));   // the Options row is collapsed, and owns the rest
   assert.deepEqual(boxes, [], 'the list selects by opening; only Options still has switches');
 });
+
+test('there is one list, and no route from the deck to a second copy of it', () => {
+  // The loop: list -> deck -> a takeover holding the same list, so going
+  // forward twice landed the reader back where they started. Reported three
+  // times on 2026-09-01. `open()` had exactly one caller, the deck's own header
+  // button, and both are gone; this is what stops either coming back.
+  assert.equal(SE.open, undefined, 'the takeover is not an export any more');
+  const exp = readFileSync(path.join(repoRoot, 'lib/kits/session-export.js'), 'utf8');
+  assert.doesNotMatch(exp, /^\s*function open\(record/m, 'nor a function waiting to be re-exported');
+
+  const render = readFileSync(path.join(repoRoot, 'lib/kits/session-render.js'), 'utf8');
+  assert.doesNotMatch(render, /sessionExport\.open/, 'and the deck offers no door to one');
+
+  // The list itself is untouched: it is still what every host mounts.
+  assert.equal(typeof SE.index, 'function');
+});
