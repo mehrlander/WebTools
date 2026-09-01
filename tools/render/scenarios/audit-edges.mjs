@@ -116,8 +116,21 @@ export default async function (page) {
   await page.touchscreen.tap(spot.x, spot.y);
   await page.waitForTimeout(400);
   const placed = await state(page);
-  console.log('PLACED want=' + spot.want + ' ' + JSON.stringify(placed));
-  if (placed.ops !== 1 || placed.end !== spot.want) throw new Error('the tap did not place the boundary');
+  // WORD SNAPPING MOVED THE TARGET, so the assertion is the contract rather
+  // than the raw offset. A tap eight characters into a run lands mid-word and
+  // the page snaps to the nearer word edge, which is the point of it. Checking
+  // for `spot.want` exactly asked the driver to carry a second copy of
+  // snapWord, and it silently became an assertion about the OLD behaviour the
+  // day snapping landed.
+  const land = await page.evaluate(({ want, got }) => {
+    const t = Alpine.$data(document.body).a.text, W = /[\w'\u2019-]/;
+    return { onEdge: !(W.test(t[got - 1] || '') && W.test(t[got] || '')),
+             drift: got - want, around: t.slice(got - 8, got + 8) };
+  }, { want: spot.want, got: placed.end });
+  console.log('PLACED want=' + spot.want + ' ' + JSON.stringify({ ...placed, ...land }));
+  if (placed.ops !== 1) throw new Error('the tap did not place the boundary');
+  if (!land.onEdge) throw new Error(`the boundary cut a word: …${land.around}…`);
+  if (Math.abs(land.drift) > 20) throw new Error(`snapped ${land.drift} chars, which is past a word`);
   if (placed.bad) throw new Error('placing broke the partition');
 
   // ── the pad walks it, and one drag is one operation ─────────────────────
@@ -161,11 +174,24 @@ export default async function (page) {
   await page.mouse.move(bar.x, bar.y);
   await page.mouse.down();
   const redOnDown = await page.evaluate(() => Alpine.$data(document.body).armed);
-  for (let i = 1; i <= 30; i++) { await page.mouse.move(bar.x - i * 3, bar.y); await page.waitForTimeout(16); }
+  // AIM WHERE THE TEXT IS, rather than always leftward. A boundary at a line
+  // END has nothing to its right, which is why this dragged left; a boundary at
+  // a line START has nothing to its left, and then the same drag proves nothing
+  // and reads as a dead control. Which one this is depends on which unit
+  // `fresh` picked, so the direction is asked rather than assumed: offsetAt
+  // answers null off the run, and the side that answers is the side to walk.
+  const dir = await page.evaluate(([x, y]) => {
+    const d = Alpine.$data(document.body), here = d.offsetAt(x, y);
+    for (const s of [-1, 1]) if (d.offsetAt(x + s * 60, y) != null
+                                 && d.offsetAt(x + s * 60, y) !== here) return s;
+    return 0;
+  }, [bar.x, bar.y]);
+  if (!dir) throw new Error('the armed boundary has reachable text on neither side');
+  for (let i = 1; i <= 30; i++) { await page.mouse.move(bar.x + dir * i * 3, bar.y); await page.waitForTimeout(16); }
   await page.mouse.up();
   await page.waitForTimeout(400);
   const dragged = await state(page);
-  console.log('PINDRAG armed-on-down=' + redOnDown + ' ' + JSON.stringify(dragged));
+  console.log('PINDRAG armed-on-down=' + redOnDown + ' dir=' + dir + ' ' + JSON.stringify(dragged));
   if (redOnDown !== 'end') throw new Error('the pin must arm on the way down, before it moves');
   if (dragged.ops !== beforePin + 1) throw new Error('one pin drag must record one operation');
   if (dragged.bad) throw new Error('the pin drag broke the partition');

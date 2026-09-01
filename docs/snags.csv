@@ -12,6 +12,7 @@ mcp-approval-is-often-routing,an approval prompt that is really a wall,2,2026-08
 ci-watch-on-blocked-api,a curl watch loop on the GitHub API waits forever,2,2026-08-14,2026-08-10;2026-08-14,environment/capabilities.md
 headless-shot-prose-flat,typography CSS misses in screenshots,2,2026-08-14,2026-08-07;2026-08-14,environment/testing.md
 x-data-scope-shadows-component-names,"a mount's config read a component, not the host's field",2,2026-08-14,2026-08-14;2026-08-14,show-repo.md;HTML-STYLE.md
+pipe-eats-the-exit-code,"a runner that reports a fatal, read through a pipe that returns zero",1,2026-09-01,2026-09-01,environment/testing.md
 annotated-document-resists-edits,editing CONVENTIONS.md costs an annotation rebuild,1,2026-08-31,2026-08-31,
 guards-shift-the-offsets,three of segment.py's five guards are not length-preserving,1,2026-08-31,2026-08-31,
 injection-budget-counts-the-checkout-path,"a green local run went red on CI, and the first diagnosis was wrong",1,2026-08-31,2026-08-31,environment/capabilities.md

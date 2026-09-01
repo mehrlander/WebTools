@@ -44,7 +44,12 @@ export default async function (page) {
   const m = await page.evaluate(() => {
     const el = document.querySelector('[data-panel]');
     const r = el.getBoundingClientRect();
-    const sel = [...el.querySelectorAll('select')].map(s => Math.round(s.getBoundingClientRect().width));
+      // The PILL is what is on screen; the select inside it is invisible and
+    // absolutely positioned, so measuring the select would measure the pill's
+    // own box and say nothing about whether the text is hugged.
+    const sel = [...el.querySelectorAll('label:has(select)')]
+      .map(l => [Math.round(l.getBoundingClientRect().width),
+                 Math.round(l.querySelector('span').getBoundingClientRect().width)]);
     return { left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width),
              top: Math.round(r.top), bottom: Math.round(r.bottom),
              vw: document.documentElement.clientWidth, vh: document.documentElement.clientHeight,
@@ -58,10 +63,13 @@ export default async function (page) {
   // Tapping outside is the only way to dismiss it, so a panel spanning the
   // width is a sheet that cannot be closed. Held at the narrowest phone, where
   // the subtraction has the least room to give.
-  if (m.vw > 240 && m.width > m.vw - 48)
+  if (m.vw > 240 && m.width > m.vw * 0.8)
     bad.push(`no room to tap outside: ${m.width}px panel in a ${m.vw}px viewport`);
   // A select wider than its longest option plus the chevron is padding, not
   // content, and it is what made the panel wide enough to need clamping.
-  for (const w of m.selects) if (w > 110) bad.push(`a select is ${w}px, which is not hugging its text`);
+  // A pill wider than its own text plus the padding is carrying some other
+  // option's width, which is exactly what a native select does by default.
+  for (const [pill, text] of m.selects)
+    if (pill - text > 24) bad.push(`a pill is ${pill}px around ${text}px of text`);
   if (bad.length) throw new Error(bad.join('; '));
 }

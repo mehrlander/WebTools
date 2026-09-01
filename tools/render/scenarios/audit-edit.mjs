@@ -23,23 +23,40 @@ export default async function (page) {
   await page.waitForSelector('[x-ref="doc"] span');
   const before = await page.evaluate(() => Alpine.$data(document.body).units.length);
 
-  // The first prose unit the page can offer a split inside. Selected through
-  // the component, not by clicking a tinted span: the spans carry no uid.
+  // The first prose unit the page can offer a split inside. The page picks it,
+  // since the spans carry a uid and the SCENARIO should not decide which unit
+  // is splittable; but it is then selected BY A REAL TAP, and that part is not
+  // ceremony. The panel is a pointer-anchored popover: setting `sel` from
+  // script leaves `selPt` empty, so placement falls back to the unit's rect,
+  // and a unit below the fold has none on screen. The panel then keeps its last
+  // position, every button in it is "outside of the viewport", and the click
+  // retries for thirty seconds. That is how this file broke silently.
   const target = await page.evaluate(() => {
     const d = Alpine.$data(document.body);
     for (const u of d.units) {
       if (u.kind !== 'sent') continue;
       d.openSplit(u);
       if (d.boundaries.length) {
-        d.sel = { ...u, ref: d.srcRef(u) };
+        d.menu = null;
+        document.querySelector(`[data-uid="${CSS.escape(u.uid)}"]`)
+          ?.scrollIntoView({ block: 'center' });
         return { uid: u.uid, label: u.label, at: d.boundaries[0].at };
       }
     }
     return null;
   });
   if (!target) throw new Error('no prose unit on this page carries a split candidate');
-  console.log('TARGET ' + JSON.stringify(target));
   await page.waitForTimeout(300);
+
+  const box = await page.evaluate((t) => {
+    const r = [...document.querySelector(`[data-uid="${CSS.escape(t.uid)}"]`).getClientRects()][0];
+    return { x: r.left + Math.min(30, r.width / 2), y: (r.top + r.bottom) / 2 };
+  }, target);
+  await page.mouse.click(box.x, box.y);
+  await page.waitForTimeout(300);
+  const selected = await page.evaluate(() => Alpine.$data(document.body).sel?.uid);
+  if (selected !== target.uid) throw new Error(`tap selected ${selected}, wanted ${target.uid}`);
+  console.log('TARGET ' + JSON.stringify(target));
 
   await page.click('button:has-text("Split")');
   await page.waitForTimeout(300);
@@ -55,16 +72,25 @@ export default async function (page) {
   await page.click('[x-show="menu===\'split\'"] button');
   await page.waitForTimeout(400);
 
-  // Any label the vocabulary declares that is not the one the parent carried,
-  // so the relabel is a real change whatever document is loaded.
-  await page.click('button:has-text("Relabel")');
-  await page.waitForTimeout(200);
-  await page.evaluate((t) => {
+  // THROUGH THE PILL, not through push(). The label pill is a span sized to the
+  // current value with an invisible select over it, so the only thing proving
+  // that control is still wired is driving the select the way a tap does. Any
+  // label the vocabulary declares that is not the one the parent carried, so
+  // the relabel is a real change whatever document is loaded.
+  const relabelled = await page.evaluate((t) => {
     const d = Alpine.$data(document.body);
     const other = d.so.vocabulary.find(v => v.label !== t.label).label;
-    d.push({ op: 'relabel', uid: t.uid + 'b', label: other });
-    d.push({ op: 'note', uid: t.uid + 'a', text: 'the rule; what followed is now its own unit' });
+    const el = document.querySelector('[data-panel] label select');
+    el.value = other;
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return other;
   }, target);
+  await page.waitForTimeout(300);
+  const shown = await page.evaluate(() =>
+    document.querySelector('[data-panel] label span').textContent.trim());
+  if (shown !== relabelled) throw new Error(`pill reads ${shown} after relabel to ${relabelled}`);
+  await page.evaluate((t) => Alpine.$data(document.body)
+    .push({ op: 'note', uid: t.uid + 'b', text: 'the rule; what followed is now its own unit' }), target);
   await page.waitForTimeout(400);
 
   const after = await page.evaluate(() => Alpine.$data(document.body).units.length);

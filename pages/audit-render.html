@@ -860,6 +860,15 @@ window.__audit = {
     // repaints the same document against the other question rather than
     // building a second view of it.
     keyOf(u) { return this.lens === 'verdict' ? (u.verdict || 'KEEP') : u.label; },
+    // The panel's two pills, as data: one row per axis, each naming the
+    // operation that edits it, the choices, and the value in force. Written
+    // once because the two pills differ in nothing but which list they read.
+    get axes() {
+      return [
+        { op: 'relabel', list: (this.so.vocabulary || []).map(v => v.label), now: this.sel?.label || '' },
+        { op: 'verdict', list: (this.so.verdicts || []).map(v => v.verdict), now: this.sel?.verdict || 'KEEP' },
+      ];
+    },
     tally(k) { return this.units.filter(u => this.keyOf(u) === k).length; },
     gloss(k) {
       const v = (this.so.vocabulary || []).find(x => x.label === k)
@@ -1273,16 +1282,18 @@ window.__audit = {
       const VW = vv ? vv.width : document.documentElement.clientWidth;
       const VH = vv ? vv.height : document.documentElement.clientHeight;
       const X0 = vv ? vv.offsetLeft : 0, Y0 = vv ? vv.offsetTop : 0;
-      // Only the viewport half is replaced. The design cap (32rem, 60%) stays
+      // Only the viewport half is replaced. The design cap (20rem, 70%) stays
       // where it is written, and the class on the element keeps it as the
       // before-JS floor; what changes is that the second term now measures the
       // region the reader can see instead of the one the document was laid out
       // in. Inline wins over the class, so this tightens and never widens.
-      // The 5rem gutter is not slack. Tapping outside is how the panel closes,
+      // The 7rem gutter is not slack. Tapping outside is how the panel closes,
       // so a popover filling the width is a sheet with no way out; the floor
-      // keeps that true on a viewport too narrow for the subtraction.
-      el.style.maxWidth = `min(32rem, ${Math.max(200, Math.round(VW - 80))}px)`;
-      el.style.maxHeight = Math.round(Math.min(VH * 0.6, VH - 2 * M)) + 'px';
+      // keeps that true on a viewport too narrow for the subtraction. Narrow
+      // and tall also beats wide and short here, since the content is short
+      // lines and a label the eye has to find, not a paragraph.
+      el.style.maxWidth = `min(20rem, ${Math.max(200, Math.round(VW - 112))}px)`;
+      el.style.maxHeight = Math.round(Math.min(VH * 0.7, VH - 2 * M)) + 'px';
       const w = el.offsetWidth, h = el.offsetHeight;
       // A PANEL ALPINE HAS NOT YET UN-HIDDEN MEASURES 0 BY 0, and a clamp
       // against a zero width is not a clamp: it leaves left at x + GAP, and the
@@ -1300,12 +1311,33 @@ window.__audit = {
         if (!r) return;
         x = r.left; y = r.bottom - GAP;
       }
-      let left = x + GAP, top = y + GAP;
-      if (left + w > X0 + VW - M) left = x - GAP - w;
-      if (top + h > Y0 + VH - M) top = y - GAP - h;
+      // THE PINS ARE OBSTACLES, NOT DECORATION. Each is 32px of tap target on
+      // the selected unit's own boundary, which is exactly where a panel
+      // anchored to the tap wants to sit, and a panel over a pin does not look
+      // broken: the pin is drawn, it is simply unreachable, so arming reads as
+      // a dead control. Found by asking elementFromPoint what is under the
+      // pinhead rather than by looking, since both cases are the same picture.
+      const pins = [...(this.$refs.pins?.querySelectorAll('[data-edge]') || [])]
+        .map(el => el.getBoundingClientRect()).filter(r => r.width);
       const clamp = (v, lo, hi) => Math.round(Math.min(Math.max(v, lo), Math.max(lo, hi)));
-      el.style.left = clamp(left, X0 + M, X0 + VW - M - w) + 'px';
-      el.style.top = clamp(top, Y0 + M, Y0 + VH - M - h) + 'px';
+      const place = (l, t) => [clamp(l, X0 + M, X0 + VW - M - w),
+                               clamp(t, Y0 + M, Y0 + VH - M - h)];
+      const hits = (l, t) => pins.some(p =>
+        l < p.right && l + w > p.left && t < p.bottom && t + h > p.top);
+      // Down-right first, the direction asked for, then the three flips. Those
+      // four are not enough on a phone and the geometry says why: the panel is
+      // most of the width, so any vertical band it occupies that a pin's band
+      // touches collides no matter where it sits horizontally. The freedom is
+      // vertical, so the last two candidates clear the pins OUTRIGHT, below
+      // them or above them, which is the only move a narrow screen leaves.
+      const top_ = Math.min(...pins.map(r => r.top)), bot_ = Math.max(...pins.map(r => r.bottom));
+      const tries_ = [[x + GAP, y + GAP], [x - GAP - w, y + GAP],
+                      [x + GAP, y - GAP - h], [x - GAP - w, y - GAP - h],
+                      ...(pins.length ? [[x + GAP, bot_ + GAP], [x + GAP, top_ - GAP - h]] : []),
+                     ].map(c => place(...c));
+      const [left, top] = tries_.find(c => !hits(...c)) || tries_[0];
+      el.style.left = left + 'px';
+      el.style.top = top + 'px';
     },
     placePins() {
       const layer = this.$refs.pins;
@@ -1648,34 +1680,40 @@ window.__audit = {
     <!-- Above the shared FAB (z-80), which is fixed to this same corner and was
          covering the split candidates. dictate.html's sheet takes the corner the
          same way: while a page's own bottom UI is up, it owns the bottom. -->
-    <div class="fixed z-[90] bg-base-200 border border-base-300 rounded-lg shadow-lg px-3 py-2 text-xs
-                max-w-[min(32rem,calc(100vw-5rem))] max-h-[60vh] overflow-y-auto"
+    <div class="fixed z-[90] bg-base-100 border border-base-300 rounded-xl shadow-lg px-3 py-2 text-xs
+                max-w-[min(20rem,calc(100vw-7rem))] max-h-[70vh] overflow-y-auto"
          data-panel x-ref="panel" x-show="sel" x-cloak>
-      <div class="flex flex-wrap gap-x-4 gap-y-1 items-baseline">
+      <div class="flex flex-wrap gap-x-3 gap-y-1 items-center">
         <b class="font-mono" x-text="sel?.uid"></b>
-        <select class="select select-xs w-auto min-w-0 max-w-[9rem] rounded-full border-0 pl-2.5 font-mono" aria-label="label"
-                :style="`background:rgba(${HUE[sel?.label]},.25)`"
-                x-effect="$el.value = sel?.label || ''"
-                @change="push({op:'relabel',uid:sel.uid,label:$event.target.value})">
-          <template x-for="v in so.vocabulary" :key="v.label">
-            <option :value="v.label" x-text="v.label"></option>
-          </template>
-        </select>
-        <!-- Two selects, because there are two questions and answering one
-             never answers the other. Same shape on purpose: the reader should
-             not have to learn that a verdict is a different kind of thing. -->
-        <select class="select select-xs w-auto min-w-0 max-w-[9rem] rounded-full border-0 pl-2.5 font-mono" aria-label="verdict"
-                x-show="so.verdicts" x-cloak
-                :style="`background:rgba(${HUE[sel?.verdict || 'KEEP']},.25)`"
-                x-effect="$el.value = sel?.verdict || 'KEEP'"
-                @change="push({op:'verdict',uid:sel.uid,verdict:$event.target.value})">
-          <template x-for="v in (so.verdicts || [])" :key="v.verdict">
-            <option :value="v.verdict" x-text="v.verdict"></option>
-          </template>
-        </select>
+
+        <!-- A PILL IS SIZED BY ITS TEXT, AND A SELECT IS NOT. A native select
+             takes the width of its WIDEST option plus a chevron, so `KEEP` was
+             carrying `REWRITE`'s width and `NAV` was carrying `PROV`'s, which is
+             the padding that read as awkward. The span sizes the pill to the
+             value actually shown; the select lies over it at zero opacity and
+             takes the tap, so this is still the platform's own dropdown rather
+             than a menu reimplemented. Two of them, because there are two
+             questions and answering one never answers the other; same shape on
+             purpose, so a verdict does not read as a different kind of thing. -->
+        <template x-for="ax in axes" :key="ax.op">
+          <label class="relative inline-flex items-center rounded-full px-2 py-0.5 font-mono cursor-pointer"
+                 x-show="ax.list.length" x-cloak
+                 :style="`background:rgba(${HUE[ax.now]},.28)`">
+            <span x-text="ax.now"></span>
+            <select class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    :aria-label="ax.op"
+                    x-effect="$el.value = ax.now"
+                    @change="push({op:ax.op, uid:sel.uid, [ax.op==='relabel'?'label':'verdict']:$event.target.value})">
+              <template x-for="v in ax.list" :key="v"><option :value="v" x-text="v"></option></template>
+            </select>
+          </label>
+        </template>
+
         <span class="opacity-60 font-mono" x-text="sel?.words + 'w · ' + sel?.kind"></span>
-        <span class="opacity-60 font-mono truncate max-w-[min(30rem,calc(100vw-6rem))]"
-              :title="sel?.ref" x-text="sel?.ref"></span>
+        <!-- Wrapping rather than truncating is what lets the panel be narrow:
+             this line was the widest thing in it, and a truncated one still
+             claims the width it was cut to. -->
+        <span class="opacity-60 font-mono basis-full" x-text="sel?.ref"></span>
         <span class="opacity-60 font-mono" x-show="sel?.from" x-cloak
               x-text="'split from ' + String(sel?.from).replace(/^split:/, '')"></span>
         <span class="italic opacity-70" x-show="sel?.note" x-text="sel?.note"></span>
