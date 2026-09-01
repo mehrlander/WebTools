@@ -421,3 +421,18 @@ test('a mount handed its record still loads the kit chain', async () => {
   assert.ok(loads.includes('kits/session-render.js'), 'and the one settle() renders with');
   assert.equal(d.kitsIn, true, 'which is what lets the closing reply repaint as prose');
 });
+
+test('the brief fills its host, rather than drawing a phone column on a desktop', () => {
+  // It carried `mx-auto` with `max-w-2xl`, so a 1280px browser drew a 672px
+  // strip down the middle with the rest empty (reported 2026-09-01). The house
+  // style names that exact pattern, and the estate's branch list already made
+  // the same call: full width once nothing stands beside it to claim the space.
+  //
+  // Read off the SOURCE, not the DOM, because jsdom compiles no Tailwind and a
+  // cap that is present renders as nothing here. The template is the artifact.
+  const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/session-brief.js'), 'utf8');
+  const shell = src.match(/<div class="([^"]*)"\s*\n\s*:class="framed \?/);
+  assert.ok(shell, 'the outer shell div, the one the framed/standalone class rides');
+  assert.doesNotMatch(shell[1], /\bmax-w-|\bmx-auto\b/, shell[1]);
+  assert.match(shell[1], /\bw-full\b/);
+});

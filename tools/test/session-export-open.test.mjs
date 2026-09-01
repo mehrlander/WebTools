@@ -100,11 +100,11 @@ const buildWith = (rec, opts = {}) => {
   return view;
 };
 
-// The reply block is a clay header over a clamped line. `preview` is the line;
+// The reply block is a clay mark beside a clamped line. `preview` is the line;
 // its parent is the block, which is what hides when the card opens.
 const preview = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] .line-clamp-1`);
 const previewRow = (n = 1) => preview(n)?.parentElement;
-const replyHead = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] .ph-sparkle`)?.parentElement;
+const mark = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] .ph-sparkle`);
 const askOf = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] div > div`);
 
 // The row's own controls, read off the element the way a finger would find them.
@@ -113,7 +113,10 @@ const askOf = (n = 1) => window.document.querySelector(`button[aria-label="Open 
 const pills = () => [...window.document.querySelectorAll('button[aria-label^="Open card"]')];
 const decks = () => [...window.document.querySelectorAll('button[aria-label*="in the deck"]')];
 const chip = (label) => [...window.document.querySelectorAll('button')].find(b => b.textContent.trim() === label);
-const openRows = () => [...window.document.querySelectorAll('.bg-primary\\/10')];
+// The open-row tint is NEUTRAL, and the test says so by finding it: primary
+// belongs to the ask's fill, and one class serving both put a blue block in a
+// blue field.
+const openRows = () => [...window.document.querySelectorAll('.bg-base-300\\/60')];
 const stat = () => window.document.querySelector('.tabular-nums.text-base-content\\/50')?.textContent || '';
 
 test('nothing is open to begin with, so nothing is selected and the bar is away', () => {
@@ -344,32 +347,38 @@ test('the clamp is on the text, and nothing else on that element sets display', 
   // compiles no Tailwind, so the collision is what is assertable.
   for (const c of ['flex', 'block', 'inline-flex', 'grid'])
     assert.ok(!preview().classList.contains(c), `no ${c} beside the clamp`);
-  assert.ok(replyHead().classList.contains('flex'), 'the header is its own flex row, above the line');
-  assert.ok(!replyHead().className.includes('line-clamp'), 'and it carries no clamp of its own');
+  assert.ok(previewRow().classList.contains('flex'), 'the mark and the line sit on one row');
 });
 
-test('the answer announces itself, and is set apart from the ask', () => {
+test('the answer is marked by the glyph alone, and set apart from the ask', () => {
   buildWith(MD_RECORD);
-  // The mark rode inline at the head of the reply line, which put the two
-  // halves on adjacent lines with one glyph between them. The word is here
-  // where the deck drops it: dense mode omits it because an alternating
-  // transcript has four other carriers, and a row has none of those.
-  assert.equal(replyHead().textContent.trim(), 'Claude');
-  assert.equal(replyHead().style.color, CLAY, 'in Claude\'s own clay, as everywhere else in the estate');
+  // It carried the word `Claude` on a header line of its own for one commit,
+  // which on a list is a column of the same fact down every row, in the space
+  // the answer was going to use. The deck's dense mode drops the role word for
+  // both chat roles and this follows it.
+  assert.equal(mark().style.color, CLAY, 'in Claude\'s own clay, as everywhere else in the estate');
+  assert.doesNotMatch(previewRow().textContent, /\bClaude\b(?!'s)/, 'the glyph says it, not a word');
   assert.ok(previewRow().classList.contains('mt-2'), 'with air between the fill above and the answer');
 });
 
-test('the ask takes the blue, the way the deck and the popover draw it', () => {
+test('the ask takes the blue, and nothing else on the row does', () => {
   buildWith(MD_RECORD);
   const ask = askOf();
   // The same convention chatRender.message uses in dense mode, which is what
-  // the deck's slide body and the Activity popover both render through. Inline
-  // rather than bg-primary/10, since that class is already this list's OPEN-row
-  // tint and the two stack on one row.
+  // the deck's slide body and the Activity popover both render through.
   assert.match(ask.style.background, /--color-primary/);
   assert.equal(ask.style.borderRadius, '3px');
   assert.ok(ask.classList.contains('w-fit'), 'so a short ask hugs its words');
   assert.ok(ask.classList.contains('max-w-full'), 'and a long one caps at the column and wraps');
+
+  // ONE ACCENT, ONE MEANING. The open-row tint was bg-primary/10, so an open
+  // row put a blue block inside a blue field and the same colour stood for
+  // authorship and for selection at once. Selection is a state and takes a
+  // neutral step up from the page.
+  chip('Open all').click();
+  for (const el of openRows())
+    assert.doesNotMatch(el.className, /bg-primary/, 'selection is neutral, since primary is spoken for');
+  assert.ok(openRows().length >= 1, 'and the tint is still drawn');
 });
 
 test('a card with no ask takes no fill, and keeps its role word', () => {
