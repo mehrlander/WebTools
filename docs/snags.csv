@@ -2,6 +2,7 @@ slug,title,count,last_seen,seen,targets
 untracked-file-invisible-to-the-suite,a local green over a file the scanner never enumerated,3,2026-08-30,2026-08-28;2026-08-29;2026-08-30,../scripts/text-carriers.py;../tools/test/text-vocabulary-conformance.test.mjs
 opacity-step-off-the-tens,"a class that generates nothing, so the text meant to recede advances",3,2026-08-19,2026-08-19;2026-08-19;2026-08-19,HTML-STYLE.md
 mcp-body-escaping,"the GitHub MCP mangles link shapes in a PR body, on write as well as read",3,2026-08-16,2026-08-05;2026-08-05;2026-08-16,SURFACING.md
+link-sha-not-resolved,"a commit SHA typed from memory, well-formed and pointing at nothing",2,2026-09-01,2026-08-18;2026-09-01,SURFACING.md
 hand-rolled-use-block-boots-nothing,"a copied boot block was rewritten instead, and shipped blank",2,2026-08-30,2026-08-22;2026-08-30,loader.md;../tools/test/use-boot-block.test.mjs
 house-style-not-consulted,"built a page with stat cards, page prose, and small type, against a doc that forbids all three",2,2026-08-29,2026-08-04;2026-08-29,HTML-STYLE.md
 daisy-divide-paints-black,"hairlines come out black, not grey",2,2026-08-22,2026-07-28;2026-08-22,../skills/daisy-alpine/SKILL.md
@@ -30,7 +31,6 @@ custom-scheme-needs-a-markdown-link,the one thing meant to be tapped rendered as
 nul-byte-truncates-grep,"one NUL in a source file bounds every `grep -rn` over it, silently",1,2026-08-19,2026-08-19,../lib/alpineComponents/estate.js
 pages-shots-vacuous-ok,a thumbnail refresh shot nothing and exited 0,1,2026-08-19,2026-08-19,../tools/build/pages-shots.mjs
 private-blob-404s-signed-out,a live file reads as a broken link from a phone,1,2026-08-19,2026-08-19,SURFACING.md
-link-sha-not-resolved,"a commit SHA typed from memory, well-formed and pointing at nothing",1,2026-08-18,2026-08-18,SURFACING.md
 stub-in-the-carriers-old-format,eleven files changed format and every test agreed with the old one,1,2026-08-18,2026-08-18,environment/testing.md
 empty-read-overwrites-the-store,"a failed read wrote zeros over good data, and the run said it succeeded",1,2026-08-17,2026-08-17,show-repo.md
 toss-lands-on-the-landing,"a render link opened the app, nowhere near the change",1,2026-08-16,2026-08-16,show-repo.md
