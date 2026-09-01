@@ -100,12 +100,13 @@ const buildWith = (rec, opts = {}) => {
   return view;
 };
 
-// The reply block is a clay mark beside a clamped line. `preview` is the line;
-// its parent is the block, which is what hides when the card opens.
-const preview = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] .line-clamp-1`);
-const previewRow = (n = 1) => preview(n)?.parentElement;
-const mark = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] .ph-sparkle`);
-const askOf = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] div > div`);
+// The row is a two-column grid and every part of it is a DIRECT child, which
+// is what puts the two glyphs in one gutter and the two texts on one edge.
+const rowOf = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"]`);
+const preview = (n = 1) => rowOf(n)?.querySelector('.line-clamp-1');
+const mark = (n = 1) => rowOf(n)?.querySelector('.ph-sparkle');
+const lead = (n = 1) => rowOf(n)?.querySelector('i.ph');
+const askOf = (n = 1) => rowOf(n)?.querySelector(':scope > div');
 
 // The row's own controls, read off the element the way a finger would find them.
 // The row itself, which is what opens a card now. The turn-count pill beside
@@ -345,9 +346,8 @@ test('the clamp is on the text, and nothing else on that element sets display', 
   // `flex` and `line-clamp-1` both set `display`, and one of them wins: the
   // same collision that silenced the ask's clamp, one line lower. jsdom
   // compiles no Tailwind, so the collision is what is assertable.
-  for (const c of ['flex', 'block', 'inline-flex', 'grid'])
+  for (const c of ['flex', 'block', 'inline-flex', 'grid', 'hidden'])
     assert.ok(!preview().classList.contains(c), `no ${c} beside the clamp`);
-  assert.ok(previewRow().classList.contains('flex'), 'the mark and the line sit on one row');
 });
 
 test('the answer is marked by the glyph alone, and set apart from the ask', () => {
@@ -357,8 +357,47 @@ test('the answer is marked by the glyph alone, and set apart from the ask', () =
   // the answer was going to use. The deck's dense mode drops the role word for
   // both chat roles and this follows it.
   assert.equal(mark().style.color, CLAY, 'in Claude\'s own clay, as everywhere else in the estate');
-  assert.doesNotMatch(previewRow().textContent, /\bClaude\b(?!'s)/, 'the glyph says it, not a word');
-  assert.ok(previewRow().classList.contains('mt-2'), 'with air between the fill above and the answer');
+  assert.doesNotMatch(rowOf().textContent, /\bClaude\b(?!'s)/, 'the glyph says it, not a word');
+  assert.ok(preview().classList.contains('mt-2'), 'with air between the fill above and the answer');
+});
+
+test('one gutter, one edge: the row is a grid and every part is a direct child', () => {
+  buildWith(MD_RECORD);
+  const row = rowOf();
+  // The reply's mark used to sit INSIDE the text column, so the ask started at
+  // the column edge and the answer started a glyph and a gap further in. The
+  // Activity popover, which is chatRender's dense mode, puts every glyph in one
+  // gutter and every text on one edge; a fixed first track is what makes that
+  // exact rather than close. jsdom lays nothing out, so what is assertable is
+  // the structure that produces it.
+  assert.ok(row.classList.contains('grid'));
+  assert.match(row.style.gridTemplateColumns, /^\d+px minmax\(0, ?1fr\)$/, row.style.gridTemplateColumns);
+  const kids = [...row.children];
+  assert.ok(kids.includes(lead()), 'the ask glyph is a cell, not a nested lead');
+  assert.ok(kids.includes(mark()), 'and so is the reply glyph, in the same column');
+  assert.ok(kids.includes(askOf()) && kids.includes(preview()), 'both texts in the second');
+  assert.ok(!askOf().contains(mark()), 'the reply mark is out of the ask column, which is the whole fix');
+  assert.ok(row.querySelector('.col-start-2'), 'and the facts line joins them on that edge');
+});
+
+test('the gutter carries the role, and the number is gone from the page', () => {
+  buildWith(MD_RECORD);
+  const g = lead();
+  assert.ok(g.classList.contains('ph-user'), 'an ask is a user turn whatever the card kind says');
+  assert.match(g.style.color, /--color-primary/);
+  // The index survives where it was doing work rather than on the page: a mono
+  // column of digits the eye skipped to reach the sentence.
+  assert.doesNotMatch(rowOf().textContent, /^\s*\d/, 'no number opens the row');
+  // It survives on the aria-label, which is how every test in this file, and
+  // the deck button beside the row, name a card.
+  assert.equal(rowOf().getAttribute('aria-label'), 'Open card 1');
+});
+
+test('a card with no ask takes its own role glyph', () => {
+  // The capture note is a note and the closing summary is Claude speaking,
+  // which is what the gutter has to say where there is no blue block to say it.
+  buildWith({ ...MD_RECORD, prompts: [], prompts_stored: 0, exchanges: 0 });
+  assert.ok(!lead().classList.contains('ph-user'));
 });
 
 test('the ask takes the blue, and nothing else on the row does', () => {
@@ -396,10 +435,15 @@ test('opening the card takes the preview away, so nothing is on screen twice', a
   buildWith(MD_RECORD);
   pills()[0].click();
   await drawn();
-  assert.ok(previewRow().classList.contains('hidden'),
-    'the replies render in full below, and a one-line copy of the last of them would be the same words twice');
+  // BY STYLE, NOT BY `hidden`: that utility sets `display` and so does
+  // `line-clamp-1`, which is the collision this file has shipped twice. An
+  // inline display beats both, and '' hands the clamp back its own.
+  assert.equal(preview().style.display, 'none',
+    'the replies render in full below, and a one-line copy of the last would be the same words twice');
+  assert.equal(mark().style.display, 'none', 'and its glyph goes with it, or the gutter keeps a mark to nothing');
   pills()[0].click();
-  assert.ok(!previewRow().classList.contains('hidden'), 'and it comes back on the close');
+  assert.equal(preview().style.display, '', 'and it comes back on the close');
+  assert.equal(mark().style.display, '');
 });
 
 test('the closed row no longer labels the half a reader can see', () => {
