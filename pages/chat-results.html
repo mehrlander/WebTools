@@ -31,7 +31,7 @@
   // failure might have taken out.
   function showBootError(e) {
     const box = document.createElement('div');
-    box.className = 'mx-auto my-10 max-w-2xl rounded-box border border-error/40 bg-error/10 p-4 text-sm';
+    box.className = 'mx-auto my-10 rounded-box border border-error/40 bg-error/10 p-4 text-sm';
     const title = document.createElement('p');
     title.className = 'font-semibold';
     title.textContent = 'Could not load the renderer';
@@ -215,7 +215,7 @@
 </script>
 </head>
 <body class="min-h-screen bg-base-200">
-<div x-data="app()" x-init="init()" class="max-w-3xl mx-auto px-4 py-8">
+<div x-data="app()" x-init="init()" class="mx-auto px-4 py-8">
 
   <!-- error. GitHub answers 404 (not 401) for a private repo fetched with
        no token, so gh-auth's automatic prompt never fires here; offer it. -->

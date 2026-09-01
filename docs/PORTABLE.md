@@ -54,9 +54,11 @@ start): add the `extraKnownMarketplaces` and `enabledPlugins` block to
 | the session recorder | a `Stop` hook that records the session where a checkout declares a `"sessions"` store, and does nothing at all where none does |
 | the session dispatcher | a `SessionStart` hook that runs every checkout's own `.claude/hooks/session-*.sh`, in every session, whatever the project root is |
 | the PR-subscribe hint | a `PostToolUse` hook on `create_pull_request` that prompts the session to subscribe to the pull request it just opened, carrying the number. Detection is the machinery; the call stays the model's, since no hook can invoke an MCP tool |
+| the MCP failure hint | a `PostToolUseFailure` hook that turns an MCP `-32003` approval wall into the `sandbox-traps` connector-vs-builtin diagnosis, at the moment it fires |
+| the reading-column guard | a `PreToolUse` hook on `Edit`, `Write` and `MultiEdit` that refuses a class narrowing text to a reading column (daisy-alpine rule 3). It judges the file the edit would produce, not the edit, so a file already carrying one cannot be edited until it is clean. Bundles `reading-column.py`, which is also the `npm run reading-column` scanner |
 
-That is the whole day-to-day set. Everything above the last three rows is invoked;
-those three are not. **They are the pieces that run on their own**, which is why
+That is the whole day-to-day set. Everything above the last five rows is invoked;
+those five are not. **They are the pieces that run on their own**, which is why
 they ship in the plugin rather than being installed per repo: the per-container
 settings file they would otherwise live in is provisioned fresh each session, so
 a hand-installed copy works for exactly one session and then vanishes.

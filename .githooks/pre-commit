@@ -239,6 +239,20 @@ if git status --porcelain -- tracker/tasks/ | grep -q .; then
   fi
 fi
 
+# --- leg 4b: reading columns (warn only) --------------------------------------
+# The PreToolUse guard in the portable plugin refuses these as they are written,
+# and tools/test/reading-column.test.mjs fails CI on any that land, so this leg
+# exists for the third case only: a file edited outside this session's harness,
+# where the guard never ran and the suite has not been run yet.
+if [ -f .claude/skills/hooks/reading-column.py ]; then
+  out="$(python3 .claude/skills/hooks/reading-column.py lib pages app 2>/dev/null || true)"
+  case "$out" in
+    *'reading-column: none'*) ;;
+    '') ;;
+    *) printf 'build hook: %s\n' "$out" >&2 ;;
+  esac
+fi
+
 # --- leg 5: SUNSET markers now due (warn only) --------------------------------
 # Back-compat shims are tagged SUNSET(YYYY-MM-DD); warn at commit time once a
 # marker's date has passed so it gets removed rather than lingering forever.
