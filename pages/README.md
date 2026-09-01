@@ -22,6 +22,7 @@ the link-dense text twin of the visual index above.
 | `compression-helper` | Compression Helper (v5) | [view](https://mehrlander.github.io/web-tools/pages/compression-helper.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/compression-helper.html) |
 | `console-playground` | Console Suite Guide | [view](https://mehrlander.github.io/web-tools/pages/console-playground.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/console-playground.html) |
 | `data-view` | Data View | [view](https://mehrlander.github.io/web-tools/pages/data-view.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/data-view.html) |
+| `delivery` | Conventions Delivery | [view](https://mehrlander.github.io/web-tools/pages/delivery.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/delivery.html) |
 | `dictate` | Dictate | [view](https://mehrlander.github.io/web-tools/pages/dictate.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/dictate.html) |
 | `diff-tool` | Diff | [view](https://mehrlander.github.io/web-tools/pages/diff-tool.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/diff-tool.html) |
 | `doc-growth` | Doc Growth | [view](https://mehrlander.github.io/web-tools/pages/doc-growth.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/doc-growth.html) |
