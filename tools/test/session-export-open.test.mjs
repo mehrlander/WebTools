@@ -71,7 +71,10 @@ const build = (opts = {}) => {
 };
 
 // The row's own controls, read off the element the way a finger would find them.
-const pills = () => [...window.document.querySelectorAll('button[aria-label^="Show this card"]')];
+// The row itself, which is what opens a card now. The turn-count pill beside
+// it is a readout, not a second control.
+const pills = () => [...window.document.querySelectorAll('button[aria-label^="Open card"]')];
+const decks = () => [...window.document.querySelectorAll('button[aria-label*="in the deck"]')];
 const chip = (label) => [...window.document.querySelectorAll('button')].find(b => b.textContent.trim() === label);
 const openRows = () => [...window.document.querySelectorAll('.bg-primary\\/10')];
 const stat = () => window.document.querySelector('.tabular-nums.text-base-content\\/50')?.textContent || '';
@@ -110,7 +113,7 @@ test('the row says which cards are in, so a scroll does not need a control colum
   assert.equal(openRows().length, 1);
   pills()[1].click();
   assert.equal(openRows().length, 2);
-  assert.ok(pills()[0].getAttribute('aria-expanded') === 'true');
+  assert.equal(pills()[0].getAttribute('aria-expanded'), 'true');
 });
 
 test('Open all and Close all move every card through the same door', () => {
@@ -190,19 +193,6 @@ test('an open card is drawn by the deck\'s renderer, not by a second one here', 
   assert.ok(body.textContent.includes('The reply runs on'), 'and the reply is in it');
 });
 
-test('the ask carries chat-render\'s own fill, which is the treatment asked for', async () => {
-  build({ startCard: 0 });
-  await drawn();
-  // An inline `background` mixing --color-primary, not a class: the fill is
-  // computed, and its WIDTH is then pinned to the longest rendered line, which
-  // is a next-frame measurement jsdom cannot do. So the tint is assertable here
-  // and its shape is not; the pixels in the PR body are the record for that.
-  const filled = [...window.document.querySelectorAll('[style*="--color-primary"]')]
-    .filter(el => /background/.test(el.getAttribute('style') || ''));
-  assert.ok(filled.length, 'the ask is drawn with the fill, so it reads as something said');
-  assert.match(filled[0].textContent, /First ask/);
-});
-
 test('nothing this file draws survives beside it', async () => {
   build({ startCard: 0 });
   await drawn();
@@ -233,4 +223,51 @@ test('there is one list, and no route from the deck to a second copy of it', () 
 
   // The list itself is untouched: it is still what every host mounts.
   assert.equal(typeof SE.index, 'function');
+});
+
+test('one control per destination: the item opens, the glyph decks', () => {
+  // It was the other way round, with the title AND the glyph both entering the
+  // deck and a pill doing the expanding: two doors to one place, and the third
+  // hidden behind a chip.
+  const opened = [];
+  const v = SE.index(RECORD, { onOpen: (i) => opened.push(i) });
+  window.document.body.replaceChildren(v.el);
+
+  pills()[0].click();
+  assert.deepEqual(opened, [], 'tapping the item does not leave for the deck');
+  assert.equal(v.selectedCount > 0, true, 'it opens the card, which selects it');
+
+  decks()[1].click();
+  assert.deepEqual(opened, [1], 'and the glyph is the only way out to the deck');
+});
+
+test('the row carries the ask itself, clamped closed and whole open', async () => {
+  build();
+  const title = window.document.querySelector('button[aria-label="Open card 1"] .line-clamp-2');
+  assert.ok(title, 'closed, the ask is clamped to two lines');
+  // The trap that made the clamp inert for one commit: `block` and
+  // `line-clamp-2` both set `display`, `block` won, and every row rendered
+  // whole while still carrying the clamp class. jsdom compiles no Tailwind, so
+  // the collision is what is assertable rather than the computed height.
+  assert.ok(!title.classList.contains('block'),
+    'no second display utility beside the clamp, which is what silenced it');
+  assert.match(title.textContent, /^First ask/, 'and it is the ask, not a title derived from it');
+  pills()[0].click();
+  await drawn();
+  assert.ok(!window.document.querySelector('button[aria-label="Open card 1"] .line-clamp-2'),
+    'open, the clamp comes off rather than a second copy appearing below');
+});
+
+test('what opens is the reply, not the whole card again', async () => {
+  build();
+  pills()[0].click();
+  await drawn();
+  const body = window.document.body.textContent;
+  assert.ok(body.includes('The reply runs on'), 'the prose that answers');
+  // The ask is above, unclamped, so it is not repeated; the tool run is already
+  // summarised on the row; and the record's capture note belongs to the deck's
+  // first card, not under every row here.
+  assert.ok(!body.includes('does not hold'), 'no capture note');
+  assert.ok(!body.includes('ls -la'), 'no tool turns, which the row already counts');
+  assert.equal((body.match(/First ask/g) || []).length, 1, 'and the ask appears once');
 });
