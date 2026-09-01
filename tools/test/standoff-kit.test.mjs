@@ -113,6 +113,41 @@ test('a note is set and cleared through the same operation', () => {
   assert.ok(!('note' in cleared.so.units[0]));
 });
 
+// THE SECOND AXIS. A verdict is not a label with a different name: the two are
+// orthogonal, so setting one must leave the other alone, and an annotation that
+// declares no verdicts is one-axis rather than invalid. Both halves are held
+// here because both fail quietly, one by refusing every unit and one by
+// accepting anything.
+const twoAxis = () => ({ ...base(),
+  verdicts: [{ verdict: 'KEEP' }, { verdict: 'DROP' }],
+  units: base().units.map(u => ({ ...u, verdict: 'KEEP' })) });
+
+test('a verdict is set without disturbing the label', () => {
+  const { so, complaints } = S.apply(twoAxis(), [{ op: 'verdict', uid: 'u-001', verdict: 'DROP' }], DOC);
+  assert.deepEqual(complaints, []);
+  assert.equal(so.units[0].verdict, 'DROP');
+  assert.equal(so.units[0].label, 'WHAT', 'the label moved when only the verdict was asked for');
+  assert.equal(so.units[1].verdict, 'KEEP', 'a verdict is per unit, not per annotation');
+});
+
+test('an undeclared verdict is refused, like an undeclared label', () => {
+  const { so, complaints } = S.apply(twoAxis(), [{ op: 'verdict', uid: 'u-001', verdict: 'BURN' }], DOC);
+  assert.match(complaints.join('\n'), /verdict u-001 was refused/);
+  assert.equal(so.units[0].verdict, 'KEEP', 'the refusal left a change behind');
+});
+
+test('check reports a verdict off the declared list', () => {
+  const off = twoAxis(); off.units[1].verdict = 'BURN';
+  assert.match(S.check(off, DOC).join('\n'), /u-002: verdict "BURN" is not declared/);
+});
+
+// The waiver, and it is deliberate: every annotation written before the second
+// axis existed carries no `verdicts` block and no per-unit verdict, and holding
+// those to a list they never declared would fail each of their units at once.
+test('an annotation declaring no verdicts is one-axis, not invalid', () => {
+  assert.deepEqual(S.check(base(), DOC), []);
+});
+
 test('applying does not touch the annotation it was given', () => {
   const b = base();
   S.apply(b, [{ op: 'split', uid: 'u-001', at: 15 }], DOC);
