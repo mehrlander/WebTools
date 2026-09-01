@@ -459,10 +459,10 @@
           </template>
           <template x-if="dossiers[openArea.dossier] && !dossiers[openArea.dossier].loading && !dossiers[openArea.dossier].error">
             <div>
-              <div x-show="!editing" class="font-serif text-[15px] leading-relaxed max-w-prose"
+              <div x-show="!editing" class="font-serif text-[15px] leading-relaxed"
                    x-html="render(dossiers[openArea.dossier].text)"></div>
               <textarea x-show="editing" x-model="dossiers[openArea.dossier].text" rows="12"
-                        class="textarea textarea-bordered w-full max-w-3xl font-mono text-xs leading-relaxed"></textarea>
+                        class="textarea textarea-bordered w-full font-mono text-xs leading-relaxed"></textarea>
             </div>
           </template>
         </div>

@@ -21,11 +21,11 @@
 </div>
 
 <div x-show="pasteOpen" class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-base-100 rounded-2xl shadow-2xl border border-base-300 p-6 max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col gap-4">
+    <div class="bg-base-100 rounded-2xl shadow-2xl border border-base-300 p-6 w-full mx-4 max-h-[90vh] flex flex-col gap-4">
         <div class="flex items-start justify-between">
             <div>
                 <div class="font-black text-lg tracking-tight">Paste-mode Sync (<span x-text="view.mode"></span>)</div>
-                <div class="text-xs text-base-content/60 mt-1 max-w-2xl">
+                <div class="text-xs text-base-content/60 mt-1">
                     Browsers block direct fetches from this page to <code>wslwebservices.leg.wa.gov</code> by CORS. Open that host in a new tab, run the snippet below in DevTools console (it will copy the response to your clipboard), then paste it here to update the in-memory store (persisted to IndexedDB, overriding the committed snapshot for the keyed stores).
                 </div>
             </div>

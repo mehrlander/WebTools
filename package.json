@@ -19,6 +19,7 @@
     "claims-scan": "python3 scripts/duplicated-claims.py",
     "themes-graph": "python3 scripts/duplicated-claims.py --emit docs/themes.json",
     "opacity-scan": "python3 scripts/dead-opacity.py",
+    "reading-column": "python3 .claude/skills/hooks/reading-column.py",
     "icon-scan": "python3 scripts/blank-icons.py",
     "bool-attr-scan": "python3 scripts/bound-boolean-attrs.py",
     "stranded-titles": "python3 scripts/stranded-titles.py",
