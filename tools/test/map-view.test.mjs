@@ -511,11 +511,14 @@ test('the shell and the component agree on the tab set', () => {
   assert.ok(m, 'MAP_TABS is not where the shell can validate against it');
   const tabs = m[1].split(',').map(s => s.trim().replace(/'/g, ''));
   const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/map.js'), 'utf8');
+  // The strip became one x-for over TABS on 2026-08-31, so the component's tab
+  // set is that array rather than twelve setTab literals. map-tabs.test.mjs
+  // holds the array against the sections; this holds it against the shell.
   for (const t of tabs) {
-    assert.ok(src.includes(`setTab('${t}')`), `no tab button renders ${t}`);
+    assert.ok(src.includes(`{ k: '${t}',`), `no TABS entry declares ${t}`);
     assert.ok(src.includes(`mapTab==='${t}'`), `no section renders ${t}`);
   }
-  const buttons = [...src.matchAll(/setTab\('(\w+)'\)/g)].map(x => x[1]);
+  const buttons = [...src.matchAll(/\{ k: '(\w+)', n: '[^']+', i: '[^']+',\s*\n\s*g: '/g)].map(x => x[1]);
   assert.deepEqual([...new Set(buttons)].sort(), [...tabs].sort(),
     'a tab the shell will not validate is a tab the URL cannot carry');
 });

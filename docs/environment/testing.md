@@ -122,7 +122,8 @@ is invisible to the exact check most likely to be run. At phone width, compare
 elements, skip any inside a horizontally scrollable ancestor, or every carousel
 slide reports as a fault.
 
-This is what catches the two failures `docs/HTML-STYLE.md` prescribes against:
+This is what catches the two failures the house style prescribes against
+(`skills/daisy-alpine/SKILL.md`):
 a scroll track without `min-w-0` claiming one viewport per slide, and a form
 control that stops short of its column.
 

@@ -53,6 +53,12 @@ test('the harness registry matches tools/ and scripts/', () => {
 // the generator's own closing comment claims. It went unnoticed because the
 // projection is read by machines and diffed by nobody, and because the estate
 // had only one board carrying it. It now has ten.
+test('docs/themes.json matches the corpus the theme graph is read from', () => {
+  const r = spawnSync('python3', ['scripts/duplicated-claims.py', '--emit', 'docs/themes.json', '--check'],
+                      { cwd: repoRoot, encoding: 'utf8' });
+  assert.equal(r.status, 0, (r.stderr || '').trim() || 'themes-graph --check failed');
+});
+
 test('the snags index and registry match docs/SNAGS.md', () => {
   const r = check(['tools/build/snags-index.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'snags-index --check failed');

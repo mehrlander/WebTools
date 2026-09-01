@@ -140,7 +140,6 @@ properties,gloss,recorded,,value,column,yes,,one line on what the property means
 manifest-fields,required,recorded,,none,column,yes,yes;no,"whether a member of an array or object key must be present; blank on a top-level key, whose requiredness was never recorded"
 repetitions,where,recorded,,value,column,yes,,"the file, or the surface, carrying the repetition"
 repetitions,relation,recorded,,value,column,yes,copy;paraphrase;pointer;live read,how the repetition stands to the authoritative version
-repetitions,kept,recorded,,counted,column,yes,,who keeps a copy current; applies only when the relation is copy
 repetitions,check,recorded,,counted,column,yes,,"the test holding this repetition to its owner; blank where nothing does, which is the honest state the table exists to show"
 vocabularies,gloss,recorded,,value,column,yes,,"what this one value means, in the terms a reader picking among them needs"
 vocabularies,label,recorded,,counted,column,yes,,"the display name for this value, where it differs from the value itself"

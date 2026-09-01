@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 27 are named by CLAUDE.md,
-6 by a skill, 22 by a page or component. The remaining 17 are
+6 by a skill, 23 by a page or component. The remaining 17 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -22,7 +22,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`APP.md`](APP.md) — the Web Tools app: mission, durable goals, and the name split
 - [`CONSTELLATION.md`](CONSTELLATION.md) — the portable kernel of the what-goes-where doctrine
 - [`CONVENTIONS.md`](CONVENTIONS.md) — the portable working conventions: the general-behavior hub
-- [`HTML-STYLE.md`](HTML-STYLE.md) — the house style for pages: what to build, as against how
+- [`HTML-STYLE.md`](HTML-STYLE.md) — a pointer to the house style, kept for the names the style guide is asked for: the rules themselves moved into the daisy-alpine skill on 2026-08-31, where they fire on page work unprompted, and the mechanics beside it
 - [`MARKETPLACE.md`](MARKETPLACE.md) *(orphan)* — the plugin marketplace: how the set is published and subscribed to
 - [`PORTABLE.md`](PORTABLE.md) — the portable set: what travels, and how to adopt it
 - [`README.md`](README.md) — the docs folder's front door: the generated index of this registry
@@ -70,6 +70,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`text-content.md`](text-content.md) *(measured, orphan)* — the estate's authored text: whether the carriers holding it are organized, and how much never reached one
 - [`text-fields.csv`](text-fields.csv) — the names a prose-bearing CSV column or JSON key may take
 - [`text-tools.md`](text-tools.md) *(orphan)* — the FAB's Text tab: why it exists, why the join is the path rather than a term, and an assessment of what it is not
+- [`themes.json`](themes.json) *(measured)* — the duplication graph as committed data: every pair of markdown files sharing at least three ten-word windows, weighted, with the repeated passages themselves. Clusters of it are the Map view's themes, and which clusters exist is a function of the weight threshold, so the payload carries every edge and the reader carries the dial
 - [`tools.csv`](tools.csv) — which pages the Tools view shows, and the icon each is given
 - [`venues.md`](venues.md) *(measured)* — the venue map: where work can run besides the session reading it, what each reaches, and the attended-versus-unattended split
 - [`vocabularies.csv`](vocabularies.csv) — what each value of a closed domain means, one row per value
@@ -112,5 +113,5 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`mcp-server-routing.md`](github/mcp-server-routing.md) *(record, orphan)* — two GitHub MCP servers at once: the 2026-07-15 observation, superseded
 - [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) — why a merged branch stops being a live workspace: merged means closed
 
-12 shared statements are registered in
+13 shared statements are registered in
 [`owners.csv`](owners.csv), with each repetition in [`repetitions.csv`](repetitions.csv).

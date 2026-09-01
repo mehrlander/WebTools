@@ -723,7 +723,7 @@ token.
   The pane's cap is high enough that on a 1440 screen its own width is what
   binds, and it gives the form three fifths to the JSON pane's two, the JSON
   being a mirror of the form rather than the thing people came to use. Both
-  rules generalize and are in [HTML-STYLE.md](HTML-STYLE.md).
+  rules generalize and are in [the house style](../skills/daisy-alpine/SKILL.md).
 
   **Two things follow from the form being several screens long** once a repo
   declares projects and pages. The JSON pane **sticks** on desktop and fills the

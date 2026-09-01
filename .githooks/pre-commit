@@ -195,6 +195,18 @@ if git status --porcelain -- .claude/skills skills lib pages docs tools/build/do
   fi
 fi
 
+# --- leg 3d: any markdown -> the theme graph ----------------------------------
+# docs/themes.json is the duplication graph the Map view's Themes tab reads, and
+# every edge in it is a fact about prose, so any .md edit can move it. Cheap
+# (about 1.2s) and byte-stable by construction: keys sorted, one separator.
+if git status --porcelain -- '*.md' scripts/duplicated-claims.py | grep -q .; then
+  if npm run themes-graph --silent >/dev/null 2>&1; then
+    stage docs/themes.json
+  else
+    echo "build hook: 'npm run themes-graph' failed - docs/themes.json may be stale" >&2
+  fi
+fi
+
 # --- leg 3b: docs/docs.json -> docs/README.md ---------------------------------
 # The docs index is a projection of the documentation registry; regenerate it
 # whenever the registry (or the generator) has pending changes.
