@@ -130,7 +130,7 @@ const searchWrap = F.label({ class: 'input flex-1 min-w-0' },
   searchField
 );
 const searchBtn = F.button.btn({ class: 'btn-primary', onClick: () => runSearch(searchField.value) }, 'Search');
-const controls  = F.div({ class: 'flex gap-2 w-full max-w-2xl' }, searchWrap, searchBtn);
+const controls  = F.div({ class: 'flex gap-2 w-full' }, searchWrap, searchBtn);
 
 const themes = ['lofi', 'winter', 'nord', 'dim', 'autumn', 'dracula', 'cupcake', 'emerald'];
 const themeSelect = F.select(

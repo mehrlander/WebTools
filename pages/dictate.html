@@ -1489,7 +1489,7 @@
 
 <div x-data="dictate" x-cloak data-dictate-ui
      :data-dictate-pad="(padDrag || pinDrag) ? '' : null"
-     class="h-dvh w-full flex flex-col mx-auto max-w-3xl bg-base-100 sm:border-x border-base-300">
+     class="h-dvh w-full flex flex-col mx-auto bg-base-100 sm:border-x border-base-300">
 
   <!-- ── The status bar ──────────────────────────────────────────────────
        Three facts and a menu, because a capture surface has to answer "is it
@@ -1780,7 +1780,7 @@
        and the rows underneath. -->
   <div x-show="autoOpen" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
     <div class="absolute inset-0 bg-black/40" @click="autoOpen = false"></div>
-    <div class="relative w-full max-w-3xl bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-3"
+    <div class="relative w-full bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-3"
          style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
       <div class="flex items-center gap-2">
         <span class="font-medium">Autocorrect</span>
