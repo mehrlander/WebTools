@@ -90,11 +90,23 @@ control pick which one is marked rather than spending a second colour.
 
 **11. A tooltip worth having is worth building.** Prefer text on the page. Do not
 use `cursor-help`, daisyUI's `tooltip`, or `data-tip`; this overrides
-`references/daisyui.md`. Use `title` only for simple, nonessential labels, like a
-word in a mockup, and give icon-only controls an `aria-label`. `npm run
-stranded-titles` lists facts parked in a `title`. The mechanics of a compliant
-one, hover thresholds and dismissal, are in
-[`references/mechanics.md`](references/mechanics.md).
+`references/daisyui.md`. There are three tiers and the boundaries are mechanical,
+not judgments about length:
+
+| | use | boundary |
+| --- | --- | --- |
+| `title` | a label that carries no fact: a word in a mockup, an icon-only control's `aria-label` companion | anything a reader would be worse off missing is over the line |
+| `data-note` | a sentence a reader looks at, via [`kits/note.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/note.js) | the panel is `pointer-events:none` and cannot be entered |
+| a built panel | anything a reader taps inside: a link, a copy button, a table | [`references/mechanics.md`](references/mechanics.md) has the hover thresholds and dismissal |
+
+`data-note` is the tier that was missing until 2026-09-01, and its absence is
+why facts kept landing in `title`: a `title` reaches no touch screen, renders
+outside the page's theme, and **cannot be captured in a screenshot**, so a fact
+parked in one is invisible to every review that happens through pixels. The kit
+puts the text in the DOM, shows it on hover, tap and focus, and opens on demand
+for a shot (`Note.open('#id')`).
+
+`npm run stranded-titles` lists facts parked in a `title`.
 
 ## The shape a browsing page takes
 

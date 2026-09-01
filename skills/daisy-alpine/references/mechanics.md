@@ -80,6 +80,28 @@ outside the control and tooltip; `@click.outside` alone is not enough, because a
 handler that stops propagation strands the panel open. A `pointer-events-none`
 panel cannot be entered, which collapses "leaving both" to leaving the control.
 
+**Do not write that twice.** Rule 11's middle tier is
+[`kits/note.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/note.js),
+which implements every line above for the non-interactive case: `data-note="…"`
+where a `title` would have gone, one shared panel, delegated listeners so markup
+written later by `innerHTML` needs no re-init. Load the kit and write the
+attribute. Reach for a hand-built panel only where the content must be tapped,
+which is the same boundary rule 11 states. Two behaviours the kit had to add
+that the paragraph above does not cover, both found by measurement:
+
+- **`focusin` alone leaves the panel open when focus goes nowhere.** A bare
+  `blur()`, or a click on dead space, fires `focusout` with no `focusin` behind
+  it, so the note survives and only Escape clears it. Handle `focusout` too.
+- **A screen reader must still get the text.** `title` is announced, so a
+  visual-only tooltip is a regression wearing an improvement's clothes. Follow
+  the WAI-ARIA pattern: the trigger is focusable, the panel is `role="tooltip"`,
+  it opens on focus, and `aria-describedby` points at it while open. The cost is
+  a tab stop per note, which is also the only way a keyboard reaches it.
+
+Demo, including the headless recipe that proves a note survives a screenshot
+where a `title` cannot:
+[`lib/kits/demos/note.html`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/note.html).
+
 ## References
 
 - **DaisyUI 5 components**: See `daisyui.md` for complete component syntax, class names, and usage rules
