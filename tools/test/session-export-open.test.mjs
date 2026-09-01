@@ -114,10 +114,12 @@ const askOf = (n = 1) => rowOf(n)?.querySelector(':scope > div');
 const pills = () => [...window.document.querySelectorAll('button[aria-label^="Open card"]')];
 const decks = () => [...window.document.querySelectorAll('button[aria-label*="in the deck"]')];
 const chip = (label) => [...window.document.querySelectorAll('button')].find(b => b.textContent.trim() === label);
-// The open-row tint is NEUTRAL, and the test says so by finding it: primary
-// belongs to the ask's fill, and one class serving both put a blue block in a
-// blue field.
-const openRows = () => [...window.document.querySelectorAll('.bg-base-300\\/60')];
+// WHICH ROWS ARE IN, read the way the row now says it. There was a tint behind
+// the head, and it went through primary and then a neutral before both were
+// dropped: this theme's greys are cool, so any step off the page washed the
+// blue ask sitting on it. `aria-expanded` is what is left, and it was always
+// the load-bearing half, since open IS selected.
+const openRows = () => [...window.document.querySelectorAll('button[aria-expanded="true"]')];
 const stat = () => window.document.querySelector('.tabular-nums.text-base-content\\/50')?.textContent || '';
 
 test('nothing is open to begin with, so nothing is selected and the bar is away', () => {
@@ -155,6 +157,19 @@ test('the row says which cards are in, so a scroll does not need a control colum
   pills()[1].click();
   assert.equal(openRows().length, 2);
   assert.equal(pills()[0].getAttribute('aria-expanded'), 'true');
+});
+
+test('the turn count is a readout and does not dress as a control', () => {
+  build();
+  // It was a bordered pill with a caret, which on this page is a dropdown, so
+  // a reader tapped it for a list of turns and got the row's own expand
+  // (reported 2026-09-01). The row is the control; nothing inside it may look
+  // like a second one.
+  const readout = [...pills()[0].querySelectorAll('span')].find(e => /\d+ turns?$/.test(e.textContent.trim()));
+  assert.ok(readout, 'the count is still on the row');
+  assert.doesNotMatch(readout.className, /\bborder\b|\bbtn\b|\brounded/, readout.className);
+  assert.equal(readout.tagName, 'SPAN', 'and it is not a button');
+  assert.ok(readout.querySelector('.ph-caret-down'), 'the caret stays: it is the state, not an affordance');
 });
 
 test('Open all and Close all move every card through the same door', () => {
@@ -358,7 +373,7 @@ test('the answer is marked by the glyph alone, and set apart from the ask', () =
   // both chat roles and this follows it.
   assert.equal(mark().style.color, CLAY, 'in Claude\'s own clay, as everywhere else in the estate');
   assert.doesNotMatch(rowOf().textContent, /\bClaude\b(?!'s)/, 'the glyph says it, not a word');
-  assert.ok(preview().classList.contains('mt-2'), 'with air between the fill above and the answer');
+  assert.ok(preview().classList.contains('mt-1.5'), 'with air between the fill above and the answer');
 });
 
 test('one gutter, one edge: the row is a grid and every part is a direct child', () => {
@@ -410,14 +425,16 @@ test('the ask takes the blue, and nothing else on the row does', () => {
   assert.ok(ask.classList.contains('w-fit'), 'so a short ask hugs its words');
   assert.ok(ask.classList.contains('max-w-full'), 'and a long one caps at the column and wraps');
 
-  // ONE ACCENT, ONE MEANING. The open-row tint was bg-primary/10, so an open
-  // row put a blue block inside a blue field and the same colour stood for
-  // authorship and for selection at once. Selection is a state and takes a
-  // neutral step up from the page.
+  // ONE ACCENT, AND NOTHING BEHIND IT. The open row was tinted, first at
+  // bg-primary/10 and then at a neutral, and both washed the ask sitting on
+  // them: the greys in this theme are cool, so there is no step off the page
+  // that is not a little blue. The band is gone, and what it was covering is
+  // covered better by the expansion itself.
   chip('Open all').click();
-  for (const el of openRows())
-    assert.doesNotMatch(el.className, /bg-primary/, 'selection is neutral, since primary is spoken for');
-  assert.ok(openRows().length >= 1, 'and the tint is still drawn');
+  const painted = [...window.document.querySelectorAll('[class*="bg-"]')]
+    .filter(el => /\bbg-(primary|base-(200|300))\b|\bbg-\w+\/\d/.test(el.className));
+  assert.deepEqual(painted.map(el => el.className), [], 'no row carries a fill but the ask');
+  assert.ok(openRows().length >= 1, 'and open is still readable off the row');
 });
 
 test('a card with no ask takes no fill, and keeps its role word', () => {
