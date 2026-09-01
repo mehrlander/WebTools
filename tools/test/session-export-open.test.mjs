@@ -22,8 +22,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot, makeWindow } from './bootstrap.mjs';
 
+// read-aloud is in the list because the row's reply preview reduces its
+// markdown through it, and because session-brief's `ready()` now loads it
+// before this view is built. A file that left it out would test the fallback
+// and call it the behaviour.
 const KITS = ['lib/kits/proof.js', 'lib/kits/swipe-deck.js', 'lib/kits/chat-render.js',
-              'lib/kits/session-render.js', 'lib/kits/session-export.js'];
+              'lib/kits/session-render.js', 'lib/kits/session-export.js',
+              'lib/kits/read-aloud.js'];
 
 // Two exchanges and a long one, so there is something to preview and something
 // to leave out.
@@ -69,6 +74,34 @@ const build = (opts = {}) => {
   window.document.body.replaceChildren(view.el);
   return view;
 };
+
+// One exchange, two assistant turns, markdown in both: the fixture for the
+// row's reply preview. Separate from RECORD so the card and turn counts every
+// other test reads stay exactly where they are.
+const MD_RECORD = {
+  ...RECORD,
+  exchanges: 1, prompts_stored: 1,
+  prompts: [{ at: '2026-09-01T10:00:00Z', text: 'Only ask' }],
+  replies_total: 2, replies_stored: 2,
+  replies: [
+    { at: '2026-09-01T10:01:00Z', text: 'Let me check where it stands rather than guess.' },
+    { at: '2026-09-01T10:20:00Z',
+      text: '**Short answer: no.** See [the registry](https://example.com/x) '
+          + 'and `docs/registries.csv`.\n\n```bash\nls -la\n```' },
+  ],
+  calls_total: 0, calls: [],
+};
+
+const buildWith = (rec, opts = {}) => {
+  const view = SE.index(rec, opts);
+  window.document.body.replaceChildren(view.el);
+  return view;
+};
+
+// The preview is a clay mark and a clamped line; the row it sits on is what
+// hides when the card opens.
+const preview = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] .line-clamp-1`);
+const previewRow = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] .ph-sparkle`)?.parentElement;
 
 // The row's own controls, read off the element the way a finger would find them.
 // The row itself, which is what opens a card now. The turn-count pill beside
@@ -270,4 +303,70 @@ test('what opens is the reply, not the whole card again', async () => {
   assert.ok(!body.includes('does not hold'), 'no capture note');
   assert.ok(!body.includes('ls -la'), 'no tool turns, which the row already counts');
   assert.equal((body.match(/First ask/g) || []).length, 1, 'and the ask appears once');
+});
+
+// ── The reply on the surface ────────────────────────────────────────────────
+//
+// Reported 2026-09-01, from the phone: every closed row said "You" and showed
+// the ask, so the list read as half a conversation and what came back was a tap
+// away. The row carries one line of the reply now, and these hold the three
+// decisions inside that line.
+
+test('the closed row previews the reply, and it is the LAST one', () => {
+  buildWith(MD_RECORD);
+  const p = preview();
+  assert.ok(p, 'a closed row shows a line of what came back');
+  assert.match(p.textContent, /Short answer: no\./);
+  // A work exchange opens with the sentence that introduces the work, which
+  // says nothing about how it turned out. The last turn is the answer.
+  assert.doesNotMatch(p.textContent, /Let me check/, 'not the turn that only announced the work');
+});
+
+test('the preview is prose, not markdown', () => {
+  buildWith(MD_RECORD);
+  const t = preview().textContent;
+  assert.doesNotMatch(t, /\*\*/, 'no emphasis markers');
+  assert.doesNotMatch(t, /`/, 'no code ticks');
+  assert.doesNotMatch(t, /https?:/, 'no URL');
+  assert.match(t, /the registry/, 'the link keeps its label');
+  assert.match(t, /registries\.csv/, 'and a path code span keeps the name');
+  assert.doesNotMatch(t, /ls -la/, 'the fence is not read out on a one-line preview');
+});
+
+test('the clamp is on the text, not on the row that lays it out', () => {
+  buildWith(MD_RECORD);
+  // `flex` and `line-clamp-1` both set `display`, and one of them wins: the
+  // same collision that silenced the ask's clamp, one line lower. jsdom
+  // compiles no Tailwind, so the collision is what is assertable.
+  assert.ok(!preview().classList.contains('flex'));
+  assert.ok(previewRow().classList.contains('flex'), 'the mark and the line still sit on one row');
+});
+
+test('opening the card takes the preview away, so nothing is on screen twice', async () => {
+  buildWith(MD_RECORD);
+  pills()[0].click();
+  await drawn();
+  assert.ok(previewRow().classList.contains('hidden'),
+    'the replies render in full below, and a one-line copy of the last of them would be the same words twice');
+  pills()[0].click();
+  assert.ok(!previewRow().classList.contains('hidden'), 'and it comes back on the close');
+});
+
+test('the closed row no longer labels the half a reader can see', () => {
+  buildWith(MD_RECORD);
+  const row = window.document.querySelector('button[aria-label="Open card 1"]');
+  assert.doesNotMatch(row.textContent, /\bYou\b/,
+    'with both halves present the ask is the lead, so a role word sat between them saying nothing');
+});
+
+test('without the kit the row still previews, markers and all', () => {
+  // The fallback is deliberate and it is the worse copy: raw text reads badly
+  // and is never wrong, where an empty row would lose the half this exists to
+  // show. session-brief loads the kit; a host that does not still gets a line.
+  const kit = window.readAloud;
+  try {
+    delete window.readAloud;
+    buildWith(MD_RECORD);
+    assert.match(preview().textContent, /\*\*Short answer: no\.\*\*/);
+  } finally { window.readAloud = kit; }
 });

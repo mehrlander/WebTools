@@ -77,7 +77,10 @@ const { window, problems } = makeWindow({
 });
 window.GH = FakeGH;
 window.TOKEN = 'tkn';
-window.gh = { load: async () => {} };
+// The loader, as a log. `ready()` is the component's only use of it, and the
+// last test in this file is about WHEN that runs.
+const loads = [];
+window.gh = { load: async (k) => { loads.push(k); } };
 // The kit chain the component reads. Stubbed rather than loaded: what the deck
 // DOES with a record is session-render.js's own test, and the outline is
 // session-export.js's.
@@ -391,4 +394,30 @@ test('start opens the deck on one card, which is what makes an exchange addressa
   await tick(4);
   assert.equal(opened.length, 1, 'the address named a card, so the deck opened on it');
   assert.equal(opened[0].start, 3);
+});
+
+// ── The kit chain, and what skipping the fetch must not skip ────────────────
+
+test('a mount handed its record still loads the kit chain', async () => {
+  // `load()` short-circuits when the record is already in hand, and until
+  // 2026-09-01 it returned BEFORE `ready()`. That path is the one a reader with
+  // no token takes (#gz=), and it was giving them the worst copy of the page:
+  // no speaker on the deck, no reduction of the closing reply, markdown markers
+  // down every row of the picker. The skip is of the FETCH, never of the
+  // renderers.
+  loads.length = 0;
+  log.length = 0;
+  const el = window.document.createElement('div');
+  window.__handed = { record, repo: STORE, framed: true };
+  el.setAttribute('x-data', 'sessionBrief(window.__handed)');
+  window.document.body.append(el);
+  Alpine.initTree(el);
+  await tick(6);
+  const d = Alpine.$data(el);
+  assert.equal(d.record.short, 'b8fae678');
+  assert.deepEqual(log, [], 'and it still reads nothing from the store');
+  assert.ok(loads.includes('kits/read-aloud.js'),
+    'the kit the closing reply and the picker rows reduce their markdown through');
+  assert.ok(loads.includes('kits/session-render.js'), 'and the one settle() renders with');
+  assert.equal(d.kitsIn, true, 'which is what lets the closing reply repaint as prose');
 });
