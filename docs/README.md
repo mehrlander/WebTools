@@ -14,7 +14,7 @@ must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
 2 arrive in every session's context, 27 are named by CLAUDE.md,
-6 by a skill, 23 by a page or component. The remaining 17 are
+6 by a skill, 24 by a page or component. The remaining 17 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -41,6 +41,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`harness.csv`](harness.csv) — the harness registry: every tools/ and scripts/ file, its role, and how it is invoked
 - [`headless-vendoring.md`](headless-vendoring.md) — building with CDN libraries and rendering headless where the CDNs are blocked
 - [`inbound.md`](inbound.md) *(measured)* — the inbound map: how work reaches a session, the push-versus-pull split across the estate's channels, and the one channel an outside agent can reach
+- [`delivery.json`](delivery.json) *(measured)* — a dated reading of the delivery topology one axis over from injection.json: which copy each route is holding, how stale it can be, over five snapshots including a planned one
 - [`injection.json`](injection.json) *(measured)* — a dated reading of what reaches a session at start: the two channels, their caps, the injector rungs, and the documents that arrive down both
 - [`ios-haptics.md`](ios-haptics.md) *(orphan)* — whether a web page can fire iPhone haptics on its own gesture: measured, and no
 - [`ios-sheet-drags.md`](ios-sheet-drags.md) — why a drag inside a sheet-presented in-app browser dismisses the sheet, and the two fixes, measured on device
