@@ -33,15 +33,26 @@ import sys, json, csv, re, hashlib, pathlib
 # than a property of the unit, and it is check.py that reads it. Carrying both
 # here put a second closed vocabulary in an artifact whose whole generality is
 # that its vocabulary is declared.
+# WHY is one label, not two. It was split into an operative reason and a
+# motivating one, and the split asked a reader to decide, per clause, whether a
+# reason changes how the rule applies at a boundary. That is the same judgement
+# the rewrite step already makes when it lifts a criterion into the
+# declaration, so the second label was paying twice for one call. One why, and
+# where it is blunt it is blunt. The criterion guidance survives in the skill,
+# which is where the lifting happens.
+#
+# CUT is the fifth side and the only one that says the text should not be here
+# at all. It gets its own side rather than joining `explanation`, so the header
+# figure keeps meaning "explains the rule" instead of quietly counting cruft.
 VOCAB = [
-    ("WHAT",    "declaration", "a rule, a fact of the system, a value it may hold"),
-    ("HOW",     "declaration", "syntax, a procedure, an invocation"),
-    ("WHY-OP",  "hinge",       "a reason that changes how the rule applies at a boundary"),
-    ("WHY-MOT", "explanation", "a reason that makes the rule feel right but changes nothing"),
-    ("PROV",    "explanation", "when it changed, what it replaced, what failed"),
-    ("EVID",    "explanation", "a measurement, a probe, an observation"),
-    ("NAV",     "apparatus",   "a pointer to the document or gate that owns something"),
-    ("META",    "apparatus",   "a statement about this document"),
+    ("WHAT", "declaration", "a rule, a fact of the system, a value it may hold"),
+    ("HOW",  "declaration", "syntax, a procedure, an invocation"),
+    ("WHY",  "hinge",       "the reason behind the rule"),
+    ("PROV", "explanation", "when it changed, what it replaced, what failed"),
+    ("EVID", "explanation", "a measurement, a probe, an observation"),
+    ("NAV",  "apparatus",   "a pointer to the document or gate that owns something"),
+    ("META", "apparatus",   "a statement about this document"),
+    ("CUT",  "cut",         "clutter: says nothing the document needs"),
 ]
 
 def parse_addr(spec):

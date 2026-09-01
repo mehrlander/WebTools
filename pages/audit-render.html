@@ -82,14 +82,9 @@ window.__audit = {
     "gloss": "syntax, a procedure, an invocation"
    },
    {
-    "label": "WHY-OP",
+    "label": "WHY",
     "side": "hinge",
-    "gloss": "a reason that changes how the rule applies at a boundary"
-   },
-   {
-    "label": "WHY-MOT",
-    "side": "explanation",
-    "gloss": "a reason that makes the rule feel right but changes nothing"
+    "gloss": "the reason behind the rule"
    },
    {
     "label": "PROV",
@@ -110,6 +105,11 @@ window.__audit = {
     "label": "META",
     "side": "apparatus",
     "gloss": "a statement about this document"
+   },
+   {
+    "label": "CUT",
+    "side": "cut",
+    "gloss": "clutter: says nothing the document needs"
    }
   ],
   "units": [
@@ -304,7 +304,7 @@ window.__audit = {
     "end": 2360,
     "kind": "sent",
     "words": 15,
-    "label": "WHY-OP",
+    "label": "WHY",
     "from": "split:conven-023"
    },
    {
@@ -409,7 +409,7 @@ window.__audit = {
     "end": 4145,
     "kind": "sent",
     "words": 30,
-    "label": "WHY-OP"
+    "label": "WHY"
    },
    {
     "uid": "conven-057",
@@ -457,7 +457,7 @@ window.__audit = {
     "end": 4432,
     "kind": "sent",
     "words": 5,
-    "label": "WHY-OP"
+    "label": "WHY"
    },
    {
     "uid": "conven-063",
@@ -490,7 +490,7 @@ window.__audit = {
     "end": 4720,
     "kind": "sent",
     "words": 19,
-    "label": "WHY-MOT",
+    "label": "WHY",
     "from": "split:conven-065"
    },
    {
@@ -532,7 +532,7 @@ window.__audit = {
     "end": 5232,
     "kind": "sent",
     "words": 12,
-    "label": "WHY-OP",
+    "label": "WHY",
     "from": "split:conven-069"
    },
    {
@@ -550,7 +550,7 @@ window.__audit = {
     "end": 5429,
     "kind": "sent",
     "words": 27,
-    "label": "WHY-OP",
+    "label": "WHY",
     "from": "split:conven-070"
    },
    {
@@ -559,7 +559,7 @@ window.__audit = {
     "end": 5495,
     "kind": "sent",
     "words": 12,
-    "label": "WHY-OP",
+    "label": "WHY",
     "from": "split:conven-071"
    },
    {
@@ -593,7 +593,7 @@ window.__audit = {
     "end": 5777,
     "kind": "sent",
     "words": 16,
-    "label": "WHY-MOT"
+    "label": "WHY"
    },
    {
     "uid": "conven-075",
@@ -601,7 +601,7 @@ window.__audit = {
     "end": 5850,
     "kind": "sent",
     "words": 13,
-    "label": "WHY-OP"
+    "label": "WHY"
    },
    {
     "uid": "conven-076",
@@ -641,7 +641,7 @@ window.__audit = {
     "end": 6398,
     "kind": "sent",
     "words": 25,
-    "label": "WHY-OP"
+    "label": "WHY"
    },
    {
     "uid": "conven-081",
@@ -687,9 +687,9 @@ window.__audit = {
   window.marked = (await import('https://cdn.jsdelivr.net/npm/marked@12/+esm')).marked;
 
   // One hue per label. Side decides the family; the label picks the shade.
-  const HUE = { WHAT: '16,185,129', HOW: '13,148,136', 'WHY-OP': '245,158,11',
-                'WHY-MOT': '244,63,94', PROV: '219,39,119', EVID: '192,38,211',
-                NAV: '79,70,229', META: '148,163,184' };
+  const HUE = { WHAT: '16,185,129', HOW: '13,148,136', WHY: '245,158,11',
+                PROV: '219,39,119', EVID: '192,38,211', NAV: '79,70,229',
+                META: '148,163,184', CUT: '239,68,68' };
   // How a unit is drawn. One tint per label either way; these decide what the
   // tint is spent on. Kept as data because the point is to compare them.
   const MARKS = {

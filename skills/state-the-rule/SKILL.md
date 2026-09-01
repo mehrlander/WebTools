@@ -60,19 +60,30 @@ One label per unit, in a TSV keyed by `uid`.
 | --- | --- | --- |
 | `WHAT` | a rule, a fact of the system, a value it may hold | declaration |
 | `HOW` | syntax, a procedure, an invocation | declaration |
-| `WHY-OP` | a reason that changes how the rule applies at a boundary | **see below** |
-| `WHY-MOT` | a reason that makes the rule feel right but changes nothing | explanation |
+| `WHY` | the reason behind the rule | hinge |
 | `PROV` | when it changed, what it replaced, what failed | explanation |
 | `EVID` | a measurement, a probe, an observation | explanation |
 | `NAV` | a pointer to the document or gate that owns something | apparatus |
 | `META` | a statement about this document | apparatus |
+| `CUT` | clutter: says nothing the document needs | cut |
 
-**An operative reason nearly always contains a criterion**: a condition, a threshold, a named exception. Lift the
-criterion into the declaration and the remainder becomes `WHY-MOT`. Where no
-criterion can be extracted, keep the clause: it is part of the rule.
+**A reason nearly always contains a criterion**: a condition, a threshold, a
+named exception. Lift the criterion into the declaration; what remains is
+`WHY`. Where no criterion can be extracted, keep the clause: it is part of the
+rule.
+
+There used to be two why labels, splitting a reason that changes how the rule
+applies from one that only makes it feel right. That asked for the same
+judgement the lifting already makes, once per clause, and answered it in a
+second place. One `WHY` now, and where it is blunt it is blunt.
 
 *Test:* would deleting this change how someone applies the rule at a boundary
 case? Yes means it is the rule. No means it is explanation.
+
+`CUT` is the one label that is not about what a unit is but about whether it
+should be there. Reach for it where a passage is clutter rather than a reason,
+a pointer, or a record; it is the only side the rewrite step is entitled to
+delete outright.
 
 ### 3. Dispose
 

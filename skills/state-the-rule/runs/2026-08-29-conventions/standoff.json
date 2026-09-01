@@ -25,14 +25,9 @@
    "gloss": "syntax, a procedure, an invocation"
   },
   {
-   "label": "WHY-OP",
+   "label": "WHY",
    "side": "hinge",
-   "gloss": "a reason that changes how the rule applies at a boundary"
-  },
-  {
-   "label": "WHY-MOT",
-   "side": "explanation",
-   "gloss": "a reason that makes the rule feel right but changes nothing"
+   "gloss": "the reason behind the rule"
   },
   {
    "label": "PROV",
@@ -53,6 +48,11 @@
    "label": "META",
    "side": "apparatus",
    "gloss": "a statement about this document"
+  },
+  {
+   "label": "CUT",
+   "side": "cut",
+   "gloss": "clutter: says nothing the document needs"
   }
  ],
  "units": [
@@ -247,7 +247,7 @@
    "end": 2360,
    "kind": "sent",
    "words": 15,
-   "label": "WHY-OP",
+   "label": "WHY",
    "from": "split:conven-023"
   },
   {
@@ -352,7 +352,7 @@
    "end": 4145,
    "kind": "sent",
    "words": 30,
-   "label": "WHY-OP"
+   "label": "WHY"
   },
   {
    "uid": "conven-057",
@@ -400,7 +400,7 @@
    "end": 4432,
    "kind": "sent",
    "words": 5,
-   "label": "WHY-OP"
+   "label": "WHY"
   },
   {
    "uid": "conven-063",
@@ -433,7 +433,7 @@
    "end": 4720,
    "kind": "sent",
    "words": 19,
-   "label": "WHY-MOT",
+   "label": "WHY",
    "from": "split:conven-065"
   },
   {
@@ -475,7 +475,7 @@
    "end": 5232,
    "kind": "sent",
    "words": 12,
-   "label": "WHY-OP",
+   "label": "WHY",
    "from": "split:conven-069"
   },
   {
@@ -493,7 +493,7 @@
    "end": 5429,
    "kind": "sent",
    "words": 27,
-   "label": "WHY-OP",
+   "label": "WHY",
    "from": "split:conven-070"
   },
   {
@@ -502,7 +502,7 @@
    "end": 5495,
    "kind": "sent",
    "words": 12,
-   "label": "WHY-OP",
+   "label": "WHY",
    "from": "split:conven-071"
   },
   {
@@ -536,7 +536,7 @@
    "end": 5777,
    "kind": "sent",
    "words": 16,
-   "label": "WHY-MOT"
+   "label": "WHY"
   },
   {
    "uid": "conven-075",
@@ -544,7 +544,7 @@
    "end": 5850,
    "kind": "sent",
    "words": 13,
-   "label": "WHY-OP"
+   "label": "WHY"
   },
   {
    "uid": "conven-076",
@@ -584,7 +584,7 @@
    "end": 6398,
    "kind": "sent",
    "words": 25,
-   "label": "WHY-OP"
+   "label": "WHY"
   },
   {
    "uid": "conven-081",
