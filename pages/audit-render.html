@@ -940,7 +940,15 @@ window.__audit = {
       this.at = n;
       this.opErr = '';
       this.regroup();
-      const keep = this.sel && this.units.find(u => u.uid === this.sel.uid);
+      // UNDO MUST NOT CLOSE THE PANEL, or the control is unreachable a second
+      // time: undoing a split destroys the very uid that was selected, so the
+      // panel vanished after one press and the rest of the patch had to be
+      // undone from the header, which on a phone is a screen away from where
+      // the edit happened. Fall back to whichever unit now covers the same
+      // character, which is the one the undone operation put back.
+      const was = this.sel?.start;
+      const keep = this.sel && (this.units.find(u => u.uid === this.sel.uid)
+        || (was != null && this.units.find(u => u.start <= was && was < u.end)));
       this.sel = keep ? { ...keep, ref: this.srcRef(keep) } : null;
       this.armed = null;
       this.paint();
@@ -1758,6 +1766,17 @@ window.__audit = {
       </div>
 
       <div class="flex flex-wrap items-center gap-1 mt-2">
+        <!-- Undo BESIDE the operations, not only in the header. A drag ends
+             with the finger on the panel and the header a screen away, so the
+             one control a reader wants immediately after an edit was the one
+             furthest from it. The header pair stays: it is the only undo
+             reachable with nothing selected. -->
+        <div class="join" x-show="patch.length" x-cloak>
+          <button class="join-item btn btn-xs" :disabled="!canUndo" @click="undo()"
+                  aria-label="undo"><i class="ph ph-arrow-counter-clockwise"></i></button>
+          <button class="join-item btn btn-xs" :disabled="!canRedo" @click="redo()"
+                  aria-label="redo"><i class="ph ph-arrow-clockwise"></i></button>
+        </div>
         <button class="btn btn-xs" x-show="view!=='read'"
                 @click="view='read'; paint()">Edges</button>
         <button class="btn btn-xs" @click="openSplit(sel)">Split</button>
