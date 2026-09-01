@@ -1496,7 +1496,6 @@ window.__audit = {
               x-text="unpinned.join(' and ') + ' sits in markup, so it has no place to be dragged'"></span>
         <span class="text-error" x-show="sel?.broken">slice does not close its own markup</span>
         <span class="text-error" x-show="opErr" x-text="opErr"></span>
-        <button class="btn btn-ghost btn-xs ml-auto" @click="sel=null; menu=null">close</button>
       </div>
 
       <div class="flex items-center gap-2 mt-2" x-show="armed" x-cloak>
@@ -1514,14 +1513,12 @@ window.__audit = {
         <button class="btn btn-xs" @click="openSplit(sel)">Split</button>
         <button class="btn btn-xs" :disabled="!nextOf(sel?.uid)"
                 @click="push({op:'merge',uid:sel.uid})">Merge next</button>
-        <button class="btn btn-xs" :class="menu==='note' && 'btn-active'"
-                @click="menu = menu==='note' ? null : 'note'">Note</button>
       </div>
 
-      <div class="mt-2" x-show="menu==='note'">
-        <input class="input input-xs input-bordered w-full" placeholder="what the label cannot say"
-               :value="sel?.note || ''" @keydown.enter="push({op:'note',uid:sel.uid,text:$event.target.value})">
-      </div>
+      <input class="input input-xs input-bordered w-full mt-2"
+             placeholder="note: what the label cannot say"
+             x-effect="$el.value = sel?.note || ''"
+             @change="push({op:'note',uid:sel.uid,text:$event.target.value})">
 
       <div class="mt-2 space-y-1" x-show="menu==='split'">
         <template x-if="!boundaries.length">
