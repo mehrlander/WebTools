@@ -832,6 +832,11 @@ window.__audit = {
       }, true);
       addEventListener('resize', () => this.placePanel());
       addEventListener('scroll', () => this.placePanel(), true);
+      // Pinching and the on-screen keyboard move the visual viewport without
+      // firing either of the above, so the panel would stay where the layout
+      // viewport last put it, which is off screen.
+      window.visualViewport?.addEventListener('resize', () => this.placePanel());
+      window.visualViewport?.addEventListener('scroll', () => this.placePanel());
     },
     // Blocks: consecutive units with no blank line between them. Derived from
     // units, so every grain edit rebuilds it; paint() reads blocks and would
@@ -1251,10 +1256,43 @@ window.__audit = {
     // sideways. Falls back to the unit's own rect when the selection did not
     // come from a pointer at all (the standoff table's rows, a re-place after
     // an edit), which is the only case with no point to work from.
-    placePanel() {
+    placePanel(tries = 0) {
       const el = this.$refs.panel;
       if (!el || !this.sel) return;
-      const w = el.offsetWidth, h = el.offsetHeight, M = 8, GAP = 12;
+      const M = 8, GAP = 12;
+      // THE VISUAL VIEWPORT, NOT THE LAYOUT ONE, and this is the whole of the
+      // mobile fix. A fixed element is positioned against the LAYOUT viewport,
+      // and every CSS measure available to the panel describes that one too:
+      // `100vw` does not shrink under pinch-zoom, and inside the toss iframe it
+      // is the frame's width rather than the phone's. So a panel sized in CSS
+      // can be wider than what is actually on screen, and a clamp computed from
+      // the same measure agrees with it and still puts the panel off the right
+      // edge. Sizing and placing from `visualViewport` makes both answers come
+      // from the region the reader can see.
+      const vv = window.visualViewport;
+      const VW = vv ? vv.width : document.documentElement.clientWidth;
+      const VH = vv ? vv.height : document.documentElement.clientHeight;
+      const X0 = vv ? vv.offsetLeft : 0, Y0 = vv ? vv.offsetTop : 0;
+      // Only the viewport half is replaced. The design cap (32rem, 60%) stays
+      // where it is written, and the class on the element keeps it as the
+      // before-JS floor; what changes is that the second term now measures the
+      // region the reader can see instead of the one the document was laid out
+      // in. Inline wins over the class, so this tightens and never widens.
+      // The 5rem gutter is not slack. Tapping outside is how the panel closes,
+      // so a popover filling the width is a sheet with no way out; the floor
+      // keeps that true on a viewport too narrow for the subtraction.
+      el.style.maxWidth = `min(32rem, ${Math.max(200, Math.round(VW - 80))}px)`;
+      el.style.maxHeight = Math.round(Math.min(VH * 0.6, VH - 2 * M)) + 'px';
+      const w = el.offsetWidth, h = el.offsetHeight;
+      // A PANEL ALPINE HAS NOT YET UN-HIDDEN MEASURES 0 BY 0, and a clamp
+      // against a zero width is not a clamp: it leaves left at x + GAP, and the
+      // panel then paints its real width off the right edge. Placement has to
+      // wait for a box, and one frame is usually it. Bounded, so a panel that
+      // never gets one stops asking instead of looping every frame.
+      if (!w || !h) {
+        if (tries < 5) requestAnimationFrame(() => this.placePanel(tries + 1));
+        return;
+      }
       let x = this.selPt?.x, y = this.selPt?.y;
       if (x == null) {
         const u = this.$refs.doc?.querySelector(`[data-uid="${CSS.escape(this.sel.uid)}"]`);
@@ -1263,10 +1301,11 @@ window.__audit = {
         x = r.left; y = r.bottom - GAP;
       }
       let left = x + GAP, top = y + GAP;
-      if (left + w > innerWidth - M) left = Math.max(M, x - GAP - w);
-      if (top + h > innerHeight - M) top = Math.max(M, y - GAP - h);
-      el.style.left = Math.round(Math.min(Math.max(M, left), innerWidth - M - w)) + 'px';
-      el.style.top = Math.round(Math.min(Math.max(M, top), innerHeight - M - h)) + 'px';
+      if (left + w > X0 + VW - M) left = x - GAP - w;
+      if (top + h > Y0 + VH - M) top = y - GAP - h;
+      const clamp = (v, lo, hi) => Math.round(Math.min(Math.max(v, lo), Math.max(lo, hi)));
+      el.style.left = clamp(left, X0 + M, X0 + VW - M - w) + 'px';
+      el.style.top = clamp(top, Y0 + M, Y0 + VH - M - h) + 'px';
     },
     placePins() {
       const layer = this.$refs.pins;
@@ -1614,7 +1653,7 @@ window.__audit = {
          data-panel x-ref="panel" x-show="sel" x-cloak>
       <div class="flex flex-wrap gap-x-4 gap-y-1 items-baseline">
         <b class="font-mono" x-text="sel?.uid"></b>
-        <select class="select select-xs w-[8.5rem] border-0" aria-label="label"
+        <select class="select select-xs w-auto min-w-0 max-w-[9rem] rounded-full border-0 pl-2.5 font-mono" aria-label="label"
                 :style="`background:rgba(${HUE[sel?.label]},.25)`"
                 x-effect="$el.value = sel?.label || ''"
                 @change="push({op:'relabel',uid:sel.uid,label:$event.target.value})">
@@ -1625,7 +1664,7 @@ window.__audit = {
         <!-- Two selects, because there are two questions and answering one
              never answers the other. Same shape on purpose: the reader should
              not have to learn that a verdict is a different kind of thing. -->
-        <select class="select select-xs w-[7.5rem] border-0" aria-label="verdict"
+        <select class="select select-xs w-auto min-w-0 max-w-[9rem] rounded-full border-0 pl-2.5 font-mono" aria-label="verdict"
                 x-show="so.verdicts" x-cloak
                 :style="`background:rgba(${HUE[sel?.verdict || 'KEEP']},.25)`"
                 x-effect="$el.value = sel?.verdict || 'KEEP'"
