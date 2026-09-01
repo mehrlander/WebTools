@@ -481,3 +481,25 @@ test('without the kit the row still previews, markers and all', () => {
     assert.match(preview().textContent, /\*\*Short answer: no\.\*\*/);
   } finally { window.readAloud = kit; }
 });
+
+test('the open body wraps on the ask\'s measure, not the card\'s', async () => {
+  buildWith(MD_RECORD);
+  pills()[0].click();
+  await drawn();
+  // The body was a SIBLING of the head row, so it ran the card's full width
+  // while the ask above it stopped short by whatever the deck glyph and its gap
+  // took: at 430 that measured 366 against 400, two wrapping measures for one
+  // exchange. It sits in the head's own first column now, which makes them
+  // identical at any width and whether or not the list has a deck to open.
+  // jsdom lays nothing out, so the structure that produces it is the assertion.
+  const row = rowOf();
+  const head = row.parentElement;
+  assert.match(head.style.gridTemplateColumns, /minmax\(0, ?1fr\) auto/, head.style.gridTemplateColumns);
+  const body = [...head.children].find(c => c !== row && c.tagName === 'DIV' && c !== preview());
+  assert.ok(body && body.classList.contains('col-start-1'),
+    'the open body is a cell of the head, pinned to the column the ask is in');
+  assert.ok(head.contains(body), 'not a sibling of it');
+  // With no deck the `auto` track collapses, so nothing is reserved and the two
+  // are still one measure. The pin is what keeps the body out of that track.
+  assert.doesNotMatch(body.className, /\bpr-|\bpl-/, 'and no pad guesses at the glyph');
+});
