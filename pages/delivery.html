@@ -84,7 +84,7 @@
         <span class="flex items-baseline gap-2 flex-wrap">
           <span class="badge badge-sm" :class="stateClass(snap.state)" x-text="snap.state"></span>
           <code class="text-base text-base-content/60" x-text="snap.date"></code>
-          <span class="text-base text-primary" x-text="snap.headline"></span>
+          <span class="text-base text-primary" x-text="counts"></span>
         </span>
       </template>
     </div>
@@ -177,6 +177,17 @@ function delivery() {
     // Resolved once per snapshot. Chains carry node OBJECTS, because an x-for
     // calling a per-item lookup rendered a mix of two snapshots' labels after
     // the index moved: the DOM was reused and the text did not follow.
+    // Derived, never authored. An authored counts line is a copy of what the
+    // stores and routes already say, and the copy is the half that drifts.
+    get counts() {
+      const s = this.snap;
+      if (!s) return '';
+      const copies = (s.stores || []).filter(n => n.copy).length;
+      const lag = (s.routes || []).filter(r => r.state === 'lagging').length;
+      return `${(s.routes || []).length} routes \u00b7 ${copies} ${copies === 1 ? 'copy' : 'copies'}` +
+             `\u00b7 ${lag} lagging`.replace('\u00b7', ' \u00b7 ');
+    },
+
     get lanes() {
       const s = this.snap;
       if (!s) return [];
@@ -202,10 +213,13 @@ function delivery() {
       const lanes = this.lanes;
       if (!host || !this.snap) return;
 
+      const onRoute = new Set(lanes.flatMap(l => l.chain || []));
+      const unread = (this.snap.stores || []).filter(n => n.copy && !onRoute.has(n.id));
       const deep = Math.max(1, ...lanes.map(l => l.nodes.length));
       const rows = deep + 3;
       const W = PAD * 2 + lanes.length * NW + (lanes.length - 1) * LANEGAP;
-      const H = PAD * 2 + rows * NH + (rows - 1) * VGAP + 26;
+      const H = PAD * 2 + rows * NH + (rows - 1) * VGAP + 26
+              + (unread.length ? NH + VGAP + 18 : 0);
       const rowY = r => PAD + r * (NH + VGAP);
       const laneX = k => PAD + k * (NW + LANEGAP);
       const originX = W / 2 - NW / 2, originY = rowY(0);
@@ -237,11 +251,12 @@ function delivery() {
 
       const box = (x, y, n, opts = {}) => {
         const pinned = n.freshness === 'pinned';
+        const stored = n.copy === true;
         const w = opts.w || NW, mid = x + w / 2;
         const sub = opts.sub || (n.count ? '\u00d7' + n.count : '');
         const g = svgEl('g', { 'data-node': n.id, tabindex: 0 });
         g.appendChild(svgEl('rect', {
-          class: 'nodebox ' + (pinned ? 'n-pinned' : opts.strong ? 'n-strong' : 'n-box'),
+          class: 'nodebox ' + (pinned ? 'n-pinned' : stored ? 'n-box' : 'n-strong'),
           x, y, width: w, height: NH, rx: 9,
           'stroke-width': pinned ? 1.75 : 1.25,
           'stroke-dasharray': n.goes ? '5 3' : null,
@@ -250,6 +265,8 @@ function delivery() {
           'text-anchor': 'middle', 'font-size': 14, 'font-weight': 600 }, n.label));
         if (sub) g.appendChild(svgEl('text', { class: 'n-sub', x: mid, y: y + 37,
           'text-anchor': 'middle', 'font-size': 12, 'font-family': 'ui-monospace,monospace' }, sub));
+        if (n.goes) g.appendChild(svgEl('text', { class: 'n-faint', x: mid, y: y + NH + 14,
+          'text-anchor': 'middle', 'font-size': 11 }, 'removed next'));
         gNodes.appendChild(g);
       };
 
@@ -280,7 +297,7 @@ function delivery() {
       });
 
       const origin = lanes[0]?.origin;
-      if (origin) box(originX, originY, origin, { strong: true });
+      if (origin) box(originX, originY, origin);
 
       lanes.forEach((l, k) => {
         let px = W / 2, py = originY + NH;
@@ -306,8 +323,15 @@ function delivery() {
 
       spans.forEach(d => box(d.x, d.y, d.n, { w: d.w, sub: d.n.sub }));
       const sess = this.data?.session || { id: 'session', label: 'the session' };
-      box(originX, rowY(sessionRow), { ...sess, id: 'session' }, { strong: true });
+      box(originX, rowY(sessionRow), { ...sess, id: 'session' });
 
+      if (unread.length) {
+        const uy = rowY(sessionRow) + NH + VGAP + 18;
+        gNodes.appendChild(svgEl('text', { class: 'n-faint', x: PAD, y: uy - 10,
+          'font-size': 11 }, 'on no route, read by nothing'));
+        const span = unread.length * NW + (unread.length - 1) * LANEGAP;
+        unread.forEach((n, j) => box(W / 2 - span / 2 + j * (NW + LANEGAP), uy, n));
+      }
       svg.append(gEdges, gNodes);
       host.replaceChildren(svg);
     },

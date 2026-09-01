@@ -37,7 +37,6 @@
       "state": "historical",
       "title": "The injector exists and nothing opts in",
       "provenance": "reconstructed from the header comments in home/.claude/hooks/session-conventions.sh and .claude/skills/hooks/inject-conventions.sh",
-      "headline": "1 route delivering, 0 repos opted in",
       "stores": [
         {
           "id": "origin",
@@ -90,6 +89,7 @@
         }
       ],
       "evidence": [
+        "The injector shipped this day and no repository named it for 26 days, so the route existed and delivered to nothing.",
         "The dispatcher began labelling each script's output, so home's loader, which emitted the additionalContext JSON envelope, stopped parsing as JSON.",
         "web-tools shipped inject-conventions.sh the same day, plain stdout, to fix exactly that."
       ]
@@ -99,7 +99,6 @@
       "state": "historical",
       "title": "Five percent, measured",
       "provenance": "mehrlander/home chron/2026/08/2026-08-26-the-injection-delivers-five-percent.md, cited in both scripts' headers",
-      "headline": "36,135 bytes sent · 1,843 delivered",
       "stores": [
         {
           "id": "origin",
@@ -153,6 +152,7 @@
         }
       ],
       "evidence": [
+        "36,135 bytes sent, 1,843 delivered: about 5%, for nineteen days, while the hook reported success every time.",
         "A SessionStart hook over the limit exits 0 and reports success, so the failure was invisible from inside the script.",
         "The fix has to be a payload sized to the channel plus a script that says when it could not fit."
       ]
@@ -162,7 +162,6 @@
       "state": "historical",
       "title": "The payload fits, and a copy is created to make it fit",
       "provenance": "the rung logic and budget history in .claude/skills/hooks/inject-conventions.sh; the vendoring leg in .githooks/pre-commit",
-      "headline": "3 routes · a vendored copy · rung 2 fires for the first time",
       "stores": [
         {
           "id": "origin",
@@ -285,7 +284,6 @@
       "state": "current",
       "title": "Three routes, six copies, and they disagree",
       "provenance": "measured on one container, 2026-09-01: find / -name CONVENTIONS.md, the clone's reflog, and the injection receipts in mehrlander/web-tools-private sessions/",
-      "headline": "3 routes · 6 copies · 1 route measured lagging",
       "stores": [
         {
           "id": "origin",
@@ -433,6 +431,7 @@
         }
       ],
       "evidence": [
+        "The vendored copy is not hand-maintained, which the tracker task assumes: .githooks/pre-commit leg 1c rewrites and stages it in the same commit that touches docs/. The problem is lag between commits, caused by pinning, and no copy hygiene reaches it.",
         "12 of the 47 recorded sessions carrying both an @-import and an injection receipt for SURFACING.md had the two routes deliver different versions.",
         "The version the injector kept delivering, sha dc188a49, is SURFACING.md as of 2026-08-27. It was still arriving on 2026-09-01.",
         "This session's payload came to 28,026 bytes against the 28,000 ceiling and was cut. The 1,210-byte gap between the pinned copy and the tip is larger than the 26-byte overrun."
@@ -443,7 +442,6 @@
       "state": "planned",
       "title": "One copy per machine that anything reads",
       "provenance": "design, not measurement. Tracker task one-copy-of-the-conventions-i9i931, revised into three commits after the 2026-09-01 assessment.",
-      "headline": "3 routes · 2 copies · 0 routes lagging",
       "stores": [
         {
           "id": "origin",
