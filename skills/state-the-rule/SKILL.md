@@ -77,8 +77,16 @@ applies from one that only makes it feel right. That asked for the same
 judgement the lifting already makes, once per clause, and answered it in a
 second place. One `WHY` now, and where it is blunt it is blunt.
 
-*Test:* would deleting this change how someone applies the rule at a boundary
-case? Yes means it is the rule. No means it is explanation.
+*Test:* name the condition, threshold or exception the clause adds. If you can
+name it, lift it into the declaration. If you cannot, it is `WHY`.
+
+The test used to be "would deleting this change how someone applies the rule at
+a boundary case?" That is not a test, because every explanation believes it
+changes behaviour and answers yes about itself. Asking for the criterion
+demands an artifact instead: either a nameable condition comes out or it does
+not, and nothing is settled by how strongly the sentence argues for its own
+importance. Being too permissive is part of why the second why label had to
+go.
 
 `CUT` is the one label that is not about what a unit is but about whether it
 should be there. Reach for it where a passage is clutter rather than a reason,
