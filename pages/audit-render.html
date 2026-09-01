@@ -867,6 +867,11 @@ window.__audit = {
     // commonest case of that.
     get noDrag() {
       const e = this.unpinned;
+      // x-text evaluates whether or not x-show is displaying it, so the empty
+      // case is a real branch and not a hypothetical one: without it this read
+      // "the undefined edge cannot be dragged" in the DOM of every unit whose
+      // boundaries are both fine.
+      if (!e.length) return '';
       return e.length === 2
         ? 'neither edge can be dragged: both fall in markup the render does not show'
         : `the ${e[0]} edge cannot be dragged: it falls in markup the render does not show`;
@@ -1235,6 +1240,31 @@ window.__audit = {
       // it, so prefer it and keep nodeAt for the end of a paragraph, where
       // there is no later span to ask.
       let hit = Standoff.nodeAt(this.$refs.doc, at);
+      // MARKUP HAS NO CHARACTER TO PIN, and until now that meant no pin at all.
+      // Every list item opens with its marker, so every list item lost its
+      // START handle and its opening boundary could not be moved from the page
+      // at all. The honest place for a boundary that falls in markup is the
+      // unit's nearest RENDERED character on the correct side: before its first
+      // for a start, after its last for an end. That is a position, not a
+      // claim about which character the offset is, and the drag reads its
+      // offsets from the pointer rather than from where the pin was drawn.
+      // Scoped to the selected unit, or a missing start would borrow a rect
+      // from the next unit and mark a boundary somewhere else entirely. An
+      // ATOMIC run counts here, unlike everywhere else: a boundary may not go
+      // INSIDE a link or a bold span, but the unit's own first and last
+      // characters are outside every construct it contains, and a unit that is
+      // bold end to end has no other run to offer. Dragging such a pin inward
+      // is refused by offsetAt, which is the correct answer; dragging it
+      // outward, to swallow the sentence before it, is the move it exists for.
+      if (!hit && this.sel) {
+        const runs = [...(this.$refs.doc
+          ?.querySelector(`[data-uid="${CSS.escape(this.sel.uid)}"]`)
+          ?.querySelectorAll('[data-src]') || [])]
+          .map(sp => sp.firstChild)
+          .filter(n => n && n.nodeType === 3 && n.data.trim());
+        const n = which === 'end' ? runs.at(-1) : runs[0];
+        if (n) hit = { node: n, offset: which === 'end' ? n.length : 0 };
+      }
       if (!hit) return null;
       // Landing at the END of a run means the boundary is a junction. Which
       // side of it the mark belongs on depends on which edge is being drawn:

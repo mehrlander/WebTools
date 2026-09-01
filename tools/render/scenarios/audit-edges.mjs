@@ -214,4 +214,25 @@ export default async function (page) {
   });
   console.log('MARKUP ' + JSON.stringify(refused));
   if (refused.gave) throw new Error(refused.gave + ' offsets came back from inside markup');
+
+  // ── every boundary in the document has a pin ────────────────────────────
+  // A boundary that falls in markup once got no pin at all, which meant every
+  // list item lost its opening handle: a whole class of boundary was
+  // unreachable from the page and nothing said so, since a missing pin and an
+  // unlocatable one draw the same picture. Counted rather than sampled, because
+  // the defect is systematic and one unit that happens to work proves nothing.
+  const reach = await page.evaluate(() => {
+    const d = Alpine.$data(document.body);
+    const miss = [];
+    for (const u of d.units) {
+      d.sel = { ...u, ref: d.srcRef(u) };
+      for (const e of d.edges) if (!d.rectAt(e.at, e.edge)) miss.push(`${u.uid}:${e.edge}`);
+    }
+    d.sel = null;
+    // The first unit opens the document and the last one closes it, so those
+    // two carry one boundary each rather than two.
+    return { units: d.units.length, miss };
+  });
+  console.log('REACH ' + JSON.stringify(reach));
+  if (reach.miss.length) throw new Error(`no pin for ${reach.miss.length} boundaries: ${reach.miss.slice(0, 6)}`);
 }
