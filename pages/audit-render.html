@@ -1474,19 +1474,21 @@ window.__audit = {
          covering the split candidates. dictate.html's sheet takes the corner the
          same way: while a page's own bottom UI is up, it owns the bottom. -->
     <div class="fixed z-[90] bg-base-200 border border-base-300 rounded-lg shadow-lg px-3 py-2 text-xs
-                max-w-[min(34rem,calc(100vw-1rem))] max-h-[60vh] overflow-y-auto"
+                max-w-[min(32rem,calc(100vw-5rem))] max-h-[60vh] overflow-y-auto"
          data-panel x-ref="panel" x-show="sel" x-cloak>
       <div class="flex flex-wrap gap-x-4 gap-y-1 items-baseline">
         <b class="font-mono" x-text="sel?.uid"></b>
-        <button class="badge badge-sm border-0 gap-1 cursor-pointer"
-                :class="menu==='label' && 'ring-1 ring-base-content'"
+        <select class="select select-xs w-[8.5rem] border-0" aria-label="label"
                 :style="`background:rgba(${HUE[sel?.label]},.25)`"
-                aria-label="change the label"
-                @click="menu = menu==='label' ? null : 'label'">
-          <span x-text="sel?.label"></span><i class="ph ph-caret-down opacity-60"></i>
-        </button>
+                x-effect="$el.value = sel?.label || ''"
+                @change="push({op:'relabel',uid:sel.uid,label:$event.target.value})">
+          <template x-for="v in so.vocabulary" :key="v.label">
+            <option :value="v.label" x-text="v.label"></option>
+          </template>
+        </select>
         <span class="opacity-60 font-mono" x-text="sel?.words + 'w · ' + sel?.kind"></span>
-        <span class="opacity-60 font-mono" x-text="sel?.ref"></span>
+        <span class="opacity-60 font-mono truncate max-w-[min(30rem,calc(100vw-6rem))]"
+              :title="sel?.ref" x-text="sel?.ref"></span>
         <span class="opacity-60 font-mono" x-show="sel?.from" x-cloak
               x-text="'split from ' + String(sel?.from).replace(/^split:/, '')"></span>
         <span class="italic opacity-70" x-show="sel?.note" x-text="sel?.note"></span>
@@ -1495,14 +1497,6 @@ window.__audit = {
         <span class="text-error" x-show="sel?.broken">slice does not close its own markup</span>
         <span class="text-error" x-show="opErr" x-text="opErr"></span>
         <button class="btn btn-ghost btn-xs ml-auto" @click="sel=null; menu=null">close</button>
-      </div>
-
-      <div class="flex flex-wrap gap-1 mt-2" x-show="menu==='label'" x-cloak>
-        <template x-for="v in so.vocabulary" :key="v.label">
-          <button class="btn btn-xs border-0" :class="v.label===sel?.label && 'ring-1 ring-base-content'"
-                  :style="`background:rgba(${HUE[v.label]},.22)`"
-                  @click="push({op:'relabel',uid:sel.uid,label:v.label})" x-text="v.label"></button>
-        </template>
       </div>
 
       <div class="flex items-center gap-2 mt-2" x-show="armed" x-cloak>
