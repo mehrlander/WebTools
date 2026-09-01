@@ -24,11 +24,18 @@
 
     #gh=owner/repo[@ref]:sessions/2026/08/2026-08-07-abc12345.json
     #id=abc12345                     the short id, resolved against the store
+    #branch=claude/some-branch-ab12  that branch's LATEST session
     #gz=<base64url>                  a gzipped record, for a reader with no token
 
-  Any of the three takes `pane=outline|files|raw` and `card=<n>`, which say where
+  Any of the four takes `pane=outline|files|raw` and `card=<n>`, which say where
   in the session to land: `card` opens the deck on one exchange, the session's
   answer to branch.html's `file=`.
+
+  `#branch=` is the address a phone can produce. The Claude app copies the branch
+  a Claude Code session is on and nothing else about it, so this page takes that
+  string and finds the session behind it; shortcut-tools' `Choose-Claude` is the
+  caller, off the double back tap. The walk it costs, and the tie it settles, are
+  in alpineComponents/session-brief.js at resolveBranch.
 
   The record is web-tools-private/sessions/**.json (its README is the schema).
   The store is private, so #gh= and #id= read through the viewer's stored token
@@ -97,7 +104,7 @@
   <div x-show="!framed || !target" class="shrink-0 border-b border-base-300 bg-base-100">
     <div class="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
       <span class="text-lg">&#128172;</span>
-      <input x-model="input" @keydown.enter="go()" placeholder="short id, or owner/repo:path"
+      <input x-model="input" @keydown.enter="go()" placeholder="short id, branch, or owner/repo:path"
              class="input input-sm input-bordered font-mono flex-1 min-w-0">
       <button @click="go()" class="btn btn-sm btn-primary" :disabled="busy">
         <span x-show="!busy">Open</span>
@@ -112,8 +119,9 @@
 
   <div x-show="!target && !busy && !err" class="max-w-4xl mx-auto p-8 text-center opacity-60 text-sm">
     Name a session above, or link straight to one:
-    <code class="text-xs">#id=abc12345</code>
-    <div class="mt-2 text-xs opacity-70">Ids are the record's filename stem, eight hex characters.</div>
+    <code class="text-xs">#id=abc12345</code> &middot;
+    <code class="text-xs">#branch=claude/some-branch</code>
+    <div class="mt-2 text-xs opacity-70">An id is the record's filename stem, eight hex characters; a branch opens its latest session.</div>
   </div>
 
   <div x-show="busy" class="flex justify-center py-16">
@@ -172,12 +180,22 @@
         if (gz) return { kind: 'gz', gz, at };
         const id = pick('id');
         if (id) return { kind: 'id', id, label: id, at };
+        // Tolerant on purpose: what the Claude app puts on a clipboard has
+        // varied, and a shortcut passing it through should not have to know
+        // which. A full ref, a URL carrying one, or the bare name all reduce to
+        // the name.
+        const branch = pick('branch');
+        if (branch) {
+          const name = String(branch).trim()   // URLSearchParams already decoded it
+            .replace(/^.*?(?:tree|compare)\//, '').replace(/^origin\//, '').replace(/^refs\/heads\//, '');
+          return { kind: 'branch', branch: name, label: name, at };
+        }
         const gh = pick('gh');
         if (gh) return { kind: 'path', spec: gh, label: gh, at };
         return null;
       },
 
-      // Turn an address into the component's options and mount it. Three
+      // Turn an address into the component's options and mount it. Four
       // addresses, three ways in, and only one of them fetches here: #gz=
       // carries its own copy and has no file behind it, so this page inflates
       // it and hands the record over. The other two name a record and the
@@ -188,6 +206,8 @@
           let opts;
           if (t.kind === 'gz') {
             opts = { record: await this.readGz(t.gz), framed: this.framed };
+          } else if (t.kind === 'branch') {
+            opts = { branch: t.branch, repo: STORE, framed: this.framed };
           } else if (t.kind === 'id') {
             opts = { id: t.id, repo: STORE, framed: this.framed };
           } else {
@@ -226,10 +246,15 @@
       async go(){
         const v = (this.input || '').trim();
         if (!v) return;
-        const t = v.includes('/') || v.includes(':')
-          ? { kind: 'path', spec: v, label: v }
+        // Three shapes, told apart by what only one of them has: an owner/repo
+        // spec carries a colon, a branch carries a slash without one, and an id
+        // is eight bare hex characters. Typing a branch here is the same route
+        // the shortcut takes.
+        const t = v.includes(':') ? { kind: 'path', spec: v, label: v }
+          : v.includes('/') ? { kind: 'branch', branch: v.replace(/^origin\//, ''), label: v }
           : { kind: 'id', id: v, label: v };
-        try { history.replaceState(null, '', '#' + (t.kind === 'id' ? 'id=' : 'gh=') + v); } catch {}
+        const key = { id: 'id=', branch: 'branch=', path: 'gh=' }[t.kind];
+        try { history.replaceState(null, '', '#' + key + encodeURIComponent(v)); } catch {}
         await this.open(t);
       },
     }));
