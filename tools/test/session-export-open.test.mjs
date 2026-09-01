@@ -68,6 +68,8 @@ window.esc = window.esc || (s => String(s ?? '').replace(/[&<>"']/g, c => ESC[c]
 
 for (const f of KITS) new window.Function(readFileSync(path.join(repoRoot, f), 'utf8'))();
 const SE = window.sessionExport;
+// The estate's Claude colour, in the form jsdom normalizes the hex to.
+const CLAY = 'rgb(217, 119, 87)';   // #d97757
 
 const build = (opts = {}) => {
   const view = SE.index(RECORD, opts);
@@ -98,10 +100,12 @@ const buildWith = (rec, opts = {}) => {
   return view;
 };
 
-// The preview is a clay mark and a clamped line; the row it sits on is what
-// hides when the card opens.
+// The reply block is a clay header over a clamped line. `preview` is the line;
+// its parent is the block, which is what hides when the card opens.
 const preview = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] .line-clamp-1`);
-const previewRow = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] .ph-sparkle`)?.parentElement;
+const previewRow = (n = 1) => preview(n)?.parentElement;
+const replyHead = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] .ph-sparkle`)?.parentElement;
+const askOf = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"] div > div`);
 
 // The row's own controls, read off the element the way a finger would find them.
 // The row itself, which is what opens a card now. The turn-count pill beside
@@ -333,13 +337,50 @@ test('the preview is prose, not markdown', () => {
   assert.doesNotMatch(t, /ls -la/, 'the fence is not read out on a one-line preview');
 });
 
-test('the clamp is on the text, not on the row that lays it out', () => {
+test('the clamp is on the text, and nothing else on that element sets display', () => {
   buildWith(MD_RECORD);
   // `flex` and `line-clamp-1` both set `display`, and one of them wins: the
   // same collision that silenced the ask's clamp, one line lower. jsdom
   // compiles no Tailwind, so the collision is what is assertable.
-  assert.ok(!preview().classList.contains('flex'));
-  assert.ok(previewRow().classList.contains('flex'), 'the mark and the line still sit on one row');
+  for (const c of ['flex', 'block', 'inline-flex', 'grid'])
+    assert.ok(!preview().classList.contains(c), `no ${c} beside the clamp`);
+  assert.ok(replyHead().classList.contains('flex'), 'the header is its own flex row, above the line');
+  assert.ok(!replyHead().className.includes('line-clamp'), 'and it carries no clamp of its own');
+});
+
+test('the answer announces itself, and is set apart from the ask', () => {
+  buildWith(MD_RECORD);
+  // The mark rode inline at the head of the reply line, which put the two
+  // halves on adjacent lines with one glyph between them. The word is here
+  // where the deck drops it: dense mode omits it because an alternating
+  // transcript has four other carriers, and a row has none of those.
+  assert.equal(replyHead().textContent.trim(), 'Claude');
+  assert.equal(replyHead().style.color, CLAY, 'in Claude\'s own clay, as everywhere else in the estate');
+  assert.ok(previewRow().classList.contains('mt-2'), 'with air between the fill above and the answer');
+});
+
+test('the ask takes the blue, the way the deck and the popover draw it', () => {
+  buildWith(MD_RECORD);
+  const ask = askOf();
+  // The same convention chatRender.message uses in dense mode, which is what
+  // the deck's slide body and the Activity popover both render through. Inline
+  // rather than bg-primary/10, since that class is already this list's OPEN-row
+  // tint and the two stack on one row.
+  assert.match(ask.style.background, /--color-primary/);
+  assert.equal(ask.style.borderRadius, '3px');
+  assert.ok(ask.classList.contains('w-fit'), 'so a short ask hugs its words');
+  assert.ok(ask.classList.contains('max-w-full'), 'and a long one caps at the column and wraps');
+});
+
+test('a card with no ask takes no fill, and keeps its role word', () => {
+  // The closing summary and the capture note have no user turn: the row shows
+  // the titler's line, which is not something anybody said, so tinting it
+  // would be the mark claiming an author it does not have.
+  buildWith({ ...MD_RECORD, prompts: [], prompts_stored: 0, exchanges: 0 });
+  const ask = askOf();
+  assert.equal(ask.style.background, '');
+  assert.ok(ask.classList.contains('w-full'));
+  assert.match(window.document.querySelector('button[aria-label="Open card 1"]').textContent, /Claude|Note/);
 });
 
 test('opening the card takes the preview away, so nothing is on screen twice', async () => {
