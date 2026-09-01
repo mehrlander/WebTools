@@ -46,6 +46,21 @@ const RECORD = {
 
 const { window } = makeWindow({ html: '<!doctype html><html><body></body></html>' });
 window.matchMedia = window.matchMedia || (() => ({ matches: false, addEventListener(){}, removeEventListener(){} }));
+
+// chat-render's ready() loads `marked` from a CDN, which never resolves here, so
+// an open card would sit empty forever and the last three tests would be
+// asserting a race rather than a rendering. Same stand-in the chat-render tests
+// use, and it is enough: what is asserted below is that the markup came from
+// that kit at all, not what its markdown parser makes of a paragraph.
+const mdHtml = (md) => String(md).split(/\n{2,}/).map(x => `<p>${x}</p>`).join('');
+window.marked = globalThis.marked = {
+  lexer: (md) => String(md).split(/\n{2,}/).map(raw => ({ type: 'paragraph', raw })),
+  parser: (toks) => mdHtml(toks.map(t => t.raw).join('\n\n')),
+  parse: mdHtml,
+};
+const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+window.esc = window.esc || (s => String(s ?? '').replace(/[&<>"']/g, c => ESC[c]));
+
 for (const f of KITS) new window.Function(readFileSync(path.join(repoRoot, f), 'utf8'))();
 const SE = window.sessionExport;
 
@@ -160,31 +175,40 @@ test('the role toggles decide what comes with an open card', () => {
   assert.doesNotMatch(asksOnly.markdown(), /The reply runs on/);
 });
 
-test('a long turn previews with a chars chip and opens on a tap', () => {
+// The card body is built after chat-render's ready() resolves, so a mount that
+// only just opened has an empty box for a tick.
+const drawn = () => new Promise(r => setTimeout(r, 30));
+
+test('an open card is drawn by the deck\'s renderer, not by a second one here', async () => {
+  // The whole point of the 2026-09-01 change: two drawings of one turn, met
+  // within two taps of each other. If this file ever grows its own turn markup
+  // again, the markdown stops being markdown and that is what fails first.
   build({ startCard: 0 });
-  // The card also holds a tool turn whose fenced body is over the cap, so the
-  // reply's chip is found by its own text rather than by being first.
-  const chipEl = [...window.document.querySelectorAll('span')]
-    .find(s => /^\+[\d,]+ chars$/.test(s.textContent.trim())
-            && /The reply runs on/.test(s.closest('div.min-w-0')?.textContent || ''));
-  assert.ok(chipEl, 'the reply is ~800 characters, so it must not arrive whole');
-  const body = chipEl.closest('div.min-w-0');
-  assert.ok(body);
-  assert.ok(!body.textContent.includes(LONG.trim()), 'previewed, not printed');
-  body.click();
-  assert.ok(body.textContent.includes(LONG.trim()), 'and the tap opens it');
+  await drawn();
+  const body = window.document.body;
+  assert.ok(body.querySelector('p'), 'prose arrives as rendered markdown, which a plain-text row never produced');
+  assert.ok(body.textContent.includes('The reply runs on'), 'and the reply is in it');
 });
 
-test('reading a turn in full does not change what is selected', () => {
-  // The two levels, and only the outer one selects.
-  const v = build({ startCard: 0 });
-  const before = v.selectedCount;
-  const chipEl = [...window.document.querySelectorAll('span')]
-    .find(s => /^\+[\d,]+ chars$/.test(s.textContent.trim())
-            && /The reply runs on/.test(s.closest('div.min-w-0')?.textContent || ''));
-  chipEl.closest('div.min-w-0').click();
-  assert.equal(v.selectedCount, before);
-  assert.equal(openRows().length, 1);
+test('the ask carries chat-render\'s own fill, which is the treatment asked for', async () => {
+  build({ startCard: 0 });
+  await drawn();
+  // An inline `background` mixing --color-primary, not a class: the fill is
+  // computed, and its WIDTH is then pinned to the longest rendered line, which
+  // is a next-frame measurement jsdom cannot do. So the tint is assertable here
+  // and its shape is not; the pixels in the PR body are the record for that.
+  const filled = [...window.document.querySelectorAll('[style*="--color-primary"]')]
+    .filter(el => /background/.test(el.getAttribute('style') || ''));
+  assert.ok(filled.length, 'the ask is drawn with the fill, so it reads as something said');
+  assert.match(filled[0].textContent, /First ask/);
+});
+
+test('nothing this file draws survives beside it', async () => {
+  build({ startCard: 0 });
+  await drawn();
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/session-export.js'), 'utf8');
+  assert.doesNotMatch(src, /function turnRow/, 'the second renderer is gone, not merely unused');
+  assert.match(src, /SR\(\)\.card\(/, 'and the card body comes from session-render');
 });
 
 test('no checkbox survives anywhere in the list', () => {
