@@ -772,6 +772,12 @@ window.__audit = {
   // on, so the page and the segmenter agree on what a list marker is.
   const MARKER = /^[ \t]{0,3}(?:[-*+]|\d+\.)[ \t]/;
 
+  // `kind` is the segmenter's word, and the panel was printing it raw: a reader
+  // asked what "sent" meant, which is a fair question about a field abbreviated
+  // for a JSONL file and then shown to a person.
+  const KINDS = { sent: 'sentence', heading: 'heading', code: 'code block',
+                  table: 'table', mixed: 'mixed' };
+
   const WORD = /[\w'\u2019-]/;
   const snapWord = (text, i) => {
     if (i <= 0 || i >= text.length) return i;
@@ -843,6 +849,28 @@ window.__audit = {
     // repaints the same document against the other question rather than
     // building a second view of it.
     keyOf(u) { return this.lens === 'verdict' ? (u.verdict || 'KEEP') : u.label; },
+    KINDS,
+    // `from` records HOW this unit got its boundaries, and the verb is in the
+    // value. The panel used to print "split from" over all three, so a merged
+    // unit read "split from merge:a+b", which states the opposite of what
+    // happened in the one place a reader looks to find out.
+    get provenance() {
+      const f = this.sel?.from || '', i = f.indexOf(':');
+      const verb = { split: 'split from', merge: 'merged from',
+                     move: 'boundary moved with' }[f.slice(0, i)];
+      return verb ? `${verb} ${f.slice(i + 1)}` : f;
+    },
+    // Why there is no handle on an edge. It said "start and end sits in
+    // markup", which disagreed with itself and was usually not the reason: a
+    // boundary is undraggable when it falls where the rendered text has no
+    // character to put a pin beside, and a list marker or a `**` is only the
+    // commonest case of that.
+    get noDrag() {
+      const e = this.unpinned;
+      return e.length === 2
+        ? 'neither edge can be dragged: both fall in markup the render does not show'
+        : `the ${e[0]} edge cannot be dragged: it falls in markup the render does not show`;
+    },
     // The panel's two pills, as data: one row per axis, each naming the
     // operation that edits it, the choices, and the value in force. Written
     // once because the two pills differ in nothing but which list they read.
@@ -1706,16 +1734,16 @@ window.__audit = {
           </label>
         </template>
 
-        <span class="opacity-60 font-mono" x-text="sel?.words + 'w · ' + sel?.kind"></span>
+        <span class="opacity-60" x-text="`${sel?.words} words · ${KINDS[sel?.kind] || sel?.kind}`"></span>
         <!-- Wrapping rather than truncating is what lets the panel be narrow:
              this line was the widest thing in it, and a truncated one still
              claims the width it was cut to. -->
         <span class="opacity-60 font-mono basis-full" x-text="sel?.ref"></span>
-        <span class="opacity-60 font-mono" x-show="sel?.from" x-cloak
-              x-text="'split from ' + String(sel?.from).replace(/^split:/, '')"></span>
+        <span class="opacity-60 font-mono basis-full" x-show="sel?.from" x-cloak
+              x-text="provenance"></span>
         <span class="italic opacity-70" x-show="sel?.note" x-text="sel?.note"></span>
-        <span class="opacity-60" x-show="unpinned.length" x-cloak
-              x-text="unpinned.join(' and ') + ' sits in markup, so it has no place to be dragged'"></span>
+        <span class="opacity-60 basis-full" x-show="unpinned.length" x-cloak
+              x-text="noDrag"></span>
         <span class="text-error" x-show="sel?.broken">slice does not close its own markup</span>
         <span class="text-error" x-show="opErr" x-text="opErr"></span>
       </div>
