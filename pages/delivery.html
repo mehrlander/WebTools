@@ -20,19 +20,58 @@
   @-import delivered in the same session, and the 1,210-byte gap between them
   was larger than the 26-byte overrun that truncated the payload.
 
-  So this page reads the ROUTES rather than the volume. Each route is a track
-  from main's tip to a session, through however many copies it passes on the
-  way, and each node carries how fresh it can be. Colour is one axis only:
-  staleness risk. Everything current at the moment of use is neutral.
+  So this draws the ROUTES. One origin at the top, three paths down through
+  however many copies each passes, converging on the session. Path LENGTH is
+  the argument: the long lane is the one that lags.
 
-  DATED SNAPSHOTS, NOT A CURRENT-STATE VIEW. docs/delivery.json holds one entry
-  per state the system has been in, plus one marked `planned`. Stepping through
-  them is the point: the shape of the fix is only legible against the shape of
-  what it replaces. A `planned` snapshot is a design and says so; when it ships
-  it becomes `current` and a new `planned` may follow it.
+  DATED SNAPSHOTS. docs/delivery.json holds one entry per state the system has
+  been in plus one marked `planned`. Stepping is the point; the shape of the fix
+  is only legible against the shape of what it replaces.
+
+  TWO MECHANICS THIS PAGE IS BUILT AROUND.
+  1. An x-for inside <svg> draws nothing: Alpine clones a <template> into the
+     HTML namespace and <rect> parses as an unknown element. So the diagram is
+     built in JS instead, as real nodes through createElementNS, driven by
+     x-effect. Nodes carry data-node for a delegated listener rather than
+     Alpine bindings. Building nodes rather than interpolating a markup string
+     also settles escaping at the root: attributes go through setAttribute and
+     labels through textContent, neither of which parses markup, so the page
+     needs no local escape helper (the estate keeps exactly one, window.esc in
+     lib/vanilla-bundle.js, and this page does not boot the chain to reach it).
+  2. No modal, and no daisyUI tooltip. Every node explains itself in place, on
+     hover where the pointer is fine and on tap everywhere, per the house
+     style's compliant-tooltip rules.
 
   Data at ../docs/delivery.json, or ?src=owner/repo@ref:path for another copy.
 -->
+<style>
+  /* The diagram keeps its intrinsic size and pans inside its own pane rather
+     than scaling to the viewport, because scaling an SVG shrinks its type and
+     the house style does not let type shrink to fit. */
+  /* flex: none, or the SVG shrinks as a flex item and scales its own type
+     down with it: measured 726px of diagram squeezed into a 390px phone,
+     which takes 14px labels to about 7px. The pane pans instead. */
+  #dia svg { display: block; flex: none; }
+  #dia [data-node] { cursor: default; }
+  #dia [data-node]:hover .nodebox { filter: brightness(0.97); }
+
+  /* Tailwind does NOT generate fill-*/ /* or stroke-* utilities for daisyUI's
+     colours: a probe found `fill-base-100` computing to rgb(0,0,0) and
+     `stroke-base-300` to none, which drew every node as a solid black block.
+     daisyUI's custom properties are real, so the diagram paints through them
+     in CSS rather than through classes, and the palette lives here in one
+     place instead of being interpolated per element. */
+  #dia .n-box   { fill: var(--color-base-100); stroke: var(--color-base-300); }
+  #dia .n-strong{ fill: var(--color-base-200);
+                  stroke: color-mix(in oklch, var(--color-base-content) 35%, transparent); }
+  #dia .n-pinned{ fill: color-mix(in oklch, var(--color-warning) 45%, var(--color-base-100));
+                  stroke: color-mix(in oklch, var(--color-warning) 55%, var(--color-base-content)); }
+  #dia .n-label { fill: var(--color-base-content); }
+  #dia .n-sub   { fill: color-mix(in oklch, var(--color-base-content) 60%, transparent); }
+  #dia .n-edge  { stroke: color-mix(in oklch, var(--color-base-content) 32%, transparent); }
+  #dia .n-arrow { fill: color-mix(in oklch, var(--color-base-content) 32%, transparent); }
+  #dia .n-faint { fill: color-mix(in oklch, var(--color-base-content) 45%, transparent); }
+</style>
 </head>
 <body class="bg-base-200">
 
@@ -48,112 +87,54 @@
           <span class="text-base text-primary" x-text="snap.headline"></span>
         </span>
       </template>
-      <div class="grow"></div>
-      <button type="button" class="btn btn-sm btn-ghost gap-1.5" @click="$refs.info.showModal()"
-              aria-label="Findings and method">
-        <i class="ph ph-info"></i><span>Findings</span>
-      </button>
     </div>
     <p class="text-base text-base-content/70 text-balance mt-1" x-show="snap" x-text="snap?.title"></p>
   </header>
 
-  <main class="overflow-y-auto px-4 sm:px-6 py-5">
-    <div x-show="err" class="alert alert-warning text-base" x-text="err"></div>
+  <main id="pane" class="overflow-auto relative">
+    <div x-show="err" class="alert alert-warning text-base m-4" x-text="err"></div>
+
+    <!-- The diagram. Delegated pointer handling, because x-html content
+         carries no Alpine bindings of its own. -->
+    <div id="dia" class="p-4 sm:p-6 flex justify-center" x-effect="draw()"
+         @pointerover="over($event)" @pointerout="out($event)" @click="tap($event)"></div>
 
     <template x-if="snap">
-      <div class="flex flex-col gap-7">
-
-        <!-- ROUTES. One track each, left to right, main's tip into a session.
-             The chevron between nodes is the copy step; the terminal chip is
-             the carrier the session actually sees. -->
-        <section>
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/40 mb-3">Routes into a session</h2>
-          <div class="flex flex-col gap-3">
-            <template x-for="r in view.routes" :key="snap.date + snap.state + r.id">
-              <div class="rounded-lg border bg-base-100 px-3 py-2.5"
-                   :class="riskBorder(r.state, r.freshness)">
-                <div class="flex items-baseline gap-2 flex-wrap mb-2">
-                  <span class="font-semibold" x-text="r.label"></span>
-                  <span class="badge badge-sm" :class="freshClass(r.freshness)" x-text="fresh(r.freshness)?.label"></span>
-                  <span class="text-base" :class="stateTone(r.state)" x-show="r.state !== 'working'" x-text="r.state"></span>
-                  <div class="grow"></div>
-                  <button type="button" class="btn btn-xs btn-ghost" x-show="r.note"
-                          @click="detail = { title: r.label, body: r.note }; $refs.info.showModal()"
-                          :aria-label="'About ' + r.label"><i class="ph ph-note"></i></button>
-                </div>
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <template x-for="(n, i) in r.nodes" :key="r.id + n.id + i">
-                    <span class="flex items-center gap-1.5">
-                      <i class="ph ph-caret-right text-base-content/30" x-show="i > 0"></i>
-                      <button type="button" class="rounded-md border px-2 py-1 text-base text-left"
-                              :class="n.freshness === 'pinned' ? 'border-warning bg-warning/10' : 'border-base-300 bg-base-100'"
-                              @click="openNode(n)"
-                              x-text="n.label"></button>
-                    </span>
-                  </template>
-                  <span class="flex items-center gap-1.5">
-                    <i class="ph ph-caret-right text-base-content/30"></i>
-                    <span class="rounded-md border border-base-300 bg-base-200 px-2 py-1 text-base"
-                          x-text="r.carrier"></span>
-                  </span>
-                  <template x-for="(f, j) in r.fallbackNodes" :key="r.id + 'fb' + f.id + j">
-                    <span class="flex items-center gap-1.5 opacity-50">
-                      <span class="text-base text-base-content/50" x-text="j === 0 ? 'else' : 'then'"></span>
-                      <button type="button" class="rounded-md border border-dashed border-base-300 px-2 py-1 text-base text-left"
-                              @click="openNode(f)" x-text="f.label"></button>
-                    </span>
-                  </template>
-                </div>
-                <p class="text-base text-base-content/60 text-pretty mt-2" x-text="'reaches ' + r.scope"></p>
-              </div>
-            </template>
-          </div>
-        </section>
-
-        <!-- COPIES. Every place the two documents physically sit, on one
-             machine, on this date. `goes` marks the ones the next state
-             removes, so the delta reads without a compare mode. -->
-        <section>
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/40 mb-3">
-            <span x-text="'Copies on a machine · ' + view.copies.length"></span>
-            <span class="text-warning font-normal normal-case tracking-normal"
-                  x-show="view.going.length" x-text="'· ' + view.going.length + ' the next state removes'"></span>
-          </h2>
-          <div class="grid gap-2 sm:grid-cols-2">
-            <template x-for="s in view.copies" :key="snap.date + snap.state + s.id">
-              <button type="button" class="rounded-lg border bg-base-100 px-3 py-2 text-left"
-                      :class="s.goes ? 'border-warning/60' : 'border-base-300'" @click="openNode(s)">
-                <div class="flex items-baseline gap-2 flex-wrap">
-                  <span class="font-semibold" :class="s.goes && 'line-through decoration-warning/60'"
-                        x-text="s.label"></span>
-                  <span class="badge badge-sm" :class="freshClass(s.freshness)" x-text="fresh(s.freshness)?.label"></span>
-                  <span class="text-base text-base-content/50" x-show="s.count" x-text="'×' + s.count"></span>
-                </div>
-                <code class="text-xs text-base-content/50 break-all" x-text="s.where"></code>
-              </button>
-            </template>
-          </div>
-        </section>
-
-        <!-- The caps the injected route runs against, where the snapshot
-             declares them. Bytes only; the Injection tab draws the bars. -->
-        <section x-show="snap.caps">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/40 mb-3">Caps on the injected route</h2>
-          <div class="flex flex-col gap-2">
-            <template x-for="c in (snap.caps || [])" :key="c.id">
-              <div class="rounded-lg border border-base-300 bg-base-100 px-3 py-2">
-                <div class="flex items-baseline gap-2 flex-wrap">
-                  <span class="font-semibold" x-text="c.label"></span>
-                  <code class="text-base text-primary" x-text="c.bytes.toLocaleString() + ' bytes'"></code>
-                </div>
-                <p class="text-base text-base-content/60 text-pretty" x-text="'caveat: ' + c.caveat"></p>
-              </div>
-            </template>
-          </div>
-        </section>
-
+      <div class="px-4 sm:px-6 pb-5 flex flex-col gap-1.5">
+        <template x-for="e in (snap.evidence || [])" :key="e">
+          <p class="text-base text-pretty flex gap-2">
+            <i class="ph ph-dot-outline text-base-content/40 shrink-0 mt-1"></i><span x-text="e"></span>
+          </p>
+        </template>
+        <p class="text-base text-base-content/50 text-pretty mt-1" x-text="snap.provenance"></p>
       </div>
     </template>
+
+    <!-- The tooltip. Not pointer-events-none, so it can be entered and its
+         text selected; leaving BOTH it and its node starts the close timer. -->
+    <div id="tip" x-show="tip" x-cloak
+         @pointerenter="clearTimeout(closeT)" @pointerleave="scheduleClose()"
+         class="absolute z-30 w-72 rounded-lg border border-base-300 bg-base-100 shadow-lg px-3 py-2.5"
+         :style="'left:' + tipX + 'px; top:' + tipY + 'px'">
+      <template x-if="tip">
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-baseline gap-2 flex-wrap">
+            <span class="font-semibold" x-text="tip.label"></span>
+            <span x-show="tip.freshness" class="badge badge-sm"
+                  :class="tip.freshness === 'pinned' ? 'badge-warning' : 'badge-ghost'"
+                  x-text="fresh(tip.freshness)?.label"></span>
+          </div>
+          <p class="text-base text-pretty" x-text="tip.gloss"></p>
+          <code x-show="tip.where" class="text-xs text-base-content/60 break-all" x-text="tip.where"></code>
+          <p x-show="tip.upkeep" class="text-xs text-base-content/60 text-pretty"
+             x-text="'Refreshed: ' + tip.upkeep"></p>
+          <p x-show="tip.freshness" class="text-xs text-base-content/60 text-pretty"
+             x-text="fresh(tip.freshness)?.gloss + '. Lag: ' + fresh(tip.freshness)?.lag + '.'"></p>
+          <p x-show="tip.goes" class="text-xs text-warning text-pretty">The next state removes this copy.</p>
+          <p x-show="tip.note" class="text-xs text-base-content/70 text-pretty" x-text="tip.note"></p>
+        </div>
+      </template>
+    </div>
   </main>
 
   <footer class="bg-base-100 border-t border-base-300 px-4 sm:px-6 py-2 flex items-center gap-3">
@@ -175,109 +156,250 @@
     </button>
   </footer>
 
-  <dialog class="modal" x-ref="info" @close="detail = null">
-    <div class="modal-box max-w-2xl">
-      <template x-if="detail">
-        <div>
-          <h3 class="font-semibold text-lg mb-2" x-text="detail.title"></h3>
-          <p class="text-base text-pretty" x-text="detail.body"></p>
-        </div>
-      </template>
-      <template x-if="!detail && snap">
-        <div class="flex flex-col gap-4">
-          <div>
-            <h3 class="font-semibold text-lg" x-text="snap.title"></h3>
-            <p class="text-base text-base-content/60 text-pretty" x-text="'provenance: ' + snap.provenance"></p>
-          </div>
-          <ul class="list-disc pl-5 flex flex-col gap-2">
-            <template x-for="f in (snap.evidence || [])" :key="f">
-              <li class="text-base text-pretty" x-text="f"></li>
-            </template>
-          </ul>
-          <div>
-            <h4 class="text-sm font-semibold uppercase tracking-wide text-base-content/40 mb-1">Freshness</h4>
-            <template x-for="f in (data?.freshness || [])" :key="f.id">
-              <p class="text-base text-pretty"><span class="font-semibold" x-text="f.label"></span><span x-text="' — ' + f.gloss + '. Lag: ' + f.lag + '.'"></span></p>
-            </template>
-          </div>
-          <p class="text-base text-base-content/60 text-pretty" x-text="data?.note"></p>
-        </div>
-      </template>
-      <div class="modal-action"><form method="dialog"><button class="btn btn-sm">Close</button></form></div>
-    </div>
-    <form method="dialog" class="modal-backdrop"><button aria-label="Close">close</button></form>
-  </dialog>
-
 </div>
 
 <script>
+const NW = 176, NH = 48, LANEGAP = 30, VGAP = 42, PAD = 18;
+const SVGNS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs = {}, text = null) => {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) if (v != null && v !== '') n.setAttribute(k, v);
+  if (text != null) n.textContent = text;
+  return n;
+};
+
 function delivery() {
   return {
-    data: null, snaps: [], i: 0, err: '', detail: null,
+    data: null, snaps: [], i: 0, err: '', tip: null, tipX: 0, tipY: 0, openT: 0, closeT: 0, pinnedId: '',
 
     get snap() { return this.snaps[this.i] || null; },
 
-    // Resolved once per snapshot rather than looked up per item in the
-    // template. An x-for calling a lookup that depends on the current index
-    // rendered a mix of two snapshots' labels: the DOM was reused across an
-    // index change and the per-item text did not follow. Chains carry node
-    // OBJECTS here, so nothing in the template resolves anything.
-    get view() {
+    // Resolved once per snapshot. Chains carry node OBJECTS, because an x-for
+    // calling a per-item lookup rendered a mix of two snapshots' labels after
+    // the index moved: the DOM was reused and the text did not follow.
+    get lanes() {
       const s = this.snap;
-      if (!s) return { routes: [], copies: [], going: [] };
+      if (!s) return [];
       const by = new Map((s.stores || []).map(n => [n.id, n]));
-      const copies = (s.stores || []).filter(n => n.copy);
-      return {
-        routes: (s.routes || []).map(r => ({
-          ...r,
-          nodes: (r.chain || []).map(id => by.get(id) || { id, label: id, freshness: null }),
-          fallbackNodes: (r.fallbacks || []).map(id => by.get(id) || { id, label: id, freshness: null }),
-        })),
-        copies,
-        going: copies.filter(n => n.goes),
+      return (s.routes || []).map(r => ({
+        ...r,
+        nodes: (r.chain || []).slice(1).map(id => by.get(id) || { id, label: id }),
+        fallbackNodes: (r.fallbacks || []).map(id => by.get(id) || { id, label: id }),
+        origin: by.get((r.chain || [])[0]) || null,
+      }));
+    },
+
+    // ── The diagram ────────────────────────────────────────────────────────
+    // One origin at the top, one lane per route, the session at the bottom. A
+    // lane's nodes stack downward from row 1, so the lane passing through more
+    // copies is visibly the longer one. That length IS the finding.
+    //
+    // ONE NODE, ONE BOX. Two routes reading the same store is the whole point
+    // of the planned state, and drawing it twice hid exactly that. Adjacent
+    // lanes holding the same node id on the same row merge into one span.
+    draw() {
+      const host = document.getElementById('dia');
+      const lanes = this.lanes;
+      if (!host || !this.snap) return;
+
+      const deep = Math.max(1, ...lanes.map(l => l.nodes.length));
+      const rows = deep + 3;
+      const W = PAD * 2 + lanes.length * NW + (lanes.length - 1) * LANEGAP;
+      const H = PAD * 2 + rows * NH + (rows - 1) * VGAP + 26;
+      const rowY = r => PAD + r * (NH + VGAP);
+      const laneX = k => PAD + k * (NW + LANEGAP);
+      const originX = W / 2 - NW / 2, originY = rowY(0);
+      const carrierRow = deep + 1, sessionRow = deep + 2;
+
+      const svg = svgEl('svg', {
+        viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img',
+        'aria-label': `How the conventions reach a session, ${this.snap.date} ${this.snap.state}`,
+      });
+      const defs = svgEl('defs');
+      const marker = svgEl('marker', { id: 'arw', viewBox: '0 0 8 8', refX: 7, refY: 4,
+        markerWidth: 6, markerHeight: 6, orient: 'auto' });
+      marker.appendChild(svgEl('path', { class: 'n-arrow', d: 'M0 0 L8 4 L0 8 z' }));
+      defs.appendChild(marker); svg.appendChild(defs);
+
+      const gEdges = svgEl('g'), gNodes = svgEl('g');
+
+      const seen = new Set();
+      const edge = (x1, y1, x2, y2) => {
+        const key = [x1, y1, x2, y2].map(Math.round).join(',');
+        if (seen.has(key)) return;
+        seen.add(key);
+        const m = (y1 + y2) / 2;
+        gEdges.appendChild(svgEl('path', {
+          class: 'n-edge', fill: 'none', 'stroke-width': 1.5, 'marker-end': 'url(#arw)',
+          d: `M${x1} ${y1} C ${x1} ${m}, ${x2} ${m}, ${x2} ${y2}`,
+        }));
       };
+
+      const box = (x, y, n, opts = {}) => {
+        const pinned = n.freshness === 'pinned';
+        const w = opts.w || NW, mid = x + w / 2;
+        const sub = opts.sub || (n.count ? '\u00d7' + n.count : '');
+        const g = svgEl('g', { 'data-node': n.id, tabindex: 0 });
+        g.appendChild(svgEl('rect', {
+          class: 'nodebox ' + (pinned ? 'n-pinned' : opts.strong ? 'n-strong' : 'n-box'),
+          x, y, width: w, height: NH, rx: 9,
+          'stroke-width': pinned ? 1.75 : 1.25,
+          'stroke-dasharray': n.goes ? '5 3' : null,
+        }));
+        g.appendChild(svgEl('text', { class: 'n-label', x: mid, y: y + (sub ? 21 : 29),
+          'text-anchor': 'middle', 'font-size': 14, 'font-weight': 600 }, n.label));
+        if (sub) g.appendChild(svgEl('text', { class: 'n-sub', x: mid, y: y + 37,
+          'text-anchor': 'middle', 'font-size': 12, 'font-family': 'ui-monospace,monospace' }, sub));
+        gNodes.appendChild(g);
+      };
+
+      const cap = (this.snap.caps || []).find(c => c.id === 'harness');
+      const inj = (this.snap.caps || []).find(c => c.id === 'injector');
+      const grid = [];
+      lanes.forEach((l, k) => l.nodes.forEach((n, j) => { (grid[j + 1] ||= [])[k] = n; }));
+      lanes.forEach((l, k) => {
+        (grid[carrierRow] ||= [])[k] = { ...l.carrier, id: 'carrier:' + l.id,
+          sub: l.id === 'inject' && cap && inj
+            ? inj.bytes.toLocaleString() + ' / ' + cap.bytes.toLocaleString() : '' };
+      });
+
+      const rect = [], spans = [];
+      grid.forEach((row, r) => {
+        if (!row) return;
+        rect[r] = [];
+        for (let k = 0; k < lanes.length;) {
+          const n = row[k];
+          if (!n) { k++; continue; }
+          let end = k;
+          while (end + 1 < lanes.length && row[end + 1] && row[end + 1].id === n.id) end++;
+          const x = laneX(k), w = laneX(end) + NW - x, y = rowY(r);
+          for (let q = k; q <= end; q++) rect[r][q] = { x, y, w, cx: x + w / 2 };
+          spans.push({ n, x, y, w });
+          k = end + 1;
+        }
+      });
+
+      const origin = lanes[0]?.origin;
+      if (origin) box(originX, originY, origin, { strong: true });
+
+      lanes.forEach((l, k) => {
+        let px = W / 2, py = originY + NH;
+        for (let r = 1; r <= carrierRow; r++) {
+          const cell = rect[r] && rect[r][k];
+          if (!cell) continue;
+          edge(px, py, cell.cx, cell.y);
+          px = cell.cx; py = cell.y + NH;
+        }
+        edge(px, py, W / 2, rowY(sessionRow));
+        // Fallbacks hang under the carrier, dimmed, so a route that has one
+        // shows it without implying it is always traversed.
+        const cc = rect[carrierRow] && rect[carrierRow][k];
+        l.fallbackNodes.forEach((f, j) => {
+          const g = svgEl('g', { 'data-node': f.id });
+          g.appendChild(svgEl('text', { class: 'n-faint', x: cc ? cc.cx : laneX(k) + NW / 2,
+            y: (cc ? cc.y : rowY(carrierRow)) + NH + 24 + j * 22,
+            'text-anchor': 'middle', 'font-size': 12 },
+            (j === 0 ? 'else ' : 'then ') + f.label));
+          gNodes.appendChild(g);
+        });
+      });
+
+      spans.forEach(d => box(d.x, d.y, d.n, { w: d.w, sub: d.n.sub }));
+      const sess = this.data?.session || { id: 'session', label: 'the session' };
+      box(originX, rowY(sessionRow), { ...sess, id: 'session' }, { strong: true });
+
+      svg.append(gEdges, gNodes);
+      host.replaceChildren(svg);
+    },
+
+    // ── Tooltips ───────────────────────────────────────────────────────────
+    // Hover only where the pointer is fine; tap toggles everywhere. Toggling
+    // reads the ACTUAL open node rather than a second flag, so the two cannot
+    // fall out of step.
+    nodeById(id) {
+      if (id === 'session') return { ...(this.data?.session || {}), id: 'session' };
+      if (id.startsWith('carrier:')) {
+        const l = this.lanes.find(x => 'carrier:' + x.id === id);
+        return l ? { ...l.carrier, id } : null;
+      }
+      return (this.snap?.stores || []).find(n => n.id === id) || null;
+    },
+    fresh(id) { return (this.data?.freshness || []).find(f => f.id === id) || null; },
+    fine() { return matchMedia('(hover: hover) and (pointer: fine)').matches; },
+
+    show(id, el) {
+      const n = this.nodeById(id);
+      if (!n) return;
+      const main = document.getElementById('pane');
+      if (!main) return;
+      const host = main.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      // Coordinates in the pane's scrolled content space, since the panel is
+      // absolutely positioned inside it. Clamped so it never hangs off an edge.
+      this.tipX = Math.max(8, Math.min(
+        r.left - host.left + main.scrollLeft + r.width / 2 - 144,
+        Math.max(8, main.scrollWidth - 296)));
+      this.tipY = r.bottom - host.top + main.scrollTop + 8;
+      this.tip = n;
+      // Flip above the node when the panel would run past the bottom of the
+      // pane. Its height is only knowable once rendered, so measure and adjust.
+      this.$nextTick(() => {
+        const panel = document.getElementById('tip');
+        if (!panel) return;
+        const h = panel.offsetHeight;
+        if (this.tipY - main.scrollTop + h > main.clientHeight - 8) {
+          this.tipY = Math.max(8, r.top - host.top + main.scrollTop - h - 8);
+        }
+      });
+    },
+    scheduleClose() { clearTimeout(this.closeT); this.closeT = setTimeout(() => { this.tip = null; this.pinnedId = ''; }, 220); },
+
+    over(e) {
+      if (!this.fine() || this.pinnedId) return;
+      const g = e.target.closest('[data-node]'); if (!g) return;
+      clearTimeout(this.closeT); clearTimeout(this.openT);
+      this.openT = setTimeout(() => this.show(g.dataset.node, g), 140);
+    },
+    out(e) {
+      if (!this.fine() || this.pinnedId) return;
+      const g = e.target.closest('[data-node]'); if (!g) return;
+      if (g.contains(e.relatedTarget)) return;
+      clearTimeout(this.openT); this.scheduleClose();
+    },
+    tap(e) {
+      const g = e.target.closest('[data-node]'); if (!g) return;
+      clearTimeout(this.openT); clearTimeout(this.closeT);
+      const id = g.dataset.node;
+      if (this.tip && this.tip.id === id) { this.tip = null; this.pinnedId = ''; return; }
+      this.pinnedId = id; this.show(id, g);
     },
 
     async boot() {
       try { this.data = await load(new URLSearchParams(location.search)); }
       catch (e) { this.err = 'Could not load data: ' + e.message; return; }
       this.snaps = this.data.snapshots || [];
-      // Open on `current`, not on the newest entry: a `planned` snapshot
-      // shares its date with the state it replaces, so "last" is the design
-      // and the reader wants today first.
+      // Open on `current`, not on the newest entry: a `planned` snapshot shares
+      // its date with the state it replaces, so "last" is the design.
       const cur = this.snaps.findIndex(s => s.state === 'current');
       this.i = cur < 0 ? this.snaps.length - 1 : cur;
       addEventListener('keydown', e => {
+        if (e.key === 'Escape') { this.tip = null; this.pinnedId = ''; }
         if (e.key === 'ArrowLeft') this.step(-1);
         if (e.key === 'ArrowRight') this.step(1);
       });
+      // Capture phase, because a handler that stops propagation would otherwise
+      // strand the panel open.
+      addEventListener('pointerdown', e => {
+        if (!this.tip) return;
+        const panel = document.getElementById('tip');
+        if (e.target.closest('[data-node]') || (panel && panel.contains(e.target))) return;
+        this.tip = null; this.pinnedId = '';
+      }, true);
     },
 
-    step(d) { this.i = Math.min(this.snaps.length - 1, Math.max(0, this.i + d)); },
-    fresh(id) { return (this.data?.freshness || []).find(f => f.id === id) || null; },
-
-    openNode(n) {
-      if (!n || !n.where) return;
-      const f = this.fresh(n.freshness);
-      this.detail = {
-        title: n.label,
-        body: [n.where, 'Refreshed: ' + n.upkeep, f && (f.label + ' — ' + f.gloss + '. Lag: ' + f.lag + '.'), n.note]
-          .filter(Boolean).join('\n\n'),
-      };
-      this.$refs.info.showModal();
-    },
-
-    // One axis of colour: staleness risk. A pinned copy is the only thing
-    // that can silently govern a session with an older rule, so it is the
-    // only thing marked. Everything else reads neutral.
-    freshClass(id) { return id === 'pinned' ? 'badge-warning' : 'badge-ghost'; },
-    riskBorder(state, freshness) {
-      if (state === 'lagging' || state === 'broken') return 'border-error/60';
-      if (freshness === 'pinned') return 'border-warning/50';
-      return 'border-base-300';
-    },
-    stateTone(state) {
-      return state === 'lagging' || state === 'broken' ? 'text-error' : 'text-base-content/50';
+    step(d) {
+      this.i = Math.min(this.snaps.length - 1, Math.max(0, this.i + d));
+      this.tip = null; this.pinnedId = '';
     },
     stateClass(state) {
       return { current: 'badge-primary', planned: 'badge-outline', historical: 'badge-ghost' }[state] || 'badge-ghost';
@@ -289,8 +411,8 @@ function delivery() {
   };
 }
 
-// Same loading contract as pages/doc-growth.html: self by default so a
-// headless shot renders from the checkout, ?url= for an arbitrary payload,
+// Same loading contract as pages/doc-growth.html: self by default so a headless
+// shot renders from the checkout, ?url= for an arbitrary payload,
 // ?src=owner/repo@ref:path through the API on the viewer's stored token.
 async function load(q) {
   if (q.get('url')) return (await fetch(q.get('url'))).json();

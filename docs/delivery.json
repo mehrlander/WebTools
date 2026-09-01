@@ -42,6 +42,7 @@
         {
           "id": "origin",
           "label": "docs/ on main",
+          "gloss": "The two conventions documents as authored, on main in the hub repository. Every other copy on this diagram descends from this one.",
           "where": "github.com/mehrlander/web-tools",
           "upkeep": "authored",
           "freshness": "tip",
@@ -49,7 +50,8 @@
         },
         {
           "id": "checkout",
-          "label": "session checkout docs/",
+          "label": "checkout docs/",
+          "gloss": "The working clone of the repository this session is editing, on the session’s own branch rather than on main.",
           "where": "the container's clone of the repo",
           "upkeep": "cloned at session start",
           "freshness": "branch",
@@ -64,7 +66,10 @@
             "origin",
             "checkout"
           ],
-          "carrier": "project_instructions",
+          "carrier": {
+            "label": "project_instructions",
+            "gloss": "Text the harness places in context at session start because a CLAUDE.md @-imported it. No size ceiling, and nothing measures it."
+          },
           "freshness": "branch",
           "scope": "sessions whose project root includes web-tools",
           "state": "working"
@@ -75,7 +80,10 @@
           "chain": [
             "origin"
           ],
-          "carrier": "session hook stdout",
+          "carrier": {
+            "label": "session hook stdout",
+            "gloss": "Everything the SessionStart hooks print, concatenated and placed in context. Past a ceiling the harness keeps about 2,000 bytes and discards the rest without saying so."
+          },
           "freshness": "tip",
           "scope": "nothing: inject-conventions.sh shipped this day and no repo named it for 26 days",
           "state": "idle"
@@ -96,6 +104,7 @@
         {
           "id": "origin",
           "label": "docs/ on main",
+          "gloss": "The two conventions documents as authored, on main in the hub repository. Every other copy on this diagram descends from this one.",
           "where": "github.com/mehrlander/web-tools",
           "upkeep": "authored",
           "freshness": "tip",
@@ -103,7 +112,8 @@
         },
         {
           "id": "checkout",
-          "label": "session checkout docs/",
+          "label": "checkout docs/",
+          "gloss": "The working clone of the repository this session is editing, on the session’s own branch rather than on main.",
           "where": "the container's clone of the repo",
           "upkeep": "cloned at session start",
           "freshness": "branch",
@@ -118,7 +128,10 @@
             "origin",
             "checkout"
           ],
-          "carrier": "project_instructions",
+          "carrier": {
+            "label": "project_instructions",
+            "gloss": "Text the harness places in context at session start because a CLAUDE.md @-imported it. No size ceiling, and nothing measures it."
+          },
           "freshness": "branch",
           "scope": "sessions whose project root includes web-tools",
           "state": "working"
@@ -129,7 +142,10 @@
           "chain": [
             "origin"
           ],
-          "carrier": "session hook stdout",
+          "carrier": {
+            "label": "session hook stdout",
+            "gloss": "Everything the SessionStart hooks print, concatenated and placed in context. Past a ceiling the harness keeps about 2,000 bytes and discards the rest without saying so."
+          },
           "freshness": "tip",
           "scope": "every home session, in name only",
           "state": "broken",
@@ -151,6 +167,7 @@
         {
           "id": "origin",
           "label": "docs/ on main",
+          "gloss": "The two conventions documents as authored, on main in the hub repository. Every other copy on this diagram descends from this one.",
           "where": "github.com/mehrlander/web-tools",
           "upkeep": "authored",
           "freshness": "tip",
@@ -158,7 +175,8 @@
         },
         {
           "id": "repo-vendored",
-          "label": ".claude/skills/web-tools/ on main",
+          "label": "vendored copy",
+          "gloss": "A second copy of the same two files inside the plugin payload folder, because the plugin ships ./.claude/skills and docs/ does not travel with it. Written by the commit hook, never by hand.",
           "where": "github.com/mehrlander/web-tools",
           "upkeep": "pre-commit leg 1c copies docs/ and stages it",
           "freshness": "tip",
@@ -167,7 +185,8 @@
         },
         {
           "id": "pin",
-          "label": "pinned plugin install",
+          "label": "pinned install",
+          "gloss": "The plugin as installed, frozen at one commit. Several pins are kept at once and a session’s hooks run from one of them, which is why this node can be days behind main.",
           "where": "~/.claude/plugins/cache/web-tools/portable/<sha>/web-tools/",
           "upkeep": "on plugin update; older pins retained",
           "freshness": "pinned",
@@ -175,7 +194,8 @@
         },
         {
           "id": "checkout",
-          "label": "session checkout docs/",
+          "label": "checkout docs/",
+          "gloss": "The working clone of the repository this session is editing, on the session’s own branch rather than on main.",
           "where": "the container's clone of the repo",
           "upkeep": "cloned at session start",
           "freshness": "branch",
@@ -183,7 +203,8 @@
         },
         {
           "id": "raw",
-          "label": "raw.githubusercontent.com",
+          "label": "raw.github",
+          "gloss": "The file served straight from main over HTTPS. Nothing is stored, so nothing can go stale, and nothing works when the network is blocked.",
           "where": "the network, on the sandbox allowlist",
           "upkeep": "not stored: read at the moment of use",
           "freshness": "tip",
@@ -199,7 +220,10 @@
             "origin",
             "checkout"
           ],
-          "carrier": "project_instructions",
+          "carrier": {
+            "label": "project_instructions",
+            "gloss": "Text the harness places in context at session start because a CLAUDE.md @-imported it. No size ceiling, and nothing measures it."
+          },
           "freshness": "branch",
           "scope": "sessions whose project root includes web-tools",
           "state": "working"
@@ -212,7 +236,10 @@
             "repo-vendored",
             "pin"
           ],
-          "carrier": "session hook stdout",
+          "carrier": {
+            "label": "session hook stdout",
+            "gloss": "Everything the SessionStart hooks print, concatenated and placed in context. Past a ceiling the harness keeps about 2,000 bytes and discards the rest without saying so."
+          },
           "freshness": "pinned",
           "scope": "any repo that drops the one-line opt-in",
           "state": "working",
@@ -225,7 +252,10 @@
             "origin",
             "raw"
           ],
-          "carrier": "on demand, mid-session",
+          "carrier": {
+            "label": "on demand",
+            "gloss": "Text fetched when the skill is invoked, part-way through a session rather than at its start. It governs only from that point on."
+          },
           "freshness": "tip",
           "scope": "any session that invokes it",
           "state": "working"
@@ -260,6 +290,7 @@
         {
           "id": "origin",
           "label": "docs/ on main",
+          "gloss": "The two conventions documents as authored, on main in the hub repository. Every other copy on this diagram descends from this one.",
           "where": "github.com/mehrlander/web-tools",
           "upkeep": "authored",
           "freshness": "tip",
@@ -267,7 +298,8 @@
         },
         {
           "id": "repo-vendored",
-          "label": ".claude/skills/web-tools/ on main",
+          "label": "vendored copy",
+          "gloss": "A second copy of the same two files inside the plugin payload folder, because the plugin ships ./.claude/skills and docs/ does not travel with it. Written by the commit hook, never by hand.",
           "where": "github.com/mehrlander/web-tools",
           "upkeep": "pre-commit leg 1c copies docs/ and stages it",
           "freshness": "tip",
@@ -277,7 +309,8 @@
         },
         {
           "id": "clone-docs",
-          "label": "marketplace clone docs/",
+          "label": "clone docs/",
+          "gloss": "Claude Code keeps its own plain git checkout of the whole hub repository beside the plugin cache. It carries docs/, and it pulls from main when the container comes up.",
           "where": "~/.claude/plugins/marketplaces/web-tools/docs/",
           "upkeep": "git pull at session start (observed 16:28:19, before the hooks ran at 16:28:24)",
           "freshness": "session",
@@ -285,7 +318,8 @@
         },
         {
           "id": "clone-vendored",
-          "label": "marketplace clone .claude/skills/web-tools/",
+          "label": "clone vendored",
+          "gloss": "The vendored copy again, riding inside that same checkout because a clone takes the whole tree. Nothing reads it.",
           "where": "~/.claude/plugins/marketplaces/web-tools/.claude/skills/web-tools/",
           "upkeep": "the same pull",
           "freshness": "session",
@@ -294,7 +328,8 @@
         },
         {
           "id": "pin",
-          "label": "pinned plugin installs",
+          "label": "pinned install",
+          "gloss": "The plugin as installed, frozen at one commit. Several pins are kept at once and a session’s hooks run from one of them, which is why this node can be days behind main.",
           "where": "~/.claude/plugins/cache/web-tools/portable/<sha>/web-tools/",
           "upkeep": "on plugin update; older pins retained",
           "freshness": "pinned",
@@ -305,7 +340,8 @@
         },
         {
           "id": "checkout",
-          "label": "session checkout docs/",
+          "label": "checkout docs/",
+          "gloss": "The working clone of the repository this session is editing, on the session’s own branch rather than on main.",
           "where": "the container's clone of the repo",
           "upkeep": "cloned at session start",
           "freshness": "branch",
@@ -313,7 +349,8 @@
         },
         {
           "id": "checkout-vendored",
-          "label": "session checkout .claude/skills/web-tools/",
+          "label": "checkout vendored",
+          "gloss": "The vendored copy inside the session’s working clone. Nothing reads it either.",
           "where": "the same clone",
           "upkeep": "the same clone",
           "freshness": "branch",
@@ -322,7 +359,8 @@
         },
         {
           "id": "raw",
-          "label": "raw.githubusercontent.com",
+          "label": "raw.github",
+          "gloss": "The file served straight from main over HTTPS. Nothing is stored, so nothing can go stale, and nothing works when the network is blocked.",
           "where": "the network, on the sandbox allowlist",
           "upkeep": "not stored: read at the moment of use",
           "freshness": "tip",
@@ -338,7 +376,10 @@
             "origin",
             "checkout"
           ],
-          "carrier": "project_instructions",
+          "carrier": {
+            "label": "project_instructions",
+            "gloss": "Text the harness places in context at session start because a CLAUDE.md @-imported it. No size ceiling, and nothing measures it."
+          },
           "freshness": "branch",
           "scope": "sessions whose project root includes web-tools",
           "state": "working"
@@ -351,7 +392,10 @@
             "repo-vendored",
             "pin"
           ],
-          "carrier": "session hook stdout",
+          "carrier": {
+            "label": "session hook stdout",
+            "gloss": "Everything the SessionStart hooks print, concatenated and placed in context. Past a ceiling the harness keeps about 2,000 bytes and discards the rest without saying so."
+          },
           "freshness": "pinned",
           "scope": "any repo that drops the one-line opt-in",
           "state": "lagging",
@@ -364,7 +408,10 @@
             "origin",
             "raw"
           ],
-          "carrier": "on demand, mid-session",
+          "carrier": {
+            "label": "on demand",
+            "gloss": "Text fetched when the skill is invoked, part-way through a session rather than at its start. It governs only from that point on."
+          },
           "freshness": "tip",
           "scope": "any session that invokes it",
           "state": "working",
@@ -401,6 +448,7 @@
         {
           "id": "origin",
           "label": "docs/ on main",
+          "gloss": "The two conventions documents as authored, on main in the hub repository. Every other copy on this diagram descends from this one.",
           "where": "github.com/mehrlander/web-tools",
           "upkeep": "authored",
           "freshness": "tip",
@@ -408,7 +456,8 @@
         },
         {
           "id": "clone-docs",
-          "label": "marketplace clone docs/",
+          "label": "clone docs/",
+          "gloss": "Claude Code keeps its own plain git checkout of the whole hub repository beside the plugin cache. It carries docs/, and it pulls from main when the container comes up.",
           "where": "~/.claude/plugins/marketplaces/web-tools/docs/",
           "upkeep": "git pull at session start",
           "freshness": "session",
@@ -417,7 +466,8 @@
         },
         {
           "id": "checkout",
-          "label": "session checkout docs/",
+          "label": "checkout docs/",
+          "gloss": "The working clone of the repository this session is editing, on the session’s own branch rather than on main.",
           "where": "the container's clone of the repo",
           "upkeep": "cloned at session start",
           "freshness": "branch",
@@ -425,7 +475,8 @@
         },
         {
           "id": "pin",
-          "label": "an older pinned install",
+          "label": "pinned install",
+          "gloss": "The plugin as installed, frozen at one commit. Several pins are kept at once and a session’s hooks run from one of them, which is why this node can be days behind main.",
           "where": "~/.claude/plugins/cache/web-tools/portable/<sha>/web-tools/",
           "upkeep": "frozen: it is whatever the pin held when it was taken",
           "freshness": "pinned",
@@ -434,7 +485,8 @@
         },
         {
           "id": "raw",
-          "label": "raw.githubusercontent.com",
+          "label": "raw.github",
+          "gloss": "The file served straight from main over HTTPS. Nothing is stored, so nothing can go stale, and nothing works when the network is blocked.",
           "where": "the network, on the sandbox allowlist",
           "upkeep": "not stored: read at the moment of use",
           "freshness": "tip",
@@ -450,7 +502,10 @@
             "origin",
             "checkout"
           ],
-          "carrier": "project_instructions",
+          "carrier": {
+            "label": "project_instructions",
+            "gloss": "Text the harness places in context at session start because a CLAUDE.md @-imported it. No size ceiling, and nothing measures it."
+          },
           "freshness": "branch",
           "scope": "sessions whose project root includes web-tools",
           "state": "working"
@@ -462,7 +517,10 @@
             "origin",
             "clone-docs"
           ],
-          "carrier": "session hook stdout",
+          "carrier": {
+            "label": "session hook stdout",
+            "gloss": "Everything the SessionStart hooks print, concatenated and placed in context. Past a ceiling the harness keeps about 2,000 bytes and discards the rest without saying so."
+          },
           "freshness": "session",
           "scope": "any repo that drops the one-line opt-in",
           "state": "working",
@@ -478,7 +536,10 @@
             "origin",
             "clone-docs"
           ],
-          "carrier": "on demand, mid-session",
+          "carrier": {
+            "label": "on demand",
+            "gloss": "Text fetched when the skill is invoked, part-way through a session rather than at its start. It governs only from that point on."
+          },
           "freshness": "session",
           "scope": "any session that invokes it",
           "state": "working",
@@ -508,5 +569,9 @@
         "New risk, not present today: an old pinned script reading new-tip documents is a pair CI never tests, because injected-docs.test.mjs gates the two at one commit."
       ]
     }
-  ]
+  ],
+  "session": {
+    "label": "the session",
+    "gloss": "The context the model is actually working from. What arrives here is what governs the session; a copy that never reaches it governs nothing."
+  }
 }
