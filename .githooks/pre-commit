@@ -115,11 +115,19 @@ if [ -n "$changed_pages" ]; then
   fi
 
   # --- leg 3: thumbnail nudge (warn only, never regenerate) -------------------
+  # `virt` mirrors the SOURCES table in tools/build/pages-shots.mjs: a kit demo
+  # is shot under its virtual folder, not its real path, and pages-shots names
+  # its arguments the same way. Get this wrong and the nudge points at a
+  # thumbnail that does not exist and hands over a command that shoots nothing.
   while IFS= read -r p; do
     case "$p" in pages/index.html|pages/thumbs/*) continue ;; esac
-    thumb="pages/thumbs/${p#pages/}"; thumb="${thumb%.html}.png"
+    case "$p" in
+      lib/kits/demos/*) virt="kit-demos/${p#lib/kits/demos/}" ;;
+      *)                virt="${p#pages/}" ;;
+    esac
+    thumb="pages/thumbs/${virt}"; thumb="${thumb%.html}.png"
     if [ -e "$root/$p" ] && ! git status --porcelain -- "$thumb" | grep -q .; then
-      echo "build hook: $p changed but $thumb didn't — refresh at wrap-up: npm run pages-shots -- ${p#pages/}" >&2
+      echo "build hook: $p changed but $thumb didn't — refresh at wrap-up: npm run pages-shots -- $virt" >&2
     fi
   done <<< "$changed_pages"
 fi
