@@ -123,3 +123,37 @@ test('a heading, a list and a fence all map', () => {
   assert.ok(spans.some(s => s.text === 'Venues'), 'the heading text is a place');
   assert.ok(spans.some(s => s.atomic && s.text === 'bold'), 'the bold run is atomic');
 });
+
+// A BLOCK RENDERS WITH FORMATTING WHITESPACE BETWEEN ITS TAGS, and marked puts
+// a newline there. Mapping that newline is what broke a list item: it is the
+// FIRST text node, indexOf finds the next newline in the SOURCE, which is past
+// the whole item, and the cursor is then ahead of every real run behind it. The
+// unit mapped nothing, so no boundary in it could be dragged and no point in it
+// answered offsetAt. The page blamed markup, which was the wrong reason.
+test('a list item maps its own text, not the newline between its tags', () => {
+  const src = '1. **Is this a fact?** Delete it and link the view.';
+  const { spans } = render(src);
+  const body = spans.find(s => s.text.includes('Delete it'));
+  assert.ok(body, `nothing mapped the item's own text: ${JSON.stringify(spans)}`);
+  assert.equal(src.slice(body.at, body.at + body.text.length), body.text);
+  // The end of the item is inside a mapped run, which is what a pin needs.
+  assert.ok(body.at + body.text.length >= src.length - 1);
+});
+
+test('a table maps its cells, which the same newlines used to eat', () => {
+  const { spans } = render('| a | b |\n| --- | --- |\n| one | two |');
+  const cells = spans.map(s => s.text.trim()).filter(Boolean);
+  for (const want of ['a', 'b', 'one', 'two'])
+    assert.ok(cells.includes(want), `cell ${want} went unmapped: ${JSON.stringify(cells)}`);
+});
+
+// The narrow half of the rule. A whitespace node with NO newline is a real
+// inline separator standing between two elements, and dropping it would put a
+// hole in the map where the source has a character.
+test('an inline space between two constructs still maps', () => {
+  const src = '**one** *two*';
+  const { spans } = render(src);
+  const gap = spans.find(s => s.text === ' ');
+  assert.ok(gap, `the separator was skipped: ${JSON.stringify(spans)}`);
+  assert.equal(src[gap.at], ' ');
+});

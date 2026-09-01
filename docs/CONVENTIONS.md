@@ -27,44 +27,15 @@ A recurring fork becomes a standing decision the moment a doc states it as a def
 
 ## Status: frozen, stale, wrong
 
-Material that is preserved on purpose, or that has aged, says so where it is read. Three flavors: **`Frozen`** (preserved on purpose; the living version has moved on), **`Stale`** (no longer accurate), **`Wrong`** (flatly incorrect, not merely aged). Operated by `/portable:markers`.
+Material preserved on purpose, or that has aged, says so where it is read. The
+vocabulary is **`Frozen`** (preserved on purpose), **`Stale`** (no longer
+accurate) and **`Wrong`** (flatly incorrect, not merely aged), carried two ways:
+a **marker** on a claim in prose, and a **declaration** (`.paths.json`) on a
+file path, which is the only one that reaches a non-markdown artifact.
 
-Two carriers, split by subject:
-
-| | Subject | Says | Covers |
-| --- | --- | --- | --- |
-| **Marker** | a claim, in prose | this passage is preserved, aged, or wrong | markdown only |
-| **Declaration** | a file path | this artifact is frozen: do not edit or rebuild it | any file type |
-
-`Stale` and `Wrong` have no path analogue, since a paragraph can be wrong while its file is perfectly live. Only `Frozen` overlaps.
-
-**Marker.** Inline for one claim, or a GFM alert for a whole file or section (`> [!NOTE]` for `Frozen`, `> [!WARNING]` for the other two), with the flavor in the bold lead-in:
-
-```markdown
-**Stale 2026-07-20 → ../timeline.md:** the dates here predate the reschedule.
-```
-
-Shape: `**Flavor YYYY[-MM[-DD]] [(note)] [→ target]:**`. The target is optional and may be a path, a markdown link, or prose; only path-shaped targets are existence-checked. A `status: frozen 2026-07-06; note` frontmatter line is the optional metadata layer.
-
-**Annotate, do not rewrite:** a dated file stays put as a record, so when one of its claims ages, mark the claim rather than editing the record into agreement with the present. **Only a record gets a marker**; fix a living document instead. The tell: a banner describing text no longer in the file.
-
-**Declaration.** `.paths.json`, which may sit at a repo root **or any workspace root**, with entries relative to its own directory and the nearest declaration winning.
-
-```json
-{
-  "frozen": [
-    "research/budget-dive/dashboard.html",
-    { "path": "app/studies/", "since": "2026-07-05", "why": "task 0016: pinned exhibits",
-      "except": ["*/tools/*"] }
-  ]
-}
-```
-
-A bare string is shorthand for `{ "path": ... }`; a trailing `/` covers a directory; `except` is `fnmatch` against the path below the entry. `except` is required in practice: a frozen folder routinely contains live inputs.
-
-**A marker cannot do the declaration's job.** A GFM alert renders in markdown and nowhere else, so `.html`, `.js`, and `.csv` artifacts can never carry one.
-
-**The one cross-check, and it runs one way:** a markdown file declared frozen should carry a `Frozen` banner, because the JSON is invisible to someone opening the file. The reverse does not hold, since a `Frozen` marker inside a living document annotates one claim and implies nothing about the file.
+**Run `/markers` before marking anything, and before editing in a repo whose
+frozen areas you have not seen.** It owns the shapes, the cascade, and the
+check; this paragraph exists so you know the system is there.
 
 ## Venues: this session is not the only place work can run
 

@@ -53,4 +53,59 @@ export default async function (page) {
   });
   await page.waitForTimeout(200);
   console.log('BRANCH ' + JSON.stringify(await step()));
+
+  await panelUndo(page);
+}
+
+// ── undo from the PANEL, which is where the edit just happened ────────────
+// Two things this holds that the header pair cannot. The button has to be in
+// the panel at all, and pressing it must leave the panel open: undoing a split
+// destroys the selected uid, so a panel that only kept a selection by uid shut
+// after one press and the rest of the patch had to be undone from the header.
+async function panelUndo(page) {
+  const state = () => page.evaluate(() => {
+    const d = Alpine.$data(document.body);
+    return { at: d.at, sel: d.sel?.uid ?? null, units: d.units.length,
+             btn: !!document.querySelector('[data-panel] [aria-label="undo"]') };
+  });
+  // The page picks a unit it can actually split, since which units carry a
+  // candidate depends on the grain, and by here the earlier steps have moved it.
+  const target = await page.evaluate(() => {
+    const d = Alpine.$data(document.body);
+    for (const u of d.units) {
+      if (u.kind !== 'sent') continue;
+      d.openSplit(u);
+      if (!d.boundaries.length) continue;
+      d.menu = null;
+      document.querySelector(`[data-uid="${CSS.escape(u.uid)}"]`)?.scrollIntoView({ block: 'center' });
+      return u.uid;
+    }
+    throw new Error('no unit on this page offers a split');
+  });
+  await page.waitForTimeout(200);
+  const box = await page.evaluate((uid) => {
+    const r = [...document.querySelector(`[data-uid="${CSS.escape(uid)}"]`).getClientRects()][0];
+    return { x: r.left + 20, y: (r.top + r.bottom) / 2 };
+  }, target);
+  await page.mouse.click(box.x, box.y);
+  await page.waitForTimeout(300);
+
+  // A split, because it is the operation that destroys the selected uid.
+  await page.evaluate(() => {
+    const d = Alpine.$data(document.body);
+    d.openSplit(d.sel);
+    if (!d.boundaries.length) throw new Error('the chosen unit offers no split');
+    d.push({ op: 'split', uid: d.sel.uid, at: d.boundaries[0].at });
+  });
+  await page.waitForTimeout(300);
+  const after = await state();
+  if (!after.btn) throw new Error('no undo in the panel after an edit');
+
+  await page.click('[data-panel] [aria-label="undo"]');
+  await page.waitForTimeout(300);
+  const undone = await state();
+  console.log('PANEL-UNDO ' + JSON.stringify({ after, undone, target }));
+  if (undone.at !== after.at - 1) throw new Error('the panel undo did not step the cursor');
+  if (undone.units !== after.units - 1) throw new Error('the split did not come back out');
+  if (undone.sel !== target) throw new Error(`the panel lost its selection: ${undone.sel}`);
 }

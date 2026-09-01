@@ -54,32 +54,60 @@ source is never modified: annotations live beside it and are addressed by span.
 
 ### 2. Classify
 
-One label per unit, in a TSV keyed by `uid`.
+One label per unit, in a TSV keyed by `uid`, beside the verdict step 3 gives it.
+The two are separate questions and each has its own column.
 
 | Label | Is | Side |
 | --- | --- | --- |
 | `WHAT` | a rule, a fact of the system, a value it may hold | declaration |
 | `HOW` | syntax, a procedure, an invocation | declaration |
-| `WHY-OP` | a reason that changes how the rule applies at a boundary | **see below** |
-| `WHY-MOT` | a reason that makes the rule feel right but changes nothing | explanation |
+| `WHY` | the reason behind the rule | hinge |
 | `PROV` | when it changed, what it replaced, what failed | explanation |
 | `EVID` | a measurement, a probe, an observation | explanation |
 | `NAV` | a pointer to the document or gate that owns something | apparatus |
 | `META` | a statement about this document | apparatus |
 
-**An operative reason nearly always contains a criterion**: a condition, a threshold, a named exception. Lift the
-criterion into the declaration and the remainder becomes `WHY-MOT`. Where no
-criterion can be extracted, keep the clause: it is part of the rule.
+**A reason nearly always contains a criterion**: a condition, a threshold, a
+named exception. Lift the criterion into the declaration; what remains is
+`WHY`. Where no criterion can be extracted, keep the clause: it is part of the
+rule.
 
-*Test:* would deleting this change how someone applies the rule at a boundary
-case? Yes means it is the rule. No means it is explanation.
+There used to be two why labels, splitting a reason that changes how the rule
+applies from one that only makes it feel right. That asked for the same
+judgement the lifting already makes, once per clause, and answered it in a
+second place. One `WHY` now, and where it is blunt it is blunt.
+
+*Test:* name the condition, threshold or exception the clause adds. If you can
+name it, lift it into the declaration. If you cannot, it is `WHY`.
+
+The test used to be "would deleting this change how someone applies the rule at
+a boundary case?" That is not a test, because every explanation believes it
+changes behaviour and answers yes about itself. Asking for the criterion
+demands an artifact instead: either a nameable condition comes out or it does
+not, and nothing is settled by how strongly the sentence argues for its own
+importance. Being too permissive is part of why the second why label had to
+go.
+
+There was briefly a `CUT` label for a passage that should not be there at all.
+It was a verdict wearing a label's clothes: whether a unit belongs is not a kind
+of content, and putting it here meant the label axis could not be read as a
+reading of the document. It is `DROP` below, and the label table is about what a
+unit is again.
 
 ### 3. Dispose
 
 `KEEP` · `REWRITE` (a removable clause is fused inside) · `MOVE` (belongs to a
-named owner) · `DROP`.
+named owner) · `DROP` (says nothing the document needs).
 
 **The annotation is a contract.** Every `KEEP` must appear in the result.
+
+**A verdict is orthogonal to a label, not a refinement of it.** A unit is `WHY`
+and `DROP` at once, and neither answer narrows the other, which is why they are
+two columns and two declared lists rather than one enlarged vocabulary. Both
+ride in the standoff, and [`pages/audit-render.html`](../../pages/audit-render.html)
+paints one at a time behind a Label / Verdict switch. A `DROP` is struck through
+under **either** lens: it is the destructive one, and browsing labels over text
+the pass has already condemned is the reading the switch would otherwise allow.
 
 ### 4. Rewrite toward the declaration
 
@@ -151,13 +179,26 @@ what it produced:
 | --- | --- |
 | `units.jsonl` | step 1's segmentation |
 | `labels.tsv` | step 2's classification, `uid` / `label` / `verdict` |
-| `standoff.json` | the annotation: one label per unit, from a declared vocabulary |
+| `standoff.json` | the annotation: a label and a verdict per unit, each from a declared list |
 
-**The standoff carries the label, not the verdict.** The label says what a unit
-*is* and is the axis any question over this machine supplies; the verdict is
-what *this* pass decided to do about it, and `check.py` reads it from
-`labels.tsv`. Putting both in the standoff put a second closed vocabulary inside
-the artifact whose whole generality is that its vocabulary is declared.
+**Two axes, and a unit carries one of each.** The label says what a unit *is*
+(`vocabulary`); the verdict says what this pass decided to do about it
+(`verdicts`). They are orthogonal, so a unit is `WHY` and `DROP` at once and
+neither answer constrains the other.
+
+The standoff carried only the label until 2026-09-01, on the ground that a
+second vocabulary would arrive **closed** inside an artifact whose whole
+generality is that its vocabulary is declared. Declaring the second list beside
+the first answers that on its own terms, and the cost of the omission had come
+due: a page rendering one axis has to encode removal as a label, which is what
+`CUT` was, a verdict wearing a label's clothes on the axis that says what a unit
+is.
+
+`labels.tsv` **seeds** both axes and owns neither, exactly as it already did for
+the label: the pass writes it, the builder copies it in, and the standoff is the
+live one from there, since a relabel or a reverdict in the page lands in the
+standoff. `check.py` still reads the TSV, so a pass that ends in the page
+re-exports it; `tools/test/audit-standoff.test.mjs` fails when the two part.
 
 **The standoff does not contain the document.** It names its target and carries
 a `sha256` of the bytes it was made against, so whether it still describes that

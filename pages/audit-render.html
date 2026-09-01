@@ -67,8 +67,8 @@ window.__audit = {
    "repo": "mehrlander/web-tools",
    "ref": "main",
    "url": "https://github.com/mehrlander/web-tools/blob/main/docs/CONVENTIONS.md",
-   "bytes": 8483,
-   "sha256": "8403967519728e472428b2b5e7d1bf2742bbcf028a8add3b675112a456bf1c2e"
+   "bytes": 6486,
+   "sha256": "420aaeb5add70a32195abde2a8f137a98a09281e73110c7dfcc91c26088b42f0"
   },
   "vocabulary": [
    {
@@ -82,14 +82,9 @@ window.__audit = {
     "gloss": "syntax, a procedure, an invocation"
    },
    {
-    "label": "WHY-OP",
+    "label": "WHY",
     "side": "hinge",
-    "gloss": "a reason that changes how the rule applies at a boundary"
-   },
-   {
-    "label": "WHY-MOT",
-    "side": "explanation",
-    "gloss": "a reason that makes the rule feel right but changes nothing"
+    "gloss": "the reason behind the rule"
    },
    {
     "label": "PROV",
@@ -112,6 +107,24 @@ window.__audit = {
     "gloss": "a statement about this document"
    }
   ],
+  "verdicts": [
+   {
+    "verdict": "KEEP",
+    "gloss": "stands as written"
+   },
+   {
+    "verdict": "REWRITE",
+    "gloss": "the content earns its place; the sentence does not"
+   },
+   {
+    "verdict": "MOVE",
+    "gloss": "belongs in another document"
+   },
+   {
+    "verdict": "DROP",
+    "gloss": "says nothing the document needs"
+   }
+  ],
   "units": [
    {
     "uid": "conven-001",
@@ -119,7 +132,8 @@ window.__audit = {
     "end": 32,
     "kind": "heading",
     "words": 4,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-002",
@@ -127,23 +141,26 @@ window.__audit = {
     "end": 119,
     "kind": "sent",
     "words": 12,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-003",
-    "start": 119,
+    "start": 120,
     "end": 239,
     "kind": "sent",
     "words": 14,
-    "label": "NAV"
+    "label": "NAV",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-004",
-    "start": 239,
+    "start": 240,
     "end": 291,
     "kind": "sent",
     "words": 8,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-005",
@@ -151,15 +168,17 @@ window.__audit = {
     "end": 372,
     "kind": "sent",
     "words": 13,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-006",
-    "start": 372,
+    "start": 373,
     "end": 412,
     "kind": "sent",
     "words": 8,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-007",
@@ -167,15 +186,17 @@ window.__audit = {
     "end": 616,
     "kind": "sent",
     "words": 30,
-    "label": "NAV"
+    "label": "NAV",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-008",
-    "start": 616,
+    "start": 617,
     "end": 795,
     "kind": "sent",
     "words": 19,
-    "label": "NAV"
+    "label": "NAV",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-009",
@@ -183,15 +204,17 @@ window.__audit = {
     "end": 829,
     "kind": "sent",
     "words": 5,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-010",
-    "start": 829,
+    "start": 830,
     "end": 892,
     "kind": "sent",
     "words": 8,
-    "label": "HOW"
+    "label": "HOW",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-011",
@@ -199,7 +222,8 @@ window.__audit = {
     "end": 917,
     "kind": "heading",
     "words": 4,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-012",
@@ -207,7 +231,8 @@ window.__audit = {
     "end": 1017,
     "kind": "sent",
     "words": 14,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-013",
@@ -215,39 +240,44 @@ window.__audit = {
     "end": 1065,
     "kind": "sent",
     "words": 7,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-014",
-    "start": 1065,
+    "start": 1066,
     "end": 1131,
     "kind": "sent",
     "words": 10,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-015",
-    "start": 1131,
+    "start": 1132,
     "end": 1211,
     "kind": "sent",
     "words": 15,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-016",
-    "start": 1211,
+    "start": 1212,
     "end": 1291,
     "kind": "sent",
     "words": 15,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-017",
-    "start": 1291,
+    "start": 1292,
     "end": 1455,
     "kind": "sent",
     "words": 21,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-018",
@@ -255,7 +285,8 @@ window.__audit = {
     "end": 1524,
     "kind": "heading",
     "words": 11,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-019",
@@ -263,15 +294,17 @@ window.__audit = {
     "end": 1781,
     "kind": "sent",
     "words": 47,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-020",
-    "start": 1781,
+    "start": 1782,
     "end": 1817,
     "kind": "sent",
     "words": 7,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-021",
@@ -279,23 +312,26 @@ window.__audit = {
     "end": 1904,
     "kind": "sent",
     "words": 16,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-022",
-    "start": 1904,
+    "start": 1905,
     "end": 2180,
     "kind": "sent",
     "words": 31,
-    "label": "HOW"
+    "label": "HOW",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-023a",
     "start": 2182,
-    "end": 2276,
+    "end": 2275,
     "kind": "sent",
     "words": 16,
     "label": "WHAT",
+    "verdict": "KEEP",
     "from": "split:conven-023"
    },
    {
@@ -304,7 +340,8 @@ window.__audit = {
     "end": 2360,
     "kind": "sent",
     "words": 15,
-    "label": "WHY-OP",
+    "label": "WHY",
+    "verdict": "KEEP",
     "from": "split:conven-023"
    },
    {
@@ -313,557 +350,368 @@ window.__audit = {
     "end": 2393,
     "kind": "heading",
     "words": 5,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
-    "uid": "conven-025",
+    "uid": "conven-082",
     "start": 2395,
-    "end": 2477,
+    "end": 2469,
     "kind": "sent",
-    "words": 16,
-    "label": "WHAT"
-   },
-   {
-    "uid": "conven-026",
-    "start": 2477,
-    "end": 2645,
-    "kind": "sent",
-    "words": 22,
-    "label": "WHAT"
-   },
-   {
-    "uid": "conven-027",
-    "start": 2645,
-    "end": 2678,
-    "kind": "sent",
-    "words": 3,
-    "label": "NAV"
-   },
-   {
-    "uid": "conven-028",
-    "start": 2680,
-    "end": 2711,
-    "kind": "sent",
-    "words": 5,
-    "label": "META"
-   },
-   {
-    "uid": "conven-029",
-    "start": 2713,
-    "end": 2966,
-    "kind": "table",
-    "words": 58,
-    "label": "WHAT"
-   },
-   {
-    "uid": "conven-030a",
-    "start": 2968,
-    "end": 3011,
-    "kind": "sent",
-    "words": 7,
+    "words": 14,
     "label": "WHAT",
-    "from": "split:conven-030"
+    "verdict": "KEEP"
    },
    {
-    "uid": "conven-030b",
-    "start": 3011,
-    "end": 3075,
+    "uid": "conven-083",
+    "start": 2470,
+    "end": 2776,
     "kind": "sent",
-    "words": 12,
-    "label": "WHY-OP",
-    "from": "split:conven-030"
-   },
-   {
-    "uid": "conven-031",
-    "start": 3075,
-    "end": 3099,
-    "kind": "sent",
-    "words": 3,
-    "label": "WHAT"
-   },
-   {
-    "uid": "conven-032",
-    "start": 3101,
-    "end": 3276,
-    "kind": "sent",
-    "words": 32,
-    "label": "HOW"
-   },
-   {
-    "uid": "conven-033",
-    "start": 3278,
-    "end": 3372,
-    "kind": "code",
-    "words": 12,
-    "label": "HOW"
-   },
-   {
-    "uid": "conven-034",
-    "start": 3372,
-    "end": 3429,
-    "kind": "sent",
-    "words": 6,
-    "label": "HOW"
-   },
-   {
-    "uid": "conven-035",
-    "start": 3429,
-    "end": 3546,
-    "kind": "sent",
-    "words": 19,
-    "label": "WHAT"
-   },
-   {
-    "uid": "conven-036",
-    "start": 3546,
-    "end": 3631,
-    "kind": "sent",
-    "words": 12,
-    "label": "WHAT"
-   },
-   {
-    "uid": "conven-037",
-    "start": 3633,
-    "end": 3809,
-    "kind": "sent",
-    "words": 32,
-    "label": "WHAT"
-   },
-   {
-    "uid": "conven-038",
-    "start": 3809,
-    "end": 3873,
-    "kind": "sent",
-    "words": 11,
-    "label": "WHAT"
-   },
-   {
-    "uid": "conven-039",
-    "start": 3873,
-    "end": 3931,
-    "kind": "sent",
-    "words": 11,
-    "label": "WHY-OP"
-   },
-   {
-    "uid": "conven-040",
-    "start": 3933,
-    "end": 4100,
-    "kind": "sent",
-    "words": 25,
-    "label": "HOW"
-   },
-   {
-    "uid": "conven-041",
-    "start": 4102,
-    "end": 4301,
-    "kind": "code",
-    "words": 21,
-    "label": "HOW"
-   },
-   {
-    "uid": "conven-042",
-    "start": 4301,
-    "end": 4347,
-    "kind": "sent",
-    "words": 9,
-    "label": "HOW"
-   },
-   {
-    "uid": "conven-043",
-    "start": 4347,
-    "end": 4442,
-    "kind": "sent",
-    "words": 16,
-    "label": "HOW"
-   },
-   {
-    "uid": "conven-044a",
-    "start": 4442,
-    "end": 4477,
-    "kind": "sent",
-    "words": 5,
+    "words": 46,
     "label": "WHAT",
-    "from": "split:conven-044"
+    "verdict": "KEEP"
    },
    {
-    "uid": "conven-044b",
-    "start": 4477,
-    "end": 4524,
+    "uid": "conven-084",
+    "start": 2778,
+    "end": 2991,
     "kind": "sent",
-    "words": 7,
-    "label": "WHY-OP",
-    "from": "split:conven-044"
-   },
-   {
-    "uid": "conven-045a",
-    "start": 4526,
-    "end": 4572,
-    "kind": "sent",
-    "words": 7,
-    "label": "WHAT",
-    "from": "split:conven-045"
-   },
-   {
-    "uid": "conven-045b",
-    "start": 4572,
-    "end": 4682,
-    "kind": "sent",
-    "words": 19,
-    "label": "WHY-OP",
-    "from": "split:conven-045"
-   },
-   {
-    "uid": "conven-046a",
-    "start": 4684,
-    "end": 4794,
-    "kind": "sent",
-    "words": 18,
-    "label": "WHAT",
-    "from": "split:conven-046"
-   },
-   {
-    "uid": "conven-046b",
-    "start": 4794,
-    "end": 4852,
-    "kind": "sent",
-    "words": 10,
-    "label": "WHY-MOT",
-    "from": "split:conven-046"
-   },
-   {
-    "uid": "conven-047a",
-    "start": 4852,
-    "end": 4880,
-    "kind": "sent",
-    "words": 5,
-    "label": "WHAT",
-    "from": "split:conven-047"
-   },
-   {
-    "uid": "conven-047b",
-    "start": 4880,
-    "end": 4984,
-    "kind": "sent",
-    "words": 17,
-    "label": "WHY-OP",
-    "from": "split:conven-047"
+    "words": 37,
+    "label": "NAV",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-048",
-    "start": 4986,
-    "end": 5044,
+    "start": 2993,
+    "end": 3051,
     "kind": "heading",
     "words": 12,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-049",
-    "start": 5046,
-    "end": 5405,
+    "start": 3053,
+    "end": 3412,
     "kind": "sent",
     "words": 58,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-050",
-    "start": 5407,
-    "end": 5711,
+    "start": 3414,
+    "end": 3718,
     "kind": "sent",
     "words": 36,
-    "label": "NAV"
+    "label": "NAV",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-051",
-    "start": 5713,
-    "end": 5748,
+    "start": 3720,
+    "end": 3755,
     "kind": "heading",
     "words": 8,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-052",
-    "start": 5750,
-    "end": 5804,
+    "start": 3757,
+    "end": 3811,
     "kind": "sent",
     "words": 13,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-053",
-    "start": 5804,
-    "end": 5867,
+    "start": 3812,
+    "end": 3874,
     "kind": "sent",
     "words": 10,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-054",
-    "start": 5867,
-    "end": 5935,
+    "start": 3875,
+    "end": 3942,
     "kind": "sent",
     "words": 12,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-055",
-    "start": 5937,
-    "end": 5983,
+    "start": 3944,
+    "end": 3990,
     "kind": "heading",
     "words": 7,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-056",
-    "start": 5985,
-    "end": 6138,
+    "start": 3992,
+    "end": 4145,
     "kind": "sent",
     "words": 30,
-    "label": "WHY-OP"
+    "label": "WHY",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-057",
-    "start": 6138,
-    "end": 6235,
+    "start": 4146,
+    "end": 4242,
     "kind": "sent",
     "words": 17,
-    "label": "HOW"
+    "label": "HOW",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-058",
-    "start": 6237,
-    "end": 6239,
+    "start": 4244,
+    "end": 4311,
     "kind": "sent",
-    "words": 1,
-    "label": "META"
-   },
-   {
-    "uid": "conven-059",
-    "start": 6239,
-    "end": 6304,
-    "kind": "sent",
-    "words": 13,
-    "label": "WHAT"
+    "words": 14,
+    "label": "WHAT",
+    "verdict": "KEEP",
+    "from": "merge:conven-058+conven-059",
+    "why": "the merged unit is the rule, not the META the bare marker had to be given"
    },
    {
     "uid": "conven-060",
-    "start": 6304,
-    "end": 6307,
+    "start": 4312,
+    "end": 4405,
     "kind": "sent",
-    "words": 1,
-    "label": "META"
-   },
-   {
-    "uid": "conven-061",
-    "start": 6307,
-    "end": 6398,
-    "kind": "sent",
-    "words": 16,
-    "label": "WHAT"
+    "words": 17,
+    "label": "WHAT",
+    "verdict": "KEEP",
+    "from": "merge:conven-060+conven-061",
+    "why": "the merged unit is the rule"
    },
    {
     "uid": "conven-062",
-    "start": 6398,
-    "end": 6425,
+    "start": 4406,
+    "end": 4432,
     "kind": "sent",
     "words": 5,
-    "label": "WHY-OP"
+    "label": "WHY",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-063",
-    "start": 6425,
-    "end": 6428,
+    "start": 4433,
+    "end": 4503,
     "kind": "sent",
-    "words": 1,
-    "label": "META"
-   },
-   {
-    "uid": "conven-064",
-    "start": 6428,
-    "end": 6496,
-    "kind": "sent",
-    "words": 11,
-    "label": "WHAT"
+    "words": 12,
+    "label": "WHAT",
+    "verdict": "KEEP",
+    "from": "merge:conven-063+conven-064",
+    "why": "the merged unit is the rule"
    },
    {
     "uid": "conven-065a",
-    "start": 6498,
-    "end": 6603,
+    "start": 4505,
+    "end": 4609,
     "kind": "sent",
     "words": 20,
     "label": "WHAT",
+    "verdict": "KEEP",
     "from": "split:conven-065"
    },
    {
     "uid": "conven-065b",
-    "start": 6603,
-    "end": 6713,
+    "start": 4610,
+    "end": 4720,
     "kind": "sent",
     "words": 19,
-    "label": "WHY-MOT",
+    "label": "WHY",
+    "verdict": "KEEP",
     "from": "split:conven-065"
    },
    {
     "uid": "conven-066",
-    "start": 6713,
-    "end": 6863,
+    "start": 4721,
+    "end": 4870,
     "kind": "sent",
     "words": 25,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-067",
-    "start": 6863,
-    "end": 6964,
+    "start": 4871,
+    "end": 4971,
     "kind": "sent",
     "words": 21,
-    "label": "HOW"
+    "label": "HOW",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-068",
-    "start": 6964,
-    "end": 7119,
+    "start": 4972,
+    "end": 5126,
     "kind": "sent",
     "words": 10,
-    "label": "NAV"
+    "label": "NAV",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-069a",
-    "start": 7121,
-    "end": 7160,
+    "start": 5128,
+    "end": 5166,
     "kind": "sent",
     "words": 6,
     "label": "WHAT",
+    "verdict": "KEEP",
     "from": "split:conven-069"
    },
    {
     "uid": "conven-069b",
-    "start": 7160,
-    "end": 7225,
+    "start": 5167,
+    "end": 5232,
     "kind": "sent",
     "words": 12,
-    "label": "WHY-OP",
+    "label": "WHY",
+    "verdict": "KEEP",
     "from": "split:conven-069"
    },
    {
     "uid": "conven-070a",
-    "start": 7225,
-    "end": 7256,
+    "start": 5233,
+    "end": 5262,
     "kind": "sent",
     "words": 5,
     "label": "WHAT",
+    "verdict": "KEEP",
     "from": "split:conven-070"
    },
    {
     "uid": "conven-070b",
-    "start": 7256,
-    "end": 7422,
+    "start": 5263,
+    "end": 5429,
     "kind": "sent",
     "words": 27,
-    "label": "WHY-OP",
+    "label": "WHY",
+    "verdict": "KEEP",
     "from": "split:conven-070"
    },
    {
     "uid": "conven-071a",
-    "start": 7424,
-    "end": 7489,
+    "start": 5431,
+    "end": 5495,
     "kind": "sent",
     "words": 12,
-    "label": "WHY-OP",
+    "label": "WHY",
+    "verdict": "KEEP",
     "from": "split:conven-071"
    },
    {
     "uid": "conven-071b",
-    "start": 7489,
-    "end": 7575,
+    "start": 5496,
+    "end": 5582,
     "kind": "sent",
     "words": 18,
     "label": "WHAT",
+    "verdict": "KEEP",
     "from": "split:conven-071"
    },
    {
     "uid": "conven-072",
-    "start": 7577,
-    "end": 7590,
+    "start": 5584,
+    "end": 5597,
     "kind": "heading",
     "words": 3,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-073",
-    "start": 7592,
-    "end": 7682,
+    "start": 5599,
+    "end": 5689,
     "kind": "sent",
     "words": 15,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-074",
-    "start": 7682,
-    "end": 7770,
+    "start": 5690,
+    "end": 5777,
     "kind": "sent",
     "words": 16,
-    "label": "WHY-MOT"
+    "label": "WHY",
+    "verdict": "REWRITE"
    },
    {
     "uid": "conven-075",
-    "start": 7770,
-    "end": 7843,
+    "start": 5778,
+    "end": 5850,
     "kind": "sent",
     "words": 13,
-    "label": "WHY-OP"
+    "label": "WHY",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-076",
-    "start": 7845,
-    "end": 7927,
+    "start": 5852,
+    "end": 5934,
     "kind": "sent",
     "words": 14,
-    "label": "NAV"
+    "label": "NAV",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-077",
-    "start": 7927,
-    "end": 8145,
+    "start": 5935,
+    "end": 6152,
     "kind": "sent",
     "words": 26,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-078",
-    "start": 8147,
-    "end": 8185,
+    "start": 6154,
+    "end": 6192,
     "kind": "heading",
     "words": 6,
-    "label": "META"
+    "label": "META",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-079",
-    "start": 8187,
-    "end": 8223,
+    "start": 6194,
+    "end": 6230,
     "kind": "sent",
     "words": 7,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-080",
-    "start": 8223,
-    "end": 8391,
+    "start": 6231,
+    "end": 6398,
     "kind": "sent",
     "words": 25,
-    "label": "WHY-OP"
+    "label": "WHY",
+    "verdict": "KEEP"
    },
    {
     "uid": "conven-081",
-    "start": 8391,
-    "end": 8472,
+    "start": 6399,
+    "end": 6479,
     "kind": "sent",
     "words": 13,
-    "label": "WHAT"
+    "label": "WHAT",
+    "verdict": "KEEP"
    }
   ]
  },
- "text": "# Working conventions (portable)\n\nRemote-sandbox conventions for Claude Code web sessions; output is strictly via chat. The canonical source is `mehrlander/web-tools` at `docs/CONVENTIONS.md`, loaded by `@`-import or the `web-tools` skill. Substitute the current repo into all URL templates.\n\nThis hub holds behavior that applies whether or not anything is being surfaced. Two companions load as one set with it:\n\n- **[SURFACING.md](SURFACING.md)** — the surfacing system: the primitives that make session work visible in chat (no setup), plus the surfacing course (the guide-PR lifecycle, idle until you open a PR).\n- **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)** — installation, the plugin, and the full catalog of what travels from the hub to any repo.\n\n**Prose style:** zero em dashes. Use colons, commas, semicolons, parentheses, or new sentences.\n\n## Scope and precedence\n\n**Local `CLAUDE.md` wins wherever it conflicts with these defaults.** Beyond that, name the units:\n\n- A **session** can span several repositories. A repository's conventions apply to work done in that repository.\n- A **workstream** is one repository plus its branch and the PR that tracks it. A single session may run several at once (three repos on one branch name, say).\n- The **branch anchor**, **guide PR**, and **wrap-up** in [SURFACING.md](SURFACING.md) are per-workstream: \"the branch\" and \"the PR\" always mean this workstream's.\n\n## Standing decisions: write the answer down, not just the question\n\n**A consistency ask is not a fork.** When a treatment is approved in one place and the instruction is to apply it elsewhere (\"do the same on X so it's consistent\"), apply it to every surface it plausibly covers, show the pixels, and name what was assumed. Do not ask which surface was meant.\n\nA recurring fork becomes a standing decision the moment a doc states it as a default. Name it in `CLAUDE.md` or the relevant portable doc (this file, [SURFACING.md](SURFACING.md), [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)), and a session that hits it takes the default and notes the assumption rather than raising it fresh.\n\n**A repo fielding the same question has a missing standing decision, not a tool to disable.** Asking is a model choice, not a gated call, so a `permissions.deny` cannot reach it.\n\n## Status: frozen, stale, wrong\n\nMaterial that is preserved on purpose, or that has aged, says so where it is read. Three flavors: **`Frozen`** (preserved on purpose; the living version has moved on), **`Stale`** (no longer accurate), **`Wrong`** (flatly incorrect, not merely aged). Operated by `/portable:markers`.\n\nTwo carriers, split by subject:\n\n| | Subject | Says | Covers |\n| --- | --- | --- | --- |\n| **Marker** | a claim, in prose | this passage is preserved, aged, or wrong | markdown only |\n| **Declaration** | a file path | this artifact is frozen: do not edit or rebuild it | any file type |\n\n`Stale` and `Wrong` have no path analogue, since a paragraph can be wrong while its file is perfectly live. Only `Frozen` overlaps.\n\n**Marker.** Inline for one claim, or a GFM alert for a whole file or section (`> [!NOTE]` for `Frozen`, `> [!WARNING]` for the other two), with the flavor in the bold lead-in:\n\n```markdown\n**Stale 2026-07-20 → ../timeline.md:** the dates here predate the reschedule.\n```\n\nShape: `**Flavor YYYY[-MM[-DD]] [(note)] [→ target]:**`. The target is optional and may be a path, a markdown link, or prose; only path-shaped targets are existence-checked. A `status: frozen 2026-07-06; note` frontmatter line is the optional metadata layer.\n\n**Annotate, do not rewrite:** a dated file stays put as a record, so when one of its claims ages, mark the claim rather than editing the record into agreement with the present. **Only a record gets a marker**; fix a living document instead. The tell: a banner describing text no longer in the file.\n\n**Declaration.** `.paths.json`, which may sit at a repo root **or any workspace root**, with entries relative to its own directory and the nearest declaration winning.\n\n```json\n{\n  \"frozen\": [\n    \"research/budget-dive/dashboard.html\",\n    { \"path\": \"app/studies/\", \"since\": \"2026-07-05\", \"why\": \"task 0016: pinned exhibits\",\n      \"except\": [\"*/tools/*\"] }\n  ]\n}\n```\n\nA bare string is shorthand for `{ \"path\": ... }`; a trailing `/` covers a directory; `except` is `fnmatch` against the path below the entry. `except` is required in practice: a frozen folder routinely contains live inputs.\n\n**A marker cannot do the declaration's job.** A GFM alert renders in markdown and nowhere else, so `.html`, `.js`, and `.csv` artifacts can never carry one.\n\n**The one cross-check, and it runs one way:** a markdown file declared frozen should carry a `Frozen` banner, because the JSON is invisible to someone opening the file. The reverse does not hold, since a `Frozen` marker inside a living document annotates one claim and implies nothing about the file.\n\n## Venues: this session is not the only place work can run\n\nBesides this sandbox, work can run in a local Claude Code CLI, in Cowork on the desktop, through **Dispatch** (a phone-to-desktop relay, attended: the machine must be awake with the app open), on GitHub's hosted runners, on a **self-hosted runner** on your own machine (unattended: it queues while the machine sleeps), and in a Claude Code Remote environment.\n\nBefore concluding that something cannot be done from here, or scoping an answer to the venues visible from inside the sandbox, read [venues.md](https://github.com/mehrlander/web-tools/blob/main/docs/venues.md): what each reaches, and the attended-versus-unattended split that decides where a job belongs.\n\n## Leave it nicer than you found it\n\nAdding to a doc is a pass over it, not just an append. New material has to match the surrounding voice and structure. Go a step further and tighten related material while you are there.\n\n## Prose that describes state is unimplemented\n\nA document that restates what an app derives, or what a check enforces, is carrying a copy, and the copy is the half that ages with nothing to report it. Before adding to a doc, and whenever one has outgrown its subject, ask three questions in order:\n\n1. **Is this a fact the app derives?** Delete it and link the view.\n2. **Is this a rule the suite enforces?** Delete the description, keep a pointer to the gate. The test is the statement.\n3. **Does another document already own it?** Delete it and link there.\n\n**There is no fourth question that saves a passage, and a reason is not exempt because it is a reason.** Nearly every sentence in a bloated document is a reason somebody chose something, which is how it got bloated. What earns its place is the **criterion** inside a reason: the condition, threshold, or named exception that changes how the rule applies at an edge. Lift that into the rule and the rest goes to the PR body or the dated record that owns the decision. Operated by [`state-the-rule`](https://github.com/mehrlander/web-tools/blob/main/skills/state-the-rule/SKILL.md), which carries the labels and the checks.\n\nTwo habits: **Render before you cut**, since a definition that exists only in a tooltip is not rendered. And **look inside the file**: a paragraph repeated verbatim within one document is invisible to a cross-file duplicate scanner by construction, and to a word cap because it fits inside the budget.\n\nThe cut is only safe when something will notice it being undone, so leave a gate behind: a pointer the doc must keep, and a ceiling it must stay under.\n\n## Keep focus\n\nWhen asked to look for improvements, be wary of ideas that address a hypothetical problem. A simple, clear fix is worth making; the trap is speculative work that goes off course. The test points only at tasks you conceive, not a specific user request.\n\nThe `tasks` skill owns the filing rules; load `/tasks` before writing a task file. A friction observation goes to the repo's snags log (web-tools: [`SNAGS.md`](https://github.com/mehrlander/web-tools/blob/main/docs/SNAGS.md)), one line with a `→` to the fixing doc; the third recurrence earns a task.\n\n## Adding your own, without clobbering\n\nThe install owns only what it ships. Plugin skills are namespaced (`/portable:caption`), so a same-named skill of yours coexists; the fallback fetch hook writes a fixed file list and touches nothing else. Your own skills and any `CLAUDE.md` text below the import are never overwritten.\n"
+ "text": "# Working conventions (portable)\n\nRemote-sandbox conventions for Claude Code web sessions; output is strictly via chat. The canonical source is `mehrlander/web-tools` at `docs/CONVENTIONS.md`, loaded by `@`-import or the `web-tools` skill. Substitute the current repo into all URL templates.\n\nThis hub holds behavior that applies whether or not anything is being surfaced. Two companions load as one set with it:\n\n- **[SURFACING.md](SURFACING.md)** — the surfacing system: the primitives that make session work visible in chat (no setup), plus the surfacing course (the guide-PR lifecycle, idle until you open a PR).\n- **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)** — installation, the plugin, and the full catalog of what travels from the hub to any repo.\n\n**Prose style:** zero em dashes. Use colons, commas, semicolons, parentheses, or new sentences.\n\n## Scope and precedence\n\n**Local `CLAUDE.md` wins wherever it conflicts with these defaults.** Beyond that, name the units:\n\n- A **session** can span several repositories. A repository's conventions apply to work done in that repository.\n- A **workstream** is one repository plus its branch and the PR that tracks it. A single session may run several at once (three repos on one branch name, say).\n- The **branch anchor**, **guide PR**, and **wrap-up** in [SURFACING.md](SURFACING.md) are per-workstream: \"the branch\" and \"the PR\" always mean this workstream's.\n\n## Standing decisions: write the answer down, not just the question\n\n**A consistency ask is not a fork.** When a treatment is approved in one place and the instruction is to apply it elsewhere (\"do the same on X so it's consistent\"), apply it to every surface it plausibly covers, show the pixels, and name what was assumed. Do not ask which surface was meant.\n\nA recurring fork becomes a standing decision the moment a doc states it as a default. Name it in `CLAUDE.md` or the relevant portable doc (this file, [SURFACING.md](SURFACING.md), [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)), and a session that hits it takes the default and notes the assumption rather than raising it fresh.\n\n**A repo fielding the same question has a missing standing decision, not a tool to disable.** Asking is a model choice, not a gated call, so a `permissions.deny` cannot reach it.\n\n## Status: frozen, stale, wrong\n\nMaterial preserved on purpose, or that has aged, says so where it is read. The\nvocabulary is **`Frozen`** (preserved on purpose), **`Stale`** (no longer\naccurate) and **`Wrong`** (flatly incorrect, not merely aged), carried two ways:\na **marker** on a claim in prose, and a **declaration** (`.paths.json`) on a\nfile path, which is the only one that reaches a non-markdown artifact.\n\n**Run `/markers` before marking anything, and before editing in a repo whose\nfrozen areas you have not seen.** It owns the shapes, the cascade, and the\ncheck; this paragraph exists so you know the system is there.\n\n## Venues: this session is not the only place work can run\n\nBesides this sandbox, work can run in a local Claude Code CLI, in Cowork on the desktop, through **Dispatch** (a phone-to-desktop relay, attended: the machine must be awake with the app open), on GitHub's hosted runners, on a **self-hosted runner** on your own machine (unattended: it queues while the machine sleeps), and in a Claude Code Remote environment.\n\nBefore concluding that something cannot be done from here, or scoping an answer to the venues visible from inside the sandbox, read [venues.md](https://github.com/mehrlander/web-tools/blob/main/docs/venues.md): what each reaches, and the attended-versus-unattended split that decides where a job belongs.\n\n## Leave it nicer than you found it\n\nAdding to a doc is a pass over it, not just an append. New material has to match the surrounding voice and structure. Go a step further and tighten related material while you are there.\n\n## Prose that describes state is unimplemented\n\nA document that restates what an app derives, or what a check enforces, is carrying a copy, and the copy is the half that ages with nothing to report it. Before adding to a doc, and whenever one has outgrown its subject, ask three questions in order:\n\n1. **Is this a fact the app derives?** Delete it and link the view.\n2. **Is this a rule the suite enforces?** Delete the description, keep a pointer to the gate. The test is the statement.\n3. **Does another document already own it?** Delete it and link there.\n\n**There is no fourth question that saves a passage, and a reason is not exempt because it is a reason.** Nearly every sentence in a bloated document is a reason somebody chose something, which is how it got bloated. What earns its place is the **criterion** inside a reason: the condition, threshold, or named exception that changes how the rule applies at an edge. Lift that into the rule and the rest goes to the PR body or the dated record that owns the decision. Operated by [`state-the-rule`](https://github.com/mehrlander/web-tools/blob/main/skills/state-the-rule/SKILL.md), which carries the labels and the checks.\n\nTwo habits: **Render before you cut**, since a definition that exists only in a tooltip is not rendered. And **look inside the file**: a paragraph repeated verbatim within one document is invisible to a cross-file duplicate scanner by construction, and to a word cap because it fits inside the budget.\n\nThe cut is only safe when something will notice it being undone, so leave a gate behind: a pointer the doc must keep, and a ceiling it must stay under.\n\n## Keep focus\n\nWhen asked to look for improvements, be wary of ideas that address a hypothetical problem. A simple, clear fix is worth making; the trap is speculative work that goes off course. The test points only at tasks you conceive, not a specific user request.\n\nThe `tasks` skill owns the filing rules; load `/tasks` before writing a task file. A friction observation goes to the repo's snags log (web-tools: [`SNAGS.md`](https://github.com/mehrlander/web-tools/blob/main/docs/SNAGS.md)), one line with a `→` to the fixing doc; the third recurrence earns a task.\n\n## Adding your own, without clobbering\n\nThe install owns only what it ships. Plugin skills are namespaced (`/portable:caption`), so a same-named skill of yours coexists; the fallback fetch hook writes a fixed file list and touches nothing else. Your own skills and any `CLAUDE.md` text below the import are never overwritten.\n"
 };
 /* AUDIT:END */
 </script>
@@ -897,10 +745,49 @@ window.__audit = {
   window.marked = (await import('https://cdn.jsdelivr.net/npm/marked@12/+esm')).marked;
 
   // One hue per label. Side decides the family; the label picks the shade.
-  const HUE = { WHAT: '16,185,129', HOW: '13,148,136', 'WHY-OP': '245,158,11',
-                'WHY-MOT': '244,63,94', PROV: '219,39,119', EVID: '192,38,211',
-                NAV: '79,70,229', META: '148,163,184' };
-  const tint = (l, a) => `rgba(${HUE[l] || '148,163,184'},${a})`;
+  const HUE = { WHAT: '16,185,129', HOW: '13,148,136', WHY: '245,158,11',
+                PROV: '219,39,119', EVID: '192,38,211', NAV: '79,70,229',
+                META: '148,163,184' };
+  // The second axis, and deliberately NOT a second run of the label palette.
+  // That one is categorical, where no hue outranks another; this one is a
+  // judgment, so KEEP is the quiet default and the lens works by making the
+  // document go grey except where a decision was taken.
+  // No VALUE here appears in HUE either, which the suite holds: the Standoff
+  // table puts a label chip and a verdict chip in adjacent columns, so a shared
+  // rgb would be one swatch meaning two things in the one view that shows both.
+  const VHUE = { KEEP: '100,116,139', REWRITE: '234,88,12',
+                 MOVE: '2,132,199', DROP: '239,68,68' };
+  // Disjoint in both name and colour, so one lookup serves both axes and a
+  // template does not have to know which lens is on.
+  const RGB = { ...HUE, ...VHUE };
+  // How a unit is drawn. One tint per label either way; these decide what the
+  // tint is spent on. Kept as data because the point is to compare them.
+  const MARKS = {
+    fill:      { bg: .11, over: .26, sel: .34, tick: .45, under: 0 },
+    underline: { bg: 0,   over: .10, sel: .16, tick: 0,   under: .65 },
+    separator: { bg: 0,   over: .10, sel: .16, tick: .75, under: 0 },
+  };
+
+  // The same `\d+\.` skills/state-the-rule/segment.py guards and BULLET splits
+  // on, so the page and the segmenter agree on what a list marker is.
+  const MARKER = /^[ \t]{0,3}(?:[-*+]|\d+\.)[ \t]/;
+
+  // `kind` is the segmenter's word, and the panel was printing it raw: a reader
+  // asked what "sent" meant, which is a fair question about a field abbreviated
+  // for a JSONL file and then shown to a person.
+  const KINDS = { sent: 'sentence', heading: 'heading', code: 'code block',
+                  table: 'table', mixed: 'mixed' };
+
+  const WORD = /[\w'\u2019-]/;
+  const snapWord = (text, i) => {
+    if (i <= 0 || i >= text.length) return i;
+    if (!WORD.test(text[i - 1]) || !WORD.test(text[i])) return i;   // already between words
+    let l = i; while (l > 0 && WORD.test(text[l - 1])) l--;
+    let r = i; while (r < text.length && WORD.test(text[r])) r++;
+    return (i - l) <= (r - i) ? l : r;
+  };
+
+  const tint = (k, a) => `rgba(${RGB[k] || '148,163,184'},${a})`;
 
   // A unit renders alone only if its slice closes what it opens. Where it does
   // not, the split ran through inline markup, which is a finding.
@@ -909,7 +796,8 @@ window.__audit = {
                        && (s.match(/\[/g) || []).length === (s.match(/\]/g) || []).length;
 
   window.auditPage = () => ({
-    a: null, view: 'read', off: {}, sel: null, sections: [], ref: '',
+    a: null, view: 'read', mark: 'fill', lens: 'label', off: {}, sel: null, selPt: null,
+    sections: [], ref: '',
     async init() {
       this.ref = (typeof gh !== 'undefined' && gh.ref) || '';
       let payload = window.__audit;
@@ -920,6 +808,24 @@ window.__audit = {
       this.base = JSON.parse(JSON.stringify(this.a.standoff));
       this.regroup();
       this.$nextTick(() => { this.bindDoc(); this.paint(); });
+      // Clicking off every unit clears the selection. Until now the only way
+      // out was the panel's own close button, which is the one control a
+      // reader is not looking at once they have decided they are done. Capture
+      // phase, so it settles before a unit's own handler runs; the early
+      // return is what lets a unit, a pin, the panel and the chrome keep their
+      // taps.
+      document.addEventListener('pointerdown', (e) => {
+        if (!this.sel) return;
+        if (e.target.closest('[data-uid],[data-edge],[data-panel],dialog,header,button')) return;
+        this.sel = null; this.menu = null; this.armed = null; this.paint();
+      }, true);
+      addEventListener('resize', () => this.placePanel());
+      addEventListener('scroll', () => this.placePanel(), true);
+      // Pinching and the on-screen keyboard move the visual viewport without
+      // firing either of the above, so the panel would stay where the layout
+      // viewport last put it, which is off screen.
+      window.visualViewport?.addEventListener('resize', () => this.placePanel());
+      window.visualViewport?.addEventListener('scroll', () => this.placePanel());
     },
     // Blocks: consecutive units with no blank line between them. Derived from
     // units, so every grain edit rebuilds it; paint() reads blocks and would
@@ -935,8 +841,64 @@ window.__audit = {
     get vocab() { return this.so.vocabulary.filter(v => this.count(v.label)); },
     get sides() { return [...new Set(this.vocab.map(v => v.side))]; },
     count(l) { return this.units.filter(u => u.label === l).length; },
-    gloss(l) { return (this.so.vocabulary.find(v => v.label === l) || {}).gloss || ''; },
     side(l) { return (this.so.vocabulary.find(v => v.label === l) || {}).side || ''; },
+
+    // THE TWO AXES. `vocabulary` says what a unit IS, `verdicts` says what was
+    // decided about it, and they are orthogonal: a unit is WHY and DROP at
+    // once. Everything that draws goes through keyOf, so switching the lens
+    // repaints the same document against the other question rather than
+    // building a second view of it.
+    keyOf(u) { return this.lens === 'verdict' ? (u.verdict || 'KEEP') : u.label; },
+    KINDS,
+    // `from` records HOW this unit got its boundaries, and the verb is in the
+    // value. The panel used to print "split from" over all three, so a merged
+    // unit read "split from merge:a+b", which states the opposite of what
+    // happened in the one place a reader looks to find out.
+    get provenance() {
+      const f = this.sel?.from || '', i = f.indexOf(':');
+      const verb = { split: 'split from', merge: 'merged from',
+                     move: 'boundary moved with' }[f.slice(0, i)];
+      return verb ? `${verb} ${f.slice(i + 1)}` : f;
+    },
+    // Why there is no handle on an edge. It said "start and end sits in
+    // markup", which disagreed with itself and was usually not the reason: a
+    // boundary is undraggable when it falls where the rendered text has no
+    // character to put a pin beside, and a list marker or a `**` is only the
+    // commonest case of that.
+    get noDrag() {
+      const e = this.unpinned;
+      // x-text evaluates whether or not x-show is displaying it, so the empty
+      // case is a real branch and not a hypothetical one: without it this read
+      // "the undefined edge cannot be dragged" in the DOM of every unit whose
+      // boundaries are both fine.
+      if (!e.length) return '';
+      return e.length === 2
+        ? 'neither edge can be dragged: both fall in markup the render does not show'
+        : `the ${e[0]} edge cannot be dragged: it falls in markup the render does not show`;
+    },
+    // The panel's two pills, as data: one row per axis, each naming the
+    // operation that edits it, the choices, and the value in force. Written
+    // once because the two pills differ in nothing but which list they read.
+    get axes() {
+      return [
+        { op: 'relabel', list: (this.so.vocabulary || []).map(v => v.label), now: this.sel?.label || '' },
+        { op: 'verdict', list: (this.so.verdicts || []).map(v => v.verdict), now: this.sel?.verdict || 'KEEP' },
+      ];
+    },
+    tally(k) { return this.units.filter(u => this.keyOf(u) === k).length; },
+    gloss(k) {
+      const v = (this.so.vocabulary || []).find(x => x.label === k)
+             || (this.so.verdicts || []).find(x => x.verdict === k);
+      return v ? v.gloss : '';
+    },
+    // Unused keys are omitted from the legend on both axes: a chip for a label
+    // nothing carries is a filter that does nothing.
+    get axis() {
+      return (this.lens === 'verdict'
+        ? (this.so.verdicts || []).map(v => v.verdict)
+        : this.vocab.map(v => v.label)).filter(k => this.tally(k));
+    },
+    get decided() { return this.units.filter(u => (u.verdict || 'KEEP') !== 'KEEP').length; },
     // Words, not units: a one-line NAV pointer and a four-sentence provenance
     // paragraph are one unit each and are not the same amount of document.
     wordsOn(side) {
@@ -951,7 +913,7 @@ window.__audit = {
         Math.round(100 * this.units.filter(u => u.label === v.label)
                             .reduce((n, u) => n + u.words, 0) / t)]));
     },
-    HUE,
+    HUE: RGB,
     get so() { return this.a.standoff; },
     get units() { return this.so.units; },
     get raw() { return JSON.stringify(this.so, null, 1); },
@@ -983,7 +945,15 @@ window.__audit = {
       this.at = n;
       this.opErr = '';
       this.regroup();
-      const keep = this.sel && this.units.find(u => u.uid === this.sel.uid);
+      // UNDO MUST NOT CLOSE THE PANEL, or the control is unreachable a second
+      // time: undoing a split destroys the very uid that was selected, so the
+      // panel vanished after one press and the rest of the patch had to be
+      // undone from the header, which on a phone is a screen away from where
+      // the edit happened. Fall back to whichever unit now covers the same
+      // character, which is the one the undone operation put back.
+      const was = this.sel?.start;
+      const keep = this.sel && (this.units.find(u => u.uid === this.sel.uid)
+        || (was != null && this.units.find(u => u.start <= was && was < u.end)));
       this.sel = keep ? { ...keep, ref: this.srcRef(keep) } : null;
       this.armed = null;
       this.paint();
@@ -1066,7 +1036,7 @@ window.__audit = {
         this.saving = false;
       }
     },
-    dim(u) { return this.off[u.label] ? .12 : 1 },
+    dim(u) { return this.off[this.keyOf(u)] ? .12 : 1 },
     get unrenderable() {
       return this.units.filter(u => u.kind === 'sent'
         && !balanced(this.a.text.slice(u.start, u.end).trim())).length;
@@ -1111,14 +1081,43 @@ window.__audit = {
       host_.appendChild(box);
       for (const b of this.blocks) {
         const wrap = document.createElement(this.view === 'source' ? 'div' : 'div');
-        wrap.className = this.view === 'source' ? 'mb-3' : 'mb-4';
+        wrap.className = this.view === 'source' ? 'mb-3' : '';
+        // Does this block open with a list marker? Its units are rendered one at
+        // a time, so only the unit CARRYING the marker renders as a list item.
+        const listBlock = MARKER.test(this.a.text.slice(b[0].start, b[0].start + 8));
         for (const u of b) {
-          const { html, broken, block: isBlock } = this.unitHtml(u);
+          let { html, broken, block: isBlock } = this.unitHtml(u);
+          // A CONTINUATION IS A SENTENCE FROM INSIDE A LIST ITEM. It is a
+          // legitimate unit and it does not render as one: the marker went to
+          // the first sentence, so every later sentence rendered as prose and
+          // hung unindented under the item it belongs to. A marker-less list
+          // gives it the item's indent BY CONSTRUCTION, which a padding
+          // constant guessed to match the prose styles would not.
+          if (this.view === 'read' && listBlock && !broken
+              && !MARKER.test(this.a.text.slice(u.start, u.start + 8))) {
+            html = `<ol style="list-style:none"><li>${html}</li></ol>`;
+            isBlock = true;
+          }
           const block = this.view === 'read' && isBlock;
           const el = document.createElement(block ? 'div' : 'span');
-          el.className = `cursor-pointer px-0.5 ${block ? 'py-1 my-2' : ''}`;
-          el.style.background = tint(u.label, .18 * this.dim(u));
-          el.style.boxShadow = `inset 2px 0 0 0 ${tint(u.label, .9 * this.dim(u))}`;
+          el.className = `cursor-pointer px-0.5 ${block ? 'w-fit max-w-full' : ''}`;
+          // The tint says which label a unit carries; hover says it is a target.
+          // Whichever treatment is on, the end marks matter as much as the start:
+          // adjacent units sharing a label share a tint, and a boundary is the
+          // object ops.py splits and merges.
+          const m = MARKS[this.mark] || MARKS.fill, a = this.dim(u), k = this.keyOf(u);
+          const bg = m.bg ? tint(k, m.bg * a) : '';
+          const bgOver = tint(k, m.over * a);
+          const shadow = [
+            m.tick && `inset 1px 0 0 0 ${tint(k, m.tick * a)}`,
+            m.tick && `inset -1px 0 0 0 ${tint(k, m.tick * a)}`,
+            m.under && `inset 0 -2px 0 0 ${tint(k, m.under * a)}`,
+          ].filter(Boolean).join(', ');
+          el.style.background = bg;
+          el.style.transition = 'background-color .12s ease';
+          el.onpointerenter = () => { if (this.sel?.uid !== u.uid) el.style.background = bgOver; };
+          el.onpointerleave = () => { if (this.sel?.uid !== u.uid) el.style.background = bg; };
+          el.style.boxShadow = shadow;
           el.style.opacity = this.dim(u);
           if (broken) el.style.outline = '1px dotted rgba(239,68,68,.8)';
           // THE SEPARATOR IS ITS OWN NODE, appended after the map runs below.
@@ -1138,14 +1137,25 @@ window.__audit = {
           el.dataset.uid = u.uid;
           Standoff.mapText(el, this.a.text, u.start);
           if (this.view !== 'source') el.appendChild(document.createTextNode(' '));
-          if (u.uid === this.sel?.uid) {
-            el.style.background = tint(u.label, .42);
-            el.style.textDecoration = 'underline';
+          if (u.uid === this.sel?.uid) el.style.background = tint(k, m.sel * this.dim(u));
+          // TEXT DECORATION IS THE FREE CHANNEL, which is why the verdict can
+          // ride beside the label rather than displacing it: the tint, the
+          // ticks and the opacity are all spent on the active lens, and this
+          // is not. A DROP therefore reads under EITHER lens, because it is
+          // the destructive one and hiding it behind a switch would let a
+          // reader browse labels over text the pass has already condemned.
+          const deco = [(u.verdict || 'KEEP') === 'DROP' && 'line-through',
+                        u.uid === this.sel?.uid && 'underline'].filter(Boolean);
+          if (deco.length) {
+            el.style.textDecoration = deco.join(' ');
             el.style.textDecorationThickness = '2px';
             el.style.textUnderlineOffset = '3px';
-            el.style.textDecorationColor = tint(u.label, .95);
+            // One property, one colour. Red wins where both apply: the
+            // selection is where you already are, the verdict is the finding.
+            el.style.textDecorationColor =
+              tint(deco[0] === 'line-through' ? 'DROP' : k, .95);
           }
-          el.onclick = () => this.hit(u, broken);
+          el.onclick = (ev) => { this.selPt = { x: ev.clientX, y: ev.clientY }; this.hit(u, broken); };
           wrap.appendChild(el);
           if (this.view === 'source') wrap.appendChild(document.createTextNode('\n'));
         }
@@ -1195,7 +1205,16 @@ window.__audit = {
       this.sel = { ...u, broken, ref: this.srcRef(u) };
       this.paint();
     },
-    offsetAt(x, y) { return Standoff.offsetAt(document, x, y); },
+    // A boundary lands between words, never inside one. caretRangeFromPoint
+    // answers in characters, which is finer than any judgement being made here:
+    // a unit divides a sentence at a word, and a pin parked mid-word reads as a
+    // slip every time. Snapping to the nearer end of the word under the pointer
+    // keeps the drag continuous and the result legible. All three placers go
+    // through here (drag, tap, pad), so they agree.
+    offsetAt(x, y) {
+      const i = Standoff.offsetAt(document, x, y);
+      return i == null ? null : snapWord(this.a.text, i);
+    },
     // The inverse, for placing a pinhead: a collapsed Range at the offset,
     // measured against the doc container so the pins scroll with the text.
     pointAt(at) {
@@ -1211,9 +1230,57 @@ window.__audit = {
     },
     // The client rect of the collapsed range at a document offset, which is
     // what the pin painter measures from.
-    rectAt(at) {
-      const hit = Standoff.nodeAt(this.$refs.doc, at);
+    rectAt(at, which) {
+      // A BOUNDARY IS SHARED: it ends one unit and starts the next, and
+      // Standoff.nodeAt answers with the FIRST span containing the offset,
+      // which is the earlier one. Its rendered run is followed by the
+      // separator text node and both units' padding, so the mark landed 8 to
+      // 9px short of the text it opens, measured at 390 and 1280 alike. The
+      // later span's offset 0 is the same boundary at the place a reader sees
+      // it, so prefer it and keep nodeAt for the end of a paragraph, where
+      // there is no later span to ask.
+      let hit = Standoff.nodeAt(this.$refs.doc, at);
+      // MARKUP HAS NO CHARACTER TO PIN, and until now that meant no pin at all.
+      // Every list item opens with its marker, so every list item lost its
+      // START handle and its opening boundary could not be moved from the page
+      // at all. The honest place for a boundary that falls in markup is the
+      // unit's nearest RENDERED character on the correct side: before its first
+      // for a start, after its last for an end. That is a position, not a
+      // claim about which character the offset is, and the drag reads its
+      // offsets from the pointer rather than from where the pin was drawn.
+      // Scoped to the selected unit, or a missing start would borrow a rect
+      // from the next unit and mark a boundary somewhere else entirely. An
+      // ATOMIC run counts here, unlike everywhere else: a boundary may not go
+      // INSIDE a link or a bold span, but the unit's own first and last
+      // characters are outside every construct it contains, and a unit that is
+      // bold end to end has no other run to offer. Dragging such a pin inward
+      // is refused by offsetAt, which is the correct answer; dragging it
+      // outward, to swallow the sentence before it, is the move it exists for.
+      if (!hit && this.sel) {
+        const runs = [...(this.$refs.doc
+          ?.querySelector(`[data-uid="${CSS.escape(this.sel.uid)}"]`)
+          ?.querySelectorAll('[data-src]') || [])]
+          .map(sp => sp.firstChild)
+          .filter(n => n && n.nodeType === 3 && n.data.trim());
+        const n = which === 'end' ? runs.at(-1) : runs[0];
+        if (n) hit = { node: n, offset: which === 'end' ? n.length : 0 };
+      }
       if (!hit) return null;
+      // Landing at the END of a run means the boundary is a junction. Which
+      // side of it the mark belongs on depends on which edge is being drawn:
+      // a START edge OPENS the selected unit, so it belongs at that unit's
+      // first character, while an END edge CLOSES it and belongs at its last.
+      // nodeAt always answers with the earlier run, which is right for an end
+      // and 8 to 9px short for a start. An exact data-src match cannot find
+      // the later run either: mapText trims the slice's leading whitespace, so
+      // its data-src sits past the boundary by whatever white space separated
+      // them. Step to the next run instead.
+      if (which === 'start' && hit.offset >= hit.node.length) {
+        const runs = [...this.$refs.doc.querySelectorAll('[data-src]:not([data-atomic])')]
+          .map(sp => sp.firstChild).filter(n => n && n.nodeType === 3);
+        const next = runs[runs.indexOf(hit.node) + 1];
+        if (next) hit = { node: next, offset: 0 };
+      }
       const r = document.createRange();
       r.setStart(hit.node, hit.offset);
       r.collapse(true);
@@ -1251,10 +1318,94 @@ window.__audit = {
     // for either puts a marker in the corner pointing at nothing, which is what
     // the painter does when handed a null rect.
     unpinned: [],
+    // The panel opens down and right of the POINTER, the way a context menu
+    // does, rather than aligned to the unit. Aligning it to the span put it in
+    // a fixed place no matter where the tap landed, which for a unit spanning
+    // three lines is nowhere near the words that were actually touched.
+    //
+    // Flips back over the pointer on whichever axis would overflow, so a tap
+    // in the bottom-right corner opens up and left instead of being shoved
+    // sideways. Falls back to the unit's own rect when the selection did not
+    // come from a pointer at all (the standoff table's rows, a re-place after
+    // an edit), which is the only case with no point to work from.
+    placePanel(tries = 0) {
+      const el = this.$refs.panel;
+      if (!el || !this.sel) return;
+      const M = 8, GAP = 12;
+      // THE VISUAL VIEWPORT, NOT THE LAYOUT ONE, and this is the whole of the
+      // mobile fix. A fixed element is positioned against the LAYOUT viewport,
+      // and every CSS measure available to the panel describes that one too:
+      // `100vw` does not shrink under pinch-zoom, and inside the toss iframe it
+      // is the frame's width rather than the phone's. So a panel sized in CSS
+      // can be wider than what is actually on screen, and a clamp computed from
+      // the same measure agrees with it and still puts the panel off the right
+      // edge. Sizing and placing from `visualViewport` makes both answers come
+      // from the region the reader can see.
+      const vv = window.visualViewport;
+      const VW = vv ? vv.width : document.documentElement.clientWidth;
+      const VH = vv ? vv.height : document.documentElement.clientHeight;
+      const X0 = vv ? vv.offsetLeft : 0, Y0 = vv ? vv.offsetTop : 0;
+      // Only the viewport half is replaced. The design cap (20rem, 70%) stays
+      // where it is written, and the class on the element keeps it as the
+      // before-JS floor; what changes is that the second term now measures the
+      // region the reader can see instead of the one the document was laid out
+      // in. Inline wins over the class, so this tightens and never widens.
+      // The 7rem gutter is not slack. Tapping outside is how the panel closes,
+      // so a popover filling the width is a sheet with no way out; the floor
+      // keeps that true on a viewport too narrow for the subtraction. Narrow
+      // and tall also beats wide and short here, since the content is short
+      // lines and a label the eye has to find, not a paragraph.
+      el.style.maxWidth = `min(20rem, ${Math.max(200, Math.round(VW - 112))}px)`;
+      el.style.maxHeight = Math.round(Math.min(VH * 0.7, VH - 2 * M)) + 'px';
+      const w = el.offsetWidth, h = el.offsetHeight;
+      // A PANEL ALPINE HAS NOT YET UN-HIDDEN MEASURES 0 BY 0, and a clamp
+      // against a zero width is not a clamp: it leaves left at x + GAP, and the
+      // panel then paints its real width off the right edge. Placement has to
+      // wait for a box, and one frame is usually it. Bounded, so a panel that
+      // never gets one stops asking instead of looping every frame.
+      if (!w || !h) {
+        if (tries < 5) requestAnimationFrame(() => this.placePanel(tries + 1));
+        return;
+      }
+      let x = this.selPt?.x, y = this.selPt?.y;
+      if (x == null) {
+        const u = this.$refs.doc?.querySelector(`[data-uid="${CSS.escape(this.sel.uid)}"]`);
+        const r = u && [...u.getClientRects()].pop();
+        if (!r) return;
+        x = r.left; y = r.bottom - GAP;
+      }
+      // THE PINS ARE OBSTACLES, NOT DECORATION. Each is 32px of tap target on
+      // the selected unit's own boundary, which is exactly where a panel
+      // anchored to the tap wants to sit, and a panel over a pin does not look
+      // broken: the pin is drawn, it is simply unreachable, so arming reads as
+      // a dead control. Found by asking elementFromPoint what is under the
+      // pinhead rather than by looking, since both cases are the same picture.
+      const pins = [...(this.$refs.pins?.querySelectorAll('[data-edge]') || [])]
+        .map(el => el.getBoundingClientRect()).filter(r => r.width);
+      const clamp = (v, lo, hi) => Math.round(Math.min(Math.max(v, lo), Math.max(lo, hi)));
+      const place = (l, t) => [clamp(l, X0 + M, X0 + VW - M - w),
+                               clamp(t, Y0 + M, Y0 + VH - M - h)];
+      const hits = (l, t) => pins.some(p =>
+        l < p.right && l + w > p.left && t < p.bottom && t + h > p.top);
+      // Down-right first, the direction asked for, then the three flips. Those
+      // four are not enough on a phone and the geometry says why: the panel is
+      // most of the width, so any vertical band it occupies that a pin's band
+      // touches collides no matter where it sits horizontally. The freedom is
+      // vertical, so the last two candidates clear the pins OUTRIGHT, below
+      // them or above them, which is the only move a narrow screen leaves.
+      const top_ = Math.min(...pins.map(r => r.top)), bot_ = Math.max(...pins.map(r => r.bottom));
+      const tries_ = [[x + GAP, y + GAP], [x - GAP - w, y + GAP],
+                      [x + GAP, y - GAP - h], [x - GAP - w, y - GAP - h],
+                      ...(pins.length ? [[x + GAP, bot_ + GAP], [x + GAP, top_ - GAP - h]] : []),
+                     ].map(c => place(...c));
+      const [left, top] = tries_.find(c => !hits(...c)) || tries_[0];
+      el.style.left = left + 'px';
+      el.style.top = top + 'px';
+    },
     placePins() {
       const layer = this.$refs.pins;
       if (!layer || typeof Dictate === 'undefined') return;
-      const found = this.edges.map(e => ({ ...e, rect: this.rectAt(e.at) }));
+      const found = this.edges.map(e => ({ ...e, rect: this.rectAt(e.at, e.edge) }));
       this.unpinned = found.filter(e => !e.rect).map(e => e.edge);
       const rectOf = (which) => found.find(e => e.edge === which && e.rect)?.rect || null;
       Dictate.pins(layer, {
@@ -1265,6 +1416,7 @@ window.__audit = {
       for (const pin of layer.querySelectorAll('[data-edge]'))
         if (!rectOf(pin.getAttribute('data-edge'))) pin.remove();
       if (this.armed && this.unpinned.includes(this.armed)) this.armed = null;
+      this.$nextTick(() => this.placePanel());
     },
 
     // The pin drag, from pages/dictate.html: the aim point is the BAR's centre
@@ -1468,7 +1620,8 @@ window.__audit = {
         <span class="font-semibold" x-text="a.title"></span>
         <span class="text-xs opacity-60" x-text="so.question"></span>
         <span class="text-xs font-mono opacity-70"
-              x-text="`${units.length} units · ${words.toLocaleString()} words · ${pctOn('explanation')}% explanation`"></span>
+              x-text="`${units.length} units · ${words.toLocaleString()} words · ` + (lens === 'verdict'
+                        ? `${decided} decided` : `${pctOn('explanation')}% explanation`)"></span>
         <a class="text-xs link link-primary" :href="so.target.url" x-show="so.target.url">source</a>
         <div class="join ml-auto">
           <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
@@ -1477,6 +1630,22 @@ window.__audit = {
                   @click="view='read'; paint()">Read</button>
           <button class="join-item btn btn-xs" :class="view==='standoff' && 'btn-active'"
                   @click="view='standoff'">Standoff</button>
+        </div>
+        <div class="join" x-show="view!=='standoff'" x-cloak aria-label="unit treatment">
+          <button class="join-item btn btn-xs" :class="mark==='fill' && 'btn-active'"
+                  @click="mark='fill'; paint()">Fill</button>
+          <button class="join-item btn btn-xs" :class="mark==='underline' && 'btn-active'"
+                  @click="mark='underline'; paint()">Underline</button>
+          <button class="join-item btn btn-xs" :class="mark==='separator' && 'btn-active'"
+                  @click="mark='separator'; paint()">Separators</button>
+        </div>
+        <!-- Which question the colour answers. The treatment switch above
+             decides what the tint is spent on; this decides what it MEANS. -->
+        <div class="join" x-show="view!=='standoff' && so.verdicts" x-cloak aria-label="colour by">
+          <button class="join-item btn btn-xs" :class="lens==='label' && 'btn-active'"
+                  @click="lens='label'; paint()">Label</button>
+          <button class="join-item btn btn-xs" :class="lens==='verdict' && 'btn-active'"
+                  @click="lens='verdict'; paint()">Verdict</button>
         </div>
         <button class="btn btn-xs btn-ghost" @click="deck()"><i class="ph ph-cards"></i> Sections</button>
         <button class="btn btn-xs btn-ghost" @click="$refs.reading.showModal()">Reading</button>
@@ -1495,14 +1664,15 @@ window.__audit = {
            its units in place rather than hiding them, which keeps the document
            readable while one category is set aside. -->
       <div class="px-4 pb-2 flex flex-wrap items-center gap-1">
-        <template x-for="v in vocab" :key="v.label">
+        <template x-for="k in axis" :key="k">
           <button class="btn btn-xs gap-1.5 border-0"
-                  :style="`background:rgba(${HUE[v.label]},${off[v.label]?0.05:0.22});
-                           box-shadow:inset 2px 0 0 0 rgba(${HUE[v.label]},${off[v.label]?0.2:0.9})`"
-                  :class="off[v.label] && 'opacity-40'"
-                  @click="toggle(v.label)">
-            <span x-text="v.label"></span>
-            <span class="opacity-60 font-mono" x-text="count(v.label)"></span>
+                  :style="`background:rgba(${HUE[k]},${off[k]?0.05:0.22});
+                           box-shadow:inset 2px 0 0 0 rgba(${HUE[k]},${off[k]?0.2:0.9})`"
+                  :class="off[k] && 'opacity-40'"
+                  :title="gloss(k)"
+                  @click="toggle(k)">
+            <span x-text="k"></span>
+            <span class="opacity-60 font-mono" x-text="tally(k)"></span>
           </button>
         </template>
         <span class="w-px h-4 bg-base-300 mx-1"></span>
@@ -1543,11 +1713,11 @@ window.__audit = {
           <thead><tr><th class="text-right">#</th>
                      <th class="text-right">start</th><th class="text-right">end</th>
                      <th>kind</th><th class="text-right">w</th>
-                     <th>label</th><th>note</th><th>text</th></tr></thead>
+                     <th>label</th><th>verdict</th><th>note</th><th>text</th></tr></thead>
           <tbody>
             <template x-for="u in units" :key="u.uid">
               <tr class="cursor-pointer hover:bg-base-200"
-                  @click="sel={...u, ref: srcRef(u)}; armed=null">
+                  @click="selPt=null; sel={...u, ref: srcRef(u)}; armed=null">
                 <td class="font-mono text-right" x-text="num(u)"></td>
                 <td class="font-mono opacity-60 text-right whitespace-nowrap" x-text="u.start"></td>
                 <td class="font-mono opacity-60 text-right whitespace-nowrap" x-text="u.end"></td>
@@ -1555,6 +1725,8 @@ window.__audit = {
                 <td class="font-mono opacity-60 text-right" x-text="u.words"></td>
                 <td><span class="rounded px-1 whitespace-nowrap"
                           :style="`background:rgba(${HUE[u.label]},.25)`" x-text="u.label"></span></td>
+                <td><span class="rounded px-1 whitespace-nowrap" x-show="u.verdict"
+                          :style="`background:rgba(${HUE[u.verdict]},.25)`" x-text="u.verdict"></span></td>
                 <td class="italic opacity-70 max-w-40 truncate" x-text="u.note || ''"></td>
                 <td class="max-w-md truncate" x-text="slice(u)"></td>
               </tr>
@@ -1571,22 +1743,47 @@ window.__audit = {
     <!-- Above the shared FAB (z-80), which is fixed to this same corner and was
          covering the split candidates. dictate.html's sheet takes the corner the
          same way: while a page's own bottom UI is up, it owns the bottom. -->
-    <div class="sticky bottom-0 z-[90] bg-base-200 border-t border-base-300 px-4 py-2 text-xs"
-         x-show="sel" x-cloak>
-      <div class="flex flex-wrap gap-x-4 gap-y-1 items-baseline">
+    <div class="fixed z-[90] bg-base-100 border border-base-300 rounded-xl shadow-lg px-3 py-2 text-xs
+                max-w-[min(20rem,calc(100vw-7rem))] max-h-[70vh] overflow-y-auto"
+         data-panel x-ref="panel" x-show="sel" x-cloak>
+      <div class="flex flex-wrap gap-x-3 gap-y-1 items-center">
         <b class="font-mono" x-text="sel?.uid"></b>
-        <span class="badge badge-sm border-0"
-              :style="`background:rgba(${HUE[sel?.label]},.25)`" x-text="sel?.label"></span>
-        <span class="opacity-60" x-text="gloss(sel?.label)"></span>
-        <span class="badge badge-sm badge-outline" x-text="side(sel?.label)"></span>
-        <span class="opacity-60 font-mono" x-text="sel?.words + 'w · ' + sel?.kind"></span>
-        <span class="opacity-60 font-mono" x-text="sel?.ref"></span>
+
+        <!-- A PILL IS SIZED BY ITS TEXT, AND A SELECT IS NOT. A native select
+             takes the width of its WIDEST option plus a chevron, so `KEEP` was
+             carrying `REWRITE`'s width and `NAV` was carrying `PROV`'s, which is
+             the padding that read as awkward. The span sizes the pill to the
+             value actually shown; the select lies over it at zero opacity and
+             takes the tap, so this is still the platform's own dropdown rather
+             than a menu reimplemented. Two of them, because there are two
+             questions and answering one never answers the other; same shape on
+             purpose, so a verdict does not read as a different kind of thing. -->
+        <template x-for="ax in axes" :key="ax.op">
+          <label class="relative inline-flex items-center rounded-full px-2 py-0.5 font-mono cursor-pointer"
+                 x-show="ax.list.length" x-cloak
+                 :style="`background:rgba(${HUE[ax.now]},.28)`">
+            <span x-text="ax.now"></span>
+            <select class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    :aria-label="ax.op"
+                    x-effect="$el.value = ax.now"
+                    @change="push({op:ax.op, uid:sel.uid, [ax.op==='relabel'?'label':'verdict']:$event.target.value})">
+              <template x-for="v in ax.list" :key="v"><option :value="v" x-text="v"></option></template>
+            </select>
+          </label>
+        </template>
+
+        <span class="opacity-60" x-text="`${sel?.words} words · ${KINDS[sel?.kind] || sel?.kind}`"></span>
+        <!-- Wrapping rather than truncating is what lets the panel be narrow:
+             this line was the widest thing in it, and a truncated one still
+             claims the width it was cut to. -->
+        <span class="opacity-60 font-mono basis-full" x-text="sel?.ref"></span>
+        <span class="opacity-60 font-mono basis-full" x-show="sel?.from" x-cloak
+              x-text="provenance"></span>
         <span class="italic opacity-70" x-show="sel?.note" x-text="sel?.note"></span>
-        <span class="opacity-60" x-show="unpinned.length" x-cloak
-              x-text="unpinned.join(' and ') + ' sits in markup, so it has no place to be dragged'"></span>
+        <span class="opacity-60 basis-full" x-show="unpinned.length" x-cloak
+              x-text="noDrag"></span>
         <span class="text-error" x-show="sel?.broken">slice does not close its own markup</span>
         <span class="text-error" x-show="opErr" x-text="opErr"></span>
-        <button class="btn btn-ghost btn-xs ml-auto" @click="sel=null; menu=null">close</button>
       </div>
 
       <div class="flex items-center gap-2 mt-2" x-show="armed" x-cloak>
@@ -1599,29 +1796,28 @@ window.__audit = {
       </div>
 
       <div class="flex flex-wrap items-center gap-1 mt-2">
+        <!-- Undo BESIDE the operations, not only in the header. A drag ends
+             with the finger on the panel and the header a screen away, so the
+             one control a reader wants immediately after an edit was the one
+             furthest from it. The header pair stays: it is the only undo
+             reachable with nothing selected. -->
+        <div class="join" x-show="patch.length" x-cloak>
+          <button class="join-item btn btn-xs" :disabled="!canUndo" @click="undo()"
+                  aria-label="undo"><i class="ph ph-arrow-counter-clockwise"></i></button>
+          <button class="join-item btn btn-xs" :disabled="!canRedo" @click="redo()"
+                  aria-label="redo"><i class="ph ph-arrow-clockwise"></i></button>
+        </div>
         <button class="btn btn-xs" x-show="view!=='read'"
                 @click="view='read'; paint()">Edges</button>
         <button class="btn btn-xs" @click="openSplit(sel)">Split</button>
         <button class="btn btn-xs" :disabled="!nextOf(sel?.uid)"
                 @click="push({op:'merge',uid:sel.uid})">Merge next</button>
-        <button class="btn btn-xs" :class="menu==='label' && 'btn-active'"
-                @click="menu = menu==='label' ? null : 'label'">Relabel</button>
-        <button class="btn btn-xs" :class="menu==='note' && 'btn-active'"
-                @click="menu = menu==='note' ? null : 'note'">Note</button>
       </div>
 
-      <div class="flex flex-wrap gap-1 mt-2" x-show="menu==='label'">
-        <template x-for="v in so.vocabulary" :key="v.label">
-          <button class="btn btn-xs border-0" :class="v.label===sel?.label && 'ring-1 ring-base-content'"
-                  :style="`background:rgba(${HUE[v.label]},.22)`"
-                  @click="push({op:'relabel',uid:sel.uid,label:v.label})" x-text="v.label"></button>
-        </template>
-      </div>
-
-      <div class="mt-2" x-show="menu==='note'">
-        <input class="input input-xs input-bordered w-full" placeholder="what the label cannot say"
-               :value="sel?.note || ''" @keydown.enter="push({op:'note',uid:sel.uid,text:$event.target.value})">
-      </div>
+      <input class="input input-xs input-bordered w-full mt-2"
+             placeholder="note: what the label cannot say"
+             x-effect="$el.value = sel?.note || ''"
+             @change="push({op:'note',uid:sel.uid,text:$event.target.value})">
 
       <div class="mt-2 space-y-1" x-show="menu==='split'">
         <template x-if="!boundaries.length">
@@ -1684,13 +1880,14 @@ window.__audit = {
           </tbody>
         </table>
         <table class="table table-sm mt-2">
-          <thead><tr><th>label</th><th>units</th><th>words</th><th>side</th></tr></thead>
+          <thead><tr><th>label</th><th>units</th><th>words</th><th>side</th><th>is</th></tr></thead>
           <tbody>
             <template x-for="v in vocab" :key="v.label">
               <tr><td class="font-mono" x-text="v.label"></td>
                   <td class="font-mono" x-text="count(v.label)"></td>
                   <td class="font-mono" x-text="shareOf[v.label] + '%'"></td>
-                  <td class="opacity-60" x-text="v.side"></td></tr>
+                  <td class="opacity-60" x-text="v.side"></td>
+                  <td class="opacity-60" x-text="v.gloss"></td></tr>
             </template>
           </tbody>
         </table>

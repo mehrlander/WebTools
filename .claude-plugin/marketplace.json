@@ -16,7 +16,6 @@
       "homepage": "https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md",
       "skills": [
         "./web-tools",
-        "./caption",
         "./load-skill",
         "./show-repo",
         "./tasks",
@@ -29,7 +28,6 @@
       ],
       "keywords": [
         "conventions",
-        "caption",
         "surfacing",
         "tracker",
         "tree",

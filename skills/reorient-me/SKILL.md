@@ -42,6 +42,12 @@ The shape to reproduce:
 |3|**The first-order gap**|You can't measure which aim is right: measuring needs an aim already chosen. Goodhart lives here.|*does this have a name?*|
 |4|**Validity**|It does. Native to **psychometrics**, housed in **measurement theory**.|*how did we get here?*|
 
+### Where the session has a working branch
+
+Add one line of state before the open door: the 🌿 caption line with its counts,
+the guide PR, and any tracker task touched. A re-entry summary that says where
+the thinking went and not where the work sits is half an answer.
+
 ### Beat 3: the open door (optional)
 
 One closing move that looks forward or outward, carrying what the table couldn't hold. No fixed form. Add it only when something earns the place, and keep it short. A hollow "next steps" bolted on is worse than ending clean.
