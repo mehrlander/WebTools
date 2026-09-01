@@ -36,13 +36,17 @@ as a defect.
 
 **2. No explanatory prose.** GitHub doesn't explain and neither should we. Use
 structure, labels, and controls to show relationships: a range control starting
-at 2015 says the data starts in 2015. Explanatory prose is unfinished work:
-unused ideas, loitering.
+at 2015 says the data starts in 2015. Explanatory prose is unfinished work, and
+the fix is usually to improve structural clarity so the text can be removed.
 
-**3. Don't narrow text to a reading column.** The pattern is `max-w-*` plus
-`mx-auto`, usually `max-w-2xl` through `max-w-4xl`, or `max-w-prose` at 65ch;
-`container mx-auto` is the same move. It is the tell for rule 2, and what you
-will usually find is that the text does not belong on the page at all.
+**3. Don't narrow text to a reading column.** `max-w-prose`, `max-w-2xl`,
+`max-w-3xl`, `max-w-4xl`, `container mx-auto`, and a `prose` class run without
+`max-w-none`, which is Tailwind's own 65ch cap wearing another name. `mx-auto`
+is not part of the test: half these caps carry no centering. The page's own
+layout sets the width. A reading column is also a common tell for rule 2.
+Refused at edit time by the `reading-column` hook and listed by `npm run
+reading-column`; `modal-box` sizing is exempt, and a genuine exception takes a
+`reading-column-ok` comment on the line or the line above.
 
 **4. Browsing takes the viewport.** A deck, gallery, diff, or result set uses
 `fixed inset-0 grid grid-rows-[auto_1fr_auto]`: thin header, content, thin
