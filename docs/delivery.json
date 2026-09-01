@@ -1,0 +1,512 @@
+{
+  "subject": "How the portable conventions reach a session",
+  "note": "A dated reading of the delivery topology, not a registry and not a derived artifact. Every snapshot is what one container held on its date: the pinned-install count varies by machine and the session checkout's branch varies by session, so no commit hook can restamp this and no test can hold it. Same standing as docs/injection.json, which measures the bytes this measures the routes for. A snapshot with state 'planned' is a design, not a measurement.",
+  "freshness": [
+    {
+      "id": "tip",
+      "label": "main's tip",
+      "lag": "none",
+      "risk": "none",
+      "gloss": "read over the network at the moment of use"
+    },
+    {
+      "id": "branch",
+      "label": "the session's branch",
+      "lag": "none against itself",
+      "risk": "none",
+      "gloss": "the checkout the session is working in, which may lead or trail main"
+    },
+    {
+      "id": "session",
+      "label": "refreshed at session start",
+      "lag": "one session at most",
+      "risk": "low",
+      "gloss": "pulled from main when the container came up"
+    },
+    {
+      "id": "pinned",
+      "label": "pinned at install",
+      "lag": "until the plugin updates",
+      "risk": "measured",
+      "gloss": "fixed to one commit; moves only when the plugin cache takes a new pin"
+    }
+  ],
+  "snapshots": [
+    {
+      "date": "2026-07-31",
+      "state": "historical",
+      "title": "The injector exists and nothing opts in",
+      "provenance": "reconstructed from the header comments in home/.claude/hooks/session-conventions.sh and .claude/skills/hooks/inject-conventions.sh",
+      "headline": "1 route delivering, 0 repos opted in",
+      "stores": [
+        {
+          "id": "origin",
+          "label": "docs/ on main",
+          "where": "github.com/mehrlander/web-tools",
+          "upkeep": "authored",
+          "freshness": "tip",
+          "copy": false
+        },
+        {
+          "id": "checkout",
+          "label": "session checkout docs/",
+          "where": "the container's clone of the repo",
+          "upkeep": "cloned at session start",
+          "freshness": "branch",
+          "copy": true
+        }
+      ],
+      "routes": [
+        {
+          "id": "import",
+          "label": "@-import",
+          "chain": [
+            "origin",
+            "checkout"
+          ],
+          "carrier": "project_instructions",
+          "freshness": "branch",
+          "scope": "sessions whose project root includes web-tools",
+          "state": "working"
+        },
+        {
+          "id": "inject",
+          "label": "injection",
+          "chain": [
+            "origin"
+          ],
+          "carrier": "session hook stdout",
+          "freshness": "tip",
+          "scope": "nothing: inject-conventions.sh shipped this day and no repo named it for 26 days",
+          "state": "idle"
+        }
+      ],
+      "evidence": [
+        "The dispatcher began labelling each script's output, so home's loader, which emitted the additionalContext JSON envelope, stopped parsing as JSON.",
+        "web-tools shipped inject-conventions.sh the same day, plain stdout, to fix exactly that."
+      ]
+    },
+    {
+      "date": "2026-08-26",
+      "state": "historical",
+      "title": "Five percent, measured",
+      "provenance": "mehrlander/home chron/2026/08/2026-08-26-the-injection-delivers-five-percent.md, cited in both scripts' headers",
+      "headline": "36,135 bytes sent · 1,843 delivered",
+      "stores": [
+        {
+          "id": "origin",
+          "label": "docs/ on main",
+          "where": "github.com/mehrlander/web-tools",
+          "upkeep": "authored",
+          "freshness": "tip",
+          "copy": false
+        },
+        {
+          "id": "checkout",
+          "label": "session checkout docs/",
+          "where": "the container's clone of the repo",
+          "upkeep": "cloned at session start",
+          "freshness": "branch",
+          "copy": true
+        }
+      ],
+      "routes": [
+        {
+          "id": "import",
+          "label": "@-import",
+          "chain": [
+            "origin",
+            "checkout"
+          ],
+          "carrier": "project_instructions",
+          "freshness": "branch",
+          "scope": "sessions whose project root includes web-tools",
+          "state": "working"
+        },
+        {
+          "id": "fetch-hook",
+          "label": "home's fetching loader",
+          "chain": [
+            "origin"
+          ],
+          "carrier": "session hook stdout",
+          "freshness": "tip",
+          "scope": "every home session, in name only",
+          "state": "broken",
+          "note": "fetched both documents whole, 36,135 bytes, and passed the harness limit on 2026-08-07. From that day the session received the first 2,000 bytes and SURFACING.md did not arrive at all, for nineteen days, while the hook reported success."
+        }
+      ],
+      "evidence": [
+        "A SessionStart hook over the limit exits 0 and reports success, so the failure was invisible from inside the script.",
+        "The fix has to be a payload sized to the channel plus a script that says when it could not fit."
+      ]
+    },
+    {
+      "date": "2026-08-27",
+      "state": "historical",
+      "title": "The payload fits, and a copy is created to make it fit",
+      "provenance": "the rung logic and budget history in .claude/skills/hooks/inject-conventions.sh; the vendoring leg in .githooks/pre-commit",
+      "headline": "3 routes · a vendored copy · rung 2 fires for the first time",
+      "stores": [
+        {
+          "id": "origin",
+          "label": "docs/ on main",
+          "where": "github.com/mehrlander/web-tools",
+          "upkeep": "authored",
+          "freshness": "tip",
+          "copy": false
+        },
+        {
+          "id": "repo-vendored",
+          "label": ".claude/skills/web-tools/ on main",
+          "where": "github.com/mehrlander/web-tools",
+          "upkeep": "pre-commit leg 1c copies docs/ and stages it",
+          "freshness": "tip",
+          "copy": true,
+          "note": "created so the plugin payload, declared as ./.claude/skills, carries the documents docs/ cannot reach."
+        },
+        {
+          "id": "pin",
+          "label": "pinned plugin install",
+          "where": "~/.claude/plugins/cache/web-tools/portable/<sha>/web-tools/",
+          "upkeep": "on plugin update; older pins retained",
+          "freshness": "pinned",
+          "copy": true
+        },
+        {
+          "id": "checkout",
+          "label": "session checkout docs/",
+          "where": "the container's clone of the repo",
+          "upkeep": "cloned at session start",
+          "freshness": "branch",
+          "copy": true
+        },
+        {
+          "id": "raw",
+          "label": "raw.githubusercontent.com",
+          "where": "the network, on the sandbox allowlist",
+          "upkeep": "not stored: read at the moment of use",
+          "freshness": "tip",
+          "copy": false,
+          "note": "No copy is kept, which is why this route cannot lag and why it is the only one that fails when the network does."
+        }
+      ],
+      "routes": [
+        {
+          "id": "import",
+          "label": "@-import",
+          "chain": [
+            "origin",
+            "checkout"
+          ],
+          "carrier": "project_instructions",
+          "freshness": "branch",
+          "scope": "sessions whose project root includes web-tools",
+          "state": "working"
+        },
+        {
+          "id": "inject",
+          "label": "injection",
+          "chain": [
+            "origin",
+            "repo-vendored",
+            "pin"
+          ],
+          "carrier": "session hook stdout",
+          "freshness": "pinned",
+          "scope": "any repo that drops the one-line opt-in",
+          "state": "working",
+          "note": "reads the copy sitting beside the script in its own pin, so no network and no interpreter to be missing."
+        },
+        {
+          "id": "skill",
+          "label": "/web-tools",
+          "chain": [
+            "origin",
+            "raw"
+          ],
+          "carrier": "on demand, mid-session",
+          "freshness": "tip",
+          "scope": "any session that invokes it",
+          "state": "working"
+        }
+      ],
+      "caps": [
+        {
+          "id": "injector",
+          "label": "injector budget",
+          "bytes": 27000,
+          "caveat": "drops a rung and prints what it withheld"
+        },
+        {
+          "id": "harness",
+          "label": "harness ceiling",
+          "bytes": 28000,
+          "caveat": "keeps the first ~2,000 bytes and discards the rest, silently"
+        }
+      ],
+      "evidence": [
+        "Budget raised from 26,000 the same day, before it had ever fired: the payload had come within 63 bytes and the drop from rung 1 to rung 3 was a cliff.",
+        "Rung 2 exists because 127 bytes over the budget cost every surfacing primitive."
+      ]
+    },
+    {
+      "date": "2026-09-01",
+      "state": "current",
+      "title": "Three routes, six copies, and they disagree",
+      "provenance": "measured on one container, 2026-09-01: find / -name CONVENTIONS.md, the clone's reflog, and the injection receipts in mehrlander/web-tools-private sessions/",
+      "headline": "3 routes · 6 copies · 1 route measured lagging",
+      "stores": [
+        {
+          "id": "origin",
+          "label": "docs/ on main",
+          "where": "github.com/mehrlander/web-tools",
+          "upkeep": "authored",
+          "freshness": "tip",
+          "copy": false
+        },
+        {
+          "id": "repo-vendored",
+          "label": ".claude/skills/web-tools/ on main",
+          "where": "github.com/mehrlander/web-tools",
+          "upkeep": "pre-commit leg 1c copies docs/ and stages it",
+          "freshness": "tip",
+          "copy": true,
+          "goes": true,
+          "note": "held byte-identical by two tests, not one: portable-manifest.test.mjs and derived-artifacts.test.mjs."
+        },
+        {
+          "id": "clone-docs",
+          "label": "marketplace clone docs/",
+          "where": "~/.claude/plugins/marketplaces/web-tools/docs/",
+          "upkeep": "git pull at session start (observed 16:28:19, before the hooks ran at 16:28:24)",
+          "freshness": "session",
+          "copy": true
+        },
+        {
+          "id": "clone-vendored",
+          "label": "marketplace clone .claude/skills/web-tools/",
+          "where": "~/.claude/plugins/marketplaces/web-tools/.claude/skills/web-tools/",
+          "upkeep": "the same pull",
+          "freshness": "session",
+          "copy": true,
+          "goes": true
+        },
+        {
+          "id": "pin",
+          "label": "pinned plugin installs",
+          "where": "~/.claude/plugins/cache/web-tools/portable/<sha>/web-tools/",
+          "upkeep": "on plugin update; older pins retained",
+          "freshness": "pinned",
+          "copy": true,
+          "goes": true,
+          "count": 2,
+          "note": "2 pins retained on this container, 4 on 2026-08-31. The count varies by machine."
+        },
+        {
+          "id": "checkout",
+          "label": "session checkout docs/",
+          "where": "the container's clone of the repo",
+          "upkeep": "cloned at session start",
+          "freshness": "branch",
+          "copy": true
+        },
+        {
+          "id": "checkout-vendored",
+          "label": "session checkout .claude/skills/web-tools/",
+          "where": "the same clone",
+          "upkeep": "the same clone",
+          "freshness": "branch",
+          "copy": true,
+          "goes": true
+        },
+        {
+          "id": "raw",
+          "label": "raw.githubusercontent.com",
+          "where": "the network, on the sandbox allowlist",
+          "upkeep": "not stored: read at the moment of use",
+          "freshness": "tip",
+          "copy": false,
+          "note": "No copy is kept, which is why this route cannot lag and why it is the only one that fails when the network does."
+        }
+      ],
+      "routes": [
+        {
+          "id": "import",
+          "label": "@-import",
+          "chain": [
+            "origin",
+            "checkout"
+          ],
+          "carrier": "project_instructions",
+          "freshness": "branch",
+          "scope": "sessions whose project root includes web-tools",
+          "state": "working"
+        },
+        {
+          "id": "inject",
+          "label": "injection",
+          "chain": [
+            "origin",
+            "repo-vendored",
+            "pin"
+          ],
+          "carrier": "session hook stdout",
+          "freshness": "pinned",
+          "scope": "any repo that drops the one-line opt-in",
+          "state": "lagging",
+          "note": "this session's hooks ran from the pin at 834eb01 (2026-08-27) and injected a SURFACING.md five days behind main, while the @-import in the same session delivered the tip."
+        },
+        {
+          "id": "skill",
+          "label": "/web-tools",
+          "chain": [
+            "origin",
+            "raw"
+          ],
+          "carrier": "on demand, mid-session",
+          "freshness": "tip",
+          "scope": "any session that invokes it",
+          "state": "working",
+          "note": "the only route that is current at the moment of use, and the only one that needs the network."
+        }
+      ],
+      "caps": [
+        {
+          "id": "injector",
+          "label": "injector budget",
+          "bytes": 26900,
+          "caveat": "drops a rung and prints what it withheld"
+        },
+        {
+          "id": "harness",
+          "label": "harness ceiling",
+          "bytes": 28000,
+          "caveat": "keeps the first ~2,000 bytes and discards the rest, silently"
+        }
+      ],
+      "evidence": [
+        "12 of the 47 recorded sessions carrying both an @-import and an injection receipt for SURFACING.md had the two routes deliver different versions.",
+        "The version the injector kept delivering, sha dc188a49, is SURFACING.md as of 2026-08-27. It was still arriving on 2026-09-01.",
+        "This session's payload came to 28,026 bytes against the 28,000 ceiling and was cut. The 1,210-byte gap between the pinned copy and the tip is larger than the 26-byte overrun."
+      ]
+    },
+    {
+      "date": "2026-09-01",
+      "state": "planned",
+      "title": "One copy per machine that anything reads",
+      "provenance": "design, not measurement. Tracker task one-copy-of-the-conventions-i9i931, revised into three commits after the 2026-09-01 assessment.",
+      "headline": "3 routes · 2 copies · 0 routes lagging",
+      "stores": [
+        {
+          "id": "origin",
+          "label": "docs/ on main",
+          "where": "github.com/mehrlander/web-tools",
+          "upkeep": "authored",
+          "freshness": "tip",
+          "copy": false
+        },
+        {
+          "id": "clone-docs",
+          "label": "marketplace clone docs/",
+          "where": "~/.claude/plugins/marketplaces/web-tools/docs/",
+          "upkeep": "git pull at session start",
+          "freshness": "session",
+          "copy": true,
+          "note": "resolved from the injector's own path rather than a hardcoded one: .../cache/<marketplace>/<plugin>/<sha>/hooks up to .../marketplaces/<marketplace>/docs. No $HOME, no config-dir name, no marketplace name."
+        },
+        {
+          "id": "checkout",
+          "label": "session checkout docs/",
+          "where": "the container's clone of the repo",
+          "upkeep": "cloned at session start",
+          "freshness": "branch",
+          "copy": true
+        },
+        {
+          "id": "pin",
+          "label": "an older pinned install",
+          "where": "~/.claude/plugins/cache/web-tools/portable/<sha>/web-tools/",
+          "upkeep": "frozen: it is whatever the pin held when it was taken",
+          "freshness": "pinned",
+          "copy": false,
+          "note": "Fallback only, and only real if the deletion ships one release AFTER the resolver. A plugin install is one tree at one commit, so a pin carrying the new script also carries the deletion, and a pin carrying the copies also carries the old script. Shipped together, this rung can never fire."
+        },
+        {
+          "id": "raw",
+          "label": "raw.githubusercontent.com",
+          "where": "the network, on the sandbox allowlist",
+          "upkeep": "not stored: read at the moment of use",
+          "freshness": "tip",
+          "copy": false,
+          "note": "Kept as the skill's fallback so a machine with no marketplace clone still loads the conventions."
+        }
+      ],
+      "routes": [
+        {
+          "id": "import",
+          "label": "@-import",
+          "chain": [
+            "origin",
+            "checkout"
+          ],
+          "carrier": "project_instructions",
+          "freshness": "branch",
+          "scope": "sessions whose project root includes web-tools",
+          "state": "working"
+        },
+        {
+          "id": "inject",
+          "label": "injection",
+          "chain": [
+            "origin",
+            "clone-docs"
+          ],
+          "carrier": "session hook stdout",
+          "freshness": "session",
+          "scope": "any repo that drops the one-line opt-in",
+          "state": "working",
+          "note": "falls back to the copy beside the script on an older pinned install, then to a named failure on stdout at exit 0, since the injector never fails into the session.",
+          "fallbacks": [
+            "pin"
+          ]
+        },
+        {
+          "id": "skill",
+          "label": "/web-tools",
+          "chain": [
+            "origin",
+            "clone-docs"
+          ],
+          "carrier": "on demand, mid-session",
+          "freshness": "session",
+          "scope": "any session that invokes it",
+          "state": "working",
+          "note": "the curl to raw.githubusercontent.com stays as the fallback, so a machine with no clone still loads.",
+          "fallbacks": [
+            "raw"
+          ]
+        }
+      ],
+      "caps": [
+        {
+          "id": "injector",
+          "label": "injector budget",
+          "bytes": 26900,
+          "caveat": "drops a rung and prints what it withheld"
+        },
+        {
+          "id": "harness",
+          "label": "harness ceiling",
+          "bytes": 28000,
+          "caveat": "keeps the first ~2,000 bytes and discards the rest, silently"
+        }
+      ],
+      "evidence": [
+        "Deleting the vendored copy removes three of the six: the copy on main, the clone's copy of it, and the copy inside every pin.",
+        "The pinned script still lags by a session. What stops lagging is the document it reads, which is the thing that governs the session.",
+        "New risk, not present today: an old pinned script reading new-tip documents is a pair CI never tests, because injected-docs.test.mjs gates the two at one commit."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conventions Delivery</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🚚</text></svg>">
+<meta name="shot-query" content="src=self">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script defer src="https://unpkg.com/alpinejs"></script>
+
+<!--
+  delivery.html — the topology behind the Map view's Injection tab.
+
+  WHAT THE TAB CANNOT SHOW. docs/injection.json measures BYTES: what reaches a
+  session at start, against which cap, at which rung. It answers "did it fit".
+  It cannot answer "which copy was that", and on 2026-09-01 that turned out to
+  be the question: the injected SURFACING.md was five days behind the one the
+  @-import delivered in the same session, and the 1,210-byte gap between them
+  was larger than the 26-byte overrun that truncated the payload.
+
+  So this page reads the ROUTES rather than the volume. Each route is a track
+  from main's tip to a session, through however many copies it passes on the
+  way, and each node carries how fresh it can be. Colour is one axis only:
+  staleness risk. Everything current at the moment of use is neutral.
+
+  DATED SNAPSHOTS, NOT A CURRENT-STATE VIEW. docs/delivery.json holds one entry
+  per state the system has been in, plus one marked `planned`. Stepping through
+  them is the point: the shape of the fix is only legible against the shape of
+  what it replaces. A `planned` snapshot is a design and says so; when it ships
+  it becomes `current` and a new `planned` may follow it.
+
+  Data at ../docs/delivery.json, or ?src=owner/repo@ref:path for another copy.
+-->
+</head>
+<body class="bg-base-200">
+
+<div class="fixed inset-0 grid grid-rows-[auto_1fr_auto]" x-data="delivery()" x-init="boot()">
+
+  <header class="bg-base-100 border-b border-base-300 px-4 sm:px-6 py-3">
+    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <h1 class="text-xl font-semibold">Conventions Delivery</h1>
+      <template x-if="snap">
+        <span class="flex items-baseline gap-2 flex-wrap">
+          <span class="badge badge-sm" :class="stateClass(snap.state)" x-text="snap.state"></span>
+          <code class="text-base text-base-content/60" x-text="snap.date"></code>
+          <span class="text-base text-primary" x-text="snap.headline"></span>
+        </span>
+      </template>
+      <div class="grow"></div>
+      <button type="button" class="btn btn-sm btn-ghost gap-1.5" @click="$refs.info.showModal()"
+              aria-label="Findings and method">
+        <i class="ph ph-info"></i><span>Findings</span>
+      </button>
+    </div>
+    <p class="text-base text-base-content/70 text-balance mt-1" x-show="snap" x-text="snap?.title"></p>
+  </header>
+
+  <main class="overflow-y-auto px-4 sm:px-6 py-5">
+    <div x-show="err" class="alert alert-warning text-base" x-text="err"></div>
+
+    <template x-if="snap">
+      <div class="flex flex-col gap-7">
+
+        <!-- ROUTES. One track each, left to right, main's tip into a session.
+             The chevron between nodes is the copy step; the terminal chip is
+             the carrier the session actually sees. -->
+        <section>
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/40 mb-3">Routes into a session</h2>
+          <div class="flex flex-col gap-3">
+            <template x-for="r in view.routes" :key="snap.date + snap.state + r.id">
+              <div class="rounded-lg border bg-base-100 px-3 py-2.5"
+                   :class="riskBorder(r.state, r.freshness)">
+                <div class="flex items-baseline gap-2 flex-wrap mb-2">
+                  <span class="font-semibold" x-text="r.label"></span>
+                  <span class="badge badge-sm" :class="freshClass(r.freshness)" x-text="fresh(r.freshness)?.label"></span>
+                  <span class="text-base" :class="stateTone(r.state)" x-show="r.state !== 'working'" x-text="r.state"></span>
+                  <div class="grow"></div>
+                  <button type="button" class="btn btn-xs btn-ghost" x-show="r.note"
+                          @click="detail = { title: r.label, body: r.note }; $refs.info.showModal()"
+                          :aria-label="'About ' + r.label"><i class="ph ph-note"></i></button>
+                </div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <template x-for="(n, i) in r.nodes" :key="r.id + n.id + i">
+                    <span class="flex items-center gap-1.5">
+                      <i class="ph ph-caret-right text-base-content/30" x-show="i > 0"></i>
+                      <button type="button" class="rounded-md border px-2 py-1 text-base text-left"
+                              :class="n.freshness === 'pinned' ? 'border-warning bg-warning/10' : 'border-base-300 bg-base-100'"
+                              @click="openNode(n)"
+                              x-text="n.label"></button>
+                    </span>
+                  </template>
+                  <span class="flex items-center gap-1.5">
+                    <i class="ph ph-caret-right text-base-content/30"></i>
+                    <span class="rounded-md border border-base-300 bg-base-200 px-2 py-1 text-base"
+                          x-text="r.carrier"></span>
+                  </span>
+                  <template x-for="(f, j) in r.fallbackNodes" :key="r.id + 'fb' + f.id + j">
+                    <span class="flex items-center gap-1.5 opacity-50">
+                      <span class="text-base text-base-content/50" x-text="j === 0 ? 'else' : 'then'"></span>
+                      <button type="button" class="rounded-md border border-dashed border-base-300 px-2 py-1 text-base text-left"
+                              @click="openNode(f)" x-text="f.label"></button>
+                    </span>
+                  </template>
+                </div>
+                <p class="text-base text-base-content/60 text-pretty mt-2" x-text="'reaches ' + r.scope"></p>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <!-- COPIES. Every place the two documents physically sit, on one
+             machine, on this date. `goes` marks the ones the next state
+             removes, so the delta reads without a compare mode. -->
+        <section>
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/40 mb-3">
+            <span x-text="'Copies on a machine · ' + view.copies.length"></span>
+            <span class="text-warning font-normal normal-case tracking-normal"
+                  x-show="view.going.length" x-text="'· ' + view.going.length + ' the next state removes'"></span>
+          </h2>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <template x-for="s in view.copies" :key="snap.date + snap.state + s.id">
+              <button type="button" class="rounded-lg border bg-base-100 px-3 py-2 text-left"
+                      :class="s.goes ? 'border-warning/60' : 'border-base-300'" @click="openNode(s)">
+                <div class="flex items-baseline gap-2 flex-wrap">
+                  <span class="font-semibold" :class="s.goes && 'line-through decoration-warning/60'"
+                        x-text="s.label"></span>
+                  <span class="badge badge-sm" :class="freshClass(s.freshness)" x-text="fresh(s.freshness)?.label"></span>
+                  <span class="text-base text-base-content/50" x-show="s.count" x-text="'×' + s.count"></span>
+                </div>
+                <code class="text-xs text-base-content/50 break-all" x-text="s.where"></code>
+              </button>
+            </template>
+          </div>
+        </section>
+
+        <!-- The caps the injected route runs against, where the snapshot
+             declares them. Bytes only; the Injection tab draws the bars. -->
+        <section x-show="snap.caps">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/40 mb-3">Caps on the injected route</h2>
+          <div class="flex flex-col gap-2">
+            <template x-for="c in (snap.caps || [])" :key="c.id">
+              <div class="rounded-lg border border-base-300 bg-base-100 px-3 py-2">
+                <div class="flex items-baseline gap-2 flex-wrap">
+                  <span class="font-semibold" x-text="c.label"></span>
+                  <code class="text-base text-primary" x-text="c.bytes.toLocaleString() + ' bytes'"></code>
+                </div>
+                <p class="text-base text-base-content/60 text-pretty" x-text="'caveat: ' + c.caveat"></p>
+              </div>
+            </template>
+          </div>
+        </section>
+
+      </div>
+    </template>
+  </main>
+
+  <footer class="bg-base-100 border-t border-base-300 px-4 sm:px-6 py-2 flex items-center gap-3">
+    <button type="button" class="btn btn-sm btn-ghost" @click="step(-1)" :disabled="i === 0" aria-label="Previous state">
+      <i class="ph ph-caret-left"></i>
+    </button>
+    <div class="grow flex items-center justify-center gap-1 sm:gap-2">
+      <template x-for="(s, k) in snaps" :key="s.date + s.state">
+        <button type="button" class="flex items-center gap-1.5 px-1.5 py-1 rounded"
+                :class="k === i ? 'bg-base-200' : 'opacity-45 hover:opacity-100'"
+                @click="i = k" :aria-label="s.date + ' ' + s.state">
+          <span class="w-2 h-2 rounded-full" :class="dotClass(s.state)"></span>
+          <span class="hidden sm:inline text-xs font-mono" x-text="s.date"></span>
+        </button>
+      </template>
+    </div>
+    <button type="button" class="btn btn-sm btn-ghost" @click="step(1)" :disabled="i === snaps.length - 1" aria-label="Next state">
+      <i class="ph ph-caret-right"></i>
+    </button>
+  </footer>
+
+  <dialog class="modal" x-ref="info" @close="detail = null">
+    <div class="modal-box max-w-2xl">
+      <template x-if="detail">
+        <div>
+          <h3 class="font-semibold text-lg mb-2" x-text="detail.title"></h3>
+          <p class="text-base text-pretty" x-text="detail.body"></p>
+        </div>
+      </template>
+      <template x-if="!detail && snap">
+        <div class="flex flex-col gap-4">
+          <div>
+            <h3 class="font-semibold text-lg" x-text="snap.title"></h3>
+            <p class="text-base text-base-content/60 text-pretty" x-text="'provenance: ' + snap.provenance"></p>
+          </div>
+          <ul class="list-disc pl-5 flex flex-col gap-2">
+            <template x-for="f in (snap.evidence || [])" :key="f">
+              <li class="text-base text-pretty" x-text="f"></li>
+            </template>
+          </ul>
+          <div>
+            <h4 class="text-sm font-semibold uppercase tracking-wide text-base-content/40 mb-1">Freshness</h4>
+            <template x-for="f in (data?.freshness || [])" :key="f.id">
+              <p class="text-base text-pretty"><span class="font-semibold" x-text="f.label"></span><span x-text="' — ' + f.gloss + '. Lag: ' + f.lag + '.'"></span></p>
+            </template>
+          </div>
+          <p class="text-base text-base-content/60 text-pretty" x-text="data?.note"></p>
+        </div>
+      </template>
+      <div class="modal-action"><form method="dialog"><button class="btn btn-sm">Close</button></form></div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button aria-label="Close">close</button></form>
+  </dialog>
+
+</div>
+
+<script>
+function delivery() {
+  return {
+    data: null, snaps: [], i: 0, err: '', detail: null,
+
+    get snap() { return this.snaps[this.i] || null; },
+
+    // Resolved once per snapshot rather than looked up per item in the
+    // template. An x-for calling a lookup that depends on the current index
+    // rendered a mix of two snapshots' labels: the DOM was reused across an
+    // index change and the per-item text did not follow. Chains carry node
+    // OBJECTS here, so nothing in the template resolves anything.
+    get view() {
+      const s = this.snap;
+      if (!s) return { routes: [], copies: [], going: [] };
+      const by = new Map((s.stores || []).map(n => [n.id, n]));
+      const copies = (s.stores || []).filter(n => n.copy);
+      return {
+        routes: (s.routes || []).map(r => ({
+          ...r,
+          nodes: (r.chain || []).map(id => by.get(id) || { id, label: id, freshness: null }),
+          fallbackNodes: (r.fallbacks || []).map(id => by.get(id) || { id, label: id, freshness: null }),
+        })),
+        copies,
+        going: copies.filter(n => n.goes),
+      };
+    },
+
+    async boot() {
+      try { this.data = await load(new URLSearchParams(location.search)); }
+      catch (e) { this.err = 'Could not load data: ' + e.message; return; }
+      this.snaps = this.data.snapshots || [];
+      // Open on `current`, not on the newest entry: a `planned` snapshot
+      // shares its date with the state it replaces, so "last" is the design
+      // and the reader wants today first.
+      const cur = this.snaps.findIndex(s => s.state === 'current');
+      this.i = cur < 0 ? this.snaps.length - 1 : cur;
+      addEventListener('keydown', e => {
+        if (e.key === 'ArrowLeft') this.step(-1);
+        if (e.key === 'ArrowRight') this.step(1);
+      });
+    },
+
+    step(d) { this.i = Math.min(this.snaps.length - 1, Math.max(0, this.i + d)); },
+    fresh(id) { return (this.data?.freshness || []).find(f => f.id === id) || null; },
+
+    openNode(n) {
+      if (!n || !n.where) return;
+      const f = this.fresh(n.freshness);
+      this.detail = {
+        title: n.label,
+        body: [n.where, 'Refreshed: ' + n.upkeep, f && (f.label + ' — ' + f.gloss + '. Lag: ' + f.lag + '.'), n.note]
+          .filter(Boolean).join('\n\n'),
+      };
+      this.$refs.info.showModal();
+    },
+
+    // One axis of colour: staleness risk. A pinned copy is the only thing
+    // that can silently govern a session with an older rule, so it is the
+    // only thing marked. Everything else reads neutral.
+    freshClass(id) { return id === 'pinned' ? 'badge-warning' : 'badge-ghost'; },
+    riskBorder(state, freshness) {
+      if (state === 'lagging' || state === 'broken') return 'border-error/60';
+      if (freshness === 'pinned') return 'border-warning/50';
+      return 'border-base-300';
+    },
+    stateTone(state) {
+      return state === 'lagging' || state === 'broken' ? 'text-error' : 'text-base-content/50';
+    },
+    stateClass(state) {
+      return { current: 'badge-primary', planned: 'badge-outline', historical: 'badge-ghost' }[state] || 'badge-ghost';
+    },
+    dotClass(state) {
+      return { current: 'bg-primary', planned: 'bg-primary/30 ring-1 ring-primary', historical: 'bg-base-content/30' }[state]
+        || 'bg-base-content/30';
+    },
+  };
+}
+
+// Same loading contract as pages/doc-growth.html: self by default so a
+// headless shot renders from the checkout, ?url= for an arbitrary payload,
+// ?src=owner/repo@ref:path through the API on the viewer's stored token.
+async function load(q) {
+  if (q.get('url')) return (await fetch(q.get('url'))).json();
+  const src = q.get('src');
+  if (!src || src === 'self') {
+    const r = await fetch('../docs/delivery.json');
+    if (!r.ok) throw new Error('delivery.json (HTTP ' + r.status + ')');
+    return r.json();
+  }
+  const [repoRef, path] = src.split(':');
+  const [repo, ref = 'main'] = repoRef.split('@');
+  let token = '';
+  try { token = localStorage.getItem('ghToken') || ''; } catch {}
+  const r = await fetch('https://api.github.com/repos/' + repo + '/contents/' + path + '?ref=' + ref, {
+    headers: { Accept: 'application/vnd.github.raw', ...(token && { Authorization: 'Bearer ' + token }) },
+  });
+  if (!r.ok) throw new Error(src + ' (HTTP ' + r.status + (r.status === 404 && !token ? ', no stored token' : '') + ')');
+  const d = await r.json();
+  if (d && d.content && d.encoding === 'base64') {
+    const bin = atob(String(d.content).replace(/\s/g, ''));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0))));
+  }
+  return d;
+}
+</script>
+</body>
+</html>
