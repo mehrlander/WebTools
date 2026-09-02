@@ -20,7 +20,9 @@ share no module imports — render and build touch only via subprocess and the
 `dist/` artifact):
 
 - [`render/`](render/) — exercise a page headlessly, offline. `preview.mjs`
-  (jsdom logic render) + `screenshot.mjs` (Chromium pixel render), with
+  (jsdom logic render) + `screenshot.mjs` (Chromium pixel render) +
+  `netlog.mjs` (Chromium request log: what a load costs, by host and endpoint,
+  writes blocked), with
   `cdn.mjs` (the URL → local resolver) and `scenarios/` (interaction scripts).
 - [`build/`](build/) — snapshot a page's own-code graph into an offline
   artifact. `build.mjs` / `bake.mjs`, with `graph.mjs` (the static `gh.load`

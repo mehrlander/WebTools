@@ -750,6 +750,9 @@ test('Unrecorded selects the branches no session record stands behind', () => {
   data.activity['me/tools'].scan.branches[0].sessions = ['https://claude.ai/code/session_aaa'];
   // feat/b reaches a record by NAME; old/landed names a session the store never kept.
   data.activity['me/tools'].scan.branches[2].sessions = ['https://claude.ai/code/session_zzz'];
+  // allBranchRows is memoised on the document's identity plus this revision;
+  // an in-place edit like the two above says so the way absorbCompare does.
+  data._activityRev++;
   data.branchScope = 'unrecorded';
   const got = names(data.openBranches);
   assert.ok(!got.includes('me/tools/feat/a'), 'a branch whose session URL is in the store is recorded');

@@ -321,8 +321,9 @@ test('a row built by an older summarizer is stale even when its sha never moves'
 
   // What the store looked like before ROW_V existed: same bytes, older fold.
   const older = JSON.parse(JSON.stringify(cache));
-  delete older.byPath[p].v;
-  delete older.byPath[p].docFiles;
+  const row = older.rows.find(r => S.pathOf(r) === p);
+  delete row.v;
+  delete row.docFiles;
   assert.deepEqual(S.stalePaths(older, listing), [p],
     'a published record is frozen, so the version is the only thing that can say its row is behind');
 });
@@ -385,7 +386,10 @@ test('pathOf round-trips a row back to the store path it came from', () => {
   const p = 'sessions/2026/08/2026-08-05-b8fae678.json';
   const cache = S.buildCache(null, { [p]: { record: record(), sha: 'x' } }, null, 'now');
   assert.equal(S.pathOf(cache.rows[0]), p);
-  assert.ok(p in cache.byPath);
+  assert.equal(cache.byPath, undefined, 'rows are the record set; the file keeps no second copy keyed by path');
+  // And a file from before the copy was dropped still diffs by sha through it.
+  const older = { byPath: { [p]: { ...cache.rows[0], sha: 'moved' } } };
+  assert.deepEqual(S.stalePaths(older, [{ path: p, sha: 'x' }]), [p]);
 });
 
 // The derived name. It stands in for a title the record cannot carry, so the
