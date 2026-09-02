@@ -26,7 +26,41 @@ every span resolves, every label is in the declared vocabulary, uids are unique.
 An operation that would break one is refused rather than applied, so a patch is
 either wholly valid against its base or it does not run.
 """
-import sys, json, pathlib
+import sys, json, pathlib, re
+
+ATX = re.compile(r"^[ \t]*#{1,6} ")
+
+
+def kind_of(text, start, end):
+    """WHAT KIND OF THING A SPAN IS, derived rather than remembered.
+
+    `kind` was written once by segment.py and then carried through every edit,
+    so an operation that moved a boundary left it describing a span that no
+    longer existed: splitting `## Scope and precedence` gave a unit reading
+    "nd precedence" still labelled `heading`, and three of the nine headings in
+    CONVENTIONS.md offer that split one tap away. merge's own rule (differing
+    kinds become `mixed`) was a partial version of this fix: it caught
+    heterogeneity of the two stored LABELS and missed the kind the joined SPAN
+    introduced, so merging two sentences across a blank line kept `sent`.
+
+    THE ORDER IS segment.py's OWN DISPATCH, read against a span rather than a
+    block, which is what lets lib/kits/standoff.js answer without a segmenter.
+    A structural marker outranks heterogeneity: putting the blank-line test
+    first reclassifies any fence with a blank line in its body as `mixed`.
+    Measured over six of the repo's documents, 873 units including 12 fences and
+    9 tables: this order agrees with segment.py on all 873, the other on 870.
+    tools/test/state-the-rule.test.mjs holds the two together over that corpus.
+    """
+    s = text[start:end].strip()
+    if s.startswith("```"):
+        return "code"
+    if re.search(r"\n[ \t]*\n", s):
+        return "mixed"
+    if s.startswith("|"):
+        return "table"
+    if ATX.match(s):
+        return "heading"
+    return "sent"
 
 
 def check(so, text):
@@ -104,6 +138,7 @@ def split(so, text, uid, at, why=None):
     halves = []
     for suf, (a, b) in zip("ab", ((u["start"], at), (at, u["end"]))):
         halves.append({**u, "uid": f"{uid}{suf}", "start": a, "end": b,
+                       "kind": kind_of(text, a, b),
                        "words": len(text[a:b].split()), "from": f"split:{uid}"}
                       | ({"why": why} if why else {}))
     units = sorted(so["units"], key=lambda x: x["start"])
@@ -135,10 +170,7 @@ def merge(so, text, uid, why=None):
     # be in the wrong place. Refusing states the disagreement instead.
     if any(ins.get("after") == uid for ins in so.get("insertions", [])):
         raise ValueError(f"{uid}: an insertion sits on the boundary this merge removes")
-    # A sentence that absorbs a heading is not a sentence. Keeping the first
-    # unit's kind would make the field a lie, so a cross-kind merge says so.
-    kind = u["kind"] if u["kind"] == nxt["kind"] else "mixed"
-    joined = {**u, "end": nxt["end"], "kind": kind,
+    joined = {**u, "end": nxt["end"], "kind": kind_of(text, u["start"], nxt["end"]),
               "words": len(text[u["start"]:nxt["end"]].split()),
               "from": f"merge:{uid}+{nxt['uid']}"} | ({"why": why} if why else {})
     so["units"] = units[:i] + [joined] + units[i + 2:]
@@ -166,8 +198,10 @@ def shift(so, text, after, to, why=None):
         if not text[a:b].strip():
             raise ValueError(f"{after}: moving the boundary to {to} empties a side")
     tag = f"shift:{u['uid']}/{n['uid']}"
-    u.update({"end": to, "words": len(text[u["start"]:to].split()), "from": tag})
-    n.update({"start": to, "words": len(text[to:n["end"]].split()), "from": tag})
+    u.update({"end": to, "kind": kind_of(text, u["start"], to),
+              "words": len(text[u["start"]:to].split()), "from": tag})
+    n.update({"start": to, "kind": kind_of(text, to, n["end"]),
+              "words": len(text[to:n["end"]].split()), "from": tag})
     if why:
         u["why"] = why
     return so

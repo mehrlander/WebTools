@@ -1051,8 +1051,14 @@ window.__audit = {
       }
     },
     dim(u) { return this.off[this.keyOf(u)] ? .12 : 1 },
+    // EVERY KIND BUT `code`, WHICH IS THE ONE WHOSE IMBALANCE IS EXPECTED: a
+    // fence's backticks are content. This asked for `sent`, which was the same
+    // set only while `heading`, `table` and `mixed` were rare and always
+    // balanced. Deriving kind makes `mixed` ordinary (any span crossing a blank
+    // line takes it), and a cross-block span is MORE likely to render badly, so
+    // the old filter would have quietly dropped exactly the units this counts.
     get unrenderable() {
-      return this.units.filter(u => u.kind === 'sent'
+      return this.units.filter(u => u.kind !== 'code'
         && !balanced(this.a.text.slice(u.start, u.end).trim())).length;
     },
     toggle(l) { this.off[l] = !this.off[l]; this.paint(); },

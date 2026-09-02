@@ -97,13 +97,35 @@ test('the last unit has nothing to merge with', () => {
   assert.match(complaints.join('\n'), /refused/);
 });
 
-test('a merge across two kinds reports mixed, not one of them', () => {
-  const b = base(); b.units[1].kind = 'heading';
-  const { so } = S.apply(b, [{ op: 'merge', uid: 'u-001' }], DOC);
+// DERIVED FROM THE SPAN, NOT FROM THE LABELS JOINED. The rule here used to be
+// "the two kinds differ, so say mixed", which read the operands and not the
+// result: merging two `sent` units across a blank line kept `sent`, though the
+// survivor plainly covered two paragraphs. Both units below are `sent`, so the
+// old rule would have kept `sent` and this test would fail.
+test('a merge reports the kind of the span it produced', () => {
+  const { so } = S.apply(base(), [{ op: 'merge', uid: 'u-001' }], DOC);
   assert.equal(so.units.length, 1);
-  assert.equal(so.units[0].kind, 'mixed');
+  assert.equal(so.units[0].kind, 'mixed', 'the survivor spans a blank line');
   assert.equal(so.units[0].end, 59, 'the survivor covers both spans');
   assert.equal(so.units[0].from, 'merge:u-001+u-002');
+});
+
+// The op that made this urgent, and the one the old rule could not reach at all:
+// a boundary MOVE leaves both sides describing spans neither of them had.
+test('a split and a shift re-derive the kind of every span they touch', () => {
+  const doc = '## Scope and precedence\n\nA sentence follows it.';
+  const head = () => ({ ...base(), units: [
+    { uid: 'h-1', start: 0, end: 23, kind: 'heading', words: 3, label: 'WHAT' },
+    { uid: 'h-2', start: 25, end: 47, kind: 'sent', words: 4, label: 'WHAT' }] });
+
+  const split = S.apply(head(), [{ op: 'split', uid: 'h-1', at: 10 }], doc).so;
+  assert.deepEqual(split.units.map(u => [u.uid, u.kind]),
+    [['h-1a', 'heading'], ['h-1b', 'sent'], ['h-2', 'sent']],
+    '"nd precedence" carries no marker, so it is not a heading');
+
+  const shifted = S.apply(head(), [{ op: 'shift', after: 'h-1', to: 32 }], doc).so;
+  assert.deepEqual(shifted.units.map(u => u.kind), ['mixed', 'sent'],
+    'the heading swallowed across the blank line and is no longer just a heading');
 });
 
 test('a note is set and cleared through the same operation', () => {

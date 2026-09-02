@@ -99,7 +99,14 @@ def blocks(text, off, base_off, out):
         block = m.group(1)
         if not block.strip():
             continue
-        block_units(block, off + m.start(1), base_off, out)
+        # A BLOCK CAN ARRIVE WITH A LEADING NEWLINE, which is what a fence's own
+        # trailing newline leaves behind: FENCED consumes it, so the text after
+        # a fence opens with the newline that ended it. Every test in
+        # block_units anchors at position 0, so a heading immediately after a
+        # fence was read as prose. Found by holding the segmenter to the span
+        # classifier over a 1,381-unit corpus, where it was the one disagreement.
+        lead = len(block) - len(block.lstrip('\n'))
+        block_units(block[lead:], off + m.start(1) + lead, base_off, out)
 
 
 def units(text, base_off):

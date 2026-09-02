@@ -64,3 +64,4 @@ https-block-resets-instead-of-403,a blocked host looks like a network flake,1,20
 word-boundary-before-alternation,a scan reports zero and looks authoritative,1,2026-08-03,2026-08-03,
 x-collapse-needs-x-show,a panel renders at zero size,1,2026-07-15,2026-07-15,environment/testing.md
 cross-repo-lib-consumer-invisible,in-repo greps cannot see an external runtime consumer of a lib file,0,,,
+python-offsets-read-as-utf16,an emoji shifts every standoff offset the browser reads,0,,,

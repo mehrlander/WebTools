@@ -338,20 +338,14 @@ test('the last unit has nothing to merge with', () => {
 
 // A merge that kept either side's kind would be stating something false about
 // the span it now covers, and the kind is what the page styles on.
-test('a merge across two kinds reports mixed, not one of them', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ops-'));
-  const { doc, sf } = standoff(dir);
-  const so = JSON.parse(readFileSync(sf, 'utf8'));
-  so.units[1].kind = 'heading';
-  writeFileSync(sf, JSON.stringify(so));
-  const pf = join(dir, 'p.json');
-  writeFileSync(pf, JSON.stringify([{ op: 'merge', uid: 'u-001' }]));
-  execFileSync('python3', [join(SKILL, 'ops.py'), sf, pf, doc, '--write']);
-  const after = JSON.parse(readFileSync(sf, 'utf8'));
-  rmSync(dir, { recursive: true, force: true });
-  assert.equal(after.units.length, 1);
-  assert.equal(after.units[0].kind, 'mixed');
-  assert.equal(after.units[0].end, 59, 'the survivor covers both spans');
+// DERIVED FROM THE SPAN, NOT FROM THE LABELS JOINED. Both units are `sent`, so
+// the rule this replaces ("the two kinds differ, so say mixed") would have kept
+// `sent` on a survivor plainly covering two paragraphs.
+test('a merge reports the kind of the span it produced', () => {
+  const { so } = patch([{ op: 'merge', uid: 'u-001' }]);
+  assert.equal(so.units.length, 1);
+  assert.equal(so.units[0].kind, 'mixed', 'the survivor spans a blank line');
+  assert.equal(so.units[0].end, 59, 'the survivor covers both spans');
 });
 
 test('a note is set and cleared through the same operation', () => {
@@ -521,6 +515,24 @@ test('an insertion anchored to no unit is refused by both', () => {
   assert.equal(both([{ op: 'insert', after: 'u-404', text: 'nowhere' }]).refused, true);
 });
 
+// KIND IS DERIVED, so it is a third thing the two implementations have to agree
+// about, and the one with no segmenter on the browser side. Asserted through the
+// parity harness rather than twice, because the failure worth catching is one
+// language re-deriving and the other carrying the old value forward: both would
+// look correct alone. A shift is the case that exposed the gap, since only the
+// JavaScript side had a test for it.
+test('a boundary move re-derives the kind on both sides, in both languages', () => {
+  const so = agree([{ op: 'shift', after: 'u-001', to: 50 }]);
+  assert.deepEqual(so.units.map(u => [u.uid, u.kind]), [['u-001', 'mixed'], ['u-002', 'sent']],
+    'the first unit swallowed across the blank line; the second is a plain sentence again');
+});
+
+test('a split re-derives the kind of both halves, in both languages', () => {
+  const so = agree([{ op: 'split', uid: 'u-001', at: 15 }]);
+  assert.deepEqual(so.units.map(u => [u.uid, u.kind]),
+    [['u-001a', 'sent'], ['u-001b', 'sent'], ['u-002', 'sent']]);
+});
+
 // ── PROJECTING A STANDOFF ONTO TEXT ──────────────────────────────────────────
 // materialize.py runs the edits the annotation SPECIFIES and reports the ones it
 // cannot: DROP and insert are mechanical, REWRITE and MOVE each imply content
@@ -645,4 +657,81 @@ test('applying the projection retires its insertions, because the digest stops m
   assert.notEqual(again.status, 0, 'the insertion would have been applied twice');
   assert.match(again.stderr, /not the document this standoff annotates/);
   assert.match(again.stderr, /re-anchoring/, 'the refusal says what to do instead');
+});
+
+// ── THE CLASSIFIER AND THE SEGMENTER, HELD TOGETHER ──────────────────────────
+// `kind` is derived from a span so a boundary edit cannot leave it stale, which
+// only works while the derivation agrees with the segmenter that produced the
+// kinds in the first place. They are two statements of one rule in two
+// languages: segment.py dispatches on a BLOCK, Standoff.kindOf on a SPAN, and a
+// browser has no segmenter to fall back on. A drift makes a patched unit and a
+// rebuilt one disagree about the same text, which nothing else would report.
+//
+// Run over the repo's own documents rather than a fixture, because the shapes
+// that separate the two orderings (a fence whose body holds blank lines, a
+// heading straight after a fence) are not ones a fixture author thinks to write.
+
+const CORPUS = ['docs/SURFACING.md', 'docs/TRACKER.md', 'docs/CONVENTIONS.md',
+                'skills/state-the-rule/SKILL.md', 'CLAUDE.md', 'docs/registries.md',
+                'docs/showing.md', 'docs/stage.md', 'docs/loader.md'];
+
+// PYTHON INDEXES BY CODE POINT AND JAVASCRIPT BY UTF-16 CODE UNIT, so one astral
+// character (every emoji in these documents) shifts every later offset by one.
+// docs/SURFACING.md carries 49 of them, and a browser slicing at segment.py's
+// offsets reads a span starting two characters early. That is a defect in the
+// FORMAT, not in the classification this test is about, and no stored run hits
+// it yet (CONVENTIONS.md has none), so the offsets are converted here rather
+// than the corpus being trimmed to documents that hide it.
+function toUtf16(text) {
+  const map = [];
+  for (let i = 0; i < text.length;) { map.push(i); i += text.codePointAt(i) > 0xFFFF ? 2 : 1; }
+  map.push(text.length);
+  return map;
+}
+
+test('Standoff.kindOf agrees with segment.py on every unit of the repo corpus', () => {
+  const seen = {}, drift = [];
+  let n = 0, astral = 0;
+  for (const rel of CORPUS) {
+    const path = join(repoRoot, rel);
+    const text = readFileSync(path, 'utf8');
+    const map = toUtf16(text);
+    astral += text.length - (map.length - 1);
+    const units = execFileSync('python3', [join(SKILL, 'segment.py'), path, '1', '99999'],
+                               { encoding: 'utf8' }).trim().split('\n').map(l => JSON.parse(l));
+    for (const u of units) {
+      n++;
+      seen[u.kind] = (seen[u.kind] || 0) + 1;
+      const got = KIT.kindOf(text, map[u.start], map[u.end]);
+      if (got !== u.kind) drift.push(`${rel} ${u.uid}: segment.py ${u.kind}, kindOf ${got}` +
+                                     ` — ${JSON.stringify(u.text.slice(0, 48))}`);
+    }
+  }
+  assert.deepEqual(drift, []);
+  // A corpus that lost its fences or tables would pass while testing nothing,
+  // since `sent` is the fallback both sides reach by doing nothing.
+  assert.ok(n > 1000, `only ${n} units in the corpus`);
+  for (const k of ['heading', 'sent', 'code', 'table'])
+    assert.ok(seen[k] >= 10, `only ${seen[k] || 0} ${k} units to compare`);
+  // And the conversion above is doing something, so a corpus quietly losing its
+  // emoji cannot turn this into a test of nothing.
+  assert.ok(astral > 20, `only ${astral} astral characters: the offset skew is untested`);
+});
+
+// The ordering is the whole design, and it is not obvious from either file. A
+// structural marker outranks the remaining tests EXCEPT heterogeneity, which
+// outranks every marker but a fence: a fence body legitimately holds blank
+// lines, and nothing else does.
+test('a fence outranks the blank line inside it, and every other marker does not', () => {
+  const fence = '```markdown\nfirst line\n\nafter a blank line\n```';
+  assert.equal(KIT.kindOf(fence, 0, fence.length), 'code',
+    'reading the blank line first would call a fenced example mixed');
+
+  const heading = '## Scope and precedence\n\nA sentence follows it.';
+  assert.equal(KIT.kindOf(heading, 0, 23), 'heading');
+  assert.equal(KIT.kindOf(heading, 0, 32), 'mixed',
+    'a heading that swallowed across the break is no longer just a heading');
+
+  const table = '| a | b |\n| - | - |';
+  assert.equal(KIT.kindOf(table, 0, table.length), 'table');
 });

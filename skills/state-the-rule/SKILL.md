@@ -274,6 +274,23 @@ says about either, and grain for its own sake is not a finding. On
 `CONVENTIONS.md`, 36 of 69 prose units carry a clause boundary and 10 met the
 bar; every one of the ten was a rule with its reason fused on.
 
+**`kind` is derived from the span, not carried through the edit.** It was written
+once by `segment.py` and then survived every operation, so a boundary move left
+it describing a span that no longer existed: splitting `## Scope and precedence`
+gave a unit reading "nd precedence" still labelled `heading`, and three of the
+nine headings in `CONVENTIONS.md` offer that split one tap away. `split`, `merge`
+and `shift` now re-derive it; the other operations touch no span and do not.
+`merge`'s old rule (differing kinds become `mixed`) was a partial version of the
+same fix, reading the two operands rather than the result, so merging two
+sentences across a blank line kept `sent`.
+
+The derivation is `segment.py`'s own dispatch order read against a span rather
+than a block, which is what lets a browser answer without a segmenter. A fence
+outranks everything, since only a fence body legitimately holds blank lines;
+heterogeneity outranks the remaining markers, so a heading that swallowed across
+a break is `mixed` rather than `heading`. `tools/test/state-the-rule.test.mjs`
+holds the two to each other over 1,381 units of this repo's documents.
+
 **A boundary is the object, not an edge.** The end of one unit is the start of
 the next, so `shift` touches both and the units stay a partition: one label per
 character, which is what the word-share figure counts. Overlap is a complaint
