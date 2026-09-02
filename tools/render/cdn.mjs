@@ -118,8 +118,30 @@ function parseNpm(spec) {
   return { pkg: scope + name, sub, esm };
 }
 
+// A package whose CDN path and whose npm path are different packages.
+//
+// Pages load `@tailwindcss/typography/dist/typography.min.css`. That file has
+// not been published since 0.5.0: every version after it ships the Tailwind
+// PLUGIN and no built CSS. jsDelivr answers the versionless URL by falling back
+// to the last version that has the file, which its own header confirms
+// (`x-jsd-version: 0.5.0`), so a real browser has been loading 0.5.0 all along
+// while `node_modules/@tailwindcss/typography` holds the current plugin. The
+// resolver saw a package with no such file and served an honest MISS, which is
+// why every headless screenshot of a prose surface was taken with no prose
+// styles at all: no 65ch measure, no paragraph rhythm, no list markers.
+//
+// So 0.5.0 is installed a second time under an alias (package.json,
+// `typography-dist`) and this table points the CDN path at it. Real bytes,
+// byte-identical to what the CDN serves, which is the vendoring rule in
+// docs/headless-vendoring.md rather than an exception to it. Found on
+// 2026-09-02 by a prose block that wrapped at 470px on a phone and at the full
+// 1171px in every screenshot taken of it.
+const PKG_ALIAS = { '@tailwindcss/typography': 'typography-dist' };
+
 function readSpec(spec, repoRoot, combine) {
-  const { pkg, sub, esm } = parseNpm(spec);
+  const { pkg: cdnPkg, sub, esm } = parseNpm(spec);
+  const pkg = (PKG_ALIAS[cdnPkg] && existsSync(path.join(repoRoot, 'node_modules', PKG_ALIAS[cdnPkg], sub)))
+    ? PKG_ALIAS[cdnPkg] : cdnPkg;
   let fp = nodeFile(repoRoot, pkg, sub, esm, combine);
   // jsDelivr auto-minifies: a `.min.js`/`.min.css` URL works on the CDN even
   // when the npm tarball ships only the unminified file (e.g. codemirror@5).

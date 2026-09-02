@@ -41,7 +41,9 @@ the fix is usually to improve structural clarity so the text can be removed.
 
 **3. Don't narrow text to a reading column.** `max-w-prose`, `max-w-2xl`,
 `max-w-3xl`, `max-w-4xl`, `container mx-auto`, and a `prose` class run without
-`max-w-none`, which is Tailwind's own 65ch cap wearing another name. `mx-auto`
+`!max-w-none`, which is Tailwind's own 65ch cap wearing another name. The bang
+is required: typography ships unlayered CSS and Tailwind's utilities are
+layered, so the plain `max-w-none` loses whatever the source order. `mx-auto`
 is not part of the test: half these caps carry no centering. The page's own
 layout sets the width. A reading column is also a common tell for rule 2.
 Refused at edit time by the `reading-column` hook and listed by `npm run

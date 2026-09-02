@@ -19,7 +19,7 @@ Two findings, both mechanical:
 
   reading column   max-w-prose | max-w-2xl | max-w-3xl | max-w-4xl,
                    or `container mx-auto`
-  uncapped prose   a `prose` class run with no `max-w-none`, which is the same
+  uncapped prose   a `prose` class run with no `!max-w-none`, which is the same
                    cap at 65ch wearing a different name and invisible to a
                    max-w-* grep
 
@@ -29,8 +29,18 @@ opt-out, greppable so the exceptions stay countable.
 
 The wider sizes are deliberately not here: max-w-5xl..7xl are page shells (25
 uses in this repo, 21 centered, none on a text element) and everything xl and
-below is components. `max-w-none` is how `prose` gets undone and must never be
+below is components. `!max-w-none` is how `prose` gets undone and must never be
 flagged.
+
+THE BANG IS THE WHOLE RULE, and this file taught the opposite until 2026-09-02.
+Typography's stylesheet is plain unlayered CSS setting `.prose{max-width:65ch}`;
+Tailwind v4 emits its utilities inside `@layer utilities`, and an unlayered rule
+beats every layer whatever the source order. So a plain `max-w-none` loses and
+the block stays capped. It reached a phone: chat-render's reply prose wrapped at
+470px of a 1280px viewport while the ask above it ran the full width, and four
+files in this repo carried the plain form while four others already carried the
+bang. The scan could not tell them apart, because it was written to the belief
+rather than to the cascade.
 
 Advisory by default, in the idiom of dead-opacity.py; `--check` makes it a gate.
 """
@@ -73,9 +83,10 @@ MESSAGE = (
 )
 
 PROSE_MESSAGE = (
-    'a `prose` class run with no `max-w-none` keeps Tailwind\'s own 65ch '
+    'a `prose` class run with no `!max-w-none` keeps Tailwind\'s own 65ch '
     'reading column, which is rule 3 in a form no max-w-* grep finds. Add '
-    '`max-w-none`.'
+    '`!max-w-none`: the plain utility is layered and loses to typography\'s '
+    'own unlayered `.prose{max-width:65ch}`, whatever the source order.'
 )
 
 
@@ -107,7 +118,7 @@ def scan_text(text, path):
                 for m in pattern.finditer(run):
                     cls = m.group(0)
                     out.append((path, i, cls, MESSAGE.format(cls=cls)))
-            if PROSE.search(run) and 'max-w-none' not in run:
+            if PROSE.search(run) and '!max-w-none' not in run:
                 out.append((path, i, 'prose', PROSE_MESSAGE))
     return out
 

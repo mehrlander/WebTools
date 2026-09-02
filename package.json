@@ -103,6 +103,7 @@
     "tabulator-tables": "^6.4.0",
     "turndown": "^7.2.0",
     "turndown-plugin-gfm": "^1.0.2",
+    "typography-dist": "npm:@tailwindcss/typography@0.5.0",
     "vanilla-jsoneditor": "^3.13.0"
   }
 }

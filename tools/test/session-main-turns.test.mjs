@@ -27,6 +27,10 @@ import assert from 'node:assert/strict';
 import { loadKit } from './bootstrap.mjs';
 
 const w = {};
+// The closing-state vocabulary is its own kit since 2026-09-02, and both of
+// these read it: the cache to key a row's states, session-render to give each
+// card its own.
+loadKit('closing-state', { window: w });
 loadKit('repo-sessions-cache', { window: w });
 // session-render's pure half needs chatRender only inside its render paths;
 // turns(), groups() and blocks() never touch it.

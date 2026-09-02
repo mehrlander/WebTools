@@ -90,6 +90,7 @@ window.__shell = shell;
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
+  'lib/kits/closing-state.js',
   'lib/kits/repo-sessions-cache.js',
   'lib/kits/surface.js',
   'lib/alpineComponents/estate.js',

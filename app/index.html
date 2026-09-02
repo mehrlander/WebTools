@@ -139,6 +139,7 @@
   // title join reads the Dispatch export's CSV through it.
   await gh.load('kits/csv.js');
   // Sessions-aggregate builders for the private cache (state/sessions.json).
+  await gh.load('kits/closing-state.js');
   await gh.load('kits/repo-sessions-cache.js');
   // The pure fold behind Activity's Routes pane: the app's own destinations
   // ranked by when the code behind each last moved (window.routeActivity).

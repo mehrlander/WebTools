@@ -77,7 +77,10 @@ const { window, problems } = makeWindow({
 });
 window.GH = FakeGH;
 window.TOKEN = 'tkn';
-window.gh = { load: async () => {} };
+// The loader, as a log. `ready()` is the component's only use of it, and the
+// last test in this file is about WHEN that runs.
+const loads = [];
+window.gh = { load: async (k) => { loads.push(k); } };
 // The kit chain the component reads. Stubbed rather than loaded: what the deck
 // DOES with a record is session-render.js's own test, and the outline is
 // session-export.js's.
@@ -109,7 +112,7 @@ window.Alpine = Alpine;
 // pathOf lives in the sessions cache kit, and the component reads it there
 // rather than deriving a second copy. The Sessions pane always has it loaded;
 // a cold pages/session.html does not, which is the case the listing covers.
-for (const k of ['lib/kits/repo-sessions-cache.js']) {
+for (const k of ['lib/kits/closing-state.js', 'lib/kits/repo-sessions-cache.js']) {
   new window.Function('window', readFileSync(path.join(repoRoot, k), 'utf8'))(window);
 }
 for (const p of ['lib/alpine-bundle.js', 'lib/alpineComponents/session-brief.js']) {
@@ -159,7 +162,7 @@ test('the strip counts a zero rather than dropping it, and drops what is absent'
 test('the closing reply is on the page from the row, record or no record', () => {
   const d = Alpine.$data(window.document.getElementById('unread'));
   assert.equal(d.record, null, 'this record could not be read');
-  assert.equal(d.closing, 'a closing reply the cache carried');
+  assert.equal(d.closingRaw, 'a closing reply the cache carried');
   assert.match(d.err, /Could not open nosuch/, 'and it says so rather than reading as empty');
   // The strip is the row's the whole time, so an unreadable record costs the
   // outline and nothing else.
@@ -197,7 +200,7 @@ test('the record overwrites what the row lent', () => {
   const d = lent();
   assert.equal(d.record.short, 'b8fae678');
   assert.equal(d.head.title, 'described b8fae678', 'describe owns the name once the record is here');
-  assert.equal(d.closing, 'and here is what came of it',
+  assert.equal(d.closingRaw, 'and here is what came of it',
     'the CLOSING reply, by timestamp, not the first or the longest');
   assert.equal(d.closingLabel, 'closing reply');
 });
@@ -209,7 +212,7 @@ test('a record with no replies says its text is a tail, not a turn', () => {
   window.document.body.append(el);
   Alpine.initTree(el);
   const d = Alpine.$data(el);
-  assert.equal(d.closing, 'the tail');
+  assert.equal(d.closingRaw, 'the tail');
   assert.equal(d.closingLabel, 'final turn, tail only');
 });
 
@@ -391,4 +394,153 @@ test('start opens the deck on one card, which is what makes an exchange addressa
   await tick(4);
   assert.equal(opened.length, 1, 'the address named a card, so the deck opened on it');
   assert.equal(opened[0].start, 3);
+});
+
+// ── The kit chain, and what skipping the fetch must not skip ────────────────
+
+test('a mount handed its record still loads the kit chain', async () => {
+  // `load()` short-circuits when the record is already in hand, and until
+  // 2026-09-01 it returned BEFORE `ready()`. That path is the one a reader with
+  // no token takes (#gz=), and it was giving them the worst copy of the page:
+  // no speaker on the deck, no markdown anywhere, markdown markers down every
+  // row of the picker. The skip is of the FETCH, never of the renderers.
+  loads.length = 0;
+  log.length = 0;
+  const el = window.document.createElement('div');
+  window.__handed = { record, repo: STORE, framed: true };
+  el.setAttribute('x-data', 'sessionBrief(window.__handed)');
+  window.document.body.append(el);
+  Alpine.initTree(el);
+  await tick(6);
+  const d = Alpine.$data(el);
+  assert.equal(d.record.short, 'b8fae678');
+  assert.deepEqual(log, [], 'and it still reads nothing from the store');
+  assert.ok(loads.includes('kits/read-aloud.js'),
+    'the kit the deck speaks with and the picker rows reduce their previews through');
+  assert.ok(loads.includes('kits/session-render.js'), 'and the one settle() renders with');
+});
+
+test('the brief fills its host, rather than drawing a phone column on a desktop', () => {
+  // It carried `mx-auto` with `max-w-2xl`, so a 1280px browser drew a 672px
+  // strip down the middle with the rest empty (reported 2026-09-01). The house
+  // style names that exact pattern, and the estate's branch list already made
+  // the same call: full width once nothing stands beside it to claim the space.
+  //
+  // Read off the SOURCE, not the DOM, because jsdom compiles no Tailwind and a
+  // cap that is present renders as nothing here. The template is the artifact.
+  const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/session-brief.js'), 'utf8');
+  const shell = src.match(/<div class="([^"]*)"\s*\n\s*:class="framed \?/);
+  assert.ok(shell, 'the outer shell div, the one the framed/standalone class rides');
+  assert.doesNotMatch(shell[1], /\bmax-w-|\bmx-auto\b/, shell[1]);
+  assert.match(shell[1], /\bw-full\b/);
+});
+
+test('the closing reply is markdown, and its rest is a tap rather than a tooltip', async () => {
+  // It was `x-text` of a string this component flattened itself, with the whole
+  // of it parked in a `title`: a fact with no route on a phone, and the one
+  // thing the house style names outright. It is a reply like every other one on
+  // this page, so it goes through the kit that renders those.
+  const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/session-brief.js'), 'utf8');
+  const at = src.indexOf('x-show="closingRaw"');
+  assert.ok(at > 0, 'the block is found by the thing it shows on');
+  // To the end of the card, not to the first `</button>`: the control is the
+  // label row now, and the body it governs sits after it.
+  const block = src.slice(at, src.indexOf('<!-- The switch and the exits', at));
+  assert.doesNotMatch(block, /:?title=/, 'no tooltip carries the rest of it');
+  // The LABEL is still x-text, and should be: it is a fidelity claim in one
+  // word, not the reply.
+  assert.doesNotMatch(block, /x-text="closing(Raw)?"/, 'the reply itself is not set as flat text');
+  assert.match(block, /x-ref="closingBody"/);
+  assert.match(block, /aria-expanded/, 'the block is the control the tooltip used to be');
+
+  // AND IT IS CUT BY HEIGHT, NOT BY `line-clamp`. That utility counts line
+  // boxes, which needs inline content; this holds the paragraphs a markdown
+  // render returns. Chrome clamps anyway and iOS Safari does not: it keeps the
+  // box at the full height of every paragraph and hides only the spill, so the
+  // collapsed block reached a phone as three lines over an inch of empty card.
+  // The desktop cannot show this failure, which is why the rule is asserted
+  // rather than the pixels.
+  assert.doesNotMatch(block, /line-clamp/, 'no clamp on a container of blocks');
+  assert.match(block, /:style="closingOpen \? '' : CLAMP"/, 'the collapsed state is a style');
+  assert.match(src, /CLAMP: 'max-height:\d+px;/, 'and what it sets is a height');
+  assert.match(src, /chatRender\.markdown\(md, \{ dense: true \}\)/,
+    'through the same renderer every other reply on this page uses');
+
+  // And the flattening it used to do is GONE rather than merely unused: a
+  // second markdown-to-text pass sitting here is what would get reached for
+  // next time.
+  assert.doesNotMatch(src, /speechText/, 'session-brief no longer flattens anything itself');
+});
+
+test('the clipped box is not inside the button, because Safari sizes one from its unclipped content', () => {
+  // The whole block was a button with the body inside it. The body clipped and
+  // the fade landed, and the button stayed as tall as five paragraphs: three
+  // lines of text over an inch of empty card, on the phone only. Chrome sizes
+  // the button from the clipped child and shows nothing wrong, so this is
+  // asserted as structure rather than measured as pixels.
+  const el = window.document.getElementById('lent');
+  const clip = [...el.querySelectorAll('div')].find(d => /max-height/.test(d.getAttribute('style') || ''));
+  assert.ok(clip, 'the collapsed body carries its height inline');
+  assert.equal(clip.closest('button'), null, 'and no button is sized by what it hides');
+  const btn = [...el.querySelectorAll('button[aria-expanded]')][0];
+  assert.ok(btn, 'the control is still there');
+  assert.equal(btn.contains(clip), false, 'holding only the small thing you tap');
+});
+
+test('a fact carries its definition on data-note, not in a title', () => {
+  const d = lent();
+  const el = window.document.getElementById('lent');
+  // Half the strip is exact about something the plain word is not, so the
+  // definitions are load-bearing. They rode in a `title` with `cursor-help`:
+  // no touch screen shows one and no screenshot captures one.
+  assert.equal(el.querySelectorAll('.cursor-help').length, 0);
+  // Scoped to the strip and the head, not the whole view: the icon-only
+  // controls below keep a `title`, which is the case rule 11 does sanction, a
+  // simple label on a control that also carries an aria-label or is a link
+  // naming its own destination. What may not sit in one is a FACT.
+  const strip = el.querySelector('.flex.flex-wrap.items-center.gap-x-4');
+  assert.ok(strip, 'the facts strip');
+  assert.equal(strip.querySelectorAll('[title]').length, 0, 'no fact is stranded in a title');
+
+  // THROUGH THE KIT, NOT A SECOND IMPLEMENTATION OF IT. `kits/note.js` is this
+  // estate's tier between a title and a built panel, and a strip definition is
+  // what that kit calls its own case: a string a reader looks at. This file
+  // hand-rolled a tap-to-reveal line for one commit, which was that kit again
+  // with no keyboard, no screen reader and no affordance before the tap.
+  const noted = [...el.querySelectorAll('[data-note]')];
+  assert.ok(noted.length >= 6, 'every fact and the id');
+  const byNote = new Map(noted.map(n => [n.textContent.replace(/\s+/g, ' ').trim(), n.getAttribute('data-note')]));
+  for (const f of d.strip) {
+    const hit = [...byNote].find(([k]) => k.startsWith(f.k));
+    assert.ok(hit, 'strip row ' + f.k + ' is on the page');
+    assert.equal(hit[1], f.t, 'and states the definition the strip carries, not a copy of it');
+  }
+  assert.match(noted.find(n => /^\(/.test(n.textContent))?.getAttribute('data-note') || '', /filename stem/);
+});
+
+test('the kit that draws the notes is in the chain that loads them', () => {
+  // A `data-note` with nothing listening is a fact that renders as a dotted
+  // underline and says nothing when touched, which is worse than the title it
+  // replaced. Nothing else on this page loaded the kit before.
+  const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/session-brief.js'), 'utf8');
+  assert.match(src, /'kits\/note\.js'/);
+  assert.match(src, /'kits\/closing-state\.js'/);
+  // The early return must count every kit the chain loads, or a host that
+  // already has the first three skips the rest and the page renders half-drawn.
+  assert.match(src, /&& window\.Note && window\.ClosingState\) return;/,
+    'the early return counts them, or the chain never runs');
+});
+
+test('the page tells the brief that no embedder draws its header', () => {
+  // `framed` on the PAGE means it sits in an iframe; `framed` on the BRIEF
+  // means a host draws the title and the id. The first is true of a toss and
+  // the second is true only of show-repo's Sessions pane, which mounts the
+  // COMPONENT rather than this page. Passing one for the other left a tossed
+  // session with no title and no id anywhere on screen.
+  const page = readFileSync(path.join(repoRoot, 'pages/session.html'), 'utf8');
+  assert.match(page, /opts = \{ \.\.\.opts, framed: false,/,
+    'the page hands the brief a literal, not its own iframe test');
+  assert.doesNotMatch(page, /framed: this\.framed/, 'and no address form still passes it through');
+  // The page keeps its own flag, which still stands its address bar down.
+  assert.match(page, /x-show="!framed \|\| !target"/);
 });
