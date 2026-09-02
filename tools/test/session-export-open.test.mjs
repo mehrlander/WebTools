@@ -658,13 +658,19 @@ test('two closings on one state are one line, and it is the later claim', () => 
   assert.doesNotMatch(statesOf(1)[0].line.textContent, /The first offer/);
 });
 
-test('the mark is a disc in the row\'s own gutter, not a bar beside the ask', () => {
-  // It was absolutely positioned in the box's left pad, which is outside the
-  // grid and at the height of the ask; it is a grid child of the row now, so it
-  // sits in the same track as the user and sparkle glyphs.
+test('the state line is nested under the reply, not drawn as its sibling', () => {
+  // It was absolutely positioned in the box's left pad, then a grid child of
+  // the row itself, which put it in the track the user and sparkle glyphs
+  // occupy and made it read as a third turn. It is not one: a closing state is
+  // a passage INSIDE the reply above it. So it rides a nested grid in the
+  // row's second column, one 17px step in, which is chat-render's LEAD_INDENT
+  // and the measure the open body already hangs on.
   buildWith(STATEFUL);
   const { mark } = statesOf(1)[0];
-  assert.equal(mark.parentElement.getAttribute('aria-label'), 'Open card 1');
+  const wrap = mark.parentElement;
+  assert.ok(wrap.className.includes('col-start-2'), 'in the text column, not the gutter');
+  assert.equal(wrap.parentElement.getAttribute('aria-label'), 'Open card 1');
+  assert.match(wrap.getAttribute('style'), /grid-template-columns:11px/);
   assert.ok(mark.className.includes('rounded-full') && mark.className.includes('size-[6px]'));
   assert.equal(mark.style.background, 'rgb(63, 185, 80)', "🟢's own green");
   assert.equal(mark.style.opacity, '', 'and nothing is dimmed: the disc is small, not quiet');
@@ -686,10 +692,12 @@ test('opening the card withdraws the state lines with the preview', () => {
   // The turns underneath carry the closing block whole, so leaving the summary
   // on screen would say it twice.
   buildWith(STATEFUL);
-  const { mark, line } = statesOf(1)[0];
+  const { mark } = statesOf(1)[0];
+  const wrap = mark.parentElement;
   boxOf(1).querySelector('button[aria-label^="Open card"]').dispatchEvent(new window.Event('click'));
-  assert.equal(mark.style.display, 'none');
-  assert.equal(line.style.display, 'none');
+  // The whole nested row goes, not its two halves: the wrapper is what the
+  // toggle holds now that the line is indented under the reply.
+  assert.equal(wrap.style.display, 'none');
 });
 
 test('the capture note has no closing state, and draws no line', () => {
