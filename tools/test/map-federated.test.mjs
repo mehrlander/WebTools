@@ -42,7 +42,7 @@ const configs = {
       config: {
         estate: true,
         growth: 'data/doc-growth.json',
-        skills: ['blog', { name: 'caption', origin: 'forked' }, 'drain'],
+        skills: ['blog', { name: 'tasks', origin: 'forked' }, 'drain'],
       },
     },
     // Declares neither. The ordinary case: it contributes no row to either
@@ -146,8 +146,8 @@ test('the estate skills half reads each repo\'s own declaration, and skips the h
   assert.deepEqual([...data.estateSkills.map(g => g.repo)], ['mehrlander/home'],
     "the hub's committed set IS the plugin, so counting it here would double it");
   assert.deepEqual([...data.estateSkills[0].skills.map(s => s.name)],
-    ['blog', 'caption', 'drain'], 'bare strings and objects both resolve, sorted by name');
-  assert.equal(data.estateSkills[0].skills.find(s => s.name === 'caption').origin, 'forked');
+    ['blog', 'drain', 'tasks'], 'bare strings and objects both resolve, sorted by name');
+  assert.equal(data.estateSkills[0].skills.find(s => s.name === 'tasks').origin, 'forked');
 });
 
 test('one repo is one repo', () => {
@@ -179,9 +179,9 @@ test('the three sets are one axis, and the search runs across all of them', asyn
 });
 
 test('a query re-weights every set, so a miss in one is visibly not a gap', () => {
-  data.skillQ = 'caption';
+  data.skillQ = 'tasks';
   const counts = Object.fromEntries(data.skillSetCounts.map(c => [c.key, c.n]));
-  assert.ok(counts.plugin >= 1, 'the plugin ships a caption skill');
+  assert.ok(counts.plugin >= 1, 'the plugin ships a tasks skill');
   assert.equal(counts.estate, 1, "home's forked copy answers too");
   data.skillQ = 'zzzz-no-such-skill';
   assert.equal(data.skillTally.shown, 0, 'the empty state is one number, over the sets in view');

@@ -1,6 +1,5 @@
 kind,command,path,title,role,use
 skill,/portable:web-tools,.claude/skills/web-tools/SKILL.md,web-tools,loads the working conventions live (surfacing primitives plus the guide-PR course),plugin
-skill,/portable:caption,.claude/skills/caption/SKILL.md,caption,"the surfacing caption, and the guide-PR body sync",plugin
 skill,/portable:load-skill,.claude/skills/load-skill/SKILL.md,load-skill,fetch any skill from the library on demand,plugin
 skill,/portable:show-repo,.claude/skills/show-repo/SKILL.md,show-repo,browse any repo and move files across repos,plugin
 skill,/portable:tree,.claude/skills/tree/SKILL.md,tree,"render a linked file tree of the repo, table-first for mobile",plugin

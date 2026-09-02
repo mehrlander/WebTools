@@ -54,9 +54,11 @@ start): add the `extraKnownMarketplaces` and `enabledPlugins` block to
 | the session recorder | a `Stop` hook that records the session where a checkout declares a `"sessions"` store, and does nothing at all where none does |
 | the session dispatcher | a `SessionStart` hook that runs every checkout's own `.claude/hooks/session-*.sh`, in every session, whatever the project root is |
 | the PR-subscribe hint | a `PostToolUse` hook on `create_pull_request` that prompts the session to subscribe to the pull request it just opened, carrying the number. Detection is the machinery; the call stays the model's, since no hook can invoke an MCP tool |
+| the MCP failure hint | a `PostToolUseFailure` hook that turns an MCP `-32003` approval wall into the `sandbox-traps` connector-vs-builtin diagnosis, at the moment it fires |
+| the reading-column guard | a `PreToolUse` hook on `Edit`, `Write` and `MultiEdit` that refuses a class narrowing text to a reading column (daisy-alpine rule 3). It judges the file the edit would produce, not the edit, so a file already carrying one cannot be edited until it is clean. Bundles `reading-column.py`, which is also the `npm run reading-column` scanner |
 
-That is the whole day-to-day set. Everything above the last three rows is invoked;
-those three are not. **They are the pieces that run on their own**, which is why
+That is the whole day-to-day set. Everything above the last five rows is invoked;
+those five are not. **They are the pieces that run on their own**, which is why
 they ship in the plugin rather than being installed per repo: the per-container
 settings file they would otherwise live in is provisioned fresh each session, so
 a hand-installed copy works for exactly one session and then vanishes.
@@ -265,8 +267,6 @@ fetch() {
 # Skills
 fetch "$BASE/.claude/skills/web-tools/SKILL.md" \
       "$ROOT/.claude/skills/web-tools/SKILL.md"
-fetch "$BASE/.claude/skills/caption/SKILL.md" \
-      "$ROOT/.claude/skills/caption/SKILL.md"
 fetch "$BASE/.claude/skills/load-skill/SKILL.md" \
       "$ROOT/.claude/skills/load-skill/SKILL.md"
 
@@ -286,7 +286,6 @@ exit 0
 
 ```
 .claude/skills/web-tools/
-.claude/skills/caption/
 .claude/skills/load-skill/
 .web-tools-scripts/
 ```
@@ -400,7 +399,6 @@ machinery; most of `docs/` is portable. The tables below list what travels.
 | [`docs/CONVENTIONS.md`](CONVENTIONS.md) | the general-behavior **hub**: prose style, standing decisions, leave-it-nicer, keep-focus, and the session / repository / workstream scope vocabulary. Behavior that applies regardless of whether anything is being surfaced | fetched live by the skill |
 | [`docs/SURFACING.md`](SURFACING.md) | the **surfacing system**, split out of CONVENTIONS.md: the universal **surfacing primitives** (the **surfacing caption**'s `[new]/[main]/[diff]` file links plus a 🥏 render line, reference-is-a-link, show-pixels, branch anchor, 🧭 guide pointer, session diff) plus the **surfacing course** (guide-PR lifecycle, wrap-up, handoff), which stays idle until you open a PR. Loaded with CONVENTIONS.md as one set | fetched live by the skill |
 | [`docs/venues.md`](venues.md) | the **venue map**: where work can run besides the session reading it (local CLI, Cowork, Dispatch, hosted and self-hosted runners, a Remote environment), what each reaches, and the attended-versus-unattended split that decides where a job belongs. Named in one always-loaded paragraph of CONVENTIONS.md, because a session cannot see past its own sandbox and so does not know to ask | fetched live by the skill |
-| [`.claude/skills/caption/SKILL.md`](../.claude/skills/caption/SKILL.md) | `/caption`: emit the surfacing caption (full, turn, bare, or recap size; recap wraps the full caption in a fixed-form session re-entry) for the current branch; also the sync engine for a guide PR body's managed region | install or hook-fetch |
 | [`.claude/skills/load-skill/SKILL.md`](../.claude/skills/load-skill/SKILL.md) | `/load-skill`: fetch a named skill from the library at [`skills/`](../skills/) (or another declared source) and apply it in the current session; discovery via `skills/manifest.csv`. Explicit signal only, never opportunistic | install or hook-fetch |
 | [`.claude/skills/show-repo/SKILL.md`](../.claude/skills/show-repo/SKILL.md) | `/show-repo`: use the hosted show-repo shell to browse any repo, mint a 🗂️ `#stage=` fileset link, run a cross-repo transfer, or author a repo's `.web-tools.json`; loads [`docs/show-repo.md`](show-repo.md) | install or hook-fetch |
 | [`.claude/skills/in-flight/SKILL.md`](../.claude/skills/in-flight/SKILL.md) | `/in-flight`: before starting work, report which branches carry commits the base branch lacks, which open PRs and [`docs/TRACKER.md`](TRACKER.md) claims sit on them, and which claims have gone stale; `--paths` turns it into a collision check on the files about to change. Runs [`.claude/skills/in-flight/in-flight.py`](../.claude/skills/in-flight/in-flight.py) | install or hook-fetch |

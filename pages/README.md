@@ -22,6 +22,7 @@ the link-dense text twin of the visual index above.
 | `compression-helper` | Compression Helper (v5) | [view](https://mehrlander.github.io/web-tools/pages/compression-helper.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/compression-helper.html) |
 | `console-playground` | Console Suite Guide | [view](https://mehrlander.github.io/web-tools/pages/console-playground.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/console-playground.html) |
 | `data-view` | Data View | [view](https://mehrlander.github.io/web-tools/pages/data-view.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/data-view.html) |
+| `delivery` | Conventions Delivery | [view](https://mehrlander.github.io/web-tools/pages/delivery.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/delivery.html) |
 | `dictate` | Dictate | [view](https://mehrlander.github.io/web-tools/pages/dictate.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/dictate.html) |
 | `diff-tool` | Diff | [view](https://mehrlander.github.io/web-tools/pages/diff-tool.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/diff-tool.html) |
 | `doc-growth` | Doc Growth | [view](https://mehrlander.github.io/web-tools/pages/doc-growth.html) · [code](https://github.com/mehrlander/web-tools/blob/main/pages/doc-growth.html) |
@@ -112,6 +113,7 @@ the link-dense text twin of the visual index above.
 | `export` | export — living demo | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/export.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/export.html) |
 | `io` | io — living demo | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/io.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/io.html) |
 | `messaging` | messaging — living demo | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/messaging.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/messaging.html) |
+| `note` | note — the small tooltip | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/note.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/note.html) |
 | `persistence` | persistence — living demo | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/persistence.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/persistence.html) |
 | `xlsx` | xlsx — living demo | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/xlsx.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/xlsx.html) |
 

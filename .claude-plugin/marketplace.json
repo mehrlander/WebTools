@@ -9,14 +9,13 @@
       "name": "portable",
       "source": "./.claude/skills",
       "strict": false,
-      "description": "The to-go bag: the working-conventions loader, the surfacing caption, the skill-library loader, the show-repo instrument, the tracker operator, and the rest of the portable skill set; the roster, one line per skill, is docs/PORTABLE.md's bag table, indexed in docs/portable.csv and held to disk by tools/test/portable-manifest.test.mjs, so this description does not enumerate it. Also carries three hooks that run on their own: the session recorder (Stop), inert unless a checkout declares a sessions store, the session dispatcher (SessionStart), which runs every checkout's own .claude/hooks/session-*.sh whatever the project root is, and the MCP failure hint (PostToolUseFailure), which turns a -32003 approval wall into the sandbox-traps connector-vs-builtin diagnosis at the moment it fires. Vendors the two conventions docs and an injector a repo can opt into through the dispatcher, so loading them costs no fetch.",
+      "description": "The to-go bag: the working-conventions loader, the surfacing caption, the skill-library loader, the show-repo instrument, the tracker operator, and the rest of the portable skill set; the roster, one line per skill, is docs/PORTABLE.md's bag table, indexed in docs/portable.csv and held to disk by tools/test/portable-manifest.test.mjs, so this description does not enumerate it. Also carries five hooks that run on their own: the session recorder (Stop), inert unless a checkout declares a sessions store, the session dispatcher (SessionStart), which runs every checkout's own .claude/hooks/session-*.sh whatever the project root is, the MCP failure hint (PostToolUseFailure), which turns a -32003 approval wall into the sandbox-traps connector-vs-builtin diagnosis at the moment it fires, the PR-subscribe hint (PostToolUse), and the reading-column guard (PreToolUse), which refuses a Tailwind class that narrows text to a reading column. Vendors the two conventions docs and an injector a repo can opt into through the dispatcher, so loading them costs no fetch.",
       "author": {
         "name": "mehrlander"
       },
       "homepage": "https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md",
       "skills": [
         "./web-tools",
-        "./caption",
         "./load-skill",
         "./show-repo",
         "./tasks",
@@ -29,7 +28,6 @@
       ],
       "keywords": [
         "conventions",
-        "caption",
         "surfacing",
         "tracker",
         "tree",

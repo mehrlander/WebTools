@@ -4,7 +4,7 @@
 #
 #   lib/ changed            -> npm run build:lib     -> stage dist/web-tools.js
 #   console/ changed        -> npm run build:console -> stage console/suite.js
-#   pages/**/*.html changed -> npm run pages-index   -> stage pages/README.md + pages/index.html
+#   a catalogued .html      -> npm run pages-index   -> stage the three pages catalogs
 #
 # Both generators are deterministic, so a commit that didn't really change the
 # source produces identical bytes (a no-op `git add`). Thumbnails
@@ -96,23 +96,38 @@ if git status --porcelain -- docs/CONVENTIONS.md docs/SURFACING.md | grep -q .; 
   fi
 fi
 
-# --- leg 2: pages/**/*.html -> the two catalogs -------------------------------
-# Any pending .html change under pages/ (add/edit/delete/retitle) regenerates
-# pages/README.md + pages/index.html so the catalogs ride in the same commit.
-changed_pages="$(git status --porcelain -- pages/ | grep '\.html' | sed 's/^...//; s/.* -> //' || true)"
+# --- leg 2: a catalogued .html -> the three catalogs --------------------------
+# Any pending .html change (add/edit/delete/retitle) in a folder pages-index
+# reads regenerates pages/README.md + pages/index.html + pages/pages.csv so the
+# catalogs ride in the same commit.
+#
+# The watch list has to match what the GENERATOR reads, not what the catalogs
+# are named. It watched pages/ alone until 2026-09-01, when adding
+# lib/kits/demos/note.html left all three catalogs a row short: the hook said
+# nothing, the commit went through, and derived-artifacts.test.mjs failed on the
+# next run. pages.csv was missing from the stage list on the same terms.
+changed_pages="$(git status --porcelain -- pages/ lib/kits/demos/ | grep '\.html' | sed 's/^...//; s/.* -> //' || true)"
 if [ -n "$changed_pages" ]; then
   if npm run pages-index --silent >/dev/null 2>&1; then
-    stage pages/README.md pages/index.html
+    stage pages/README.md pages/index.html pages/pages.csv
   else
     echo "build hook: 'npm run pages-index' failed — committing without refreshing the pages catalogs" >&2
   fi
 
   # --- leg 3: thumbnail nudge (warn only, never regenerate) -------------------
+  # `virt` mirrors the SOURCES table in tools/build/pages-shots.mjs: a kit demo
+  # is shot under its virtual folder, not its real path, and pages-shots names
+  # its arguments the same way. Get this wrong and the nudge points at a
+  # thumbnail that does not exist and hands over a command that shoots nothing.
   while IFS= read -r p; do
     case "$p" in pages/index.html|pages/thumbs/*) continue ;; esac
-    thumb="pages/thumbs/${p#pages/}"; thumb="${thumb%.html}.png"
+    case "$p" in
+      lib/kits/demos/*) virt="kit-demos/${p#lib/kits/demos/}" ;;
+      *)                virt="${p#pages/}" ;;
+    esac
+    thumb="pages/thumbs/${virt}"; thumb="${thumb%.html}.png"
     if [ -e "$root/$p" ] && ! git status --porcelain -- "$thumb" | grep -q .; then
-      echo "build hook: $p changed but $thumb didn't — refresh at wrap-up: npm run pages-shots -- ${p#pages/}" >&2
+      echo "build hook: $p changed but $thumb didn't — refresh at wrap-up: npm run pages-shots -- $virt" >&2
     fi
   done <<< "$changed_pages"
 fi
@@ -237,6 +252,20 @@ if git status --porcelain -- tracker/tasks/ | grep -q .; then
   else
     echo "build hook: 'npm run tracker-board' failed — committing without refreshing the tracker rollups" >&2
   fi
+fi
+
+# --- leg 4b: reading columns (warn only) --------------------------------------
+# The PreToolUse guard in the portable plugin refuses these as they are written,
+# and tools/test/reading-column.test.mjs fails CI on any that land, so this leg
+# exists for the third case only: a file edited outside this session's harness,
+# where the guard never ran and the suite has not been run yet.
+if [ -f .claude/skills/hooks/reading-column.py ]; then
+  out="$(python3 .claude/skills/hooks/reading-column.py lib pages app 2>/dev/null || true)"
+  case "$out" in
+    *'reading-column: none'*) ;;
+    '') ;;
+    *) printf 'build hook: %s\n' "$out" >&2 ;;
+  esac
 fi
 
 # --- leg 5: SUNSET markers now due (warn only) --------------------------------
