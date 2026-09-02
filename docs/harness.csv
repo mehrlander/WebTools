@@ -21,6 +21,7 @@ scripts/text-carriers.py,"inventory the CSV and JSON carriers that already hold 
 scripts/unclaimed-code.py,"per-layer counts of files, files prose names, and files a test exercises; the code-scan behind code-layers.md",scripts,187,npm:code-scan,no,yes,no
 tools/build/audit-payload.py,"build a standoff annotation from a document plus its segmentation and labels, and the audit/1 delivery payload that carries it into a page",tools/build,164,argv,no,yes,yes
 tools/build/bake.mjs,emit dist/<page>.html: the page's chain inlined into a standalone file,tools/build,53,npm:bake,yes,yes,no
+tools/build/build-app.mjs,"emit dist/app.js, the app's own pre-build: the part of lib/ app/index.html can reach, by the shared emitter; --check for the gate",tools/build,158,npm:build:app,yes,yes,yes
 tools/build/build-lib.mjs,"emit dist/web-tools.js, the pre-build: the whole lib/ as one self-booting offline artifact",tools/build,108,npm:build:lib,yes,yes,yes
 tools/build/build.mjs,"emit dist/<page>.js: a page's gh.load chain frozen offline, through lib/build.js's emitter",tools/build,77,npm:build,yes,yes,no
 tools/build/console-suite.mjs,assemble console/suite.js from base.js plus the layered console modules,tools/build,51,npm:build:console,yes,yes,yes
@@ -41,6 +42,7 @@ tools/build/tools-index.mjs,restamp the derived half of this registry,tools/buil
 tools/build/verify-build.mjs,prove a page's dist build renders byte-identical to its live gh.load chain,tools/build,86,npm:verify-build,no,yes,no
 tools/render/cdn.mjs,the CDN URL to local-file resolver both renderers share,tools/render,375,imported,no,yes,yes
 tools/render/estate-card-demo.mjs,screenshot driver: render the estate's Repos grid with seeded entries,tools/render,72,none found,no,no,no
+tools/render/netlog.mjs,"the Chromium request log: what a load costs by host and endpoint, writes blocked; the boot-cost measure",tools/render,158,argv,no,yes,no
 tools/render/preview.mjs,"the jsdom logic render: run the full gh.load chain, mount Alpine, report state; no pixels",tools/render,370,npm:preview,yes,yes,yes
 tools/render/scenarios/activity-chrome-probe.mjs,,tools/render/scenarios,80,driver,no,no,no
 tools/render/scenarios/activity-fake.mjs,seed fake activity data so the token-gated Open view renders for a shot,tools/render/scenarios,111,driver,no,no,no
@@ -200,4 +202,4 @@ tools/render/scenarios/stage-transform-chip.mjs,"stages three transform-shaped i
 tools/render/scenarios/state-view.mjs,"Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",tools/render/scenarios,280,driver,no,no,no
 tools/render/scenarios/subject-action-probe.mjs,"probe: can the shell invoke a toss subject's action closure, or only reach it",tools/render/scenarios,124,driver,no,no,no
 tools/render/scenarios/toss-fragment.mjs,prove toss-render hands a trailing #frag to the rendered page in both trust postures,tools/render/scenarios,96,driver,no,no,no
-tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,254,npm:shot,yes,yes,yes
+tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,259,npm:shot,yes,yes,yes

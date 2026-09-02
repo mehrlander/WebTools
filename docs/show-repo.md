@@ -304,6 +304,8 @@ you were already looking at rather than at the front door.
 The branch list is the same scan the fab's Render tab runs
 (`branchesForPath`, degrading to an undated list without a token) and it loads
 **on hover or focus, once**: a page nobody touches the control on pays nothing.
+The fab holds it to the same rule since 2026-09-02: its ref dropdown scans when
+opened, and the guide under it reads with one pull-request call on open.
 
 The fab remains the fuller instrument, and the only one on a phone, since this
 cluster is desktop-only, like the rail and for the same overflow reason; the

@@ -1221,3 +1221,40 @@ test('an unresolvable checkout yields no link rather than a guessed one', () => 
   assert.equal(data.sessionFileUrl(row, 'somebody-elses-repo/x.js'), '');
   assert.equal(data.sessionFileUrl(row, 'no-slash-at-all'), '');
 });
+
+// ── A lean row reads its record on open (2026-09-02) ───────────────────────
+// The writer strips the prose from stored rows (repo-sessions-cache.js,
+// PROSE_KEYS). A card opened on one draws the ask at once, reads the record
+// through the same memo the detail uses, and rebuilds its fields in place.
+test('a lean row opens on the ask, reads the record once, and fills the card', async () => {
+  const S = window.RepoSessionsCache;
+  // Its own id: the record memo is per page, and the default fixture's id has
+  // been read by earlier tests here without a reply.
+  const ident = { short: 'leanrow1', session_id: 'leanrow1-0000-0000-0000-000000000000' };
+  const full = S.summarize(rec({ ...ident, schema: 4,
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'do the thing' }],
+    replies: [{ at: '2026-08-05T16:00:00Z', text: 'and here is what came of it' }] }), 'lean1');
+  const row = S.leanRow(full);
+  assert.ok(data.needsProse(row), 'no prose keys at all is the lean shape');
+  assert.ok(!data.needsProse(full), 'a summarised row is complete as it stands');
+  FILES[S.pathOf(row)] = rec({ ...ident, schema: 4,
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'do the thing' }],
+    replies: [{ at: '2026-08-05T16:00:00Z', text: 'and here is what came of it' }] });
+  GETS.length = 0;
+  const first = transcriptCard(row);
+  assert.equal(first.label, 'opening ask', 'the first frame has the ask alone');
+  assert.equal(first.pending, true);
+  assert.equal(first.pendingNote, 'Reading the session record…');
+  await new Promise(r => setTimeout(r, 20));
+  const c = data.rowCard;
+  assert.equal(c.key, first.key, 'the same card, rebuilt in place');
+  assert.equal(c.pending, false);
+  assert.equal(c.label, 'closing reply');
+  assert.equal(c.turns.at(-1).md, 'and here is what came of it');
+  assert.equal(GETS.filter(g => g === S.pathOf(row)).length, 1, 'one record read');
+  // A second open costs nothing: the row now carries what the card needs.
+  data.closeRowCard();
+  data.openSessionCard(row, 'state', null);
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(GETS.filter(g => g === S.pathOf(row)).length, 1, 'still one read');
+});
