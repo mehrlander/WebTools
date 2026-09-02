@@ -495,15 +495,19 @@ test('the closed row no longer labels the half a reader can see', () => {
     'with both halves present the ask is the lead, so a role word sat between them saying nothing');
 });
 
-test('without the kit the row still previews, markers and all', () => {
+test('without the kit the row still previews, and the emphasis still lands', () => {
   // The fallback is deliberate and it is the worse copy: raw text reads badly
   // and is never wrong, where an empty row would lose the half this exists to
   // show. session-brief loads the kit; a host that does not still gets a line.
+  // The emphasis is not part of that fallback: splitting on `**` is this file's
+  // own and runs whether or not the reduction does, so the kitless row loses
+  // the link targets and the fences and keeps the bold.
   const kit = window.readAloud;
   try {
     delete window.readAloud;
     buildWith(MD_RECORD);
-    assert.match(preview().textContent, /\*\*Short answer: no\.\*\*/);
+    assert.match(preview().textContent, /^Short answer: no\./);
+    assert.equal(preview().querySelector('span.font-semibold').textContent, 'Short answer: no.');
   } finally { window.readAloud = kit; }
 });
 
@@ -586,9 +590,32 @@ test('the bold lead stays, because the row has to survive without its colour', (
   // was put to the reader is a pink dot.
   buildWith(STATEFUL);
   assert.match(statesOf(2)[0].line.textContent, /Choice needed/);
-  // And the emphasis goes, since this runs through the same speechText pass the
-  // reply preview does.
+  // The markers go, since this runs through the same speechText pass the reply
+  // preview does, but what they marked is set bold rather than flattened.
   assert.doesNotMatch(statesOf(2)[0].line.textContent, /\*\*/);
+  const strong = statesOf(2)[0].line.querySelector('span.font-semibold');
+  assert.equal(strong.textContent, 'Choice needed.');
+});
+
+test('a reduced line keeps every emphasis, and the space either side of it', () => {
+  // speechText takes `**` off with the fences and the link targets, which is
+  // right for a voice and wrong for a row: what an author set bold is the half
+  // a reader scans for. It also trims, and emphasis puts the space on the
+  // OUTSIDE of the marker, so `Yes. **A term…**` splits into a run ending in a
+  // space and a bold run starting with a letter. Testing only the incoming run
+  // rendered "Yes.A term that names".
+  buildWith({
+    ...STATEFUL,
+    replies: [{ at: '2026-09-01T10:05:00Z',
+                text: 'Yes. **A term that names an intention.** And more after it.'
+                      + '\n\n🟢 **Ready to continue.** Go.' }],
+    replies_total: 1, replies_stored: 1,
+  });
+  const box = [...window.document.querySelectorAll('.mb-0\\.5.py-1.pl-3')][0];
+  const preview = [...box.querySelectorAll('span.line-clamp-1')][0];
+  assert.match(preview.textContent, /^Yes\. A term that names an intention\. And more/);
+  assert.equal(preview.querySelector('span.font-semibold').textContent,
+               'A term that names an intention.');
 });
 
 test('two closings on one state are one line, and it is the later claim', () => {
