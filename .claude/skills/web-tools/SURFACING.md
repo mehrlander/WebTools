@@ -75,7 +75,7 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
   ```
   `<N>` is `git diff origin/main...HEAD --name-only | wc -l`. `this turn` is that turn's own commit; drop it where the branch has a single commit. The render line follows unchanged.
 
-  **Addressing one file, or one pane.** `&file=<path>` opens the file deck on that file, which for a changed file beats a `[new]` blob: the slide carries the diff, the file itself, and the compare bar. `&pane=files` opens on the file list rather than the guide. Address grammar: [show-repo.md](https://github.com/mehrlander/web-tools/blob/main/docs/show-repo.md).
+  **Addressing one file, or one section.** `&file=<path>` opens the file deck on that file, which for a changed file beats a `[new]` blob: the slide carries the diff, the file itself, and the compare bar. `&pane=files` opens on the file list, which the page stacks above the guide. Address grammar: [show-repo.md](https://github.com/mehrlander/web-tools/blob/main/docs/show-repo.md).
 
   **Where the enumerated list still applies.** The branch page is token-gated, so a reader with no stored token, or a repo with no deployed page, needs the list. Rows stay uniform, filenames plain, link words tappable, a file's links not repeated within a turn:
 
