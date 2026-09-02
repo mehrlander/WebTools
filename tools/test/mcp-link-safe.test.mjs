@@ -145,26 +145,16 @@ test('--check exits non-zero only when something would be defanged', () => {
 // into a PR body. It did until 2026-08-25, contradicting SURFACING.md's own
 // "The body does not enumerate files" since 2026-08-08.
 test('the guide-body sync does not prescribe a file list in the body', () => {
-  const skill = readFileSync(
-    path.join(repoRoot, '.claude', 'skills', 'caption', 'SKILL.md'), 'utf8');
-  const section = skill.slice(skill.indexOf('## Syncing a guide PR body'));
-  assert.ok(section.length > 0, 'the guide-sync section still exists');
-  assert.ok(!/Changed list/.test(section),
-    'guide-sync must not tell a session to regenerate a Changed list into the body');
-  assert.ok(/does not enumerate files/.test(section),
-    'guide-sync should say the body carries judgment, not a file list');
-  assert.ok(/mcp-link-safe\.py/.test(section),
-    'guide-sync should name the checker for anything written to a body');
-});
-
-test('the branch-review gz link is not routed into a PR body or comment', () => {
-  // The payload runs to hundreds of characters and the fragment is the
-  // surface's only carrier, so a defanged one is lost content, not a dead link.
-  const skill = readFileSync(
-    path.join(repoRoot, '.claude', 'skills', 'caption', 'SKILL.md'), 'utf8');
-  assert.ok(!/record the link in the PR \(body or a\s+comment\)/.test(skill),
-    'the gz link must not be recorded in a PR body or comment');
-  assert.ok(/never for a PR body or a comment/.test(skill),
-    'the gz link should be marked chat-only');
-  assert.ok(/&src=/.test(skill), 'the durable alternative should be named');
+  // The rule moved out of the caption skill and into SURFACING.md's course when
+  // the skill was retired (2026-08-31): the course is the only carrier now, and
+  // it is delivered on PR creation, which is exactly when a sync is possible.
+  const course = readFileSync(path.join(repoRoot, 'docs', 'SURFACING.md'), 'utf8')
+    .split('## The surfacing course')[1] || '';
+  assert.ok(course.length > 0, 'the course section still exists');
+  assert.ok(/The body does not enumerate files/.test(course),
+    'the course should say the body carries judgment, not a file list');
+  assert.ok(/no link triplets/.test(course),
+    'the guide template should ask for prose, not the caption\'s link triplets');
+  assert.ok(/mcp-link-safe\.py/.test(course),
+    'the course should name the checker for anything written to a body');
 });

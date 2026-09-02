@@ -1,6 +1,5 @@
 kind,command,path,title,role,use
 skill,/portable:web-tools,.claude/skills/web-tools/SKILL.md,web-tools,loads the working conventions live (surfacing primitives plus the guide-PR course),plugin
-skill,/portable:caption,.claude/skills/caption/SKILL.md,caption,"the surfacing caption, and the guide-PR body sync",plugin
 skill,/portable:load-skill,.claude/skills/load-skill/SKILL.md,load-skill,fetch any skill from the library on demand,plugin
 skill,/portable:show-repo,.claude/skills/show-repo/SKILL.md,show-repo,browse any repo and move files across repos,plugin
 skill,/portable:tree,.claude/skills/tree/SKILL.md,tree,"render a linked file tree of the repo, table-first for mobile",plugin
@@ -23,7 +22,7 @@ doc,,docs/TRACKER.md,Project tracker,opt-in cross-session tracker: one file per 
 doc,,docs/CONSTELLATION.md,Constellation architecture,"the portable kernel of the what-goes-where doctrine: commit discipline, visibility forces repo boundaries, conventions pull from a public hub, the repo owns its own scope, documentation has four places. The theory behind show-repo's Map view",reference
 doc,,docs/show-repo.md,show-repo,"the hosted shell, the stage, and the .web-tools.json manifest",on-demand
 doc,,docs/artifacts.md,Artifacts,the bake-and-publish pipeline and the 📦 marker's place in the link-choice matrix,on-demand
-doc,,docs/HTML-STYLE.md,HTML house style (the style guide),"the style guide for pages, asked for by that name: no stat cards, no page prose, browsing is a full-viewport takeover, type sized for reading, tooltips built rather than borrowed",on-demand
+doc,,docs/HTML-STYLE.md,HTML house style (the name),"the name the style guide is asked for, pointing at the rules. They live in the daisy-alpine skill, which arrives with the plugin and fires on page work whether or not anyone asks; this file exists so a search for ""style guide"" in any repo lands somewhere",on-demand
 doc,,docs/headless-vendoring.md,Headless vendoring,build with CDN stacks and test them headless where the sandbox blocks their CDNs,on-demand
 doc,,docs/markdown-in-chat.md,Markdown in chat,working visually with markdown in a chat client; tables over nested bullets,on-demand
 doc,,docs/github/markdown.md,GitHub markdown,"what GitHub's renderer does with Mermaid, math, alerts, sparklines",on-demand

@@ -11,3 +11,4 @@ the MCP readback strips HTML from PR bodies,statement,,"docs/environment/capabil
 "the GitHub MCP routing rule: on an unexpected approval wall, call the built-in server's equivalent",statement,,"docs/environment/capabilities.md, ""MCP: two servers can share a tool name"" (2026-07-29; logs, controls, upstream issues)"
 the code layers and their admission rules,statement,,docs/code-layers.md
 the content registry classification vocabulary,statement,,.claude/skills/content-registry/SKILL.md (the skill owns the convention; CLAUDE.md says so)
+the house style for pages,statement,,skills/daisy-alpine/SKILL.md (the rules go where they fire: a session in another repo loads the skill unprompted on page work and may never fetch a doc)

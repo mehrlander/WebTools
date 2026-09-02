@@ -1,5 +1,5 @@
 // scripts/stranded-titles.py — the advisory detector for meaning that lives only
-// in a `title` attribute (HTML-STYLE.md: "a tooltip worth having is worth building").
+// in a `title` attribute (the house style: "a tooltip worth having is worth building").
 //
 // What is worth pinning is the CLASSIFIER, not the report. The audit behind
 // PR #447 ran three times by hand before this script existed and was wrong all
@@ -22,10 +22,12 @@ import { tmpdir } from 'node:os';
 const SCRIPT = 'scripts/stranded-titles.py';
 
 // Run the scan over one snippet and return { counts, stranded: [values] }.
-function scan(html) {
+// `ext` picks how the script reads the file: an .html is JavaScript only inside
+// its <script> blocks, a .js is JavaScript from the first byte.
+function scan(html, ext = 'html') {
   const dir = mkdtempSync(join(tmpdir(), 'stranded-titles-'));
   try {
-    const file = join(dir, 'probe.html');
+    const file = join(dir, `probe.${ext}`);
     writeFileSync(file, html);
     const out = execFileSync('python3', [SCRIPT, file], { encoding: 'utf8' });
     if (/no title attributes found/.test(out))
@@ -124,4 +126,69 @@ test('a clean file says so and reports nothing to fix', () => {
   const r = scan('<div><button title="Open on GitHub"><i></i></button></div>');
   assert.equal(r.stranded, 0);
   assert.equal(r.reachable, 1);
+});
+
+// TRAP 3. A tag named in a JAVASCRIPT comment is not markup, and it never
+// closes, so before 2026-09-01 it stayed on the ancestor stack for the rest of
+// the file and marked every later title reachable. HTML comments were already
+// skipped, which is precisely why this stayed quiet: the handled case looked
+// like the whole case. Found in home's budget-drs app/view/app.html, where one
+// prose comment about tab semantics names `<a>`, `<span>` and `<button>`; all
+// 36 titles below it reported reachable and 11 of them were stranded.
+test('a tag named in a // comment does not join the ancestor stack', () => {
+  const r = scan([
+    '<script>',
+    '// Every tab is now a <button>, which is focusable by construction.',
+    'const row = `<span title="the note nobody can reach">x</span>`;',
+    '</script>',
+  ].join('\n'));
+  assert.equal(r.stranded, 1, 'the span is not inside the commented-out button');
+  assert.deepEqual(r.values, ['the note nobody can reach']);
+});
+
+test('a tag named in a /* */ comment does not join the ancestor stack either', () => {
+  const r = scan('<script>\n/* wraps in an <a href="#"> on desktop */\n'
+    + 'el.innerHTML = `<span title="stranded">x</span>`;\n</script>');
+  assert.equal(r.stranded, 1);
+});
+
+// A .js file is JavaScript from the first byte, with no <script> to look for.
+test('a bare .js file has its comments masked too', () => {
+  const r = scan('// a <button> in prose\nconst h = `<span title="stranded in a kit">x</span>`;', 'js');
+  assert.equal(r.stranded, 1);
+});
+
+// The masking guard that matters most: blanking a URL line would silently DROP
+// findings, which is the failure mode this whole file exists to prevent.
+test('a // inside a URL is not a comment, so titles after it survive', () => {
+  const r = scan('<script>\nconst u = "https://example.com/x"; '
+    + 'const h = `<span title="after the url">x</span>`;\n</script>');
+  assert.equal(r.stranded, 1);
+  assert.deepEqual(r.values, ['after the url']);
+});
+
+// 36 regex literals across this estate carry a quote. A scanner that read `/`
+// as division would take the quote as a string opener and swallow the markup
+// after it, so this is the case that forces mask_js to be a lexer.
+test('a regex literal holding a quote does not swallow what follows', () => {
+  const r = scan('<script>\nconst q = s.replace(/[\'"]/g, "");\n'
+    + 'const h = `<span title="after the regex">x</span>`;\n</script>');
+  assert.equal(r.stranded, 1);
+  assert.deepEqual(r.values, ['after the regex']);
+});
+
+// Masking blanks in place rather than deleting, so the reported line still
+// points at the real line in the real file. A report off by the length of the
+// comments above it is worse than no report.
+test('line numbers still point into the unmasked file', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'stranded-titles-'));
+  try {
+    const file = join(dir, 'probe.html');
+    writeFileSync(file, '<script>\n/* a\n   multi\n   line <button> */\n'
+      + 'const h = `<span title="on line five">x</span>`;\n</script>');
+    const out = execFileSync('python3', [SCRIPT, file], { encoding: 'utf8' });
+    assert.match(out, /^\s+5\s+<span>/m);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

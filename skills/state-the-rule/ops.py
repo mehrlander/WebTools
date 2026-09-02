@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The four edits a standoff annotation admits, and the patch that declares them.
+"""The six edits a standoff annotation admits, and the patch that declares them.
 
     python3 ops.py <standoff.json> <patch.json> <doc.md> [--write]
 
@@ -12,7 +12,8 @@ is, survives reordering, and is reviewable as a judgment rather than a result.
     {"op": "split",   "uid": …, "at": <offset into the document>, "why": …}
     {"op": "merge",   "uid": …}                 with its successor
     {"op": "move",    "after": …, "to": <offset>}   the boundary after that unit
-    {"op": "relabel", "uid": …, "label": …}
+    {"op": "relabel", "uid": …, "label": …}   what the unit IS
+    {"op": "verdict", "uid": …, "verdict": …} what to DO about it
     {"op": "note",    "uid": …, "text": …}
 
 Every operation is checked against the invariants the stored run is already held
@@ -28,6 +29,10 @@ def check(so, text):
     """The invariants. Returns a list of complaints; empty means valid."""
     bad, units = [], sorted(so["units"], key=lambda u: u["start"])
     vocab = {v["label"] for v in so["vocabulary"]}
+    # Only where the second axis is DECLARED. An annotation that carries one
+    # axis is not thereby invalid, so an absent `verdicts` block waives the
+    # check rather than failing every unit in it.
+    verds = {v["verdict"] for v in so.get("verdicts", [])}
     seen, prev = set(), 0
     for u in units:
         if u["uid"] in seen:
@@ -37,6 +42,8 @@ def check(so, text):
             bad.append(f"{u['uid']}: span resolves to nothing")
         if u["label"] not in vocab:
             bad.append(f"{u['uid']}: label {u['label']!r} is not in the vocabulary")
+        if verds and u.get("verdict", "") not in verds:
+            bad.append(f"{u['uid']}: verdict {u.get('verdict', '')!r} is not declared")
         if u["start"] > prev and text[prev:u["start"]].strip():
             bad.append(f"{u['uid']}: unannotated text at {prev}-{u['start']}")
         # The other way a boundary can be wrong, and the one nothing caught
@@ -134,6 +141,20 @@ def relabel(so, text, uid, label, why=None):
     return so
 
 
+def verdict(so, text, uid, value, why=None):
+    """The other axis. Same shape as relabel because it is the same kind of
+    edit, and separate from it because the two are orthogonal: a unit can be
+    WHY and DROP at once, and neither answer constrains the other."""
+    declared = {v["verdict"] for v in so.get("verdicts", [])}
+    if declared and value not in declared:
+        raise ValueError(f"{value!r} is not declared: {sorted(declared)}")
+    _, u = _at(so, uid)
+    u["verdict"] = value
+    if why:
+        u["why"] = why
+    return so
+
+
 def note(so, text, uid, text_, **_):
     _, u = _at(so, uid)
     if text_:
@@ -147,6 +168,7 @@ HANDLERS = {"split": lambda so, t, o: split(so, t, o["uid"], o["at"], o.get("why
             "merge": lambda so, t, o: merge(so, t, o["uid"], o.get("why")),
             "move": lambda so, t, o: move(so, t, o["after"], o["to"], o.get("why")),
             "relabel": lambda so, t, o: relabel(so, t, o["uid"], o["label"], o.get("why")),
+            "verdict": lambda so, t, o: verdict(so, t, o["uid"], o["verdict"], o.get("why")),
             "note": lambda so, t, o: note(so, t, o["uid"], o.get("text", ""))}
 
 

@@ -43,6 +43,34 @@ test('every unit carries a label from the declared vocabulary', () => {
     `outside the vocabulary: ${bad.map(u => `${u.uid}=${u.label || '(none)'}`).join(', ')}`);
 });
 
+// THE SECOND AXIS. `vocabulary` says what a unit is, `verdicts` says what was
+// decided about it, and a unit carries one of each. The pair is held here
+// because the failure is silent either way: a verdict off the declared list
+// paints as the fallback grey and reads as KEEP, and a unit with no verdict at
+// all vanishes from the lens rather than reporting itself.
+test('every unit carries a verdict from the declared list', () => {
+  const declared = new Set(standoff.verdicts.map(v => v.verdict));
+  assert.ok(declared.size, 'the annotation declares no verdicts');
+  const bad = standoff.units.filter(u => !declared.has(u.verdict));
+  assert.equal(bad.length, 0,
+    `outside the declared verdicts: ${bad.map(u => `${u.uid}=${u.verdict ?? '(none)'}`).join(', ')}`);
+});
+
+// labels.tsv SEEDS the standoff and owns neither axis, which is only true while
+// the two agree. check.py still reads the TSV, so a page edit that never made it
+// back would leave the contract check judging the document against verdicts
+// nobody holds any more.
+test('the stored run agrees with the labels.tsv it was seeded from', () => {
+  const [head, ...rows] = readFileSync(`${RUN}/labels.tsv`, 'utf8').trim().split('\n');
+  assert.equal(head, 'uid\tlabel\tverdict');
+  const seed = new Map(rows.map(r => r.split('\t')).map(([uid, label, verdict]) => [uid, { label, verdict }]));
+  const drift = standoff.units
+    .filter(u => seed.has(u.uid))
+    .filter(u => seed.get(u.uid).label !== u.label || seed.get(u.uid).verdict !== u.verdict)
+    .map(u => `${u.uid}: standoff ${u.label}/${u.verdict}, tsv ${seed.get(u.uid).label}/${seed.get(u.uid).verdict}`);
+  assert.deepEqual(drift, []);
+});
+
 test('the page shows the committed standoff, not a re-derivation', () => {
   const page = readFileSync('pages/audit-render.html', 'utf8');
   const m = /window\.__audit = (\{[\s\S]*?\});\n\/\* AUDIT:END/.exec(page);
@@ -61,6 +89,29 @@ test('the page and the builder serialize to the same bytes', () => {
   assert.equal(JSON.stringify(JSON.parse(raw), null, 1) + '\n', raw,
     "JSON.stringify(so, null, 1) is what the page writes; python json.dumps(indent=1) " +
     'is what the builder writes. They have parted.');
+});
+
+// One lookup serves both axes on the page (RGB = { ...HUE, ...VHUE }), so a name
+// appearing in both would silently take the label's colour under the verdict
+// lens. A shared VALUE is the subtler one: the lenses never paint at once, but
+// the Standoff table puts a label chip beside a verdict chip, and there one
+// swatch would mean two things. Nothing about the two lists forces either apart.
+test('the label and verdict palettes share no name and no colour', () => {
+  const page = readFileSync('pages/audit-render.html', 'utf8');
+  const entries = (name) => [...(new RegExp(`const ${name} = \\{([^}]*)\\}`).exec(page)?.[1] ?? '')
+    .matchAll(/(\w+): '([\d,]+)'/g)].map(m => [m[1], m[2]]);
+  const hue = entries('HUE'), vhue = entries('VHUE');
+  assert.ok(hue.length && vhue.length, 'could not read both palettes off the page');
+  const keys = (e) => e.map(x => x[0]), vals = (e) => e.map(x => x[1]);
+  assert.deepEqual(keys(hue).filter(k => keys(vhue).includes(k)), []);
+  assert.deepEqual(vals(hue).filter(v => vals(vhue).includes(v)), []);
+  const hueKeys = keys(hue), vhueKeys = keys(vhue);
+  // And every declared key on either axis has a colour, or it paints as the
+  // fallback grey and reads as a category the page does not know about.
+  const named = new Set([...hueKeys, ...vhueKeys]);
+  assert.deepEqual(
+    [...standoff.vocabulary.map(v => v.label), ...standoff.verdicts.map(v => v.verdict)]
+      .filter(k => !named.has(k)), []);
 });
 
 test('the annotation carries its own address, not only its target', () => {

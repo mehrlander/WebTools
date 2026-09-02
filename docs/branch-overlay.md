@@ -243,7 +243,7 @@ which is the one place a caveat about a number must never be the sole occupant.
 They are buttons now, and tapping one opens a line under the strip carrying the
 reason: for a truncated tree, that a path GitHub left out reads as missing here,
 so the missing count is a ceiling rather than an answer. See
-[HTML-STYLE.md](HTML-STYLE.md) for the rule and
+[the house style](../skills/daisy-alpine/SKILL.md) for the rule and
 [`scripts/stranded-titles.py`](../scripts/stranded-titles.py) for what still breaks it. Where the branch has **no merge base** there is no compare and so no
 diff to render, and the pane falls back to listing the lent missing paths as
 links, which is the actionable half of a scan whose counts otherwise span more
@@ -461,7 +461,7 @@ calling it, because source-peek is a kit this card does not otherwise need and a
 card that called a `.md` plain source because a kit was late would be worse than
 the repeat. The two are held together by assertion instead
 (`file-review-card`, "the two classifiers agree"). The estate's answer to which
-renderer to use at all is in [HTML-STYLE.md](HTML-STYLE.md).
+renderer to use at all is in [the mechanics reference](../skills/daisy-alpine/references/mechanics.md).
 
 **The crumb is budgeted.** The deck header reads `<branch> · <dir>`, every
 branch here is a `claude/<slug>` running to twenty-five characters, and CSS

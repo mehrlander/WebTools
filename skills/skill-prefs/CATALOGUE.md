@@ -13,7 +13,7 @@ The largest family. Premise in one word: support. A kit is support scoped to one
 | windows-powershell | reference | PowerShell 5.1 Desktop is the floor; write to it. |
 | power-query | reference | M has sharp edges around fetch, parse, and buffering; here is where they cut. |
 | succinct-js-idioms | reference | Modern platform primitives keep JS short. |
-| daisy-alpine | reference | The house stack: DaisyUI 5, Tailwind 4, Alpine V3, one file, no build. |
+| daisy-alpine | reference | The house style for pages, with the stack (DaisyUI 5, Tailwind 4, Alpine V3, one file, no build) in a companion reference. |
 | phosphor-icons | reference | An enumerated icon manifest beats guessing names. |
 | ios-clipboard | reference, kit | One paste path covers https and data URLs on iOS. |
 | safe-html-templating | reference, kit | HTML built in JS fails silently; the failure points are enumerable. |

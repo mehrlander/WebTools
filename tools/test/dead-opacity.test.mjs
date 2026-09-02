@@ -1,5 +1,5 @@
 // scripts/dead-opacity.py — a daisyUI theme colour carrying an opacity step
-// that generates no CSS rule (HTML-STYLE.md: the shipped ramp is 10..90 by tens).
+// that generates no CSS rule (the house style mechanics: the shipped ramp is 10..90 by tens).
 //
 // What is pinned here is the CLASSIFIER and the repo's cleanliness, in that
 // order. The classifier matters because the obvious version of this scan is

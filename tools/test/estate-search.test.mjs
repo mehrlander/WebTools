@@ -218,10 +218,16 @@ test('code: budget left means the refusal was not the limit, and says so', async
   });
 });
 
-test('code: when /rate_limit fails too, the host is gone and the original stands', async () => {
+test('code: when /rate_limit fails too, the unreachable host is named as that', async () => {
   SEARCH_REJECT = REJECTED(); RATE = null;
   await assert.rejects(ES.code({ q: 'x', scope: 'user:me', token: 'tkn' }), (e) => {
-    assert.match(e.message, /Failed to fetch/, 'nothing is invented over an unreachable host');
+    // All three outcomes have to be TOLD APART by their wording. Passing the
+    // original through here read exactly like the un-diagnosed behaviour, so a
+    // reader could not tell whether the second call had run.
+    assert.match(e.message, /could not be reached at all/);
+    assert.doesNotMatch(e.message, /Failed to fetch/,
+      'the browser\'s words are the cause, not the message');
+    assert.match(e.cause.message, /Failed to fetch/, 'and they are still on the cause');
     return true;
   });
 });
@@ -338,4 +344,20 @@ test('clip: one line of context around the first case-insensitive hit', () => {
   assert.match(c, /^…/);
   assert.match(c, /NEEDLE appears/);
   assert.ok(c.length < 130);
+});
+
+test('code: the three rejection outcomes are told apart by their wording', async () => {
+  // The rule the pass-through broke. A diagnosis whose outcomes read alike is
+  // not a diagnosis: the reader cannot tell which of the three happened, and
+  // one of them is indistinguishable from no diagnosis at all.
+  const said = async (rate) => {
+    SEARCH_REJECT = REJECTED(); RATE = rate;
+    try { await ES.code({ q: 'x', scope: 'user:me', token: 'tkn' }); return '(no error)'; }
+    catch (e) { return e.message; }
+  };
+  const msgs = [await said(null), await said(budget(0)), await said(budget(9))];
+  assert.equal(new Set(msgs).size, 3, 'each outcome must read differently:\n  ' + msgs.join('\n  '));
+  // And none of them may be the browser's own words, which say nothing.
+  for (const m of msgs) assert.doesNotMatch(m, /^Network error on GET/);
+  SEARCH_REJECT = null;
 });

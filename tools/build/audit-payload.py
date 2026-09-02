@@ -28,20 +28,49 @@ import sys, json, csv, re, hashlib, pathlib
 # state-the-rule's labels. A different question ships a different list, and
 # check.py never reads the label column, so the vocabulary is data.
 #
-# ONE AXIS. The standoff says what each unit IS; labels.tsv's verdict column
-# says what was decided about it, which is a disposition of this question rather
-# than a property of the unit, and it is check.py that reads it. Carrying both
-# here put a second closed vocabulary in an artifact whose whole generality is
-# that its vocabulary is declared.
+# TWO AXES, BOTH DECLARED. `vocabulary` says what a unit IS; `verdicts` says
+# what was decided about it. They are orthogonal: WHY is a kind of content and
+# DROP is a disposition, and a unit carries one of each. Carrying only the
+# label was right while the second axis would have arrived CLOSED, hardcoded
+# into an artifact whose whole generality is that its vocabulary is declared.
+# Declaring it beside the first answers that objection on its own terms.
+#
+# labels.tsv SEEDS both and owns neither, exactly as it already did for the
+# label: the pass writes it, the builder copies it in, and from then on the
+# standoff is the live one, because a relabel or a reverdict in the page lands
+# there. check.py still reads labels.tsv, so a pass that ends in the page
+# re-exports it rather than the two drifting.
+#
+# WHY is one label, not two. It was split into an operative reason and a
+# motivating one, and the split asked a reader to decide, per clause, whether a
+# reason changes how the rule applies at a boundary. That is the same judgement
+# the rewrite step already makes when it lifts a criterion into the
+# declaration, so the second label was paying twice for one call. One why, and
+# where it is blunt it is blunt. The criterion guidance survives in the skill,
+# which is where the lifting happens.
+#
+# CUT WAS A VERDICT WEARING A LABEL'S CLOTHES. It said the text should not be
+# here, which is a disposition, and it sat on the axis that says what a unit
+# is. It is DROP now, on the axis that owns removal, and the label axis is a
+# reading again.
 VOCAB = [
-    ("WHAT",    "declaration", "a rule, a fact of the system, a value it may hold"),
-    ("HOW",     "declaration", "syntax, a procedure, an invocation"),
-    ("WHY-OP",  "hinge",       "a reason that changes how the rule applies at a boundary"),
-    ("WHY-MOT", "explanation", "a reason that makes the rule feel right but changes nothing"),
-    ("PROV",    "explanation", "when it changed, what it replaced, what failed"),
-    ("EVID",    "explanation", "a measurement, a probe, an observation"),
-    ("NAV",     "apparatus",   "a pointer to the document or gate that owns something"),
-    ("META",    "apparatus",   "a statement about this document"),
+    ("WHAT", "declaration", "a rule, a fact of the system, a value it may hold"),
+    ("HOW",  "declaration", "syntax, a procedure, an invocation"),
+    ("WHY",  "hinge",       "the reason behind the rule"),
+    ("PROV", "explanation", "when it changed, what it replaced, what failed"),
+    ("EVID", "explanation", "a measurement, a probe, an observation"),
+    ("NAV",  "apparatus",   "a pointer to the document or gate that owns something"),
+    ("META", "apparatus",   "a statement about this document"),
+]
+
+# The dispositions, in the order a pass walks them: leave it, say it better,
+# it belongs elsewhere, it should not be here. DROP is last and is the only
+# destructive one, which is why the page strikes it through under either lens.
+VERDICTS = [
+    ("KEEP",    "stands as written"),
+    ("REWRITE", "the content earns its place; the sentence does not"),
+    ("MOVE",    "belongs in another document"),
+    ("DROP",    "says nothing the document needs"),
 ]
 
 def parse_addr(spec):
@@ -64,7 +93,8 @@ def build_standoff(doc, run, addr, self_repo, question):
         a = ann.get(u["uid"], {})
         units.append({"uid": u["uid"], "start": u["start"], "end": u["end"],
                       "kind": u["kind"], "words": u["words"],
-                      "label": a.get("label", "")})
+                      "label": a.get("label", ""),
+                      "verdict": a.get("verdict") or "KEEP"})
     # `self` is the annotation's own address, which `target` cannot supply: the
     # target is the DOCUMENT. Without it a page that edits the annotation has
     # nowhere to put the result and has to be told the run directory out of
@@ -78,6 +108,7 @@ def build_standoff(doc, run, addr, self_repo, question):
             "self": me,
             "target": addr | {"bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()},
             "vocabulary": [{"label": l, "side": s, "gloss": g} for l, s, g in VOCAB],
+            "verdicts": [{"verdict": v, "gloss": g} for v, g in VERDICTS],
             "units": units}
 
 def build_payload(doc, run):

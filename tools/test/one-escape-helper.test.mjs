@@ -1,7 +1,7 @@
 // one-escape-helper.test.mjs — window.esc is the estate's only HTML-escape
 // helper, and the shelf stays at one.
 //
-// The defect this replaces: docs/HTML-STYLE.md carried a rule ("Unescape before
+// The defect this replaces: the house style carried a rule ("Unescape before
 // you escape") prescribing a single shared helper that decodes entities and
 // then escapes. No such helper existed. Five local copies did, to three
 // different answers about which characters matter, and each call site was left

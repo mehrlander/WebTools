@@ -46,14 +46,14 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
   **Boundary:** token-gated with the same in-app-browser caveat as `#gh=`; for a tokenless reader, download the bundle and hand it over. A stage is an inline handoff, not a caption row. See `docs/stage.md`, `docs/show-repo.md`, and `.web-tools.json`.
 
 * **Carry content in an envelope.** A curated, annotated set of files, chats, diffs, or search hits that should travel and render together goes in an envelope rather than an ad-hoc format. The carriers are stage, surface (`pages/app.html` estate view), chat-results (`pages/chat-results.html`) and data view (`pages/data-view.html`).
-  **Boundary:** they share the `owner/repo[@ref]:path` grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. Contracts in [`docs/envelopes/`](https://github.com/mehrlander/web-tools/tree/main/docs/envelopes): `docs/envelopes/surface.md`, `docs/envelopes/chat-results.md`, `docs/envelopes/data-view.md`.
+  **Boundary:** they share the `owner/repo[@ref]:path` grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. One contract per carrier in [`docs/envelopes/`](https://github.com/mehrlander/web-tools/tree/main/docs/envelopes).
 
 * **Toss data 📊.** Address a CSV, JSON array, or log through the data route so it opens readable rather than raw: `toss-render.html#data=owner/repo[@ref]:path`. It picks a mode by content (table, tree, preview, code, raw) and leaves every other one a tap away. Bare bytes need no wrapper; an `items` envelope adds several files with a default view and notes for each, and a trailing `#item=<name|index>` opens on one.
-  **A PDF has two routes.** `#data=` is the first look: the page drawn, a pager, the real page count and byte size. `#pdf=` is the workbench (`pages/pdf-inspect.html`): text containers, characters, vector rules, detected columns and lattice cells, and the table read two independent ways. Pick by what the reader is meant to do.
+  **A PDF has two routes.** `#data=` is the first look: the page drawn, a pager, the real page and byte counts. `#pdf=` is the workbench (`pages/pdf-inspect.html`), down to characters, vector rules and detected table cells. Pick by what the reader is meant to do.
   **Boundary:** same token gate as `#gh=`; `#gz=` on the page itself for a tokenless reader. Contract: [`docs/envelopes/data-view.md`](https://github.com/mehrlander/web-tools/blob/main/docs/envelopes/data-view.md). What the kit recovers from a PDF and what it does not: [`pdf-structure.md`](https://github.com/mehrlander/web-tools/blob/main/docs/pdf-structure.md).
 
 * **Copy to the clipboard 📋.** A `shortcuts://run-shortcut?name=<shortcut>&input=text&text=<payload>` link whose payoff is content on the reader's clipboard.
-  **Boundary:** only for content that must be made on the device, meaning a pasteboard type you cannot produce or a value computed from device state at tap time; otherwise hand over a file. The payload is opaque, so the caption states what it holds, how many actions, and whether the link replaces or adds. Paste the link exactly as its generator emitted it: an edited payload keeps its actions and loses its label, so it works and misreports at once. Hand it over as `[label](shortcuts://…)`, never bare and never in a code span, since the chat client will not autolink a custom scheme. Measured in [markdown-in-chat.md](https://github.com/mehrlander/web-tools/blob/main/docs/markdown-in-chat.md).
+  **Boundary:** only for content that must be made on the device, meaning a pasteboard type you cannot produce or a value computed from device state at tap time; otherwise hand over a file. The payload is opaque, so the caption states what it holds, how many actions, and whether the link replaces or adds. Paste it exactly as its generator emitted it: an edited payload keeps its actions and loses its label, so it works and misreports at once. Hand it over as `[label](shortcuts://…)`, never bare and never in a code span, which the chat client will not autolink. Measured in [markdown-in-chat.md](https://github.com/mehrlander/web-tools/blob/main/docs/markdown-in-chat.md).
 
 * **Run a shortcut 📲.** The same link shape with the payoff anything but the clipboard. The payload is legible, so the caption stays short; the `[label](url)` rule is unconditional for both routes. Generator: [`mehrlander/shortcut-tools`](https://github.com/mehrlander/shortcut-tools), `tools/pack.py` for 📋 and `tools/show.py` for 📲; its `CLAUDE.md` carries the cost discipline that governs when either link is worth sending.
 
@@ -61,25 +61,23 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
 
 * **Open the branch 🌿.** For work in flight, link the branch page beside the guide PR.
   **Form:** `…/pages/branch.html#gh=owner/repo@branch[&base=ref]`, or `…#gh=owner/repo&pr=<n>` for a PR's own head and base. Add `&src=<spec>` or `&gz=<payload>` to lay an authored envelope over a branch with no PR.
-  **Boundary:** its facts are read from the API on every load, so the link is current whenever it is opened and makes no freshness claim. It renders the guide PR body too, so one link carries the judgment and the file list together, with arrows through every PR the branch has had. Token-gated like every `#gh=`. 🌿 is where you read the branch, 🧭 where you merge it. For browsing rather than linking, `…/app/?view=activity`.
+  **Boundary:** its facts are read from the API on every load, so the link is current whenever it is opened and makes no freshness claim. It renders the guide PR body too, so one link carries the judgment and the file list together. Token-gated like every `#gh=`. 🌿 is where you read the branch, 🧭 where you merge it. For browsing rather than linking, `…/app/?view=activity`.
 
 * **Guide pointer 🧭.** Mark the branch's guide PR with 🧭. A reply may close with `🧭 [PR #N](…) (body synced)`, and where the branch has a PR, 🌿 rides beside it.
   **Boundary:** the parenthetical is a claim about this reply, not about the PR. Write `(body synced)` only when this turn rewrote the guide region, `(body not synced)` otherwise, and never carry it forward from an earlier reply.
 
 * **Task marker 🎫.** Where the repo uses [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md), surface a task as `🎫 [title](<task blob url>)`. The filename id never shows.
 
-* **Surfacing caption.** End a file-modifying turn by saying **where to look**, not by listing what moved. The branch page enumerates the changed files, grouped through the content registry and current on every load, each file's diff a tap away. Name in the prose the files with something non-obvious to say, linked per Reference is a link, and enumerate nothing.
+* **Surfacing caption.** End a file-modifying turn by saying **where to look**, not by listing what moved: the branch page enumerates them, grouped through the content registry, current on every load, each diff a tap away. Name in the prose only the files with something non-obvious to say, linked per Reference is a link, and enumerate nothing.
   **Form:**
   ```
   🌿 [<branch>](…/pages/branch.html#gh=<owner>/<repo>@<branch>) · <N> files · [this turn](…/commit/<sha>)
-
-  🥏 [pages/index.html](…)
   ```
-  `<N>` is `git diff origin/main...HEAD --name-only | wc -l`. `this turn` is that turn's own commit; drop it where the branch has a single commit and the two say the same thing. The render line is unchanged and still follows.
+  `<N>` is `git diff origin/main...HEAD --name-only | wc -l`. `this turn` is that turn's own commit; drop it where the branch has a single commit. The render line follows unchanged.
 
-  **Addressing one file, or one pane.** `&file=<path>` opens the branch page's file deck on that file, and for a changed file that beats a `[new]` blob: the slide carries the diff, the file rendered as itself, and the compare bar. `&pane=files` opens on the file list, which the page stacks above the guide. Both ride the standalone page and the in-app takeover; [show-repo.md](https://github.com/mehrlander/web-tools/blob/main/docs/show-repo.md) owns the address grammar.
+  **Addressing one file, or one section.** `&file=<path>` opens the file deck on that file, which for a changed file beats a `[new]` blob: the slide carries the diff, the file itself, and the compare bar. `&pane=files` opens on the file list, which the page stacks above the guide. Address grammar: [show-repo.md](https://github.com/mehrlander/web-tools/blob/main/docs/show-repo.md).
 
-  **Where the enumerated list still applies.** The branch page is token-gated, so a reader with no stored token, or a repo with no deployed page, needs the list; ask for it as `/caption files`. Its rows stay uniform, filenames plain, link words tappable, and a file's links are not repeated within a turn:
+  **Where the enumerated list still applies.** The branch page is token-gated, so a reader with no stored token, or a repo with no deployed page, needs the list. Rows stay uniform, filenames plain, link words tappable, a file's links not repeated within a turn:
 
   | File state | Links |
   | --- | --- |
@@ -89,7 +87,7 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
 
   `[new]` is the branch tip, `[main]` the baseline; `[main]/[diff]` is the net change against main and `[new]/[diff]` is on-branch history. Add `#L120` or `#L120-L145` for line anchors.
 
-  In an MCP-written body, **150 characters or more inside a markdown link is wrapped in backticks and renders as literal text; 149 or fewer survives.** Length only, the label never contributing, and the count applies to a URL **anywhere in the text** rather than only inside a link. Both write paths, a PR body and an issue comment alike. Chat replies are untouched and keep the full forms. Count the URL and get under 150, in this order:
+  In an MCP-written body or comment, **a URL of 150 characters or more is wrapped in backticks and renders as literal text; 149 or fewer survives.** Length only, anywhere in the text, the label never counting; chat is untouched. Check with `scripts/mcp-link-safe.py --check`, and shorten in this order:
 
   | Too long | Shorten it to |
   | --- | --- |
@@ -99,7 +97,13 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
   | a deep `:path` in a toss | the branch page, or a `#gz=` in chat |
   | anything still over | drop the render link from the body; put it in the chat caption |
 
-  **Boundary:** apply the ⭐ honesty gate. The render line belongs to every size; where there is no render link, say why rather than omitting it. The 🌿 line replaces the list, never the prose: a turn that changed something non-obvious still says so in words. Slash-joined `[main](…)/[diff](…)` pairs count as one run, so separate them with `, ` to put each URL back on its own count. The 150-character measurement, with every probe and control: [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
+  **Boundary:** apply the ⭐ honesty gate at every size; where there is no render link, say why rather than omitting it. The 🌿 line replaces the list, never the prose: a turn that changed something non-obvious still says so in words. Slash-joined `[main](…)/[diff](…)` pairs count as one run, so separate them with `, `. Measurement: [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
+* **Review the diff 🔍.** Where the changed files are worth reading, add `…/pages/review.html#gh=owner/repo@branch&base=main` (`:path` for one file): each file's diff against the merge base, its patch and its raw content.
+  **Boundary:** it supplements the caption, never replaces it, and is token-gated like every `#gh=`. 🌿 reads the branch, 🔍 the diff.
+
+* **Close in one order.** Parts that do not apply are skipped; the order never varies: the 🌿 caption line, the render line, 🧭, then exactly one closing state, last.
+  **Boundary:** a reply that changed no files still closes with a state, and nothing follows it. A wake that changed nothing is the exception and says nothing at all: no state, no restated list.
+
 * **Session diff.** Summarize substantial work with `Session diff: [main...branch](url)`.
 
 * **Closing state.** End a reply that finishes work, proposes work, or leaves something open with exactly one state.
@@ -139,7 +143,7 @@ It leads with:
 Open the branch's PR as a draft at first push, automatically where configured or through the API otherwise. Keep `Follow-up to #N` when continuing an earlier PR and end with the harness's session-link footer.
 
 * **Ready is the user's decision.** Mark the PR ready only on explicit instruction, including an accepted wrap-up offer.
-* **Keep the body synchronized.** It is current state, not a per-file or per-push changelog; update it after a meaningful change in state. `/caption` refreshes the fenced guide region without touching hand-written text.
+* **Keep the body synchronized.** It is current state, not a per-file or per-push changelog; update it after a meaningful change in state. Rewrite only the region between the markers below, via `update_pull_request`, leaving hand-written text outside them untouched.
 * **Put narrative in dated PR comments.** Comments are the append-only progress log; the body is current state.
 * **Abandon by closing the draft** with a final comment saying why.
 * **Keep branch guidance out of main.** Delete any obsolete `BRANCH-GUIDE.md` found there.
@@ -182,7 +186,7 @@ it; the Files tab and the branch page enumerate.>
 <session-link footer>
 ```
 
-**The region markers are markdown link labels, not HTML comments.** Both render as nothing on GitHub, but reading a body back through the GitHub MCP strips HTML comments, so a sync cannot find its region and appends a second one or overwrites hand-written prose. Recognition still accepts the older `<!-- guide -->` pair, which bodies written before 2026-07-28 carry. The one constraint the new form brings: a link label is a reference definition, so it must start a line and sit between blank lines, and inside a list item or a blockquote it can render literally. Measured, with the probe and the controls, in [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
+**The region markers are markdown link labels, not HTML comments.** Both render as nothing on GitHub, but reading a body back through the GitHub MCP strips HTML comments, so a sync cannot find its region and appends a second one or overwrites hand-written prose. Recognition still accepts the older `<!-- guide -->` pair, which bodies written before 2026-07-28 carry. The one constraint the new form brings: a link label is a reference definition, so it must start a line and sit between blank lines, and inside a list item or a blockquote it can render literally. Read either pair when locating the region, emit the link-label form when rewriting, and if neither is present stop and say so rather than guessing at the boundary. Check a body's URLs before writing it with `python3 scripts/mcp-link-safe.py --check body.md`, adding `--unescape-entities` for a body read back through the MCP, whose readback expands `&` into `&amp;` and inflates the count. Measured, with the probe and the controls, in [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
 
 ### Shipped history
 

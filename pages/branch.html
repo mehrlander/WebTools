@@ -147,7 +147,7 @@
        one has to be on the page. Found on session.html 2026-08-26 and fixed
        here in the same pass, since the rule was copied between them. -->
   <div x-show="!framed || !target" class="border-b border-base-300 bg-base-100">
-    <div class="max-w-4xl mx-auto px-4 py-2 flex items-center gap-2">
+    <div class="mx-auto px-4 py-2 flex items-center gap-2">
       <span class="text-lg">🌿</span>
       <input x-model="input" @keydown.enter="go()" placeholder="owner/repo@branch, or a PR URL"
              class="input input-sm input-bordered font-mono flex-1 min-w-0">
@@ -155,7 +155,7 @@
     </div>
   </div>
 
-  <div x-show="!target" class="max-w-4xl mx-auto p-8 text-center opacity-60 text-sm">
+  <div x-show="!target" class="mx-auto p-8 text-center opacity-60 text-sm">
     Address a branch above, or link straight to one:
     <code class="text-xs">#gh=owner/repo@branch</code>,
     <code class="text-xs">#gh=owner/repo&amp;pr=364</code>

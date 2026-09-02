@@ -11,8 +11,18 @@ import re, sys, json, hashlib
 # list bullets are units in their own right; prose splits on sentence enders,
 # guarding the abbreviations and the `e.g.`/version-number cases that would
 # otherwise shatter a sentence.
+# An ORDERED-LIST MARKER is the fifth guard and the one that was missing. `1. `
+# is a digit, a period and a space, which the sentence splitter read as a
+# sentence ending after "1": every numbered item became a unit holding the
+# marker and a unit holding the item. Neither renders. The marker alone is an
+# `<ol>` with an empty `<li>`, and the item without its marker is a bare
+# paragraph, so a three-step list drew as three empty numbers over three
+# unindented sentences. The decimal guard below does not reach it, since that
+# one needs a digit on BOTH sides of the period. Same `\d+\.` as BULLET, so the
+# splitter and the guard agree on what a marker is.
 GUARD = [(r'\be\.g\.', '\x01'), (r'\bi\.e\.', '\x02'), (r'\betc\.', '\x03'),
-         (r'\bvs\.', '\x04'), (r'(\d)\.(\d)', lambda m: m.group(1)+'\x05'+m.group(2))]
+         (r'\bvs\.', '\x04'), (r'(\d)\.(\d)', lambda m: m.group(1)+'\x05'+m.group(2)),
+         (r'(?m)^([ \t]{0,3}\d+)\.(?=[ \t])', lambda m: m.group(1)+'\x05')]
 
 def unguard(s):
     for a, b in [('\x01','e.g.'),('\x02','i.e.'),('\x03','etc.'),('\x04','vs.'),('\x05','.')]:
@@ -33,7 +43,18 @@ def prose_units(block, bstart, base_off, out):
         seg = sm.group(0)
         if not seg.strip():
             continue
-        out.append((base_off + bstart + sm.start(), base_off + bstart + sm.end(),
+        # The sentence ender is matched with a LOOKAHEAD, so the whitespace
+        # after it is never consumed and arrives as the next match's leading
+        # run. The text was already stripped here; the offsets were not, so a
+        # unit's span claimed space its own text disowned. Measured on
+        # CONVENTIONS.md: of 35 abutting pairs, 30 had the separator inside the
+        # following unit and 5 inside the preceding one, which is a boundary
+        # sitting in a different place depending on which sentence you ask.
+        # Trim the span to the text, and the space between sentences goes
+        # unclaimed exactly as the blank line between paragraphs already does.
+        a = sm.start() + (len(seg) - len(seg.lstrip()))
+        b = sm.end() - (len(seg) - len(seg.rstrip()))
+        out.append((base_off + bstart + a, base_off + bstart + b,
                     'sent', unguard(seg).strip()))
 
 # A fenced region is masked off BEFORE blocks are cut, not recognised as a block

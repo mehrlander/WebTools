@@ -308,3 +308,75 @@ the trap was one command away and invisible.
 **The two implementations were diffed on real work rather than a fixture.** The
 same 20-operation patch through `ops.py` and through `lib/kits/standoff.js`
 produced byte-identical output, 91 units, field order included.
+
+## 2026-09-01 — the second axis, and the label that was a verdict
+
+**A removal mechanism was asked for, and the only axis on screen was the wrong
+one.** The page painted `vocabulary` and nothing else, so "mark this as clutter"
+arrived as `CUT`, an eighth label. It worked and it was a category error: the
+label axis says what a unit **is**, and whether a unit belongs is a disposition.
+The tell was that nothing else on the edit axis could follow it. Once one verdict
+sits among the labels a reader expects `MOVE` beside it, and there is nowhere to
+put one.
+
+**The objection to a second axis was real and it was answered, not overruled.**
+This skill held that the standoff carries the label and not the verdict, because
+a second vocabulary would arrive **closed** inside an artifact whose whole
+generality is that its vocabulary is declared. The criterion in that sentence is
+`closed`, not `second`. Declaring `verdicts` beside `vocabulary` satisfies it,
+and `ops.py` and `lib/kits/standoff.js` now check a unit's verdict against the
+declared list exactly as they check its label.
+
+**The waiver is the part worth keeping.** An annotation with no `verdicts` block
+is one-axis, not invalid: holding every prior standoff to a list it never
+declared would fail each of its units at once. Both checkers skip the verdict
+where none is declared, and a test holds that skip so it cannot be tidied away.
+
+**What the tests caught that the pass did not.** Two things, both invisible in
+the render. The stored run's `vocabulary` still declared `CUT` after every unit
+had left it, because the in-place patch preserved the block it was not asked to
+touch. And the two palettes shared three rgb values, so `NAV` and `MOVE` were
+one swatch in the Standoff table, the single view that shows a label chip and a
+verdict chip side by side. Neither is visible under one lens at a time, which is
+why the gate is on the palettes rather than on a screenshot.
+
+**Text decoration was the free channel.** The tint, the ticks and the opacity
+are all spent on the active lens; `text-decoration` was not, which is why the
+verdict could arrive beside the label rather than displacing it. A `DROP` is
+struck through under either lens.
+
+## 2026-09-01 — `1. ` is not a sentence, and the render was the only thing that said so
+
+**The fifth guard was missing.** `GUARD` protected `e.g.`, `i.e.`, `etc.`, `vs.`
+and a decimal point, and the decimal one needs a digit on **both** sides, so a
+list marker slipped through: `1. ` is a digit, a period and a space, which the
+sentence splitter read as a sentence ending after "1". Every numbered item became
+two units, one holding the marker and one holding the item.
+
+**Nothing in the annotation was wrong, which is why nothing caught it.** The
+units tiled, every span resolved, every label was declared, and a bare `1.` got
+labelled `META` because that is the best a labeller can do with it. The check
+suite passed on all of it. The defect existed only in the render: a marker alone
+is an `<ol>` with an empty `<li>` and an item without its marker is a bare
+paragraph, so a three-step list drew as three empty numbers over three
+unindented sentences. It was reported from a screenshot.
+
+**The stored run was repaired with the machine's own operations**, three merges
+and three relabels through `ops.py`, rather than by re-segmenting. Re-segmenting
+would have been correct and would have discarded ten patched units and every
+label; a patch keeps both and records the judgment. `labels.tsv` and
+`units.jsonl` were then regenerated from the result, since both describe the
+current grain.
+
+**A second, smaller thing came out of the same spot.** A sentence taken from
+INSIDE a list item is a legitimate unit that also does not render as one: the
+marker went to the first sentence, so every later sentence hung unindented under
+the item it belongs to. The page now wraps such a continuation in a marker-less
+list, which gives it the item's indent by construction rather than by a padding
+constant guessed to match the prose styles.
+
+**The general shape, since the segmenter will meet it again: a grain defect can
+be invisible to every invariant and visible only when rendered.** The invariants
+are about the partition; whether a unit can stand alone is a different question,
+and the only two things asking it are `balanced()` and a person looking at the
+page.
