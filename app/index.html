@@ -1517,8 +1517,9 @@ html.dk-dragging main{transition:none !important}
                    recursive tree read. The workspace's own root files lead,
                    then one group per folder with its full relative path as the
                    header, so depth reads without a tree control; a curated
-                   DOCS.md, where the workspace keeps one, renders above the
-                   mechanical listing. Rows open in the shell's viewer, the
+                   docs/README.md (or the older DOCS.md), where the workspace
+                   keeps one, renders above the mechanical listing, and source
+                   packages are counted rather than listed. Rows open in the shell's viewer, the
                    same place the Board button reads. -->
               <div x-show="projectTab==='docs'">
                 <div x-show="projectDocsLoading" class="flex justify-center py-16">
@@ -1535,6 +1536,8 @@ html.dk-dragging main{transition:none !important}
                         <input type="search" x-model.debounce="projectDocsQ" placeholder="filter by path…" class="grow min-w-0">
                       </label>
                       <span class="text-base text-base-content/40" x-text="projectDocsCount + ' files'"></span>
+                      <span x-show="projectDocsSourced" class="text-base text-base-content/40"
+                            x-text="'· ' + projectDocsSourced + ' inside source packages, not listed'"></span>
                     </div>
                     <template x-for="g in projectDocsGroups" :key="g.dir">
                       <section class="mb-6">
@@ -4209,7 +4212,8 @@ function app(){ return {
   projectDocs: null,        // grouped listing; null = not loaded (or the tree read failed)
   projectDocsLoading: false,
   projectDocsQ: '',
-  projectDocsIndexHtml: '', // a curated DOCS.md, rendered above the mechanical listing
+  projectDocsIndexHtml: '', // the curated docs/README.md (or DOCS.md), rendered above the mechanical listing
+  projectDocsSourced: 0,    // markdown inside source packages, counted rather than listed
   _projectDocsKey: '',
   // The open project as a row: the declared entry where there is one, so its
   // label, board, and landing carry, else a minimal one derived from the path
@@ -4435,29 +4439,46 @@ function app(){ return {
     this._projectDocsKey = key;
     this.projectDocsLoading = true; this.projectDocs = null; this.projectDocsIndexHtml = '';
     const prefix = this.projectPath + '/';
-    let rels = null;
+    let rels = null, sourced = 0;
     try {
       const t = await s.gh.req('git/trees/' + encodeURIComponent(s.ref || 'HEAD') + '?recursive=1');
-      rels = (t.tree || [])
+      const all = (t.tree || [])
         .filter(n => n.type === 'blob' && n.path.startsWith(prefix) && /\.(md|markdown)$/i.test(n.path))
         .map(n => n.path.slice(prefix.length));
+      // Source packages are pulled material with a provenance README each, not
+      // the workspace's documentation: budget-drs holds 1,605 of them against
+      // 300 documents, so listed together the packages are all a reader sees.
+      // Counted and named below the filter rather than listed.
+      rels = all.filter(r => !this.isSourcePackageDoc(r));
+      sourced = all.length - rels.length;
     } catch { /* rels stays null: the pane says the listing failed */ }
     // A late reply for a project the reader has since left must not paint over
     // the current one (loadProjectReadme's rule).
     if (key !== this._projectDocsKey) return;
     this.projectDocs = rels ? this.groupProjectDocs(rels) : null;
+    this.projectDocsSourced = sourced;
     this.projectDocsLoading = false;
-    // The curated layer: a workspace keeping a DOCS.md gets it rendered above
-    // the mechanical listing. Curation on top, mechanism underneath, nothing
-    // owed when no index exists.
-    if (rels && rels.includes('DOCS.md')){
+    // The curated layer: a workspace keeping a documentation map gets it
+    // rendered above the mechanical listing. The map is docs/README.md, the
+    // four-slot rule's own answer (CONSTELLATION.md principle 6); DOCS.md is the
+    // older name and still honoured. Curation on top, mechanism underneath,
+    // nothing owed when no index exists.
+    const lead = rels && (rels.includes('docs/README.md') ? 'docs/README.md'
+                        : rels.includes('DOCS.md') ? 'DOCS.md' : null);
+    if (lead){
       try {
-        const res = await s.gh.get(this.projectPath + '/DOCS.md');
+        const res = await s.gh.get(this.projectPath + '/' + lead);
         if (key !== this._projectDocsKey) return;
         await loadMarked();
         this.projectDocsIndexHtml = mdHtml(res.text);
       } catch {}
     }
+  },
+  // A markdown file inside a source package: a dated pull under data/source/
+  // or a supplied document set under source-docs/. Pure, so the rule is
+  // testable beside groupProjectDocs.
+  isSourcePackageDoc(rel){
+    return /^data\/source\//.test(rel) || /(^|\/)source-docs\//.test(rel);
   },
   // Group project-relative markdown paths for the Docs tab: the workspace's
   // own root files first, then one group per folder in path order, each

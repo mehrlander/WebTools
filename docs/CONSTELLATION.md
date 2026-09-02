@@ -107,6 +107,12 @@ about, never by what moving it would cost. A folder that has quietly accumulated
 documents about the workspace is a `docs/` nobody made, whatever the inbound reference
 count says.
 
+The Web Tools project view reads the first slot: its Docs pill renders the
+workspace's `docs/README.md` above the mechanical listing (or `DOCS.md`, the older
+name, where that is all there is), and counts the markdown inside source packages
+(`data/source/`, `source-docs/`) rather than listing it, since a pull's provenance
+README is material, not documentation.
+
 A residual is a question, not a defect, and two answers close it: a document about one
 folder becomes that folder's `README.md`; a document about the workspace moves to its
 `docs/`. Where neither reading fits, leave it and say which it failed.
