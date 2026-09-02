@@ -90,7 +90,18 @@
   [x-cloak]{display:none!important}
 </style>
 </head>
-<body class="h-[100dvh] flex flex-col overflow-hidden bg-base-100 text-base-content" x-data="sessionPage()" x-cloak>
+<!-- THE DOCUMENT SCROLLS, and this line is what decides it. It was
+     `h-[100dvh] … overflow-hidden`, an app shell, while session-brief's shell
+     takes `h-full min-h-0` only when FRAMED and otherwise sizes to its content,
+     on the argument branch-brief makes: a page that pins its own header costs a
+     phone its URL-bar collapse. The two disagreed and the clamp won, so a
+     record taller than the viewport was simply cut off with nothing to scroll:
+     measured 2026-09-02 at 1280x900, the shell 1945px inside an 851px mount,
+     every ancestor `overflow: visible` until the body clipped it. `min-h-` and
+     not `h-`, so short content still fills the screen; branch.html is the same
+     shape. The deck needs nothing here, since it locks
+     `documentElement.style.overflow` itself and restores what it found. -->
+<body class="min-h-[100dvh] flex flex-col bg-base-100 text-base-content" x-data="sessionPage()" x-cloak>
 
   <!-- Stands down inside a frame, the courtesy branch.html and links.html pay
        their embedder: the app supplies its own chrome.

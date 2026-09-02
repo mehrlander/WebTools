@@ -84,13 +84,25 @@ test('wider shells and smaller component widths are never reported', () => {
   }
 });
 
-test('max-w-none is the prose UNDO and is never reported', () => {
-  withFile('<div class="prose prose-sm max-w-none">x</div>', f => {
+test('!max-w-none is the prose UNDO and is never reported', () => {
+  withFile('<div class="prose prose-sm !max-w-none">x</div>', f => {
     assert.match(run([f]).out, /reading-column: none/);
   });
 });
 
-test('a prose run without max-w-none is reported: same 65ch cap, no max-w-* to grep', () => {
+test('the PLAIN max-w-none is reported, because it loses to the cascade', () => {
+  // The bang is the whole rule. Typography ships plain unlayered CSS setting
+  // `.prose{max-width:65ch}`; Tailwind v4 puts its utilities in
+  // `@layer utilities`, and an unlayered rule beats every layer whatever the
+  // source order. So the plain utility reads as the undo and is not one. This
+  // scanner taught the plain form until 2026-09-02, and four files carried it
+  // while four others already carried the bang.
+  withFile('<div class="prose prose-sm max-w-none">x</div>', f => {
+    assert.match(run([f]).out, /: prose$/m);
+  });
+});
+
+test('a prose run with no undo at all is reported: same 65ch cap, no max-w-* to grep', () => {
   withFile('<div class="prose prose-sm mx-auto px-6">x</div>', f => {
     assert.match(run([f]).out, /: prose$/m);
   });
