@@ -103,44 +103,50 @@ const buildWith = (rec, opts = {}) => {
 
 // The row is a two-column grid and every part of it is a DIRECT child, which
 // is what puts the two glyphs in one gutter and the two texts on one edge.
-const rowOf = (n = 1) => window.document.querySelector(`button[aria-label="Open card ${n}"]`);
+const rowOf = (n = 1) => window.document.querySelector(`[data-card="${n}"]`);
 const preview = (n = 1) => rowOf(n)?.querySelector('.line-clamp-1');
 const mark = (n = 1) => rowOf(n)?.querySelector('.ph-sparkle');
 const lead = (n = 1) => rowOf(n)?.querySelector('i.ph');
 const askOf = (n = 1) => rowOf(n)?.querySelector(':scope > div');
 
 // The row's own controls, read off the element the way a finger would find them.
-// The row itself, which is what opens a card now. The turn-count pill beside
-// it is a readout, not a second control.
-const pills = () => [...window.document.querySelectorAll('button[aria-label^="Open card"]')];
+// PICKING IS ITS OWN CONTROL AGAIN, as of 2026-09-02. It rode the expansion,
+// because a checkbox beside a one-line truncated title asked the reader to
+// choose from too little and the expansion was the detail. Nothing expands now:
+// the ask and the reply each open a panel carrying their own half whole, which
+// is that detail, and they took the row's tap with them.
+const pills = () => [...window.document.querySelectorAll('button[aria-label^="Include card"]')];
 const decks = () => [...window.document.querySelectorAll('button[aria-label*="in the deck"]')];
 const chip = (label) => [...window.document.querySelectorAll('button')].find(b => b.textContent.trim() === label);
-// WHICH ROWS ARE IN, read the way the row now says it. There was a tint behind
-// the head, and it went through primary and then a neutral before both were
-// dropped: this theme's greys are cool, so any step off the page washed the
-// blue ask sitting on it. `aria-expanded` is what is left, and it was always
-// the load-bearing half, since open IS selected.
-const openRows = () => [...window.document.querySelectorAll('button[aria-expanded="true"]')];
+// WHICH ROWS ARE IN. There was a tint behind the head, and it went through
+// primary and then a neutral before both were dropped: this theme's greys are
+// cool, so any step off the page washed the blue ask sitting on it. The pick
+// button's own pressed state is what says it, with an inset ring on the card so
+// a lit icon is not the only mark across twenty rows.
+const openRows = () => [...window.document.querySelectorAll('button[aria-pressed="true"]')];
+// The panel, and the two triggers that open it.
+const peekOf = (n = 1) => boxOf(n)?.querySelector('.shadow-xl');
+const trigs = (n = 1) => [...(rowOf(n)?.querySelectorAll('[role="button"]') || [])];
 const stat = () => window.document.querySelector('.tabular-nums.text-base-content\\/50')?.textContent || '';
 
-test('nothing is open to begin with, so nothing is selected and the bar is away', () => {
+test('nothing is picked to begin with, so nothing is selected and the bar is away', () => {
   const v = build();
   assert.equal(v.selectedCount, 0);
   assert.equal(v.markdown(), '');
   assert.equal(openRows().length, 0);
-  assert.ok(pills().length >= 2, 'a pill per card, which is what a reader taps');
+  assert.ok(pills().length >= 2, 'a pick per card, which is what a reader taps');
 });
 
-test('opening a card selects it, and the markdown carries that card only', () => {
+test('picking a card selects it, and the markdown carries that card only', () => {
   const v = build();
   pills()[0].click();
-  assert.ok(v.selectedCount > 0, 'the tap that expanded is the tap that selected');
+  assert.ok(v.selectedCount > 0, 'the tap that picked is the tap that selected');
   const md = v.markdown();
   assert.match(md, /First ask/);
   assert.doesNotMatch(md, /Second ask/, 'the card that stayed closed stayed out');
 });
 
-test('collapsing is the deselect, exactly undoing the open', () => {
+test('a second tap is the deselect, exactly undoing the pick', () => {
   const v = build();
   pills()[0].click();
   const n = v.selectedCount;
@@ -151,13 +157,13 @@ test('collapsing is the deselect, exactly undoing the open', () => {
   assert.equal(openRows().length, 0, 'and the row stops saying it is in');
 });
 
-test('the row says which cards are in, so a scroll does not need a control column', () => {
+test('the row says which cards are in, so a scroll does not need a second column', () => {
   build();
   pills()[0].click();
   assert.equal(openRows().length, 1);
   pills()[1].click();
   assert.equal(openRows().length, 2);
-  assert.equal(pills()[0].getAttribute('aria-expanded'), 'true');
+  assert.equal(pills()[0].getAttribute('aria-pressed'), 'true');
 });
 
 test('the turn count is a readout and does not dress as a control', () => {
@@ -166,39 +172,42 @@ test('the turn count is a readout and does not dress as a control', () => {
   // a reader tapped it for a list of turns and got the row's own expand
   // (reported 2026-09-01). The row is the control; nothing inside it may look
   // like a second one.
-  const readout = [...pills()[0].querySelectorAll('span')].find(e => /\d+ turns?$/.test(e.textContent.trim()));
+  const readout = [...rowOf(1).querySelectorAll('span')].find(e => /\d+ turns?$/.test(e.textContent.trim()));
   assert.ok(readout, 'the count is still on the row');
   assert.doesNotMatch(readout.className, /\bborder\b|\bbtn\b|\brounded/, readout.className);
   assert.equal(readout.tagName, 'SPAN', 'and it is not a button');
-  assert.ok(readout.querySelector('.ph-caret-down'), 'the caret stays: it is the state, not an affordance');
+  // AND THE CARET IS GONE WITH THE EXPANSION. It was the row's open state; with
+  // nothing opening it pointed at nothing, which is the same defect one step on.
+  assert.equal(readout.querySelector('.ph-caret-down'), null);
+  assert.equal(readout.querySelector('.ph-caret-up'), null);
 });
 
-test('Open all and Close all move every card through the same door', () => {
+test('Pick all and Clear move every card through the same door', () => {
   const v = build();
-  chip('Open all').click();
+  chip('Pick all').click();
   assert.equal(openRows().length, pills().length, 'every row marked');
   const all = v.markdown();
   assert.match(all, /First ask/);
   assert.match(all, /Second ask/);
-  chip('Close all').click();
+  chip('Clear').click();
   assert.equal(v.selectedCount, 0);
   assert.equal(openRows().length, 0);
 });
 
-test('a tap after Open all closes just that card, not the whole set', () => {
+test('a tap after Pick all drops just that card, not the whole set', () => {
   // The regression this guards: open state held in the DOM per row, with the
   // bulk chips writing the set directly, so the two disagree on the next tap.
   const v = build();
-  chip('Open all').click();
+  chip('Pick all').click();
   const every = v.selectedCount;
   pills()[0].click();
   assert.ok(v.selectedCount > 0 && v.selectedCount < every, 'one card left, the rest still in');
   assert.equal(openRows().length, pills().length - 1);
 });
 
-test('startCard opens the deck card, drawn and not merely recorded', () => {
+test('startCard picks the deck card, drawn and not merely recorded', () => {
   const v = build({ startCard: 1 });
-  assert.equal(openRows().length, 1, 'the row is painted, so the reader can see what arrived open');
+  assert.equal(openRows().length, 1, 'the row is painted, so the reader can see what arrived picked');
   assert.match(v.markdown(), /Second ask/);
   // Not "First ask": the header block titles the excerpt with the session's
   // opening ask whatever is selected, so the body is what to read here.
@@ -208,16 +217,16 @@ test('startCard opens the deck card, drawn and not merely recorded', () => {
 
 test('the count is the size of what is about to be copied, and moves with it', () => {
   const v = build();
-  assert.equal(stat(), '', 'nothing open, nothing claimed');
+  assert.equal(stat(), '', 'nothing picked, nothing claimed');
   pills()[0].click();
   const one = stat();
   assert.match(one, /^1 card · \d+ turns? · /);
-  chip('Open all').click();
+  chip('Pick all').click();
   assert.match(stat(), /^2 cards · /);
   assert.notEqual(stat(), one, 'it is a reading of the selection, not of the record');
 });
 
-test('the role toggles decide what comes with an open card', () => {
+test('the role toggles decide what comes with a picked card', () => {
   // Not a render flag: emit() gives a tool turn a heading whatever the render
   // flags say, so excluding one has to happen in the selection.
   const withTools = build({ startCard: 0 });
@@ -239,15 +248,17 @@ test('the role toggles decide what comes with an open card', () => {
 // only just opened has an empty box for a tick.
 const drawn = () => new Promise(r => setTimeout(r, 30));
 
-test('an open card is drawn by the deck\'s renderer, not by a second one here', async () => {
+test('a peeked half is drawn by the deck\'s renderer, not by a second one here', async () => {
   // The whole point of the 2026-09-01 change: two drawings of one turn, met
   // within two taps of each other. If this file ever grows its own turn markup
   // again, the markdown stops being markdown and that is what fails first.
-  build({ startCard: 0 });
+  build();
+  trigs(1)[1].click();                       // the reply line
   await drawn();
-  const body = window.document.body;
-  assert.ok(body.querySelector('p'), 'prose arrives as rendered markdown, which a plain-text row never produced');
-  assert.ok(body.textContent.includes('The reply runs on'), 'and the reply is in it');
+  const panel = peekOf(1);
+  assert.ok(panel, 'the panel is hung on the card that owns the half');
+  assert.ok(panel.querySelector('p'), 'prose arrives as rendered markdown, which a plain-text row never produced');
+  assert.ok(panel.textContent.includes('The reply runs on'), 'and the reply is in it');
 });
 
 test('nothing this file draws survives beside it', async () => {
@@ -260,10 +271,10 @@ test('nothing this file draws survives beside it', async () => {
 
 test('no checkbox survives anywhere in the list', () => {
   build();
-  chip('Open all').click();
+  chip('Pick all').click();
   const boxes = [...window.document.querySelectorAll('input[type="checkbox"]')]
     .filter(b => !b.closest('.hidden'));   // the Options row is collapsed, and owns the rest
-  assert.deepEqual(boxes, [], 'the list selects by opening; only Options still has switches');
+  assert.deepEqual(boxes, [], 'the pick is an icon toggle; only Options still has switches');
 });
 
 test('there is one list, and no route from the deck to a second copy of it', () => {
@@ -282,25 +293,27 @@ test('there is one list, and no route from the deck to a second copy of it', () 
   assert.equal(typeof SE.index, 'function');
 });
 
-test('one control per destination: the item opens, the glyph decks', () => {
+test('one control per destination: the text peeks, the glyph decks, the ring picks', () => {
   // It was the other way round, with the title AND the glyph both entering the
   // deck and a pill doing the expanding: two doors to one place, and the third
-  // hidden behind a chip.
+  // hidden behind a chip. Three destinations now, and each has exactly one.
   const opened = [];
   const v = SE.index(RECORD, { onOpen: (i) => opened.push(i) });
   window.document.body.replaceChildren(v.el);
 
+  trigs(1)[0].click();
+  assert.deepEqual(opened, [], 'tapping a half does not leave for the deck');
+  assert.equal(v.selectedCount, 0, 'nor does it pick: reading and picking are separate now');
   pills()[0].click();
-  assert.deepEqual(opened, [], 'tapping the item does not leave for the deck');
-  assert.equal(v.selectedCount > 0, true, 'it opens the card, which selects it');
+  assert.equal(v.selectedCount > 0, true, 'the pick is what selects');
 
   decks()[1].click();
   assert.deepEqual(opened, [1], 'and the glyph is the only way out to the deck');
 });
 
-test('the row carries the ask itself, clamped closed and whole open', async () => {
+test('the row carries the ask itself, clamped, and the panel carries it whole', async () => {
   build();
-  const title = window.document.querySelector('button[aria-label="Open card 1"] .line-clamp-2');
+  const title = rowOf(1).querySelector('.line-clamp-2');
   assert.ok(title, 'closed, the ask is clamped to two lines');
   // The trap that made the clamp inert for one commit: `block` and
   // `line-clamp-2` both set `display`, `block` won, and every row rendered
@@ -309,24 +322,26 @@ test('the row carries the ask itself, clamped closed and whole open', async () =
   assert.ok(!title.classList.contains('block'),
     'no second display utility beside the clamp, which is what silenced it');
   assert.match(title.textContent, /^First ask/, 'and it is the ask, not a title derived from it');
-  pills()[0].click();
+  // THE CLAMP NEVER COMES OFF NOW. The row stopped expanding on 2026-09-02, so
+  // its lines stay one and two lines forever and the whole text is a panel away.
+  trigs(1)[0].click();
   await drawn();
-  assert.ok(!window.document.querySelector('button[aria-label="Open card 1"] .line-clamp-2'),
-    'open, the clamp comes off rather than a second copy appearing below');
+  assert.ok(rowOf(1).querySelector('.line-clamp-2'), 'the row is unchanged by a peek');
+  assert.match(peekOf(1).textContent, /First ask/, 'and the panel has it whole');
 });
 
-test('what opens is the reply, not the whole card again', async () => {
+test('what the reply\'s panel carries is the reply, not the whole card again', async () => {
   build();
-  pills()[0].click();
+  trigs(1)[1].click();
   await drawn();
-  const body = window.document.body.textContent;
+  const body = peekOf(1).textContent;
   assert.ok(body.includes('The reply runs on'), 'the prose that answers');
   // The ask is above, unclamped, so it is not repeated; the tool run is already
   // summarised on the row; and the record's capture note belongs to the deck's
   // first card, not under every row here.
   assert.ok(!body.includes('does not hold'), 'no capture note');
   assert.ok(!body.includes('ls -la'), 'no tool turns, which the row already counts');
-  assert.equal((body.match(/First ask/g) || []).length, 1, 'and the ask appears once');
+  assert.equal((body.match(/First ask/g) || []).length, 0, 'and the ask is the other panel');
 });
 
 // ── The reply on the surface ────────────────────────────────────────────────
@@ -404,9 +419,10 @@ test('the gutter carries the role, and the number is gone from the page', () => 
   // The index survives where it was doing work rather than on the page: a mono
   // column of digits the eye skipped to reach the sentence.
   assert.doesNotMatch(rowOf().textContent, /^\s*\d/, 'no number opens the row');
-  // It survives on the aria-label, which is how every test in this file, and
-  // the deck button beside the row, name a card.
-  assert.equal(rowOf().getAttribute('aria-label'), 'Open card 1');
+  // It survives where it was doing work: `data-card` on the row, and the
+  // aria-labels of the two buttons in the rail beside it.
+  assert.equal(rowOf().getAttribute('data-card'), '1');
+  assert.equal(pills()[0].getAttribute('aria-label'), 'Include card 1 in the excerpt');
 });
 
 test('a card with no ask takes its own role glyph, and the heavier line', () => {
@@ -416,7 +432,7 @@ test('a card with no ask takes its own role glyph, and the heavier line', () => 
   // card's heading, so this is the one place the heavier setting survives.
   buildWith({ ...MD_RECORD, prompts: [], prompts_stored: 0, exchanges: 0 });
   assert.ok(!lead().classList.contains('ph-user'));
-  const title = window.document.querySelector('button[aria-label^="Open card"] > div');
+  const title = window.document.querySelector('[data-card] > div');
   assert.ok(title.className.includes('font-medium'));
   assert.equal(title.style.background, '', 'and no fill, since nothing was asked');
 });
@@ -436,42 +452,44 @@ test('the ask takes the blue, and nothing else on the row does', () => {
   // them: the greys in this theme are cool, so there is no step off the page
   // that is not a little blue. The band is gone, and what it was covering is
   // covered better by the expansion itself.
-  chip('Open all').click();
+  chip('Pick all').click();
   const painted = [...window.document.querySelectorAll('[class*="bg-"]')]
     .filter(el => /\bbg-(primary|base-(200|300))\b|\bbg-\w+\/\d/.test(el.className));
   assert.deepEqual(painted.map(el => el.className), [], 'no row carries a fill but the ask');
-  assert.ok(openRows().length >= 1, 'and open is still readable off the row');
+  assert.ok(openRows().length >= 1, 'and picked is still readable off the row');
 });
 
-test('the open card is scoped by an edge, and only the open one', () => {
-  // Reported 2026-09-02: with several cards on screen the open one had no
-  // scope, since the only marks were its height and the clay replies inside it,
-  // and both read as more list. NOT A BAND: a tint behind the head is what this
-  // had before, through primary and then a neutral, and both washed the ask
-  // sitting on them. An inset ring draws the edge and takes no layout, so the
-  // alignment the grid exists for is untouched.
+test('a picked card is scoped by an edge, and only a picked one', () => {
+  // It scoped the OPEN card for one commit; with nothing opening it scopes the
+  // picked one, which is what needs a scope once the bar is counting. NOT A
+  // BAND: a tint behind the head is what this had before, through primary and
+  // then a neutral, and both washed the ask sitting on them. An inset ring
+  // draws the edge and takes no layout, so the grid's alignment is untouched.
   buildWith(STATEFUL);
   const boxes = () => [...window.document.querySelectorAll('.mb-0\\.5.pl-3')];
   assert.equal(boxes().filter(b => b.style.boxShadow).length, 0, 'nothing is scoped shut');
-  boxes()[0].querySelector('button[aria-label^="Open card"]')
+  boxes()[0].querySelector('button[aria-label^="Include card"]')
     .dispatchEvent(new window.Event('click'));
   const ringed = boxes().filter(b => b.style.boxShadow);
-  assert.equal(ringed.length, 1, 'exactly the card that was opened');
+  assert.equal(ringed.length, 1, 'exactly the card that was picked');
   assert.match(ringed[0].style.boxShadow, /inset/);
   assert.ok(ringed[0].className.includes('rounded-lg'));
   // And no fill anywhere, which is the answer this replaced twice.
   for (const b of boxes()) assert.equal(b.style.background, '');
 });
 
-test('the open body is bounded, so a long exchange stays a panel in the list', () => {
-  // It opened to nine screens of reply, so the row that was tapped scrolled off
-  // the top and the list under it was unreachable without dragging past it all.
+test('the panel is bounded, so a long half stays a panel in the list', () => {
+  // The row expanded in place until 2026-09-02 and opened to nine screens of
+  // reply, so the row that was tapped scrolled off the top and the list under
+  // it was unreachable without dragging past it all. The panel is capped, and
+  // it overlays rather than pushing, so the list never moves at all.
   buildWith(STATEFUL);
-  const body = window.document.querySelector('.col-start-1');
-  assert.ok(body.className.includes('overflow-y-auto'));
-  assert.match(body.className, /max-h-\[min\(60vh,28rem\)\]/);
-  // Outside the button, so a drag inside it cannot toggle the card it is in.
-  assert.equal(body.closest('button'), null);
+  trigs(1)[0].click();
+  const panel = peekOf(1);
+  assert.ok(panel.className.includes('overflow-y-auto'));
+  assert.match(panel.className, /max-h-\[min\(60vh,26rem\)\]/);
+  assert.ok(panel.className.includes('absolute'), 'it overlays, so nothing below it moves');
+  assert.equal(panel.parentElement, boxOf(1), 'hung on the card that owns the half');
 });
 
 test('every ask is set the same, whatever the exchange did', () => {
@@ -483,7 +501,7 @@ test('every ask is set the same, whatever the exchange did', () => {
   // reason", which is what it was.
   buildWith(STATEFUL);
   const titles = [...window.document.querySelectorAll('.mb-0\\.5.py-1.pl-3')]
-    .map(b => b.querySelector('button[aria-label^="Open card"] > div'))
+    .map(b => b.querySelector('[data-card] > div'))
     .filter(t => t && t.style.background);          // the asks: a fill is the tell
   assert.ok(titles.length >= 3, 'several asks are drawn');
   for (const t of titles) {
@@ -501,27 +519,29 @@ test('a card with no ask takes no fill, and keeps its role word', () => {
   const ask = askOf();
   assert.equal(ask.style.background, '');
   assert.ok(ask.classList.contains('w-full'));
-  assert.match(window.document.querySelector('button[aria-label="Open card 1"]').textContent, /Claude|Note/);
+  assert.match(rowOf(1).textContent, /Claude|Note/);
 });
 
-test('opening the card takes the preview away, so nothing is on screen twice', async () => {
+test('the row is unchanged by a peek, because the panel overlays it', async () => {
+  // The expansion withdrew the preview, since the replies rendered under it in
+  // full and a one-line copy of the last would have been the same words twice.
+  // A panel is over the row rather than in it, so there is nothing to withdraw
+  // and no display to toggle: the collision `hidden` and `line-clamp-1` had
+  // over `display`, shipped twice in this file, has no site left here.
   buildWith(MD_RECORD);
-  pills()[0].click();
+  const before = rowOf(1).innerHTML;
+  trigs(1)[1].click();
   await drawn();
-  // BY STYLE, NOT BY `hidden`: that utility sets `display` and so does
-  // `line-clamp-1`, which is the collision this file has shipped twice. An
-  // inline display beats both, and '' hands the clamp back its own.
-  assert.equal(preview().style.display, 'none',
-    'the replies render in full below, and a one-line copy of the last would be the same words twice');
-  assert.equal(mark().style.display, 'none', 'and its glyph goes with it, or the gutter keeps a mark to nothing');
-  pills()[0].click();
-  assert.equal(preview().style.display, '', 'and it comes back on the close');
-  assert.equal(mark().style.display, '');
+  assert.equal(preview().style.display, '', 'the preview stays put');
+  assert.equal(mark().style.display, '', 'and so does its glyph');
+  assert.equal(rowOf(1).innerHTML.replace(/ aria-expanded="[^"]*"/g, ''),
+               before.replace(/ aria-expanded="[^"]*"/g, ''),
+               'nothing about the row moves but the trigger saying it is open');
 });
 
 test('the closed row no longer labels the half a reader can see', () => {
   buildWith(MD_RECORD);
-  const row = window.document.querySelector('button[aria-label="Open card 1"]');
+  const row = rowOf(1);
   assert.doesNotMatch(row.textContent, /\bYou\b/,
     'with both halves present the ask is the lead, so a role word sat between them saying nothing');
 });
@@ -542,26 +562,21 @@ test('without the kit the row still previews, and the emphasis still lands', () 
   } finally { window.readAloud = kit; }
 });
 
-test('the open body wraps on the ask\'s measure, not the card\'s', async () => {
+test('the panel takes the card\'s measure, not the row\'s', async () => {
   buildWith(MD_RECORD);
-  pills()[0].click();
+  trigs(1)[1].click();
   await drawn();
-  // The body was a SIBLING of the head row, so it ran the card's full width
-  // while the ask above it stopped short by whatever the deck glyph and its gap
-  // took: at 430 that measured 366 against 400, two wrapping measures for one
-  // exchange. It sits in the head's own first column now, which makes them
-  // identical at any width and whether or not the list has a deck to open.
-  // jsdom lays nothing out, so the structure that produces it is the assertion.
-  const row = rowOf();
-  const head = row.parentElement;
-  assert.match(head.style.gridTemplateColumns, /minmax\(0, ?1fr\) auto/, head.style.gridTemplateColumns);
-  const body = [...head.children].find(c => c !== row && c.tagName === 'DIV' && c !== preview());
-  assert.ok(body && body.classList.contains('col-start-1'),
-    'the open body is a cell of the head, pinned to the column the ask is in');
-  assert.ok(head.contains(body), 'not a sibling of it');
-  // With no deck the `auto` track collapses, so nothing is reserved and the two
-  // are still one measure. The pin is what keeps the body out of that track.
-  assert.doesNotMatch(body.className, /\bpr-|\bpl-/, 'and no pad guesses at the glyph');
+  // The open body used to be a cell of the head, pinned to the ask's column so
+  // the two wrapped on one measure. A panel has no such constraint and wants
+  // the opposite: it is the reading surface, so it spans the whole card rather
+  // than stopping short by whatever the rail takes. jsdom lays nothing out, so
+  // the structure that produces it is the assertion.
+  const panel = peekOf(1);
+  assert.equal(panel.parentElement, boxOf(1), 'a child of the card, not of the row or the head');
+  assert.match(panel.className, /\bleft-2\b/);
+  assert.match(panel.className, /\bright-2\b/);
+  assert.ok(rowOf(1).parentElement.style.gridTemplateColumns.includes('auto'),
+    'and the row keeps its own two-track head for the rail');
 });
 
 // ── Where the exchange arrived ──────────────────────────────────────────────
@@ -600,7 +615,7 @@ const STATEFUL = {
 
 const boxOf = (n = 1) => [...window.document.querySelectorAll('.mb-0\\.5.py-1.pl-3')][n - 1];
 const statesOf = (n = 1) => {
-  const row = boxOf(n)?.querySelector('button[aria-label^="Open card"]');
+  const row = boxOf(n)?.querySelector('[data-card]');
   return [...(row?.querySelectorAll('span.rounded-full') || [])]
     .map(mark => ({ mark, line: mark.nextElementSibling }));
 };
@@ -669,7 +684,7 @@ test('the state line is nested under the reply, not drawn as its sibling', () =>
   const { mark } = statesOf(1)[0];
   const wrap = mark.parentElement;
   assert.ok(wrap.className.includes('col-start-2'), 'in the text column, not the gutter');
-  assert.equal(wrap.parentElement.getAttribute('aria-label'), 'Open card 1');
+  assert.ok(wrap.parentElement.hasAttribute('data-card'));
   assert.match(wrap.getAttribute('style'), /grid-template-columns:11px/);
   assert.ok(mark.className.includes('rounded-full') && mark.className.includes('size-[6px]'));
   assert.equal(mark.style.background, 'rgb(63, 185, 80)', "🟢's own green");
@@ -688,16 +703,16 @@ test('the disc opens nothing, because it is inside the row\'s own button', () =>
   assert.equal(mark.getAttribute('aria-hidden'), 'true', 'the line beside it says the same thing');
 });
 
-test('opening the card withdraws the state lines with the preview', () => {
-  // The turns underneath carry the closing block whole, so leaving the summary
-  // on screen would say it twice.
+test('the state line opens the REPLY\'s panel, because that is what it is', () => {
+  // It is a passage inside the reply, which is why it is indented under it; a
+  // third panel for it would be a third speaker again.
   buildWith(STATEFUL);
   const { mark } = statesOf(1)[0];
   const wrap = mark.parentElement;
-  boxOf(1).querySelector('button[aria-label^="Open card"]').dispatchEvent(new window.Event('click'));
-  // The whole nested row goes, not its two halves: the wrapper is what the
-  // toggle holds now that the line is indented under the reply.
-  assert.equal(wrap.style.display, 'none');
+  assert.equal(wrap.getAttribute('role'), 'button');
+  wrap.dispatchEvent(new window.Event('click'));
+  assert.ok(peekOf(1), 'a panel opened');
+  assert.match(peekOf(1).textContent, /^Claude/, 'and it is the reply\'s, not one of its own');
 });
 
 test('the capture note has no closing state, and draws no line', () => {
@@ -710,4 +725,59 @@ test('the capture note has no closing state, and draws no line', () => {
   const note = boxes.find(b => /What this session touched/.test(b.textContent));
   assert.ok(note, 'the capture card is drawn');
   assert.equal(note.querySelectorAll('span.rounded-full').length, 0);
+});
+
+// ── The panel ───────────────────────────────────────────────────────────────
+//
+// It replaced the expansion on 2026-09-02. The row expanded in place and the
+// expansion rendered every assistant turn whole, which is not what was asked
+// for ("expand the truncated part but not expand the whole thing"): a card
+// opened to nine screens, so it grew a height cap, and the cap needed a ring to
+// say which card it was. A panel per HALF instead, since the ask and the reply
+// are separate things to want.
+
+test('the ask and the reply each open their own, and one at a time', () => {
+  buildWith(STATEFUL);
+  trigs(1)[0].click();
+  assert.match(peekOf(1).textContent, /^You/);
+  trigs(1)[1].click();
+  assert.match(peekOf(1).textContent, /^Claude/, 'the second replaces the first');
+  assert.equal(peekOf(2), null, 'and no other card is holding one');
+});
+
+test('a second tap on the same half closes it, so the trigger is a toggle', () => {
+  buildWith(STATEFUL);
+  const t = trigs(1)[0];
+  t.click();
+  assert.ok(peekOf(1));
+  assert.equal(t.getAttribute('aria-expanded'), 'true');
+  t.click();
+  assert.equal(peekOf(1), null);
+  assert.equal(t.getAttribute('aria-expanded'), 'false');
+});
+
+test('a trigger is not a button, because Safari sizes one from unclipped content', () => {
+  // The row's lines are clamped, and this branch already shipped a clipped
+  // child inside a button that left the button at its full height (snags:
+  // safari-button-sizes-from-unclipped-content). `role` and a tabindex buy the
+  // same reach without the box.
+  buildWith(STATEFUL);
+  for (const t of trigs(1)) {
+    assert.notEqual(t.tagName, 'BUTTON');
+    assert.equal(t.getAttribute('tabindex'), '0');
+    assert.ok(t.className.includes('line-clamp-1') || t.className.includes('line-clamp-2')
+              || t.querySelector('.line-clamp-1'), 'every trigger is a clamped line: ' + t.className);
+  }
+});
+
+test('the panel is dismissed from inside the component, not from the document', () => {
+  // This index is mounted per swiper slide, so a document listener would
+  // outlive every copy of it.
+  buildWith(STATEFUL);
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/session-export.js'), 'utf8');
+  assert.doesNotMatch(src, /document\.addEventListener/, 'no listener outlives the mount');
+  trigs(1)[0].click();
+  assert.ok(peekOf(1));
+  boxOf(2).dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
+  assert.equal(peekOf(1), null, 'a tap elsewhere in the list closes it');
 });
