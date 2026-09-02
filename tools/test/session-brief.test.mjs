@@ -487,27 +487,44 @@ test('the clipped box is not inside the button, because Safari sizes one from it
   assert.equal(btn.contains(clip), false, 'holding only the small thing you tap');
 });
 
-test('a fact states its own meaning on a tap, not in a tooltip', () => {
+test('a fact carries its definition on data-note, not in a title', () => {
   const d = lent();
-  // Half the strip is exact about something the plain word is not, so the
-  // definitions are load-bearing. They rode in a `title` with `cursor-help`,
-  // which the house style names outright and which a phone cannot perform.
   const el = window.document.getElementById('lent');
-  const facts = [...el.querySelectorAll('button[aria-expanded]')]
-    .filter(b => /^(day|repos|ran|asks|calls|failures|files|out tokens|schema)/.test(b.textContent.trim()));
-  assert.ok(facts.length >= 5, 'each fact is its own control');
+  // Half the strip is exact about something the plain word is not, so the
+  // definitions are load-bearing. They rode in a `title` with `cursor-help`:
+  // no touch screen shows one and no screenshot captures one.
   assert.equal(el.querySelectorAll('.cursor-help').length, 0);
+  // Scoped to the strip and the head, not the whole view: the icon-only
+  // controls below keep a `title`, which is the case rule 11 does sanction, a
+  // simple label on a control that also carries an aria-label or is a link
+  // naming its own destination. What may not sit in one is a FACT.
+  const strip = el.querySelector('.flex.flex-wrap.items-center.gap-x-4');
+  assert.ok(strip, 'the facts strip');
+  assert.equal(strip.querySelectorAll('[title]').length, 0, 'no fact is stranded in a title');
 
-  // ONE COPY OF THE DEFINITION. The note reads the strip rather than keeping a
-  // second table beside it, so a definition cannot drift from the row it
-  // belongs to; the id is the one key that is not a strip row.
-  assert.equal(d.factNote, '', 'nothing is said until something is asked');
-  d.fact = 'files';
-  assert.equal(d.factNote, d.strip.find(f => f.k === 'files').t);
-  d.fact = 'id';
-  assert.match(d.factNote, /filename stem/);
-  d.fact = '';
-  assert.equal(d.factNote, '');
+  // THROUGH THE KIT, NOT A SECOND IMPLEMENTATION OF IT. `kits/note.js` is this
+  // estate's tier between a title and a built panel, and a strip definition is
+  // what that kit calls its own case: a string a reader looks at. This file
+  // hand-rolled a tap-to-reveal line for one commit, which was that kit again
+  // with no keyboard, no screen reader and no affordance before the tap.
+  const noted = [...el.querySelectorAll('[data-note]')];
+  assert.ok(noted.length >= 6, 'every fact and the id');
+  const byNote = new Map(noted.map(n => [n.textContent.replace(/\s+/g, ' ').trim(), n.getAttribute('data-note')]));
+  for (const f of d.strip) {
+    const hit = [...byNote].find(([k]) => k.startsWith(f.k));
+    assert.ok(hit, 'strip row ' + f.k + ' is on the page');
+    assert.equal(hit[1], f.t, 'and states the definition the strip carries, not a copy of it');
+  }
+  assert.match(noted.find(n => /^\(/.test(n.textContent))?.getAttribute('data-note') || '', /filename stem/);
+});
+
+test('the kit that draws the notes is in the chain that loads them', () => {
+  // A `data-note` with nothing listening is a fact that renders as a dotted
+  // underline and says nothing when touched, which is worse than the title it
+  // replaced. Nothing else on this page loaded the kit before.
+  const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/session-brief.js'), 'utf8');
+  assert.match(src, /'kits\/note\.js'/);
+  assert.match(src, /window\.Note\) return;/, 'and the early return counts it, or the chain never runs');
 });
 
 test('the page tells the brief that no embedder draws its header', () => {
