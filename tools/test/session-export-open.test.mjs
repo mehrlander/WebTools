@@ -409,11 +409,16 @@ test('the gutter carries the role, and the number is gone from the page', () => 
   assert.equal(rowOf().getAttribute('aria-label'), 'Open card 1');
 });
 
-test('a card with no ask takes its own role glyph', () => {
+test('a card with no ask takes its own role glyph, and the heavier line', () => {
   // The capture note is a note and the closing summary is Claude speaking,
   // which is what the gutter has to say where there is no blue block to say it.
+  // The weight goes with it: with no prompt, the titler's sentence IS the
+  // card's heading, so this is the one place the heavier setting survives.
   buildWith({ ...MD_RECORD, prompts: [], prompts_stored: 0, exchanges: 0 });
   assert.ok(!lead().classList.contains('ph-user'));
+  const title = window.document.querySelector('button[aria-label^="Open card"] > div');
+  assert.ok(title.className.includes('font-medium'));
+  assert.equal(title.style.background, '', 'and no fill, since nothing was asked');
 });
 
 test('the ask takes the blue, and nothing else on the row does', () => {
@@ -436,6 +441,25 @@ test('the ask takes the blue, and nothing else on the row does', () => {
     .filter(el => /\bbg-(primary|base-(200|300))\b|\bbg-\w+\/\d/.test(el.className));
   assert.deepEqual(painted.map(el => el.className), [], 'no row carries a fill but the ask');
   assert.ok(openRows().length >= 1, 'and open is still readable off the row');
+});
+
+test('every ask is set the same, whatever the exchange did', () => {
+  // The title keyed on `kind` until 2026-09-02: quiet for an exchange that ran
+  // tools, `font-medium` a notch larger for one that did not. So two of the
+  // reader's own prompts sat on one screen in two weights for a reason about
+  // neither of them, and the row already prints that reason in words as the
+  // tool tally. Reported from the phone as the ask being bold "for some
+  // reason", which is what it was.
+  buildWith(STATEFUL);
+  const titles = [...window.document.querySelectorAll('.mb-0\\.5.py-1.pl-3')]
+    .map(b => b.querySelector('button[aria-label^="Open card"] > div'))
+    .filter(t => t && t.style.background);          // the asks: a fill is the tell
+  assert.ok(titles.length >= 3, 'several asks are drawn');
+  for (const t of titles) {
+    assert.ok(t.className.includes('font-normal'), 'no ask is set heavier than another');
+    assert.ok(!t.className.includes('font-medium'));
+    assert.ok(t.className.includes('text-[14px]'));
+  }
 });
 
 test('a card with no ask takes no fill, and keeps its role word', () => {
