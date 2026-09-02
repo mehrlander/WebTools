@@ -773,10 +773,6 @@ window.__audit = {
     separator: { bg: 0,   over: .10, sel: .16, tick: .75, under: 0 },
   };
 
-  // The same `\d+\.` skills/state-the-rule/segment.py guards and BULLET splits
-  // on, so the page and the segmenter agree on what a list marker is.
-  const MARKER = /^[ \t]{0,3}(?:[-*+]|\d+\.)[ \t]/;
-
   // `kind` is the segmenter's word, and the panel was printing it raw: a reader
   // asked what "sent" meant, which is a fair question about a field abbreviated
   // for a JSONL file and then shown to a person.
@@ -1132,19 +1128,15 @@ window.__audit = {
       for (const b of this.blocks) {
         const wrap = document.createElement(this.view === 'source' ? 'div' : 'div');
         wrap.className = this.view === 'source' ? 'mb-3' : '';
-        // Does this block open with a list marker? Its units are rendered one at
-        // a time, so only the unit CARRYING the marker renders as a list item.
-        const listBlock = MARKER.test(this.a.text.slice(b[0].start, b[0].start + 8));
         for (const u of b) {
           let { html, broken, block: isBlock } = this.unitHtml(u);
-          // A CONTINUATION IS A SENTENCE FROM INSIDE A LIST ITEM. It is a
-          // legitimate unit and it does not render as one: the marker went to
-          // the first sentence, so every later sentence rendered as prose and
-          // hung unindented under the item it belongs to. A marker-less list
-          // gives it the item's indent BY CONSTRUCTION, which a padding
-          // constant guessed to match the prose styles would not.
-          if (this.view === 'read' && listBlock && !broken
-              && !MARKER.test(this.a.text.slice(u.start, u.start + 8))) {
+          // A CONTINUATION rendered as bare prose and hung unindented under the
+          // item it belongs to; a marker-less list gives it the item's indent BY
+          // CONSTRUCTION, which a padding constant guessed to match the prose
+          // styles would not. The rule, and why it takes an offset rather than a
+          // block, are lib/kits/standoff.js's.
+          if (this.view === 'read' && !broken
+              && Standoff.isContinuation(this.a.text, u.start)) {
             html = `<ol style="list-style:none"><li>${html}</li></ol>`;
             isBlock = true;
           }

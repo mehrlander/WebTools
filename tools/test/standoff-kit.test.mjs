@@ -284,3 +284,68 @@ test('the stored run passes its own invariants through the kit', () => {
   const text = readFileSync(path.join(repoRoot, so.target.path), 'utf8');
   assert.deepEqual(S.check(so, text), []);
 });
+
+// ── LIST CONTINUATIONS ───────────────────────────────────────────────────────
+// A sentence taken from inside a list item is a legitimate unit that does not
+// render as one: the marker went to the first sentence, so every later one is
+// bare prose hanging unindented under the item. The view wraps a continuation in
+// a marker-less list to give it the item's indent.
+//
+// This is here rather than in the page because the page asked the question of
+// the wrong thing. It read the first unit of the PAINT BLOCK, which agrees with
+// the unit's own answer only while every unit in a block sits in one line-block
+// of the source, and a shift can end that. Taking an offset is what makes the
+// wrong granularity unexpressible.
+
+const LIST = [
+  '**Local `CLAUDE.md` wins wherever it conflicts.** Beyond that, name the units:',
+  '',
+  '- A **session** can span several repositories. A repository\'s conventions apply.',
+  '- A **workstream** is one repository plus its branch. A session may run several.',
+  '',
+  'An ordinary paragraph after the list. Its second sentence continues nothing.',
+].join('\n');
+const at = (s) => { const i = LIST.indexOf(s); assert.notEqual(i, -1, `no ${s}`); return i; };
+
+test('a sentence inside a list item is a continuation; the one carrying the marker is not', () => {
+  assert.equal(S.isContinuation(LIST, at("A repository's")), true);
+  assert.equal(S.isContinuation(LIST, at('- A **session**')), false,
+    'the unit that carries the marker renders as the item itself');
+  assert.equal(S.isContinuation(LIST, at('A session may run')), true,
+    'the second item continues too, though the block started two items back');
+});
+
+test('a blank line ends the list, so what follows it continues nothing', () => {
+  assert.equal(S.inList(LIST, at('An ordinary paragraph')), false);
+  assert.equal(S.isContinuation(LIST, at('Its second sentence')), false,
+    'a second sentence of a plain paragraph is not a continuation of anything');
+});
+
+// THE REGRESSION, and the shape of it. Before the list there is a paragraph, and
+// a boundary moved forward from it into the list put both in one paint block
+// whose first unit opens with prose. Asking that first unit gave "not a list"
+// and every continuation in the block lost its indent at once. An offset carries
+// no block, so the two offsets answer independently.
+test('the answer follows the offset, not whatever it is grouped with', () => {
+  assert.equal(S.inList(LIST, at('**Local')), false, 'the paragraph above the list');
+  assert.equal(S.inList(LIST, at('A repository')), true, 'the list below it');
+  assert.equal(S.inList(LIST, at('Beyond that')), false,
+    'a second sentence of that paragraph, which the shift swept into the list block');
+});
+
+// SURFACING.md's shape: the continuation is on its own indented line, carrying
+// no marker of its own. Walking back to the LINE would miss it; walking back to
+// the line-block reaches the marker that opened the item.
+test('a hanging-indent continuation is inside the item, though its own line has no marker', () => {
+  const hanging = '* **Reference is a link.** Anything tappable is a caption.\n'
+                + '  **Boundary:** only a renderable page gets a render link.\n';
+  assert.equal(S.isContinuation(hanging, hanging.indexOf('**Boundary')), true);
+  assert.equal(S.opensList(hanging, hanging.indexOf('**Boundary')), false,
+    'its own line carries no marker, which is why the line alone cannot answer');
+});
+
+test('a numbered item is a list item too, and a decimal is not', () => {
+  const ordered = '1. First step here. And its second sentence.\n';
+  assert.equal(S.isContinuation(ordered, ordered.indexOf('And its second')), true);
+  assert.equal(S.opensList('3.14 is not a list marker.', 0), false);
+});
