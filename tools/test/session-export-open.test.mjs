@@ -492,6 +492,14 @@ test('the panel is bounded, so a long exchange stays a panel in the list', () =>
   assert.match(panel.className, /max-h-\[min\(60vh,26rem\)\]/);
   assert.ok(panel.className.includes('absolute'), 'it overlays, so nothing below it moves');
   assert.equal(panel.parentElement, boxOf(1), 'hung on the card it belongs to');
+  // BOUNDED SIDEWAYS TOO. It spanned the whole card, so at 1280 the panel ran
+  // 1,230px and its 13px prose crossed 150 characters a line, which is not what
+  // a popover is. `left` and `right` both stay set, so a narrow screen keeps
+  // the full span and the cap does not bite; measured 544px at 1280 and 382 at
+  // 430, left-aligned on the card's own edge in both.
+  assert.match(panel.className, /max-w-\[34rem\]/);
+  assert.match(panel.className, /\bleft-2\b/);
+  assert.match(panel.className, /\bright-2\b/);
 });
 
 test('every ask is set the same, whatever the exchange did', () => {
@@ -589,8 +597,6 @@ test('the panel takes the card\'s measure, not the row\'s', async () => {
   // the structure that produces it is the assertion.
   const panel = peekOf(1);
   assert.equal(panel.parentElement, boxOf(1), 'a child of the card, not of the row or the head');
-  assert.match(panel.className, /\bleft-2\b/);
-  assert.match(panel.className, /\bright-2\b/);
   assert.ok(rowOf(1).parentElement.style.gridTemplateColumns.includes('auto'),
     'and the row keeps its own two-track head for the rail');
 });
