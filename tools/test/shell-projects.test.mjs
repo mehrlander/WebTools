@@ -507,6 +507,37 @@ test('loadProjectDocs filters the tree to workspace markdown, and failure is not
   assert.equal(s2.projectDocsLoading, false);
 });
 
+test('loadProjectDocs leads with docs/README.md and counts source packages instead of listing them', async () => {
+  // The four-slot rule puts a workspace's documentation map at docs/README.md;
+  // DOCS.md is the older name and stays honoured when it is the only one.
+  const tree = [
+    { path: 'projects/a/README.md', type: 'blob' },
+    { path: 'projects/a/DOCS.md', type: 'blob' },
+    { path: 'projects/a/docs/README.md', type: 'blob' },
+    { path: 'projects/a/data/source/2026-06-01-pull/README.md', type: 'blob' },
+    { path: 'projects/a/data/source/2026-06-01-pull/ACFR_2024.md', type: 'blob' },
+    { path: 'projects/a/submittal/source-docs/2026-07-01-forms/README.md', type: 'blob' },
+    { path: 'projects/a/data/design/SCHEMA.md', type: 'blob' },
+  ];
+  const gets = [];
+  const { shell } = makeShell({ browserStore: {
+    repo: 'mehrlander/home', ref: '', defaultRef: 'main',
+    gh: {
+      req: async () => ({ tree }),
+      get: async (p) => { gets.push(p); return { text: '# map' }; },
+    },
+  }});
+  shell.projectPath = 'projects/a';
+  await shell.loadProjectDocs();
+  assert.deepEqual(gets, ['projects/a/docs/README.md'], 'docs/README.md wins over DOCS.md as the curated lead');
+  assert.equal(shell.projectDocsCount, 4, 'source-package documents are not listed');
+  assert.equal(shell.projectDocsSourced, 3, 'but they are counted');
+  assert.deepEqual(shell.projectDocs.map(g => g.dir), ['', 'data/design', 'docs']);
+  assert.equal(shell.isSourcePackageDoc('data/source/x/README.md'), true);
+  assert.equal(shell.isSourcePackageDoc('cem/source-docs/x.md'), true);
+  assert.equal(shell.isSourcePackageDoc('data/sources.md'), false);
+});
+
 test('a docs row opens the file in the shell viewer', () => {
   const { shell } = makeShell();
   const opened = [];
