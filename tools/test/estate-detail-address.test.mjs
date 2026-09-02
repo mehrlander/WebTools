@@ -52,7 +52,7 @@ const Alpine = await startAlpine(window, [
   // The takeover is a swipe-deck now, so the kit has to be present or
   // mountDeck falls back to gh.load, which is not wired in a unit harness.
   'lib/kits/swipe-deck.js',
-  'lib/kits/repo-config-cache.js', 'lib/kits/repo-activity-cache.js', 'lib/kits/repo-sessions-cache.js',
+  'lib/kits/repo-config-cache.js', 'lib/kits/repo-activity-cache.js', 'lib/kits/closing-state.js', 'lib/kits/repo-sessions-cache.js',
   'lib/alpineComponents/estate.js',
 ]);
 // A slide mounts the real branch view, which is a network-reading component

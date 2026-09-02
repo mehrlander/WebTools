@@ -145,7 +145,10 @@ test('boot re-reads the sidebar when the crawl commits, and only then', () => {
   // harness does not build. The claim is the ORDER (rebuild, then re-read) and
   // the condition (only on a commit), which is what the save path has always
   // done and the boot path did not.
-  const boot = page.match(/this\.appViewsReady\s*\n?\s*\.then\([\s\S]{0,400}?\.catch\(\(\) => \{\}\);/);
+  // The chain moved from init() into the auth watcher on 2026-09-02 (one boot
+  // path instead of two); it now starts from the sidebar promise the watcher
+  // picked, so that is the anchor.
+  const boot = page.match(/Promise\.resolve\(sidebar\)\s*\n?\s*\.then\([\s\S]{0,400}?\.catch\(\(\) => \{\}\);/);
   assert.ok(boot, 'the boot crawl chain was not found; it must survive a reshuffle');
   const chain = boot[0];
   assert.match(chain, /\.then\(\(\) => this\.refreshConfigCache\(\)\)/,
@@ -159,7 +162,9 @@ test('boot re-reads the sidebar when the crawl commits, and only then', () => {
 test('refreshConfigCache reports whether it committed, which is what the re-read reads', () => {
   // The boot chain is only as true as this return value. Every exit says
   // something: a skip and an error must not read as a commit.
-  const fn = page.match(/async refreshConfigCache\(force\)\{[\s\S]*?\n  \},\n/);
+  // refreshConfigCache is the single-flight wrapper since 2026-09-02 and
+  // _crawlConfigs the body; the early exits sit in both, the commit in the body.
+  const fn = page.match(/async refreshConfigCache\(force\)\{[\s\S]*?\n  \},\n  async _crawlConfigs\(force\)\{[\s\S]*?\n  \},\n/);
   assert.ok(fn, 'refreshConfigCache was not found');
   assert.match(fn[0], /return \{ committed: moved\.length > 0/,
     'the committing path reports the fact the caller branches on');

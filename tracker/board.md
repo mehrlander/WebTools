@@ -3,6 +3,7 @@
 _Generated from tasks/. Do not hand-edit._
 
 ## On deck
+- 🎫 [Audit the three repaired units in the conventions run for splitting](tasks/audit-repaired-units-for-splitting-e6jfgs.md) · XS
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 [Enforce the house style, now that it is findable](tasks/enforce-house-style-ryz0z5.md) · M
 - 🎫 [Read estate.js's commentary the way show-repo.html's was read](tasks/estate-js-commentary-read-mymt4u.md) · M

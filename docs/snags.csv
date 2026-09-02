@@ -1,4 +1,5 @@
 slug,title,count,last_seen,seen,targets
+headless-shot-prose-flat,typography CSS misses in screenshots,3,2026-09-02,2026-08-07;2026-08-14;2026-09-02,environment/testing.md
 untracked-file-invisible-to-the-suite,a local green over a file the scanner never enumerated,3,2026-08-30,2026-08-28;2026-08-29;2026-08-30,../scripts/text-carriers.py;../tools/test/text-vocabulary-conformance.test.mjs
 opacity-step-off-the-tens,"a class that generates nothing, so the text meant to recede advances",3,2026-08-19,2026-08-19;2026-08-19;2026-08-19,../skills/daisy-alpine/SKILL.md
 mcp-body-escaping,"the GitHub MCP mangles link shapes in a PR body, on write as well as read",3,2026-08-16,2026-08-05;2026-08-05;2026-08-16,SURFACING.md
@@ -11,7 +12,6 @@ claude-logomark-copied,the standard session mark is six inline copies with no ow
 cached-read-feeds-a-write,a fresh-looking read hands back the sha it just replaced,2,2026-08-16,2026-08-13;2026-08-16,../lib/gh-api.js
 mcp-approval-is-often-routing,an approval prompt that is really a wall,2,2026-08-15,2026-07-15;2026-08-15,github/mcp-server-routing.md
 ci-watch-on-blocked-api,a curl watch loop on the GitHub API waits forever,2,2026-08-14,2026-08-10;2026-08-14,environment/capabilities.md
-headless-shot-prose-flat,typography CSS misses in screenshots,2,2026-08-14,2026-08-07;2026-08-14,environment/testing.md
 x-data-scope-shadows-component-names,"a mount's config read a component, not the host's field",2,2026-08-14,2026-08-14;2026-08-14,show-repo.md;../skills/daisy-alpine/SKILL.md
 pipe-eats-the-exit-code,"a runner that reports a fatal, read through a pipe that returns zero",1,2026-09-01,2026-09-01,environment/testing.md
 annotated-document-resists-edits,editing CONVENTIONS.md costs an annotation rebuild,1,2026-08-31,2026-08-31,
@@ -63,5 +63,9 @@ screenshot-hides-overflow,a viewport shot cannot show horizontal overflow,1,2026
 https-block-resets-instead-of-403,a blocked host looks like a network flake,1,2026-08-03,2026-08-03,environment/capabilities.md
 word-boundary-before-alternation,a scan reports zero and looks authoritative,1,2026-08-03,2026-08-03,
 x-collapse-needs-x-show,a panel renders at zero size,1,2026-07-15,2026-07-15,environment/testing.md
+an-unlayered-rule-beats-every-layer,`max-w-none` reads as the undo and is not one,0,,,
+backtick-in-an-html-comment-ends-the-template,"a component that will not parse, from prose",0,,,
 cross-repo-lib-consumer-invisible,in-repo greps cannot see an external runtime consumer of a lib file,0,,,
+line-clamp-is-not-a-height,"the utility collided with a display four times in one branch, then failed only on the phone",0,,,
 python-offsets-read-as-utf16,an emoji shifts every standoff offset the browser reads,0,,,
+safari-button-sizes-from-unclipped-content,"the child clipped, the fade landed, and the button stayed tall",0,,,

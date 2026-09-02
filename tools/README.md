@@ -20,7 +20,9 @@ share no module imports — render and build touch only via subprocess and the
 `dist/` artifact):
 
 - [`render/`](render/) — exercise a page headlessly, offline. `preview.mjs`
-  (jsdom logic render) + `screenshot.mjs` (Chromium pixel render), with
+  (jsdom logic render) + `screenshot.mjs` (Chromium pixel render) +
+  `netlog.mjs` (Chromium request log: what a load costs, by host and endpoint,
+  writes blocked), with
   `cdn.mjs` (the URL → local resolver) and `scenarios/` (interaction scripts).
 - [`build/`](build/) — snapshot a page's own-code graph into an offline
   artifact. `build.mjs` / `bake.mjs`, with `graph.mjs` (the static `gh.load`
@@ -53,6 +55,7 @@ contract that makes all of this possible is in [`../docs/loader.md`](../docs/loa
 | `npm run shot <page> [--build] [--ref R] [--script s.mjs] [--full] [--out p.png]` | **Pixel** render with the pre-installed Chromium → PNG. Runs the real `gh.load` chain (or the build, with `--build`). `--script` drives the page into a state first (see below). |
 | `npm run build <page>` | Emit `dist/<page>.js`: the offline form of the page's `gh.load` chain. |
 | `npm run build:lib` | Emit `dist/web-tools.js`: **the pre-build** — the whole `lib/` as one self-booting offline artifact (see [The pre-build](#the-pre-build)). |
+| `npm run build:app` | Emit `dist/app.js`: the app's own pre-build, the part of `lib/` that `app/index.html` can reach, by the same emitter (see [The app's pre-build](#the-apps-pre-build)). |
 | `npm run bake <page>` | Emit `dist/<page>.html`: the chain inlined into a standalone page. |
 | `npm run verify-build <page>` | Build + render live + render via the build, assert the two are **byte-identical**. |
 | `npm run pages-shots` | Regenerate `pages/thumbs/*.png` — one headless screenshot per page, the card previews for the visual index. Uses the [`screenshot.mjs`](render/screenshot.mjs) renderer; see [Cataloging the pages](#cataloging-the-pages). |
@@ -204,6 +207,23 @@ per-page build: the per-page build is leaner (only what one page reaches) but
 needs a build per page; the pre-build is one artifact reused everywhere, at the
 cost of carrying components a given page may not use (harmless — an unused
 `Alpine.data` registration only costs anything when an `x-data` references it).
+
+### The app's pre-build
+
+`app/index.html` imports `dist/app.js`, not the whole library:
+[`build-app.mjs`](build/build-app.mjs) walks the app's **reach** (every lib path
+named as a string literal, transitively, plus every component an `x-data`
+names, mapped through its `Alpine.data('name')` registration) and hands that
+set to the same emitter. Measured 2026-09-02: 73 of 104 lib files, 22
+components registered at import rather than 32, 3.1 MB against 4.0 (0.93 MB
+gzipped against 1.2). Four heavy kits a reader reaches only by an explicit act
+(`annotate`, `pdf`, `dictate`, `xlsx`) are left out on purpose and load on
+first use through the contents API, which is the loader's ordinary cache-miss
+path. The same limit as the per-page walker applies: a path computed at
+runtime is invisible, and falls through to the API at runtime, correctly.
+Both artifacts are committed and held to `lib/` by the commit hook and by
+`derived-artifacts.test.mjs`; `npm run build:app -- --check` is the app's
+half of that gate.
 
 **Staying current.** `dist/web-tools.js` is **committed** (the one exception to
 the gitignored `dist/`) and served same-origin by Pages — never back onto
