@@ -17,17 +17,17 @@
 //     for open pull requests only, so the host's own row has none and its
 //     header would otherwise stay blank on the branches whose work is done;
 //   - `facts` lends what the host's row already knows, which is what makes the
-//     deferral below invisible to a reader who never opens Files.
+//     deferral below invisible to a reader who never asks for the files.
 //
 // The DEFERRAL is the other half of this contract, added 2026-08-14. Mounting
 // reads the pulls call only, a few KB; the compare, which carries every changed
 // file's patch and on this repo is most of a megabyte, waits until the reader
-// opens a pane that needs it. So a host must not assume a mounted slide has
-// files, and the warm it asks for follows the same rule.
+// asks for the files. So a host must not assume a mounted slide has files, and
+// the warm it asks for follows the same rule.
 //
 // The layout half is here too, because it is also a fact about the host: a
-// framed view is a column that pins its head and scrolls its pane, so a long
-// file list never carries away the branch name or the pane switch.
+// framed view is a column that pins its head and scrolls its body, so a long
+// file list never carries away the branch name or the controls.
 //
 // No network, no pixels; the same jsdom harness the cards and groups tests use.
 
@@ -132,10 +132,11 @@ const mount = async (branch, extra = {}) => {
 
 const reset = () => { calls.compare.length = 0; calls.pulls.length = 0; calls.csv.length = 0; meta.length = 0; };
 
-// What the reader tapping the Files tab does. The tab's own handler is
-// `setPane('files'); ensureCompare()`, so this is that pair. It goes through
-// setPane rather than assigning, because the assignment stopped being the whole
-// gesture when the pane became a reported fact the host stamps its address from.
+// What the reader tapping "Read the changed files" does, which is the row the
+// list leaves where the diff would be while the compare is deferred. It goes
+// through setPane as well as ensureCompare because an address naming the files
+// is the same gesture arriving from outside, and `pane` is a reported fact the
+// host stamps its address from.
 const openFiles = async (d = data) => { d.setPane('files'); await d.ensureCompare(); await tick(2); };
 
 test('a host mounts it at a branch and is told what the read found', async () => {
@@ -152,30 +153,29 @@ test('a host mounts it at a branch and is told what the read found', async () =>
   assert.deepEqual(calls.compare, [], 'the diff is not read until it is asked for');
   assert.equal(data.brief.pending, true);
   assert.equal(data.brief.files.length, 0);
-  assert.equal(data.pane, 'guide', 'a branch with a PR leads with the judgment layer');
+  assert.equal(data.pane, '', 'no address named a section, and none is hidden to name');
 });
 
-test('opening Files is what asks for the compare, and it asks once', async () => {
+test('asking for the files is what fetches the compare, and it asks once', async () => {
   await openFiles();
   assert.deepEqual(calls.compare, ['me/tools@feat/a']);
   assert.equal(data.brief.pending, false);
   assert.equal(data.brief.files.length, 1);
   assert.equal(data.brief.files[0].path, 'feat/a.js');
-  // Back to the guide and forward again: a reader flipping between panes is
-  // not a reader asking twice.
+  // Asking again, from the guide marker and then from the list: a reader
+  // moving around one page is not a reader asking twice.
   data.pane = 'guide'; await data.ensureCompare();
   await openFiles();
   assert.deepEqual(calls.compare, ['me/tools@feat/a']);
 });
 
-test('a branch with no PR leads with Files, so it reads the compare at once', async () => {
+test('a branch with no PR has nothing to read first, so it reads the compare at once', async () => {
   window.BranchBrief.forget();
   reset();
   await mount('feat/c');
   await tick(4);
-  assert.equal(data.pane, 'files', 'there is no guide to lead with');
   assert.deepEqual(calls.compare, ['me/tools@feat/c'],
-    'so the deferral would only be a spinner the reader has no way to dismiss');
+    'the deferral buys a reader time on the guide, and there is no guide to spend it on');
 });
 
 test('the merged PR is reported, which is the whole point of onMeta', async () => {
@@ -266,7 +266,7 @@ test('the registry is read once per ref, not once per mount', async () => {
 
 // ── The layout, and where the scrollbar lives ────────────────────────────────
 //
-// Framed, this is a pane inside a host's chrome, and a pane scrolls inside
+// Framed, this is a body inside a host's chrome, and a body scrolls inside
 // itself. The document scrolling instead meant a long guide or a
 // three-hundred-file list carried away the branch name and the control that
 // would switch panes, which is the one thing a reader always wants back. The
@@ -309,14 +309,13 @@ test('a read that is overtaken does not land on top of the newer one', async () 
 });
 
 // The deck is the primary route to the files, which means it cannot require
-// the reader to have opened the Files pane first: that made it a second control
-// on a list, two taps deep, with the second only discoverable after the first.
-// One tap from a branch, from any pane, fetching what it needs.
+// the reader to have opened the list first: that made it a second control on a
+// list, two taps deep, with the second only discoverable after the first.
+// One tap from a branch, fetching what it needs.
 test('the deck opens from a branch that has not read its diff', async () => {
   window.BranchBrief.forget();
   reset();
   await mount('feat/a');
-  assert.equal(data.pane, 'guide');
   assert.equal(data.brief.pending, true, 'nothing has been read but the guide');
   assert.equal(data.deckFiles.length, 0, 'so there is no list to have opened');
 
@@ -377,41 +376,72 @@ test('a compare that lands after a step does not overwrite the newer branch', as
 });
 
 
-// ── two panes, and where the third one went ─────────────────────────────────
+// ── one surface, and where the tabs went ────────────────────────────────────
 //
-// Commits was a third tab. Its count restated the strip's own ahead figure (a
-// compare's total_commits IS its ahead_by), and its twelve subjects sat beside
-// a PR body describing the same work in prose. The one thing it carried alone
-// is a branch with NO pull request, where the subjects are the only account
-// there is, so that case moved into the Guide pane and the tab went.
+// There were three tabs, then two, then none. Commits went first: its count
+// restated the strip's own ahead figure (a compare's total_commits IS its
+// ahead_by) and its twelve subjects sat beside a PR body describing the same
+// work in prose, so only the no-PR case it carried alone survived, into the
+// guide's own section. Guide and Files went on 2026-08-31, because a switch
+// between them was answering a question nobody had: they are not alternatives,
+// and a tab made each one the cost of hiding the other. Both render now, files
+// above the guide, and `pane` names what an ADDRESS asked for rather than what
+// is visible.
 
-test('the strip is two tabs, and Guide is always one of them', async () => {
+test('both sections render at once, files above the guide', async () => {
   window.BranchBrief.forget();
   reset();
   const d = await mount('feat/a');
-  await tick(4);
-  const labels = [...d.$el.querySelector('[role="tablist"]').children]
-    .map(a => a.textContent.replace(/\s+/g, ' ').trim());
-  assert.equal(labels.length, 2);
-  assert.equal(labels[0], 'Guide');
-  assert.ok(labels[1].startsWith('Files'));
-  assert.ok(!labels.some(l => l.startsWith('Commits')));
+  await openFiles(d);
+  await tick(8);
+  const files = d.$el.querySelector('[x-ref="files"]');
+  const guide = d.$el.querySelector('[x-ref="guide"]');
+  assert.ok(files && guide, 'both sections are in the tree');
+  // DOCUMENT_POSITION_FOLLOWING: the guide comes after the files.
+  assert.ok(files.compareDocumentPosition(guide) & 4,
+    'files lead, because the list is what cannot be read anywhere else in one place');
+  // SHOWN, not merely present. Everything here renders into the tree and hides
+  // with a style, so a textContent check would pass on a panel nobody can see:
+  // it is exactly the state a deferred compare left behind before the x-show
+  // values were coerced to booleans (see the note in the template).
+  const list = d.$el.querySelector('[x-ref="fileList"]');
+  assert.ok(list && list.style.display !== 'none', 'the file list is on screen');
+  assert.ok(list.textContent.includes('a.js'), 'carrying the branch\'s one changed file');
+  assert.ok(guide.textContent.includes('#443'), 'and the guide is under it, without a tap');
+  // Asking for one hides nothing. That is the whole difference from a tab, and
+  // the assertion the switch could never have passed.
+  d.setPane('guide');
+  await tick(2);
+  assert.ok(d.$el.querySelector('[x-ref="fileList"]').style.display !== 'none',
+    'going to the guide leaves the list where it was');
 });
 
-test('with no PR, the Guide pane is the commits, and asking is what fetches them', async () => {
+test('with no PR, the commits are the account, and they are read without asking', async () => {
   window.BranchBrief.forget();
   reset();
   const d = await mount('feat/c');
   await tick(4);
   assert.equal(d.hasGuide, false);
-  assert.equal(d.pane, 'files', 'the account of last resort is not the first thing to read');
-
-  d.pane = 'guide';
-  await d.ensureCompare();
-  await tick(4);
+  assert.equal(d.pane, '', 'no address asked for a section, so none is singled out');
+  assert.deepEqual(calls.compare, ['me/tools@feat/c'],
+    'with no guide to read first there is nothing to defer for');
   const shown = d.$el.textContent.replace(/\s+/g, ' ');
   assert.ok(shown.includes('What this branch did'),
-    'the pane says what it is standing in for rather than printing bare shas');
+    'the section says what it is standing in for rather than printing bare shas');
   assert.ok(shown.includes('no pull request describes it'));
   assert.ok(shown.includes('feat/c'), 'and the commit subjects are the account');
+});
+
+// The heading row keeps a marker for the guide, because a section below the
+// fold needs something at the top saying it is there. Tapping it is the one
+// caller of setPane in the markup, and it reports up like the tab it replaced.
+test('the guide marker asks for the guide, and the ask is reported', async () => {
+  window.BranchBrief.forget();
+  reset();
+  const d = await mount('feat/a');
+  await tick(2);
+  assert.equal(d.hasGuide, true, 'so the marker shows');
+  d.setPane('guide');
+  assert.equal(meta.at(-1).pane, 'guide');
+  assert.deepEqual(calls.compare, [], 'jumping to the guide is a scroll, not a read');
 });

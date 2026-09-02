@@ -100,6 +100,10 @@ test('load() keeps an in-flight tally on the class for the boot guard', async ()
 // calls, so one retry is the difference between a dropped packet and a wasted
 // crawl. Reads only: a PUT that failed to answer may still have landed.
 const withFetch = async (impl, fn) => {
+  // req() memoises a GET per URL for a minute across every GH; each fake
+  // network starts from an empty table so a prior test's answer cannot stand
+  // in for the one this test scripts.
+  GH.memoClear();
   const real = globalThis.fetch;
   globalThis.fetch = impl;
   try { return await fn(); } finally { globalThis.fetch = real; }

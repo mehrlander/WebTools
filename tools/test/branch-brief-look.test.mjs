@@ -56,7 +56,7 @@ class FakeGH {
     // stale-bundle warning be tested in both directions off one fixture.
     return /rebuilt/.test(String(head) + String(base) + String(this.ref))
       ? { ...compare, files: [...compare.files,
-          { filename: 'dist/web-tools.js', status: 'modified',
+          { filename: 'dist/app.js', status: 'modified',
             additions: 200, deletions: 180, patch: '@@ -1 +1 @@' }] }
       : compare;
   }
@@ -162,7 +162,7 @@ test('a branch that rebuilt the pre-build carries no warning', async () => {
   Alpine.initTree(el);
   await tick(8);
   const d = Alpine.$data(el);
-  assert.ok(d.brief.files.some(f => f.path === 'dist/web-tools.js'), 'the fixture rebuilt');
+  assert.ok(d.brief.files.some(f => f.path === 'dist/app.js'), 'the fixture rebuilt');
   assert.ok(d.brief.files.some(f => f.path.startsWith('lib/')), 'and it changed lib');
   assert.equal(d.bundleStale, false);
   assert.deepEqual(j(d.routeChips).on.map(c => c.key), ['stage'], 'the chips are unaffected');
@@ -183,8 +183,8 @@ test('a deferred compare keeps the row, as the ask for the read it needs', async
   Alpine.initTree(el);
   await tick(8);
   const d = Alpine.$data(el);
-  assert.equal(d.pane, 'guide', 'a branch with a PR lands on the guide, which needs no compare');
-  assert.equal(d.brief.pending, true, 'a lent ahead count defers the compare');
+  assert.equal(d.brief.pending, true,
+    'a lent ahead count defers the compare, and the guide is enough to open on');
   assert.equal(d.routeChips, null, 'nothing is claimed before the diff is read');
   assert.equal(d.hasLook, true, 'and the row still holds its place');
   await d.ensureCompare();

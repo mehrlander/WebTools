@@ -67,6 +67,17 @@ if git status --porcelain -- lib/ | grep -q .; then
   fi
 fi
 
+# --- leg 1a: lib/ or app/index.html -> dist/app.js (the app's pre-build) ------
+# The app imports its own walked build (tools/build/build-app.mjs), so a change
+# to the page's reach re-emits it too.
+if git status --porcelain -- lib/ app/index.html | grep -q .; then
+  if npm run build:app --silent >/dev/null 2>&1; then
+    stage dist/app.js
+  else
+    echo "build hook: 'npm run build:app' failed — committing without refreshing dist/app.js" >&2
+  fi
+fi
+
 # --- leg 1b: console/ -> console/suite.js (base + mods, one paste) ------------
 if git status --porcelain -- console/base.js console/mods/ | grep -q .; then
   if npm run build:console --silent >/dev/null 2>&1; then

@@ -86,14 +86,36 @@
   // since a branch ref MOVES and the HTTP cache is keyed by URL alone: blob
   // import defeats the module cache and nothing was defeating the other one
   // (no SHA needed). The no-?use path stays the fastest same-origin import.
+  //
+  // The bundle is the APP'S OWN since 2026-09-02 (dist/app.js, tools/build/
+  // build-app.mjs): the part of lib/ this page can reach, 22 components rather
+  // than 32 registered at import, and the heavy on-demand kits (annotate, pdf,
+  // dictate, xlsx) left to load on first use. dist/web-tools.js, the whole
+  // library, stays for the pages that import it.
+  //
+  // A branch NAME moves, which is why the fetch by name is no-store, and that
+  // re-downloaded the whole bundle on every preview load. So a name is resolved
+  // to its commit first (one small anonymous API call) and the bundle fetched
+  // by SHA, an address that cannot move and that the HTTP cache may keep; a
+  // SHA given directly skips the resolve, and a failed resolve falls back to
+  // the uncached fetch by name.
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
-    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
+    let sha = /^[0-9a-f]{40}$/.test(ref) ? ref : '';
+    if (!sha) {
+      try {
+        const r = await fetch(`https://api.github.com/repos/mehrlander/web-tools/commits/${encodeURIComponent(ref)}`,
+                              { headers: { Accept: 'application/vnd.github.sha' } });
+        if (r.ok) sha = (await r.text()).trim();
+      } catch {}
+    }
+    const at = sha || ref;
+    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${at}/dist/app.js`, sha ? {} : { cache: 'no-store' });
     if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
     const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
     try { await import(url); } finally { URL.revokeObjectURL(url); }
   } else {
-    await import('../dist/web-tools.js');
+    await import('../dist/app.js');
   }
   // gh-store rides in the pre-build cached but unexecuted; this load runs it
   // from the inlined cache (no network) so GH.prototype.save exists as before.
@@ -1496,8 +1518,9 @@ html.dk-dragging main{transition:none !important}
                    recursive tree read. The workspace's own root files lead,
                    then one group per folder with its full relative path as the
                    header, so depth reads without a tree control; a curated
-                   DOCS.md, where the workspace keeps one, renders above the
-                   mechanical listing. Rows open in the shell's viewer, the
+                   docs/README.md (or the older DOCS.md), where the workspace
+                   keeps one, renders above the mechanical listing, and source
+                   packages are counted rather than listed. Rows open in the shell's viewer, the
                    same place the Board button reads. -->
               <div x-show="projectTab==='docs'">
                 <div x-show="projectDocsLoading" class="flex justify-center py-16">
@@ -1514,6 +1537,8 @@ html.dk-dragging main{transition:none !important}
                         <input type="search" x-model.debounce="projectDocsQ" placeholder="filter by path…" class="grow min-w-0">
                       </label>
                       <span class="text-base text-base-content/40" x-text="projectDocsCount + ' files'"></span>
+                      <span x-show="projectDocsSourced" class="text-base text-base-content/40"
+                            x-text="'· ' + projectDocsSourced + ' inside source packages, not listed'"></span>
                     </div>
                     <template x-for="g in projectDocsGroups" :key="g.dir">
                       <section class="mb-6">
@@ -1922,6 +1947,8 @@ function app(){ return {
   publicSeen: false,      // mount the public-browse component lazily, on first visit
   publicSeed: '',         // repo the public browser should open; a card sets it, the component watches it
   _restoring: false,      // true while restoring state from a popstate (see syncUrl)
+  _routed: Promise.resolve(),   // settled once init has routed the address (see init)
+  _routedResolve: () => {},
   DEFAULT_REPO: 'mehrlander/web-tools',
   // The one private string this public page names. The repos inside it are
   // never enumerated here: membership is each repo's own `estate: true`, read
@@ -2060,8 +2087,11 @@ function app(){ return {
     // Read before anything paints, so the shell never flashes its full self on
     // the way to a ?shell=none load. Same read on popstate (restoreFromUrl).
     this.readShellMode();
+    // Settled once the address has been routed, so a warm that keys on
+    // `view` (the auth watcher's) waits for the view to be the linked one.
+    this._routed = new Promise(r => { this._routedResolve = r; });
     const ready = await waitFor(() => window.GH);
-    if (!ready) return notify('Boot timed out waiting for modules. Reload to retry.');
+    if (!ready) { this._routedResolve(); return notify('Boot timed out waiting for modules. Reload to retry.'); }
     const gh = new window.GH({ token: window.TOKEN });
     Alpine.store('browser').gh = gh;
 
@@ -2096,7 +2126,43 @@ function app(){ return {
       // resolves, so the pane's own arrival kick ran against no token and
       // declined, and nothing afterwards went back for it. Announced through
       // warmSessionsCache, so a commit reaches the pane.
-      if (s === 'auth') { this.loadEstateSidebar().then(() => this.refreshConfigCache()).then(() => this.refreshActivityCache()).then(() => this.warmSessionsCache()); this.processMailbox(); this.loadProposalCount(); }
+      //
+      // ONE BOOT PATH. This watcher used to repeat the sidebar read, the
+      // mailbox and the proposals count that init() had already fired, and
+      // then ran the deep activity crawl and the sessions crawl whatever view
+      // was open. Measured 2026-09-02 on a plain README landing: configs.json
+      // read four to seven times, /user/repos five to seven, both crawls'
+      // FRESH re-reads, and the estate pane reloading its 7 MB sessions file
+      // a second time off the configs-refreshed that followed. The stored
+      // token is all those reads need, so init() already made them when one
+      // was there; what auth arriving adds is the case where it was NOT there
+      // (a token pasted mid-session), and the crawl the open view reads.
+      if (s === 'auth') {
+        const sidebar = this._sidebarToken === window.TOKEN
+          ? this.appViewsReady
+          : (this.appViewsReady = this.loadEstateSidebar(), this._sidebarToken = window.TOKEN, this.appViewsReady);
+        // Crawl, and RE-READ WHEN THE CRAWL MOVED SOMETHING. The sidebar is
+        // built from the cache as it stood when the page opened, so a manifest
+        // change merged since the last crawl is invisible to that read; the
+        // crawl fixes the cache and the nav kept rendering what it read before
+        // it, which is how two "Doc Growth" rows outlived the merge that
+        // removed them (2026-08-28). refreshConfigCache reports whether it
+        // committed, so the re-read costs one cache GET on the loads that
+        // changed something and nothing on the rest.
+        Promise.resolve(sidebar)
+          .then(() => this.refreshConfigCache())
+          .then(r => r?.committed ? this.loadEstateSidebar() : null)
+          .catch(() => {});
+        // Only what the pane on screen reads (warmEstateCaches), once the
+        // address has been routed: a deep link to ?view=sessions lands before
+        // auth resolves, so its own arrival kick ran against no token and
+        // declined, and this is what goes back for it.
+        this._routed.then(() => this.warmEstateCaches());
+        if (this._inboxToken !== window.TOKEN) {
+          this._inboxToken = window.TOKEN;
+          this.processMailbox(); this.loadProposalCount();
+        }
+      }
       // Announced for views that mount before auth resolves and would otherwise
       // sit on their signed-out state forever. A deep link is exactly that case:
       // ?view=state mounts the view during boot, its first read finds no token,
@@ -2116,22 +2182,12 @@ function app(){ return {
     // fills in and nothing else can tell it where the page is. Everything else
     // still routes without waiting; see appViewFromUrl.
     this.appViewsReady = this.loadEstateSidebar();
-    // Crawl, and RE-READ WHEN THE CRAWL MOVED SOMETHING. The sidebar above is
-    // built from the cache as it stood when the page opened, so a manifest
-    // change merged since the last crawl is invisible to this load: the crawl
-    // fixes the cache and the nav keeps rendering what it read before it. That
-    // is a whole session of a nav known to be wrong, cleared only by a reload
-    // nobody knows to perform, and it is how two "Doc Growth" rows outlived
-    // the merge that removed them (2026-08-28).
-    //
-    // refreshConfigCache reports whether it committed, so the re-read costs one
-    // cache GET on the loads that changed something and nothing on the rest.
-    // Same order the save path has always used (refreshConfigs): rebuild first,
-    // then re-read, never the reverse.
-    this.appViewsReady
-      .then(() => this.refreshConfigCache())
-      .then(r => r?.committed ? this.loadEstateSidebar() : null)
-      .catch(() => {});
+    // The token these ran with, so the auth watcher above can tell "already
+    // read" from "a token arrived". The crawls are the watcher's: they need
+    // auth to have RESOLVED, not merely a token to be stored, and running them
+    // from both places was the double-fire the watcher's note describes.
+    this._sidebarToken = this.hasToken() ? window.TOKEN : '';
+    this._inboxToken = this._sidebarToken;
     this.processMailbox();
     this.loadProposalCount();
 
@@ -2149,7 +2205,7 @@ function app(){ return {
     const url = this.parseUrl();
     if (url && url.window) this.branchWindow = url.window;
     await this.ensureBrowser(url?.repo, url?.ref);
-    await this.routeFromUrl(url);
+    try { await this.routeFromUrl(url); } finally { this._routedResolve(); }
     const staged = window.StageLink ? window.StageLink.read(location).items : [];
     if (staged.length) {
       Alpine.store('browser').stage = staged;
@@ -2714,6 +2770,16 @@ function app(){ return {
   // happened. Every existing caller ignores the value.
   async refreshConfigCache(force){
     if (!this.hasToken() || !window.RepoConfigCache) return { skipped: true };
+    // Single-flight, the guard the other two crawls already had: the boot
+    // path, an arrival kick and the Refresh button could run two of these at
+    // once, each re-reading the account list and the cache FRESH, and the
+    // loser saving a fold built on a pre-commit read. A call that finds a
+    // crawl in flight joins it and gets that crawl's result.
+    if (this._configCrawl) return this._configCrawl;
+    this._configCrawl = this._crawlConfigs(force);
+    try { return await this._configCrawl; } finally { this._configCrawl = null; }
+  },
+  async _crawlConfigs(force){
     // Seed the crawl from the account's repos (the enumeration that discovers
     // estate members), so a repo opting in via its own config is picked up
     // without any registry list. If the enumeration fails, fall back to the
@@ -4147,7 +4213,8 @@ function app(){ return {
   projectDocs: null,        // grouped listing; null = not loaded (or the tree read failed)
   projectDocsLoading: false,
   projectDocsQ: '',
-  projectDocsIndexHtml: '', // a curated DOCS.md, rendered above the mechanical listing
+  projectDocsIndexHtml: '', // the curated docs/README.md (or DOCS.md), rendered above the mechanical listing
+  projectDocsSourced: 0,    // markdown inside source packages, counted rather than listed
   _projectDocsKey: '',
   // The open project as a row: the declared entry where there is one, so its
   // label, board, and landing carry, else a minimal one derived from the path
@@ -4373,29 +4440,46 @@ function app(){ return {
     this._projectDocsKey = key;
     this.projectDocsLoading = true; this.projectDocs = null; this.projectDocsIndexHtml = '';
     const prefix = this.projectPath + '/';
-    let rels = null;
+    let rels = null, sourced = 0;
     try {
       const t = await s.gh.req('git/trees/' + encodeURIComponent(s.ref || 'HEAD') + '?recursive=1');
-      rels = (t.tree || [])
+      const all = (t.tree || [])
         .filter(n => n.type === 'blob' && n.path.startsWith(prefix) && /\.(md|markdown)$/i.test(n.path))
         .map(n => n.path.slice(prefix.length));
+      // Source packages are pulled material with a provenance README each, not
+      // the workspace's documentation: budget-drs holds 1,605 of them against
+      // 300 documents, so listed together the packages are all a reader sees.
+      // Counted and named below the filter rather than listed.
+      rels = all.filter(r => !this.isSourcePackageDoc(r));
+      sourced = all.length - rels.length;
     } catch { /* rels stays null: the pane says the listing failed */ }
     // A late reply for a project the reader has since left must not paint over
     // the current one (loadProjectReadme's rule).
     if (key !== this._projectDocsKey) return;
     this.projectDocs = rels ? this.groupProjectDocs(rels) : null;
+    this.projectDocsSourced = sourced;
     this.projectDocsLoading = false;
-    // The curated layer: a workspace keeping a DOCS.md gets it rendered above
-    // the mechanical listing. Curation on top, mechanism underneath, nothing
-    // owed when no index exists.
-    if (rels && rels.includes('DOCS.md')){
+    // The curated layer: a workspace keeping a documentation map gets it
+    // rendered above the mechanical listing. The map is docs/README.md, the
+    // four-slot rule's own answer (CONSTELLATION.md principle 6); DOCS.md is the
+    // older name and still honoured. Curation on top, mechanism underneath,
+    // nothing owed when no index exists.
+    const lead = rels && (rels.includes('docs/README.md') ? 'docs/README.md'
+                        : rels.includes('DOCS.md') ? 'DOCS.md' : null);
+    if (lead){
       try {
-        const res = await s.gh.get(this.projectPath + '/DOCS.md');
+        const res = await s.gh.get(this.projectPath + '/' + lead);
         if (key !== this._projectDocsKey) return;
         await loadMarked();
         this.projectDocsIndexHtml = mdHtml(res.text);
       } catch {}
     }
+  },
+  // A markdown file inside a source package: a dated pull under data/source/
+  // or a supplied document set under source-docs/. Pure, so the rule is
+  // testable beside groupProjectDocs.
+  isSourcePackageDoc(rel){
+    return /^data\/source\//.test(rel) || /(^|\/)source-docs\//.test(rel);
   },
   // Group project-relative markdown paths for the Docs tab: the workspace's
   // own root files first, then one group per folder in path order, each
