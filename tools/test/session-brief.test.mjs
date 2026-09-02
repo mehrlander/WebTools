@@ -486,3 +486,40 @@ test('the clipped box is not inside the button, because Safari sizes one from it
   assert.ok(btn, 'the control is still there');
   assert.equal(btn.contains(clip), false, 'holding only the small thing you tap');
 });
+
+test('a fact states its own meaning on a tap, not in a tooltip', () => {
+  const d = lent();
+  // Half the strip is exact about something the plain word is not, so the
+  // definitions are load-bearing. They rode in a `title` with `cursor-help`,
+  // which the house style names outright and which a phone cannot perform.
+  const el = window.document.getElementById('lent');
+  const facts = [...el.querySelectorAll('button[aria-expanded]')]
+    .filter(b => /^(day|repos|ran|asks|calls|failures|files|out tokens|schema)/.test(b.textContent.trim()));
+  assert.ok(facts.length >= 5, 'each fact is its own control');
+  assert.equal(el.querySelectorAll('.cursor-help').length, 0);
+
+  // ONE COPY OF THE DEFINITION. The note reads the strip rather than keeping a
+  // second table beside it, so a definition cannot drift from the row it
+  // belongs to; the id is the one key that is not a strip row.
+  assert.equal(d.factNote, '', 'nothing is said until something is asked');
+  d.fact = 'files';
+  assert.equal(d.factNote, d.strip.find(f => f.k === 'files').t);
+  d.fact = 'id';
+  assert.match(d.factNote, /filename stem/);
+  d.fact = '';
+  assert.equal(d.factNote, '');
+});
+
+test('the page tells the brief that no embedder draws its header', () => {
+  // `framed` on the PAGE means it sits in an iframe; `framed` on the BRIEF
+  // means a host draws the title and the id. The first is true of a toss and
+  // the second is true only of show-repo's Sessions pane, which mounts the
+  // COMPONENT rather than this page. Passing one for the other left a tossed
+  // session with no title and no id anywhere on screen.
+  const page = readFileSync(path.join(repoRoot, 'pages/session.html'), 'utf8');
+  assert.match(page, /opts = \{ \.\.\.opts, framed: false,/,
+    'the page hands the brief a literal, not its own iframe test');
+  assert.doesNotMatch(page, /framed: this\.framed/, 'and no address form still passes it through');
+  // The page keeps its own flag, which still stands its address bar down.
+  assert.match(page, /x-show="!framed \|\| !target"/);
+});

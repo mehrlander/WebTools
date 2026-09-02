@@ -205,16 +205,27 @@
         try {
           let opts;
           if (t.kind === 'gz') {
-            opts = { record: await this.readGz(t.gz), framed: this.framed };
+            opts = { record: await this.readGz(t.gz) };
           } else if (t.kind === 'branch') {
-            opts = { branch: t.branch, repo: STORE, framed: this.framed };
+            opts = { branch: t.branch, repo: STORE };
           } else if (t.kind === 'id') {
-            opts = { id: t.id, repo: STORE, framed: this.framed };
+            opts = { id: t.id, repo: STORE };
           } else {
             const spec = window.DataPayload?.parseSpec?.(t.spec) || {};
-            opts = { repo: spec.repo || STORE, path: spec.path || t.spec, framed: this.framed };
+            opts = { repo: spec.repo || STORE, path: spec.path || t.spec };
           }
-          opts = { ...opts, ...(t.at || {}) };
+          // ONE FLAG WAS STANDING FOR TWO FACTS, and this page passed the wrong
+          // one for four addresses. `this.framed` says the PAGE is in an
+          // iframe, which is why its own address bar stands down once a session
+          // is loaded. The brief's `framed` says something else: that a HOST
+          // draws the title and the id, so the view need not repeat them. That
+          // is true of show-repo's Sessions pane, which mounts the COMPONENT
+          // inside a deck whose header carries both. It is true of nothing that
+          // embeds this PAGE: the only embedder is the toss, and the toss draws
+          // nothing. So a tossed session had no title and no id anywhere on
+          // screen, and only the facts strip said which one it was (reported
+          // 2026-09-01 from the phone).
+          opts = { ...opts, framed: false, ...(t.at || {}) };
           this.target = opts;
           window.__sessionTarget = opts;
           this.$nextTick(() => {
