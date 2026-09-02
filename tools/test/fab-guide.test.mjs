@@ -257,6 +257,9 @@ test('the path row is a picker, and a picked file is a request to render it', as
   d.viaToss = true;
   d.defaultBranch = 'main';
   d.ref = 'claude/thing';
+  // The drawer's body is built on the first open (2026-09-02), the picker with it.
+  d.open = true;
+  await tick(3);
 
   // The picker really mounts and gets its GH from the fab rather than from
   // Alpine's browser store.
@@ -384,6 +387,8 @@ test('a real tap on the trigger opens the tree and leaves it open', async () => 
   Alpine.initTree(host);
   await tick(3);
   const d = Alpine.$data(host.firstElementChild);
+  d.open = true;            // the body, the trigger in it, is built on first open
+  await tick(3);
 
   const trigger = host.querySelector('button[class*="group/id"]');
   assert.ok(trigger, 'the repo/path block is one trigger');
