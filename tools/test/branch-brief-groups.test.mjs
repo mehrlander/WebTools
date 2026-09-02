@@ -180,3 +180,77 @@ test('a card carries the deck action, aimed at its own path', async () => {
   assert.equal(opts.base, 'main');
   assert.equal(opts.baseName, 'main');
 });
+
+// ── The row cap ─────────────────────────────────────────────────────────────
+//
+// The guide sits under this list, so the list's length is the guide's distance.
+// Measured at 390px on a sixty-file branch, the guide's top landed at 2309px,
+// 2.7 screens from the head; twenty rows puts it near 1050px. The cap is a
+// drawing rule and not a filter, which is the distinction these cases hold:
+// the header still reports the group's own size, the deck still pages every
+// file in an open group, and the footer says exactly what it is holding back.
+const wideCompare = {
+  status: 'ahead', ahead_by: 2, behind_by: 0,
+  commits: [{ sha: 'c1', commit: { author: { date: '2026-08-01T00:00:00Z' }, message: 'one' } }],
+  files: Array.from({ length: 30 }, (_, i) => ({
+    filename: 'lib/f' + i + '.js', status: 'modified', additions: 1, deletions: 0, patch: '@@ -1 +1 @@',
+  })).concat(Array.from({ length: 5 }, (_, i) => ({
+    filename: 'dist/g' + i + '.js', status: 'modified', additions: 1, deletions: 0, patch: '@@ -1 +1 @@',
+  }))),
+};
+
+test('past the cap the list draws its budget and offers the rest', async () => {
+  SERVE_CSV = true;
+  const narrow = compare.files;
+  compare.files = wideCompare.files;
+  data.forgetRegistry();
+  window.BranchBrief.forget();
+  await data.load();
+  await tick(4);
+  try {
+    assert.equal(data.brief.files.length, 35);
+    const authored = data.displayGroups.find(g => g.mode === 'hybrid-authored');
+    assert.equal(authored.files.length, data.ROW_CAP, 'the open group is cut to the budget');
+    assert.equal(authored.total, 30, 'and its header still reports the branch, not the slice');
+    assert.equal(data.hiddenFileCount, 10, 'the footer offers exactly what was withheld');
+
+    // A COLLAPSED group draws no rows, so it spends none of the budget: that is
+    // what lets a repo whose generated output starts collapsed show more of its
+    // authored half rather than less.
+    const mech = data.displayGroups.find(g => g.mode === 'mechanical');
+    assert.equal(data.groupOpen(mech), false);
+    assert.equal(mech.total, 5);
+
+    // Not a filter. The deck holds every file in an open group whether or not
+    // the cap drew its row; only the group toggles narrow what it pages.
+    assert.equal(data.deckFiles.length, 30);
+
+    data.showAllFiles = true;
+    await tick(2);
+    assert.equal(data.displayGroups.find(g => g.mode === 'hybrid-authored').files.length, 30);
+    assert.equal(data.hiddenFileCount, 0, 'and nothing is left to offer');
+  } finally {
+    compare.files = narrow;
+    data.showAllFiles = false;
+    window.BranchBrief.forget();
+    data.forgetRegistry();
+    await data.load();
+    await tick(3);
+  }
+});
+
+test('a modest branch is drawn whole, so the cap is invisible where it costs nothing', () => {
+  assert.equal(data.brief.files.length, 3);
+  assert.equal(data.hiddenFileCount, 0);
+  assert.deepEqual(j(data.displayGroups.map(g => g.files.length)), [2, 1]);
+});
+
+// The marker on the heading row is the only thing at the top saying the guide
+// exists, so its tooltip carries both halves: where it goes and what is there.
+// The title itself rides the row where the width allows and drops at 390px.
+test('the guide marker names the destination and the title', async () => {
+  assert.equal(data.guideJumpTitle, 'Jump to the guide', 'with no PR, no number to name');
+  data.brief = { ...data.brief, prs: [{ number: 42, title: 'A branch about something', draft: true, state: 'open', body: '' }] };
+  await tick(2);
+  assert.equal(data.guideJumpTitle, 'Jump to the guide: #42 — A branch about something');
+});

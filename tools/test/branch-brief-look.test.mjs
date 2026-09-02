@@ -183,8 +183,8 @@ test('a deferred compare keeps the row, as the ask for the read it needs', async
   Alpine.initTree(el);
   await tick(8);
   const d = Alpine.$data(el);
-  assert.equal(d.pane, 'guide', 'a branch with a PR lands on the guide, which needs no compare');
-  assert.equal(d.brief.pending, true, 'a lent ahead count defers the compare');
+  assert.equal(d.brief.pending, true,
+    'a lent ahead count defers the compare, and the guide is enough to open on');
   assert.equal(d.routeChips, null, 'nothing is claimed before the diff is read');
   assert.equal(d.hasLook, true, 'and the row still holds its place');
   await d.ensureCompare();
