@@ -26,7 +26,7 @@ export default async function (page) {
     const d = Alpine.$data(document.body);
     const u = d.units[3];
     d.sel = { ...u, ref: d.srcRef(u) };
-    d.push({ op: 'move', after: u.uid, to: u.end + 6 });
+    d.push({ op: 'shift', after: u.uid, to: u.end + 6 });
     d.push({ op: 'relabel', uid: u.uid, label: d.so.vocabulary.find(v => v.label !== u.label).label });
     d.push({ op: 'note', uid: u.uid, text: 'three' });
   });

@@ -168,18 +168,18 @@ test('an overlap is a complaint, and it was not one until 2026-08-30', () => {
 });
 
 test('moving a boundary moves both units, so the partition survives', () => {
-  const { so, complaints } = S.apply(base(), [{ op: 'move', after: 'u-001', to: 30 }], DOC);
+  const { so, complaints } = S.apply(base(), [{ op: 'shift', after: 'u-001', to: 30 }], DOC);
   assert.deepEqual(complaints, []);
   assert.deepEqual([so.units[0].start, so.units[0].end], [0, 30]);
   assert.deepEqual([so.units[1].start, so.units[1].end], [30, 59]);
-  assert.equal(so.units[0].from, 'move:u-001/u-002');
-  assert.equal(so.units[1].from, 'move:u-001/u-002');
+  assert.equal(so.units[0].from, 'shift:u-001/u-002');
+  assert.equal(so.units[1].from, 'shift:u-001/u-002');
   assert.deepEqual(S.check(so, DOC), [], 'no gap and no overlap, by construction');
 });
 
 test('a boundary cannot be moved outside the pair it separates', () => {
   for (const to of [0, 200, 59]) {
-    const { complaints } = S.apply(base(), [{ op: 'move', after: 'u-001', to }], DOC);
+    const { complaints } = S.apply(base(), [{ op: 'shift', after: 'u-001', to }], DOC);
     assert.match(complaints.join('\n'), /refused/, `to=${to} should be refused`);
   }
 });
@@ -194,20 +194,20 @@ test('a boundary cannot be moved so far that a side is only whitespace', () => {
     { uid: 'p-2', start: 6, end: 14, kind: 'sent', words: 1, label: 'WHAT' }] };
   assert.deepEqual(S.check(so, PAD), [], 'the fixture itself is sound');
   for (const to of [12, 13])
-    assert.match(S.apply(so, [{ op: 'move', after: 'p-1', to }], PAD).complaints.join('\n'),
+    assert.match(S.apply(so, [{ op: 'shift', after: 'p-1', to }], PAD).complaints.join('\n'),
       /refused/, `to=${to} would leave p-2 holding only spaces`);
-  assert.deepEqual(S.apply(so, [{ op: 'move', after: 'p-1', to: 11 }], PAD).complaints, [],
+  assert.deepEqual(S.apply(so, [{ op: 'shift', after: 'p-1', to: 11 }], PAD).complaints, [],
     'one character of real text on each side is enough');
 });
 
 test('word counts follow the boundary on both sides', () => {
-  const { so } = S.apply(base(), [{ op: 'move', after: 'u-001', to: 14 }], DOC);
+  const { so } = S.apply(base(), [{ op: 'shift', after: 'u-001', to: 14 }], DOC);
   assert.equal(so.units[0].words, 3, '"Close the lid,"');
   assert.equal(so.units[1].words, 7);
 });
 
 test('the last unit has no boundary after it', () => {
-  const { complaints } = S.apply(base(), [{ op: 'move', after: 'u-002', to: 50 }], DOC);
+  const { complaints } = S.apply(base(), [{ op: 'shift', after: 'u-002', to: 50 }], DOC);
   assert.match(complaints.join('\n'), /refused/);
 });
 
@@ -242,6 +242,30 @@ test('the commit message states the judgments, not the result', () => {
     { op: 'note', uid: 'u-001a', text: '' },
   ]), ['split u-001 at 15', 'merge u-002 with its successor',
        'relabel u-001b WHY-MOT', 'note u-001a', 'note u-001a (cleared)']);
+});
+
+// EVERY OP, BECAUSE THE TWO THAT WERE MISSING BOTH CAME OUT WRONG. The four
+// above were the whole of this test, so `verdict` went undescribed and `shift`
+// rendered as "note undefined (cleared)": the chain that used to be here ended
+// in a default that read `uid`, and a boundary op has none. The commit message
+// is the patch's only surviving record, so it stated the opposite of what
+// happened. Enumerated against the op table, so adding an op without a
+// sentence fails here rather than in a commit nobody re-reads.
+test('every operation the kit accepts has a sentence, including both boundary ops', () => {
+  assert.deepEqual(S.describe([
+    { op: 'shift', after: 'u-001', to: 30 },
+    { op: 'verdict', uid: 'u-002', verdict: 'DROP' },
+    { op: 'insert', after: 'u-001', text: 'a new sentence.' },
+    { op: 'insert', after: null, text: 'a lead sentence.' },
+    { op: 'insert', after: 'u-001', text: '' },
+  ]), ['shift the boundary after u-001 to 30',
+       'u-002 DROP',
+       'insert at the boundary after u-001',
+       'insert at the head of the document',
+       'insert at the boundary after u-001 (cleared)']);
+
+  const undescribed = Object.keys(S.ops).filter(op => /undescribed/.test(S.describe([{ op }])[0]));
+  assert.deepEqual(undescribed, [], 'operations the commit message cannot state');
 });
 
 // ── the bytes, against the stored run ──────────────────────────────────────

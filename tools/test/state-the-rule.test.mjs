@@ -255,21 +255,22 @@ test('seams.py reports a heading that swallowed the line under it', () => {
 
 const DOC = 'Close the lid, because the contents spoil.\n\nCheck it twice.';
 
+const BASE = () => ({
+  kind: 'standoff/1',
+  target: { path: 'doc.md' },
+  vocabulary: [{ label: 'WHAT', side: 'declaration' },
+               { label: 'WHY-MOT', side: 'explanation' }],
+  units: [
+    { uid: 'u-001', start: 0, end: 42, kind: 'sent', words: 7, label: 'WHAT' },
+    { uid: 'u-002', start: 44, end: 59, kind: 'sent', words: 3, label: 'WHAT' },
+  ],
+});
+
 function standoff(dir) {
   const doc = join(dir, 'doc.md');
   writeFileSync(doc, DOC);
-  const so = {
-    kind: 'standoff/1',
-    target: { path: 'doc.md' },
-    vocabulary: [{ label: 'WHAT', side: 'declaration' },
-                 { label: 'WHY-MOT', side: 'explanation' }],
-    units: [
-      { uid: 'u-001', start: 0, end: 42, kind: 'sent', words: 7, label: 'WHAT' },
-      { uid: 'u-002', start: 44, end: 59, kind: 'sent', words: 3, label: 'WHAT' },
-    ],
-  };
   const sf = join(dir, 'so.json');
-  writeFileSync(sf, JSON.stringify(so));
+  writeFileSync(sf, JSON.stringify(BASE()));
   return { doc, sf };
 }
 
@@ -375,21 +376,21 @@ test('without --write nothing is written', () => {
 // construction rather than by a rule.
 
 test('moving a boundary moves both units and keeps the partition', () => {
-  const { so } = patch([{ op: 'move', after: 'u-001', to: 30 }]);
+  const { so } = patch([{ op: 'shift', after: 'u-001', to: 30 }]);
   assert.deepEqual([so.units[0].start, so.units[0].end], [0, 30]);
   assert.deepEqual([so.units[1].start, so.units[1].end], [30, 59]);
-  assert.equal(so.units[0].from, 'move:u-001/u-002');
-  assert.equal(so.units[1].from, 'move:u-001/u-002');
+  assert.equal(so.units[0].from, 'shift:u-001/u-002');
+  assert.equal(so.units[1].from, 'shift:u-001/u-002');
 });
 
 test('a boundary outside the pair it separates is refused', () => {
-  const { status, out } = patch([{ op: 'move', after: 'u-001', to: 200 }]);
+  const { status, out } = patch([{ op: 'shift', after: 'u-001', to: 200 }]);
   assert.notEqual(status, 0);
   assert.match(out, /outside/);
 });
 
 test('the last unit has no boundary after it', () => {
-  const { status, out } = patch([{ op: 'move', after: 'u-002', to: 50 }]);
+  const { status, out } = patch([{ op: 'shift', after: 'u-002', to: 50 }]);
   assert.notEqual(status, 0);
   assert.match(out, /no boundary after it/);
 });
@@ -410,4 +411,111 @@ test('an overlap is reported, not just a gap', () => {
   catch (e) { out = (e.stderr || '') + (e.stdout || ''); }
   rmSync(dir, { recursive: true, force: true });
   assert.match(out, /u-002: overlaps the unit before it by 12 chars/);
+});
+
+// ── THE TWO IMPLEMENTATIONS, HELD TO EACH OTHER ──────────────────────────────
+// tools/render/scenarios/audit-edit.mjs drives both end to end and PRINTS them
+// for a person to diff. This asserts it, over the ops least likely to be
+// re-checked by eye. `insert` is the reason: it is inert with respect to every
+// span invariant, so nothing else here can see it drift, and it carries three
+// interactions with the ops around it. A patch replaying differently in the two
+// languages is the failure, and the browser is where it would be found last.
+
+const win = {};
+new Function('window', readFileSync(join(repoRoot, 'lib/kits/standoff.js'), 'utf8'))(win);
+const KIT = win.Standoff;
+
+// Both sides, one patch. Returns the two results so a test can compare them, and
+// asserts up front that they AGREE ON WHETHER TO RUN AT ALL: a refusal on one
+// side and a clean apply on the other is the drift that matters most, and
+// comparing only the output would read it as an equality failure.
+function both(ops) {
+  const py = patch(ops);
+  const js = KIT.apply(BASE(), ops, DOC);
+  const pyRefused = py.status !== 0, jsRefused = js.complaints.length > 0;
+  assert.equal(pyRefused, jsRefused,
+    `python ${pyRefused ? 'refused' : 'applied'}, javascript ${jsRefused ? 'refused' : 'applied'}` +
+    `\n  python: ${py.out.trim()}\n  javascript: ${js.complaints.join('; ')}`);
+  return { py, js, refused: pyRefused };
+}
+
+// The whole patch, not just the insertions: an insert that also perturbed a span
+// would show up here and nowhere else. Compared as BYTES rather than by
+// deepEqual, which is blind to key order, and key order is the half that
+// matters downstream: audit-payload.py and the page both write standoff.json,
+// so a disagreement makes every real change arrive inside a whole-file
+// reformat. The two did disagree when insert was written (`after, why, text`
+// against `after, text, why`) and deepEqual passed.
+const agree = (ops) => {
+  const { py, js, refused } = both(ops);
+  assert.equal(refused, false, `both refused: ${py.out.trim()}`);
+  assert.deepEqual(js.so, py.so);
+  assert.equal(JSON.stringify(js.so), JSON.stringify(py.so),
+    'the two serializations differ in key order, which deepEqual cannot see');
+  return py.so;
+};
+
+test('an insertion anchors to a boundary and both languages place it the same', () => {
+  const so = agree([{ op: 'insert', after: 'u-001', text: 'A sentence the document lacks.' }]);
+  assert.deepEqual(so.insertions,
+    [{ after: 'u-001', text: 'A sentence the document lacks.' }]);
+  assert.equal(so.units.length, 2, 'the units are untouched by an insertion');
+});
+
+test('an insertion carrying a reason serializes identically in both languages', () => {
+  const so = agree([{ op: 'insert', after: 'u-001', text: 'the rule needs a case',
+                      why: 'the boundary above states it and nothing shows it' }]);
+  assert.deepEqual(Object.keys(so.insertions[0]), ['after', 'text', 'why']);
+});
+
+test('the head of the document is a boundary, and it is the one that follows nothing', () => {
+  const so = agree([{ op: 'insert', after: null, text: 'A lead sentence.' },
+                    { op: 'insert', after: 'u-002', text: 'A closing sentence.' }]);
+  assert.deepEqual(so.insertions.map(i => i.after), [null, 'u-002'],
+    'ordered by where the anchor sits, head first');
+});
+
+test('the anchor is the identity, so an empty text clears it', () => {
+  const so = agree([{ op: 'insert', after: 'u-001', text: 'first thought' },
+                    { op: 'insert', after: 'u-001', text: 'second thought' },
+                    { op: 'insert', after: 'u-002', text: 'elsewhere' }]);
+  assert.deepEqual(so.insertions,
+    [{ after: 'u-001', text: 'second thought' }, { after: 'u-002', text: 'elsewhere' }],
+    'a second insertion at one boundary replaces the first rather than joining it');
+
+  const gone = agree([{ op: 'insert', after: 'u-001', text: 'x' },
+                      { op: 'insert', after: 'u-001', text: '' }]);
+  assert.equal('insertions' in gone, false, 'the last insertion out takes the key with it');
+});
+
+// The payoff of keying by uid rather than by offset, and the reason to state it
+// as a test: an offset anchor would need rewriting on every drag, and the page
+// produces drags from three call sites.
+test('shifting the anchored boundary leaves the insertion alone', () => {
+  const so = agree([{ op: 'insert', after: 'u-001', text: 'stays put' },
+                    { op: 'shift', after: 'u-001', to: 30 }]);
+  assert.deepEqual(so.insertions, [{ after: 'u-001', text: 'stays put' }]);
+  assert.equal(so.units[0].end, 30, 'the boundary really did move under it');
+});
+
+test('splitting the anchor unit carries the insertion to the half that keeps the boundary', () => {
+  const so = agree([{ op: 'insert', after: 'u-001', text: 'after the whole unit' },
+                    { op: 'split', uid: 'u-001', at: 15 }]);
+  assert.equal(so.insertions[0].after, 'u-001b',
+    'the parent\'s end is the second half\'s end; the first half\'s end is a new boundary');
+});
+
+// Not tidiness. The survivor keeps `u-001`, so the anchor would still RESOLVE
+// after the merge, naming the boundary past the absorbed unit: it would pass
+// every check and sit in the wrong place.
+test('a merge is refused while an insertion sits on the boundary it removes', () => {
+  const { py, refused } = both([{ op: 'insert', after: 'u-001', text: 'here, between them' },
+                                { op: 'merge', uid: 'u-001' }]);
+  assert.equal(refused, true, 'the merge went through and moved the anchor silently');
+  assert.match(py.out, /insertion/i);
+  assert.equal(py.so.units.length, 2, 'a refused patch leaves the file alone');
+});
+
+test('an insertion anchored to no unit is refused by both', () => {
+  assert.equal(both([{ op: 'insert', after: 'u-404', text: 'nowhere' }]).refused, true);
 });

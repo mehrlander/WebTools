@@ -5,8 +5,11 @@
 // repo does not hold.
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 const RUN = 'skills/state-the-rule/runs/2026-08-29-conventions';
 const standoff = JSON.parse(readFileSync(`${RUN}/standoff.json`, 'utf8'));
@@ -120,4 +123,45 @@ test('the annotation carries its own address, not only its target', () => {
   assert.ok(standoff.self?.path?.endsWith('/standoff.json'),
     'standoff.self.path must name the annotation itself; rebuild with audit-payload.py');
   assert.match(standoff.self.repo ?? '', /^[^/]+\/[^/]+$/);
+});
+
+// A REBUILD IS A RESET, and the guard that says so reads the standoff for work
+// the two inputs cannot reconstruct. It read only `from` on units, so a standoff
+// carrying insertions and no split or merge history rebuilt clean and lost every
+// one of them without asking: an insertion is anchored to a boundary, not
+// carried on a unit, so it leaves no `from` anywhere. Both tells are held here
+// because the silent half is the one that was missing.
+test('rebuilding refuses over work units.jsonl and labels.tsv cannot hold', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'payload-'));
+  const doc = join(dir, 'doc.md');
+  writeFileSync(doc, 'One rule here.\n\nA second one.\n');
+  writeFileSync(join(dir, 'units.jsonl'),
+    execFileSync('python3', ['skills/state-the-rule/segment.py', doc, '1', '99'],
+                 { encoding: 'utf8' }));
+  const uids = readFileSync(join(dir, 'units.jsonl'), 'utf8').trim().split('\n')
+    .map(l => JSON.parse(l).uid);
+  writeFileSync(join(dir, 'labels.tsv'),
+    ['uid\tlabel\tverdict', ...uids.map(u => `${u}\tWHAT\tKEEP`)].join('\n') + '\n');
+
+  const build = () => {
+    try { execFileSync('python3', ['tools/build/audit-payload.py', 'standoff', doc, dir],
+                       { encoding: 'utf8', stdio: 'pipe' }); return ''; }
+    catch (e) { return (e.stderr || '') + (e.stdout || ''); }
+  };
+  assert.equal(build(), '', 'the first build has nothing to protect');
+
+  const sf = join(dir, 'standoff.json');
+  const so = JSON.parse(readFileSync(sf, 'utf8'));
+  so.insertions = [{ after: uids[0], text: 'A sentence the document lacks.' }];
+  assert.deepEqual(so.units.filter(u => 'from' in u), [],
+    'the case that matters: insertions with no patched unit anywhere');
+  writeFileSync(sf, JSON.stringify(so, null, 1) + '\n');
+  assert.match(build(), /1 insertion\(s\)/, 'rebuilt over the insertions in silence');
+
+  delete so.insertions;
+  so.units[0].from = 'split:x';
+  writeFileSync(sf, JSON.stringify(so, null, 1) + '\n');
+  assert.match(build(), /1 patched unit/, 'the tell the guard already read');
+
+  rmSync(dir, { recursive: true, force: true });
 });

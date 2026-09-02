@@ -228,12 +228,19 @@ are revised by a **patch**, a list of operations over the stored standoff:
 python3 ops.py <standoff.json> <patch.json> <doc.md> [--write]
 ```
 
+**Two geometries, and the key says which.** An operation over a **span** is keyed
+by `uid`. An operation over a **boundary** is keyed by `after`, the unit that
+boundary follows.
+
 | operation | is |
 | --- | --- |
 | `{"op":"split","uid":…,"at":<document offset>}` | one unit becomes two, meeting at `at` |
 | `{"op":"merge","uid":…}` | a unit absorbs its successor |
 | `{"op":"relabel","uid":…,"label":…}` | a different label from the declared vocabulary |
+| `{"op":"verdict","uid":…,"verdict":…}` | a verdict from the declared list |
 | `{"op":"note","uid":…,"text":…}` | what the label cannot say; an empty text clears it |
+| `{"op":"shift","after":…,"to":<document offset>}` | the boundary after that unit moves |
+| `{"op":"insert","after":…,"text":…}` | text the document does not have; an empty text clears it |
 
 **Operations are keyed by uid, not by array index.** RFC 6902 is the standard and
 the wrong altitude: its paths are positions, so inserting one unit invalidates
@@ -264,9 +271,38 @@ says about either, and grain for its own sake is not a finding. On
 bar; every one of the ten was a rule with its reason fused on.
 
 **A boundary is the object, not an edge.** The end of one unit is the start of
-the next, so `move` touches both and the units stay a partition: one label per
+the next, so `shift` touches both and the units stay a partition: one label per
 character, which is what the word-share figure counts. Overlap is a complaint
-rather than a mode.
+rather than a mode. The operation was called `move` until 2026-09-02 and gave the
+name up to the `MOVE` verdict, which is a different kind of thing about a
+different object.
+
+**An insertion is text the document does not have, so it anchors to a boundary
+rather than to a span.** Every other operation moves boundaries and labels and
+leaves the bytes alone, which is what lets `target.sha256` stay true across a
+session; `insert` states a change to those bytes without making it. It therefore
+neither tiles nor covers, and no span invariant can see one, which is why
+`insertions` is a list of its own rather than a unit with a zero-width span: such
+a unit would fail the span check, need a special case in the tiling arithmetic,
+and report `words` counted from text the document does not contain, which feeds
+the word-share figure.
+
+**The anchor is the identity.** One insertion per boundary, no id to keep unique,
+and an empty text clears it, which is `note`'s shape one geometry over.
+`{"after": null}` is the head of the document, the one boundary that follows no
+unit. Three interactions follow, and the middle one is a refusal:
+
+| the patch also | the insertion |
+| --- | --- |
+| `shift`s the anchored boundary | is untouched; the anchor is a uid, not an offset |
+| `merge`s the anchor with its successor | refuses the merge |
+| `split`s the anchor unit | re-anchors to the second half |
+
+The merge refusal is not tidiness. The survivor keeps the first unit's uid, so
+the anchor would still resolve, now naming the boundary past the absorbed unit:
+it would pass every check and sit in the wrong place. Held with the rest of the
+parity in `tools/test/state-the-rule.test.mjs`, which runs one patch through both
+implementations and compares the result.
 
 **Where a patch comes from.** `pages/audit-render.html` (hub) offers the
 operations on the selected unit and accumulates them, applying each one

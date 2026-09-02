@@ -760,6 +760,11 @@ window.__audit = {
   // Disjoint in both name and colour, so one lookup serves both axes and a
   // template does not have to know which lens is on.
   const RGB = { ...HUE, ...VHUE };
+  // AN INSERTION IS ON NEITHER AXIS: it has no label and no verdict, because it
+  // is not a unit. So it is in neither palette, and it carries a colour of its
+  // own rather than tint()'s unknown-key fallback, which is what an
+  // unrecognised label paints as and would read as a defect rather than a kind.
+  const INS_RGB = '99,102,241';
   // How a unit is drawn. One tint per label either way; these decide what the
   // tint is spent on. Kept as data because the point is to compare them.
   const MARKS = {
@@ -816,7 +821,7 @@ window.__audit = {
       // taps.
       document.addEventListener('pointerdown', (e) => {
         if (!this.sel) return;
-        if (e.target.closest('[data-uid],[data-edge],[data-panel],dialog,header,button')) return;
+        if (e.target.closest('[data-uid],[data-ins],[data-edge],[data-panel],dialog,header,button')) return;
         this.sel = null; this.menu = null; this.armed = null; this.paint();
       }, true);
       addEventListener('resize', () => this.placePanel());
@@ -857,7 +862,7 @@ window.__audit = {
     get provenance() {
       const f = this.sel?.from || '', i = f.indexOf(':');
       const verb = { split: 'split from', merge: 'merged from',
-                     move: 'boundary moved with' }[f.slice(0, i)];
+                     shift: 'boundary moved with' }[f.slice(0, i)];
       return verb ? `${verb} ${f.slice(i + 1)}` : f;
     },
     // Why there is no handle on an edge. It said "start and end sits in
@@ -865,12 +870,25 @@ window.__audit = {
     // boundary is undraggable when it falls where the rendered text has no
     // character to put a pin beside, and a list marker or a `**` is only the
     // commonest case of that.
+    // TWO DIFFERENT REASONS, and naming the wrong one is worse than saying
+    // nothing. A boundary may have no place on screen to put a pin, which is
+    // markup at the render's edges and what this sentence used to assume; or it
+    // may be the head or tail of the DOCUMENT, which has a unit on one side
+    // only, so there is nothing to relocate it between. The second arrived with
+    // insert, which needs one side where shift needs two, and it is the case
+    // where the drag button is absent from a boundary the reader can plainly
+    // see and can plainly put text at.
     get noDrag() {
       const e = this.unpinned;
       // x-text evaluates whether or not x-show is displaying it, so the empty
       // case is a real branch and not a hypothetical one: without it this read
       // "the undefined edge cannot be dragged" in the DOM of every unit whose
       // boundaries are both fine.
+      const ends = this.edges.filter(x => !x.shiftable && !e.includes(x.edge))
+                             .map(x => x.edge === 'start' ? 'head' : 'tail');
+      if (ends.length)
+        return `the ${ends[0]} of the document takes text and cannot be dragged: `
+             + 'it has a unit on one side only';
       if (!e.length) return '';
       return e.length === 2
         ? 'neither edge can be dragged: both fall in markup the render does not show'
@@ -1042,9 +1060,14 @@ window.__audit = {
         && !balanced(this.a.text.slice(u.start, u.end).trim())).length;
     },
     toggle(l) { this.off[l] = !this.off[l]; this.paint(); },
+    // WHERE IN THE DOCUMENT, and only that. This opened with the target's path,
+    // which is the same for every unit on the page and is already in the
+    // header, so the first 21 characters of the panel's TALLEST line never
+    // varied. num() makes exactly this argument about the uid's shared prefix;
+    // the location line had not been given the same reading.
     srcRef(u) {
       const s = [...this.sections].reverse().find(s => s.start <= u.start);
-      return s ? `${this.so.target.path || this.a.title} § ${s.title} (lines ${s.startLine}-${s.endLine})` : this.a.title;
+      return s ? `§ ${s.title} · lines ${s.startLine}-${s.endLine}` : '';
     },
     unitHtml(u) {
       const raw = this.a.text.slice(u.start, u.end).trim();
@@ -1079,6 +1102,33 @@ window.__audit = {
         ? 'whitespace-pre-wrap font-mono text-base leading-7'
         : GuideRender.bodyClass();
       host_.appendChild(box);
+      // MATERIALIZED IN PLACE, AND ONLY IN PLACE. An insertion holds text the
+      // document does not contain, so drawing it here is the whole of what the
+      // page can honestly do with one: the reader sees how the document would
+      // read, and nothing is written. It carries no uid and takes no tint from
+      // either axis, because it has neither a label nor a verdict to paint, and
+      // Standoff.mapText is never called on it, so no boundary can land inside
+      // text that has no offsets. Its own boundary is what it answers to, so a
+      // tap selects the unit that anchors it and arms that edge.
+      const drawIns = (into, after, arm) => {
+        const ins = this.insAt(after);
+        if (!ins) return;
+        const el = document.createElement('div');
+        el.className = 'my-1 pl-2 border-l-2 cursor-pointer w-fit max-w-full';
+        el.style.borderColor = `rgba(${INS_RGB},.55)`;
+        el.style.background = `rgba(${INS_RGB},.08)`;
+        el.dataset.ins = after ?? '';
+        el.textContent = ins.text;
+        el.onclick = (ev) => { ev.stopPropagation(); arm(); };
+        into.appendChild(el);
+      };
+      drawIns(box, null, () => {
+        const first = this.units[0];
+        if (!first) return;
+        this.sel = { ...first, ref: this.srcRef(first) };
+        this.armed = 'start';
+        this.$nextTick(() => this.placePins());
+      });
       for (const b of this.blocks) {
         const wrap = document.createElement(this.view === 'source' ? 'div' : 'div');
         wrap.className = this.view === 'source' ? 'mb-3' : '';
@@ -1157,6 +1207,11 @@ window.__audit = {
           }
           el.onclick = (ev) => { this.selPt = { x: ev.clientX, y: ev.clientY }; this.hit(u, broken); };
           wrap.appendChild(el);
+          drawIns(wrap, u.uid, () => {
+            this.sel = { ...u, broken, ref: this.srcRef(u) };
+            this.armed = 'end';
+            this.$nextTick(() => this.placePins());
+          });
           if (this.view === 'source') wrap.appendChild(document.createTextNode('\n'));
         }
         box.appendChild(wrap);
@@ -1182,25 +1237,45 @@ window.__audit = {
     // unclosed delimiter; the rendered view cannot offer one, since markup is
     // in no text node and an inline construct is atomic. Two views that
     // disagreed about what is legal would be worse than one that edits.
+    // EVERY UNIT HAS TWO BOUNDARIES, one before it and one after. The first
+    // unit's "before" is the head of the document and the last unit's "after"
+    // is its tail, and those two follow or precede no unit: `shift` refuses
+    // them because it needs a unit on each side, `insert` takes them because it
+    // needs one. That asymmetry is the whole of `shiftable`. This list used to
+    // omit both, which was right while shift was the only boundary op and left
+    // a document unable to gain a lead or a closing sentence once insert
+    // arrived.
     get edges() {
       if (!this.sel || this.view !== 'read') return [];
       const i = this.units.findIndex(u => u.uid === this.sel.uid);
-      const out = [];
-      if (i > 0) out.push({ edge: 'start', after: this.units[i - 1].uid, at: this.units[i].start });
-      if (i >= 0 && i < this.units.length - 1)
-        out.push({ edge: 'end', after: this.units[i].uid, at: this.units[i].end });
-      return out;
+      if (i < 0) return [];
+      return [
+        { edge: 'start', after: i > 0 ? this.units[i - 1].uid : null,
+          at: this.units[i].start, shiftable: i > 0 },
+        { edge: 'end', after: this.units[i].uid,
+          at: this.units[i].end, shiftable: i < this.units.length - 1 },
+      ];
+    },
+    get armedEdge() { return this.edges.find(e => e.edge === this.armed) || null; },
+    // The insertion standing at a boundary, if any. `after: null` is the head.
+    insAt(after) {
+      return (this.so.insertions || []).find(x => (x.after ?? null) === (after ?? null)) || null;
     },
     // A tap in the text is two different requests, and which one is a state the
     // reader set by tapping a pinhead. Armed: put this boundary here. Otherwise:
     // make that unit the active one.
     hit(u, broken) {
       if (this.armed) {
-        const e = this.edges.find(x => x.edge === this.armed);
-        const off = this.lastTapOffset;
-        if (e && off != null) this.push({ op: 'move', after: e.after, to: off });
+        const e = this.armedEdge, off = this.lastTapOffset;
         this.armed = null;
-        return;
+        // A tap relocates a boundary that HAS two sides. The head and the tail
+        // have one, so there is nothing to relocate them between: the tap falls
+        // through and selects, which is what it would have done unarmed, rather
+        // than pushing a shift both implementations would refuse.
+        if (e && e.shiftable) {
+          if (off != null) this.push({ op: 'shift', after: e.after, to: off });
+          return;
+        }
       }
       this.sel = { ...u, broken, ref: this.srcRef(u) };
       this.paint();
@@ -1451,6 +1526,12 @@ window.__audit = {
       this.placePins();
       const e0 = this.edges.find(x => x.edge === which);
       if (!e0) return;
+      // ARMING IS NOT DRAGGING, and at the head and the tail only the first is
+      // available: a boundary with a unit on one side holds text and cannot be
+      // relocated, since there is nothing to relocate it between. Returning
+      // here leaves it armed, which is what the insert field in the panel
+      // reads, and never starts a drag that ops.shift would refuse mid-gesture.
+      if (!e0.shiftable) return;
       const after = e0.after;
       const lineH = parseFloat(getComputedStyle(this.$refs.doc).lineHeight) || 26;
       const EDGE = 6;
@@ -1470,7 +1551,7 @@ window.__audit = {
         if (i == null) return;
         // Moved live and recorded once, the same rule the pad follows: one drag
         // is one judgment.
-        if (Standoff.ops.move(this.so, this.a.text, { after, to: i }) === null) return;
+        if (Standoff.ops.shift(this.so, this.a.text, { after, to: i }) === null) return;
         landed = i;
         this.regroup(); this.paint();
       };
@@ -1481,13 +1562,13 @@ window.__audit = {
         d.removeEventListener('pointercancel', up, true);
         d.body.style.userSelect = ''; d.body.style.touchAction = '';
         if (landed != null && landed !== e0.at) {
-          Standoff.ops.move(this.so, this.a.text, { after, to: e0.at });
+          Standoff.ops.shift(this.so, this.a.text, { after, to: e0.at });
           this.regroup();
           this.armed = null;
-          this.push({ op: 'move', after, to: landed });
+          this.push({ op: 'shift', after, to: landed });
           return;
         }
-        if (landed != null) { Standoff.ops.move(this.so, this.a.text, { after, to: e0.at }); this.regroup(); }
+        if (landed != null) { Standoff.ops.shift(this.so, this.a.text, { after, to: e0.at }); this.regroup(); }
         // A TAP IS A DRAG THAT WENT NOWHERE, and it toggles: tap to arm, tap
         // again to put down.
         if (was) this.armed = null;
@@ -1558,8 +1639,8 @@ window.__audit = {
       const off = this.offsetAt(this.padPt.x, this.padPt.y);
       if (off != null) {
         // Moved on the live annotation, not recorded: one drag is one judgment,
-        // so the patch gets a single `move` when the finger lifts.
-        if (Standoff.ops.move(this.so, this.a.text, { after: b.after, to: off }) !== null) {
+        // so the patch gets a single `shift` when the finger lifts.
+        if (Standoff.ops.shift(this.so, this.a.text, { after: b.after, to: off }) !== null) {
           this.regroup(); this.paint();
         }
       }
@@ -1572,9 +1653,9 @@ window.__audit = {
       const to = e ? e.at : b.from;
       // Put it back, then let push() make the one real operation, so the page
       // and a patch replayed by ops.py end in the same place.
-      Standoff.ops.move(this.so, this.a.text, { after: b.after, to: b.from });
+      Standoff.ops.shift(this.so, this.a.text, { after: b.after, to: b.from });
       this.regroup();
-      if (to !== b.from) this.push({ op: 'move', after: b.after, to });
+      if (to !== b.from) this.push({ op: 'shift', after: b.after, to });
       else this.paint();
     },
     // The deck is a CONTAINER, not a viewer: one section per slide, same units,
@@ -1772,27 +1853,52 @@ window.__audit = {
           </label>
         </template>
 
+      </div>
+
+      <!-- GROUPED BY THE QUESTION EACH LINE ANSWERS, which nothing said before:
+           the block above is what this unit IS and what was decided about it,
+           this one is where it sits and how big, the next is how it came to
+           have these boundaries. The no-drag notice moved up here because it is
+           a fact about this unit's edges, and it used to sit below the note
+           with the two position lines separated by everything between. -->
+      <div class="flex flex-wrap gap-x-3 gap-y-1 items-center mt-1">
         <span class="opacity-60" x-text="`${sel?.words} words · ${KINDS[sel?.kind] || sel?.kind}`"></span>
         <!-- Wrapping rather than truncating is what lets the panel be narrow:
              this line was the widest thing in it, and a truncated one still
              claims the width it was cut to. -->
-        <span class="opacity-60 font-mono basis-full" x-text="sel?.ref"></span>
-        <span class="opacity-60 font-mono basis-full" x-show="sel?.from" x-cloak
-              x-text="provenance"></span>
-        <span class="italic opacity-70" x-show="sel?.note" x-text="sel?.note"></span>
-        <span class="opacity-60 basis-full" x-show="unpinned.length" x-cloak
+        <span class="opacity-60 font-mono basis-full" x-show="sel?.ref" x-cloak
+              x-text="sel?.ref"></span>
+        <span class="opacity-60 basis-full" x-show="noDrag" x-cloak
               x-text="noDrag"></span>
-        <span class="text-error" x-show="sel?.broken">slice does not close its own markup</span>
-        <span class="text-error" x-show="opErr" x-text="opErr"></span>
       </div>
 
-      <div class="flex items-center gap-2 mt-2" x-show="armed" x-cloak>
-        <button class="btn btn-sm btn-primary touch-none select-none"
-                @pointerdown="padDown($event)" @pointermove="padMove($event)"
-                @pointerup="padUp()" @pointercancel="padUp()">
-          <i class="ph ph-crosshair"></i> drag the edge
-        </button>
-        <span class="opacity-60 font-mono" x-text="edges.find(e=>e.edge===armed)?.at"></span>
+      <div class="flex flex-wrap gap-x-3 gap-y-1 items-center mt-1">
+        <span class="opacity-60 font-mono basis-full" x-show="sel?.from" x-cloak
+              x-text="provenance"></span>
+        <span class="italic opacity-70" x-show="sel?.note" x-cloak x-text="sel?.note"></span>
+        <span class="text-error basis-full" x-show="sel?.broken">slice does not close its own markup</span>
+        <span class="text-error basis-full" x-show="opErr" x-cloak x-text="opErr"></span>
+      </div>
+
+      <!-- THE ARMED BOUNDARY IS THE INSERTION'S ANCHOR, so the row that already
+           belongs to a boundary takes the second boundary operation rather than
+           a control of its own. Drag is offered only where the boundary has a
+           unit on each side: the head and the tail have one, which is enough to
+           hold text and not enough to relocate. -->
+      <div class="mt-2" x-show="armed" x-cloak>
+        <div class="flex items-center gap-2" x-show="armedEdge?.shiftable" x-cloak>
+          <button class="btn btn-sm btn-primary touch-none select-none"
+                  @pointerdown="padDown($event)" @pointermove="padMove($event)"
+                  @pointerup="padUp()" @pointercancel="padUp()">
+            <i class="ph ph-crosshair"></i> drag the edge
+          </button>
+          <span class="opacity-60 font-mono" x-text="armedEdge?.at"></span>
+        </div>
+        <input class="input input-xs input-bordered w-full mt-2"
+               placeholder="insert: text the document does not have"
+               x-effect="$el.value = armedEdge ? (insAt(armedEdge.after)?.text || '') : ''"
+               @change="armedEdge && push({op:'insert', after: armedEdge.after,
+                                           text:$event.target.value})">
       </div>
 
       <div class="flex flex-wrap items-center gap-1 mt-2">

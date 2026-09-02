@@ -139,12 +139,22 @@ if __name__ == "__main__":
         # steps 1 and 2; once a patch has moved the grain (skills/state-the-rule/
         # ops.py), the standoff carries units those inputs never held, and `from`
         # is the tell. Rebuilding would silently undo that work, so it refuses.
+        #
+        # INSERTIONS ARE THE SECOND TELL, and reading only the first was a hole:
+        # an insertion is anchored to a boundary rather than carried on a unit,
+        # so a standoff holding nothing but insertions has no `from` anywhere and
+        # rebuilt clean, losing every one of them without asking. What the guard
+        # is really for is work the two inputs cannot reconstruct, and that is
+        # both kinds.
         if out.exists():
             prior = json.loads(out.read_text())
             moved = [u["uid"] for u in prior["units"] if "from" in u]
-            if moved and "--reset" not in sys.argv:
-                sys.exit(f"{out} carries {len(moved)} patched unit(s) ({', '.join(moved[:4])}"
-                         f"{'…' if len(moved) > 4 else ''}) that units.jsonl and labels.tsv "
+            added = prior.get("insertions", [])
+            lost = ([f"{len(moved)} patched unit(s) ({', '.join(moved[:4])}"
+                     f"{'…' if len(moved) > 4 else ''})"] if moved else []) + \
+                   ([f"{len(added)} insertion(s)"] if added else [])
+            if lost and "--reset" not in sys.argv:
+                sys.exit(f"{out} carries {' and '.join(lost)} that units.jsonl and labels.tsv "
                          f"do not hold.\nRebuilding resets the grain. Pass --reset to mean it.")
         s = build_standoff(doc, run, parse_addr(addr), self_repo, question)
         out.write_text(json.dumps(s, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
