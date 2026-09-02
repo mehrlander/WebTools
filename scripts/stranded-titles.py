@@ -29,6 +29,17 @@ Method, and the two traps:
      at the tag that opens the element. The tokenizer below skips quoted
      regions, which is the whole reason it is a tokenizer and not a regex.
 
+  3. A tag named in a JAVASCRIPT comment is not markup, and it never closes, so
+     it sits on the stack for the rest of the file and marks every title after
+     it reachable. Found 2026-09-01 in home's budget-drs `app/view/app.html`,
+     where a prose comment about accessibility mentions `<a>`, `<span>` and
+     `<button>`; from that line to the end of the file every one of its 36
+     titles was reported reachable, the `tab-divider` note among them. HTML
+     comments were already skipped, which is exactly why the gap was quiet: the
+     obvious case was handled and looked like the whole case. `mask_js()` below
+     blanks JS comments before tokenizing, which needs a small JS lexer, since
+     `//` inside a string or a regex literal is not a comment.
+
 Three verdicts:
 
   reachable  the element or an ancestor is a link, a button, or carries a
@@ -71,6 +82,132 @@ TITLE = re.compile(r'''(:?title)=(["'])(.*?)\2''', re.S)
 XTEXT = re.compile(r'''x-text=(["'])(.*?)\1''', re.S)
 
 
+# A `/` starts a REGEX literal rather than a division when the previous
+# significant character cannot end an expression. The classic heuristic, and the
+# reason mask_js needs a lexer at all: 944 regex literals across this estate and
+# home's budget-drs app, 36 of them containing a quote and 159 an escaped slash,
+# so a scanner that ignored them would read `/['"]/` as the start of a string and
+# swallow whatever followed.
+REGEX_OK_BEFORE = set('=(,:[!&|?{};+-*%~^<>') | {'\n', ''}
+KEYWORD_BEFORE = ('return', 'typeof', 'case', 'in', 'of', 'do', 'else', 'yield', 'await')
+
+
+def mask_js(src, whole_file):
+    """Blank JS comments to spaces, keeping every offset and newline in place.
+
+    `whole_file` for a .js file; otherwise only `<script>` bodies are treated as
+    JavaScript, since a `//` in page markup is a URL, not a comment.
+
+    Template literals are SKIPPED rather than masked: markup lives in them, and
+    that markup is what the tokenizer is here to read. So a comment nested inside
+    a `${…}` goes unmasked, which is the behaviour this function replaces and
+    therefore no worse than before.
+    """
+    out = list(src)
+    n = len(src)
+
+    def blank(a, b):
+        for k in range(a, b):
+            if out[k] != '\n':
+                out[k] = ' '
+
+    if whole_file:
+        regions = [(0, n)]
+    else:
+        low = src.lower()
+        regions = []
+        i = 0
+        while True:
+            m = re.compile(r'<script\b[^>]*>', re.I).search(src, i)
+            if not m:
+                break
+            end = low.find('</script>', m.end())
+            end = n if end < 0 else end
+            regions.append((m.end(), end))
+            i = end + 1
+
+    for a, b in regions:
+        i, prev = a, ''
+        while i < b:
+            c = src[i]
+            if c in '"\'':
+                q, i = c, i + 1
+                while i < b:
+                    if src[i] == '\\':
+                        i += 2
+                        continue
+                    if src[i] == q:
+                        break
+                    i += 1
+                i += 1
+                prev = 'x'
+                continue
+            if c == '`':
+                i, depth = i + 1, 0
+                while i < b:
+                    ch = src[i]
+                    if ch == '\\':
+                        i += 2
+                        continue
+                    if ch == '`' and depth == 0:
+                        break
+                    if ch == '$' and src[i + 1:i + 2] == '{':
+                        depth += 1
+                        i += 2
+                        continue
+                    if ch == '}' and depth:
+                        depth -= 1
+                    i += 1
+                i += 1
+                prev = 'x'
+                continue
+            if c == '/' and i + 1 < b:
+                nxt = src[i + 1]
+                # `https://` is not a comment. The one guard that matters, since a
+                # masked URL line silently drops every title on it.
+                if nxt == '/' and src[i - 1:i] != ':':
+                    end = src.find('\n', i)
+                    end = b if end < 0 or end > b else end
+                    blank(i, end)
+                    i = end
+                    prev = '\n'
+                    continue
+                if nxt == '*':
+                    end = src.find('*/', i + 2)
+                    end = b if end < 0 or end + 2 > b else end + 2
+                    blank(i, end)
+                    i = end
+                    continue
+                if nxt != '/':
+                    word = re.search(r'([A-Za-z_$][\w$]*)\s*$', src[a:i])
+                    starts_regex = (prev in REGEX_OK_BEFORE
+                                    or (word and word.group(1) in KEYWORD_BEFORE))
+                    if starts_regex:
+                        j, cls = i + 1, False
+                        while j < b:
+                            ch = src[j]
+                            if ch == '\\':
+                                j += 2
+                                continue
+                            if ch == '[':
+                                cls = True
+                            elif ch == ']':
+                                cls = False
+                            elif ch == '/' and not cls:
+                                break
+                            elif ch == '\n':
+                                break          # an unterminated regex was a division
+                            j += 1
+                        if j < b and src[j] == '/':
+                            i = j + 1
+                            prev = 'x'
+                            continue
+            if not c.isspace():
+                prev = c
+            i += 1
+    return ''.join(out)
+
+
 def tags(src):
     """Yield (closing, name, attrs, offset) for every tag, skipping comments
     and quoted attribute values so a `<` inside an expression is not a tag."""
@@ -104,8 +241,11 @@ def tags(src):
 def scan(path):
     """Classify every title in one file. Returns a list of dicts."""
     src = path.read_text(encoding='utf8', errors='replace')
+    # Line numbers and offsets must still point into the real file, so the mask
+    # blanks in place rather than deleting: `masked` is the same length as `src`.
+    masked = mask_js(src, whole_file=path.suffix == '.js')
     out, stack = [], []
-    for closing, name, attrs, off in tags(src):
+    for closing, name, attrs, off in tags(masked):
         if closing:
             for k in range(len(stack) - 1, -1, -1):
                 if stack[k][0] == name:
