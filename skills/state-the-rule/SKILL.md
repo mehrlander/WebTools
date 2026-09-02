@@ -117,6 +117,10 @@ where a clause changes application at an edge.
 **Expect to beat the removal floor, and do not expect it.** `KEEP` units
 compress too, and a sentence-level pass cannot see that. Per-run figures are in `runs.csv`.
 
+**Start from the projection, not from the original.** `materialize.py` runs what
+the annotation states and leaves the rest for you; see "Projecting the
+annotation" below.
+
 ### 5. Route what leaves
 
 | Class | Destination |
@@ -228,12 +232,19 @@ are revised by a **patch**, a list of operations over the stored standoff:
 python3 ops.py <standoff.json> <patch.json> <doc.md> [--write]
 ```
 
+**Two geometries, and the key says which.** An operation over a **span** is keyed
+by `uid`. An operation over a **boundary** is keyed by `after`, the unit that
+boundary follows.
+
 | operation | is |
 | --- | --- |
 | `{"op":"split","uid":…,"at":<document offset>}` | one unit becomes two, meeting at `at` |
 | `{"op":"merge","uid":…}` | a unit absorbs its successor |
 | `{"op":"relabel","uid":…,"label":…}` | a different label from the declared vocabulary |
+| `{"op":"verdict","uid":…,"verdict":…}` | a verdict from the declared list |
 | `{"op":"note","uid":…,"text":…}` | what the label cannot say; an empty text clears it |
+| `{"op":"shift","after":…,"to":<document offset>}` | the boundary after that unit moves |
+| `{"op":"insert","after":…,"text":…}` | text the document does not have; an empty text clears it |
 
 **Operations are keyed by uid, not by array index.** RFC 6902 is the standard and
 the wrong altitude: its paths are positions, so inserting one unit invalidates
@@ -263,10 +274,67 @@ says about either, and grain for its own sake is not a finding. On
 `CONVENTIONS.md`, 36 of 69 prose units carry a clause boundary and 10 met the
 bar; every one of the ten was a rule with its reason fused on.
 
+**Offsets are code points, which is what Python counts.** A browser counts UTF-16
+code units, so an astral character (every emoji in these documents) is one index
+here and two there, and every offset after the first one drifts. The spans still
+resolve, they resolve to the wrong text, so no invariant can see it: a shifted
+partition is still a partition. `docs/SURFACING.md` carries 49.
+
+The format does not change. `lib/kits/standoff.js` converts where a number
+crosses the boundary, `adopt` on the way in and `emit` on the way out for the
+stored file and for a patch `ops.py` will read. An insertion carries no offset at
+all, being anchored by uid. A document with no astral character maps to itself.
+
+**`kind` is derived from the span, not carried through the edit.** It was written
+once by `segment.py` and then survived every operation, so a boundary move left
+it describing a span that no longer existed: splitting `## Scope and precedence`
+gave a unit reading "nd precedence" still labelled `heading`, and three of the
+nine headings in `CONVENTIONS.md` offer that split one tap away. `split`, `merge`
+and `shift` now re-derive it; the other operations touch no span and do not.
+`merge`'s old rule (differing kinds become `mixed`) was a partial version of the
+same fix, reading the two operands rather than the result, so merging two
+sentences across a blank line kept `sent`.
+
+The derivation is `segment.py`'s own dispatch order read against a span rather
+than a block, which is what lets a browser answer without a segmenter. A fence
+outranks everything, since only a fence body legitimately holds blank lines;
+heterogeneity outranks the remaining markers, so a heading that swallowed across
+a break is `mixed` rather than `heading`. `tools/test/state-the-rule.test.mjs`
+holds the two to each other over 1,381 units of this repo's documents.
+
 **A boundary is the object, not an edge.** The end of one unit is the start of
-the next, so `move` touches both and the units stay a partition: one label per
+the next, so `shift` touches both and the units stay a partition: one label per
 character, which is what the word-share figure counts. Overlap is a complaint
-rather than a mode.
+rather than a mode. The operation was called `move` until 2026-09-02 and gave the
+name up to the `MOVE` verdict, which is a different kind of thing about a
+different object.
+
+**An insertion is text the document does not have, so it anchors to a boundary
+rather than to a span.** Every other operation moves boundaries and labels and
+leaves the bytes alone, which is what lets `target.sha256` stay true across a
+session; `insert` states a change to those bytes without making it. It therefore
+neither tiles nor covers, and no span invariant can see one, which is why
+`insertions` is a list of its own rather than a unit with a zero-width span: such
+a unit would fail the span check, need a special case in the tiling arithmetic,
+and report `words` counted from text the document does not contain, which feeds
+the word-share figure.
+
+**The anchor is the identity.** One insertion per boundary, no id to keep unique,
+and an empty text clears it, which is `note`'s shape one geometry over.
+`{"after": null}` is the head of the document, the one boundary that follows no
+unit. Three interactions follow, and the middle one is a refusal:
+
+| the patch also | the insertion |
+| --- | --- |
+| `shift`s the anchored boundary | is untouched; the anchor is a uid, not an offset |
+| `merge`s the anchor with its successor | refuses the merge |
+| `split`s the anchor unit | re-anchors to the second half |
+
+The merge refusal is not tidiness. The survivor keeps the first unit's uid, so
+the anchor would still resolve, now naming the boundary past the absorbed unit:
+it would pass every check and sit in the wrong place. Held with the rest of the
+parity in `tools/test/state-the-rule.test.mjs`, which runs one patch through both
+implementations and compares the result.
 
 **Where a patch comes from.** `pages/audit-render.html` (hub) offers the
 operations on the selected unit and accumulates them, applying each one
@@ -280,8 +348,13 @@ each rendered text node back to the source by finding it with a moving cursor,
 which works because the rendered text is a subsequence of the source. What it
 cannot find it leaves unmapped, and an unmapped run offers no offset, so markup
 is not a place: `**`, `[`, `](url)` and a fence's backticks are in no text node.
-An inline construct is atomic on top of that, since a boundary inside a link's
-label breaks it as surely as one inside its target. This is a **placement** rule
+An inline construct is atomic on top of that. That was once a necessity, since
+each unit was rendered from its own slice of source and a boundary inside a
+link's label left one side holding an unclosed delimiter. The page renders the
+document once now and paints units as ranges over its text, so no boundary can
+break an element and atomicity is a **choice** about what a unit should mean
+rather than a patch over a rendering failure. It is kept: a boundary inside a
+link's label is not a place a reader can mean. This is a **placement** rule
 and not an invariant: `check.py` is stdlib Python with no markdown parser, and a
 second disagreeing implementation would be worse than none, so a hand-authored
 patch can still do what the interface cannot. Where the page is
@@ -298,6 +371,51 @@ drift is a failed comparison rather than a surprise months later. The two
 serializations agree byte for byte with `audit-payload.py`'s, which a test
 holds, so a save from the page and a rebuild from the run do not reformat each
 other's file.
+
+## Projecting the annotation
+
+```bash
+python3 materialize.py <standoff.json> <doc.md> [--out <file>] [--json]
+```
+
+**Two of the four verdicts execute, and the other two are reported.** `DROP`
+removes its span and every insertion is placed; `KEEP` is a no-op. `REWRITE`
+names no replacement and `MOVE` names no destination, so neither can run without
+inventing text, and inventing text is the one thing a projection must not do.
+Both are left standing and named. What comes out is a **draft for step 4**, not a
+finished rewrite.
+
+`MOVE` is left standing rather than removed, which is the one place this
+disagrees with `check.py`. That check reads `DROP` and `MOVE` together as
+"should have left", which is right when it is *judging* a rewrite a person made:
+the person put the moved text somewhere. Here there is nowhere to put it.
+
+**An insertion inherits the separator already standing at its boundary.** A gap
+holding a blank line separates blocks, so the text arrives as its own block;
+anything else is a run, so it joins with a space. Reading the separator off the
+document is mechanical; choosing one would be the same guess as inventing a
+`REWRITE`. Two consequences: the head of the document is a block by
+construction, having no separator to read; and the tail joins the final
+paragraph, since the separator standing there is a line ending. A closing
+*block* is therefore not expressible, and would take an explicit field on the
+insertion rather than a smarter default.
+
+**It does not tidy.** Removing a span leaves the whitespace the span sat in, and
+collapsing that is neither stated by the annotation nor invariant over markdown,
+since inside a fenced block whitespace is content. The artifacts are counted and
+reported instead.
+
+**The digest is the gate, and it is also the insertion's whole lifecycle.** A
+standoff's spans are offsets into particular bytes, so a projection onto any
+other bytes would splice in the wrong places and is refused. The same refusal is
+what retires an insertion: applying the output over the target changes the bytes,
+the digest stops matching, and a second run cannot double-apply. Nothing marks an
+insertion "applied", and nothing needs to. The text is then ordinary document
+text, annotated like any other, and the annotation that proposed it wants
+`reanchor.py`, not another projection.
+
+Held by `tools/test/state-the-rule.test.mjs`, which pins each of those against a
+mutation that would break it.
 
 ## Boundaries
 
@@ -322,7 +440,7 @@ other's file.
 
 ## Files
 
-`segment.py` · `check.py` · `seams.py` · `ops.py` · `runs.csv` · `LOG.md` · `runs/<date>-<patient>/`
+`segment.py` · `check.py` · `seams.py` · `ops.py` · `materialize.py` · `runs.csv` · `LOG.md` · `runs/<date>-<patient>/`
 
 Hub only, and not part of the skill: `lib/kits/standoff.js` (the same rules for a
 browser), `tools/build/audit-payload.py` (the artifact and its delivery payload),

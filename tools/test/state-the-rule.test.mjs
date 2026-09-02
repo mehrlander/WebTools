@@ -9,10 +9,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { repoRoot } from './bootstrap.mjs';
 
 const SKILL = join(repoRoot, 'skills', 'state-the-rule');
@@ -255,21 +256,22 @@ test('seams.py reports a heading that swallowed the line under it', () => {
 
 const DOC = 'Close the lid, because the contents spoil.\n\nCheck it twice.';
 
+const BASE = () => ({
+  kind: 'standoff/1',
+  target: { path: 'doc.md' },
+  vocabulary: [{ label: 'WHAT', side: 'declaration' },
+               { label: 'WHY-MOT', side: 'explanation' }],
+  units: [
+    { uid: 'u-001', start: 0, end: 42, kind: 'sent', words: 7, label: 'WHAT' },
+    { uid: 'u-002', start: 44, end: 59, kind: 'sent', words: 3, label: 'WHAT' },
+  ],
+});
+
 function standoff(dir) {
   const doc = join(dir, 'doc.md');
   writeFileSync(doc, DOC);
-  const so = {
-    kind: 'standoff/1',
-    target: { path: 'doc.md' },
-    vocabulary: [{ label: 'WHAT', side: 'declaration' },
-                 { label: 'WHY-MOT', side: 'explanation' }],
-    units: [
-      { uid: 'u-001', start: 0, end: 42, kind: 'sent', words: 7, label: 'WHAT' },
-      { uid: 'u-002', start: 44, end: 59, kind: 'sent', words: 3, label: 'WHAT' },
-    ],
-  };
   const sf = join(dir, 'so.json');
-  writeFileSync(sf, JSON.stringify(so));
+  writeFileSync(sf, JSON.stringify(BASE()));
   return { doc, sf };
 }
 
@@ -336,20 +338,14 @@ test('the last unit has nothing to merge with', () => {
 
 // A merge that kept either side's kind would be stating something false about
 // the span it now covers, and the kind is what the page styles on.
-test('a merge across two kinds reports mixed, not one of them', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'ops-'));
-  const { doc, sf } = standoff(dir);
-  const so = JSON.parse(readFileSync(sf, 'utf8'));
-  so.units[1].kind = 'heading';
-  writeFileSync(sf, JSON.stringify(so));
-  const pf = join(dir, 'p.json');
-  writeFileSync(pf, JSON.stringify([{ op: 'merge', uid: 'u-001' }]));
-  execFileSync('python3', [join(SKILL, 'ops.py'), sf, pf, doc, '--write']);
-  const after = JSON.parse(readFileSync(sf, 'utf8'));
-  rmSync(dir, { recursive: true, force: true });
-  assert.equal(after.units.length, 1);
-  assert.equal(after.units[0].kind, 'mixed');
-  assert.equal(after.units[0].end, 59, 'the survivor covers both spans');
+// DERIVED FROM THE SPAN, NOT FROM THE LABELS JOINED. Both units are `sent`, so
+// the rule this replaces ("the two kinds differ, so say mixed") would have kept
+// `sent` on a survivor plainly covering two paragraphs.
+test('a merge reports the kind of the span it produced', () => {
+  const { so } = patch([{ op: 'merge', uid: 'u-001' }]);
+  assert.equal(so.units.length, 1);
+  assert.equal(so.units[0].kind, 'mixed', 'the survivor spans a blank line');
+  assert.equal(so.units[0].end, 59, 'the survivor covers both spans');
 });
 
 test('a note is set and cleared through the same operation', () => {
@@ -375,21 +371,21 @@ test('without --write nothing is written', () => {
 // construction rather than by a rule.
 
 test('moving a boundary moves both units and keeps the partition', () => {
-  const { so } = patch([{ op: 'move', after: 'u-001', to: 30 }]);
+  const { so } = patch([{ op: 'shift', after: 'u-001', to: 30 }]);
   assert.deepEqual([so.units[0].start, so.units[0].end], [0, 30]);
   assert.deepEqual([so.units[1].start, so.units[1].end], [30, 59]);
-  assert.equal(so.units[0].from, 'move:u-001/u-002');
-  assert.equal(so.units[1].from, 'move:u-001/u-002');
+  assert.equal(so.units[0].from, 'shift:u-001/u-002');
+  assert.equal(so.units[1].from, 'shift:u-001/u-002');
 });
 
 test('a boundary outside the pair it separates is refused', () => {
-  const { status, out } = patch([{ op: 'move', after: 'u-001', to: 200 }]);
+  const { status, out } = patch([{ op: 'shift', after: 'u-001', to: 200 }]);
   assert.notEqual(status, 0);
   assert.match(out, /outside/);
 });
 
 test('the last unit has no boundary after it', () => {
-  const { status, out } = patch([{ op: 'move', after: 'u-002', to: 50 }]);
+  const { status, out } = patch([{ op: 'shift', after: 'u-002', to: 50 }]);
   assert.notEqual(status, 0);
   assert.match(out, /no boundary after it/);
 });
@@ -410,4 +406,363 @@ test('an overlap is reported, not just a gap', () => {
   catch (e) { out = (e.stderr || '') + (e.stdout || ''); }
   rmSync(dir, { recursive: true, force: true });
   assert.match(out, /u-002: overlaps the unit before it by 12 chars/);
+});
+
+// ── THE TWO IMPLEMENTATIONS, HELD TO EACH OTHER ──────────────────────────────
+// tools/render/scenarios/audit-edit.mjs drives both end to end and PRINTS them
+// for a person to diff. This asserts it, over the ops least likely to be
+// re-checked by eye. `insert` is the reason: it is inert with respect to every
+// span invariant, so nothing else here can see it drift, and it carries three
+// interactions with the ops around it. A patch replaying differently in the two
+// languages is the failure, and the browser is where it would be found last.
+
+const win = {};
+new Function('window', readFileSync(join(repoRoot, 'lib/kits/standoff.js'), 'utf8'))(win);
+const KIT = win.Standoff;
+
+// Both sides, one patch. Returns the two results so a test can compare them, and
+// asserts up front that they AGREE ON WHETHER TO RUN AT ALL: a refusal on one
+// side and a clean apply on the other is the drift that matters most, and
+// comparing only the output would read it as an equality failure.
+function both(ops) {
+  const py = patch(ops);
+  const js = KIT.apply(BASE(), ops, DOC);
+  const pyRefused = py.status !== 0, jsRefused = js.complaints.length > 0;
+  assert.equal(pyRefused, jsRefused,
+    `python ${pyRefused ? 'refused' : 'applied'}, javascript ${jsRefused ? 'refused' : 'applied'}` +
+    `\n  python: ${py.out.trim()}\n  javascript: ${js.complaints.join('; ')}`);
+  return { py, js, refused: pyRefused };
+}
+
+// The whole patch, not just the insertions: an insert that also perturbed a span
+// would show up here and nowhere else. Compared as BYTES rather than by
+// deepEqual, which is blind to key order, and key order is the half that
+// matters downstream: audit-payload.py and the page both write standoff.json,
+// so a disagreement makes every real change arrive inside a whole-file
+// reformat. The two did disagree when insert was written (`after, why, text`
+// against `after, text, why`) and deepEqual passed.
+const agree = (ops) => {
+  const { py, js, refused } = both(ops);
+  assert.equal(refused, false, `both refused: ${py.out.trim()}`);
+  assert.deepEqual(js.so, py.so);
+  assert.equal(JSON.stringify(js.so), JSON.stringify(py.so),
+    'the two serializations differ in key order, which deepEqual cannot see');
+  return py.so;
+};
+
+test('an insertion anchors to a boundary and both languages place it the same', () => {
+  const so = agree([{ op: 'insert', after: 'u-001', text: 'A sentence the document lacks.' }]);
+  assert.deepEqual(so.insertions,
+    [{ after: 'u-001', text: 'A sentence the document lacks.' }]);
+  assert.equal(so.units.length, 2, 'the units are untouched by an insertion');
+});
+
+test('an insertion carrying a reason serializes identically in both languages', () => {
+  const so = agree([{ op: 'insert', after: 'u-001', text: 'the rule needs a case',
+                      why: 'the boundary above states it and nothing shows it' }]);
+  assert.deepEqual(Object.keys(so.insertions[0]), ['after', 'text', 'why']);
+});
+
+test('the head of the document is a boundary, and it is the one that follows nothing', () => {
+  const so = agree([{ op: 'insert', after: null, text: 'A lead sentence.' },
+                    { op: 'insert', after: 'u-002', text: 'A closing sentence.' }]);
+  assert.deepEqual(so.insertions.map(i => i.after), [null, 'u-002'],
+    'ordered by where the anchor sits, head first');
+});
+
+test('the anchor is the identity, so an empty text clears it', () => {
+  const so = agree([{ op: 'insert', after: 'u-001', text: 'first thought' },
+                    { op: 'insert', after: 'u-001', text: 'second thought' },
+                    { op: 'insert', after: 'u-002', text: 'elsewhere' }]);
+  assert.deepEqual(so.insertions,
+    [{ after: 'u-001', text: 'second thought' }, { after: 'u-002', text: 'elsewhere' }],
+    'a second insertion at one boundary replaces the first rather than joining it');
+
+  const gone = agree([{ op: 'insert', after: 'u-001', text: 'x' },
+                      { op: 'insert', after: 'u-001', text: '' }]);
+  assert.equal('insertions' in gone, false, 'the last insertion out takes the key with it');
+});
+
+// The payoff of keying by uid rather than by offset, and the reason to state it
+// as a test: an offset anchor would need rewriting on every drag, and the page
+// produces drags from three call sites.
+test('shifting the anchored boundary leaves the insertion alone', () => {
+  const so = agree([{ op: 'insert', after: 'u-001', text: 'stays put' },
+                    { op: 'shift', after: 'u-001', to: 30 }]);
+  assert.deepEqual(so.insertions, [{ after: 'u-001', text: 'stays put' }]);
+  assert.equal(so.units[0].end, 30, 'the boundary really did move under it');
+});
+
+test('splitting the anchor unit carries the insertion to the half that keeps the boundary', () => {
+  const so = agree([{ op: 'insert', after: 'u-001', text: 'after the whole unit' },
+                    { op: 'split', uid: 'u-001', at: 15 }]);
+  assert.equal(so.insertions[0].after, 'u-001b',
+    'the parent\'s end is the second half\'s end; the first half\'s end is a new boundary');
+});
+
+// Not tidiness. The survivor keeps `u-001`, so the anchor would still RESOLVE
+// after the merge, naming the boundary past the absorbed unit: it would pass
+// every check and sit in the wrong place.
+test('a merge is refused while an insertion sits on the boundary it removes', () => {
+  const { py, refused } = both([{ op: 'insert', after: 'u-001', text: 'here, between them' },
+                                { op: 'merge', uid: 'u-001' }]);
+  assert.equal(refused, true, 'the merge went through and moved the anchor silently');
+  assert.match(py.out, /insertion/i);
+  assert.equal(py.so.units.length, 2, 'a refused patch leaves the file alone');
+});
+
+test('an insertion anchored to no unit is refused by both', () => {
+  assert.equal(both([{ op: 'insert', after: 'u-404', text: 'nowhere' }]).refused, true);
+});
+
+// KIND IS DERIVED, so it is a third thing the two implementations have to agree
+// about, and the one with no segmenter on the browser side. Asserted through the
+// parity harness rather than twice, because the failure worth catching is one
+// language re-deriving and the other carrying the old value forward: both would
+// look correct alone. A shift is the case that exposed the gap, since only the
+// JavaScript side had a test for it.
+test('a boundary move re-derives the kind on both sides, in both languages', () => {
+  const so = agree([{ op: 'shift', after: 'u-001', to: 50 }]);
+  assert.deepEqual(so.units.map(u => [u.uid, u.kind]), [['u-001', 'mixed'], ['u-002', 'sent']],
+    'the first unit swallowed across the blank line; the second is a plain sentence again');
+});
+
+test('a split re-derives the kind of both halves, in both languages', () => {
+  const so = agree([{ op: 'split', uid: 'u-001', at: 15 }]);
+  assert.deepEqual(so.units.map(u => [u.uid, u.kind]),
+    [['u-001a', 'sent'], ['u-001b', 'sent'], ['u-002', 'sent']]);
+});
+
+// ── PROJECTING A STANDOFF ONTO TEXT ──────────────────────────────────────────
+// materialize.py runs the edits the annotation SPECIFIES and reports the ones it
+// cannot: DROP and insert are mechanical, REWRITE and MOVE each imply content
+// the standoff does not carry. The failure worth pinning is not a crash, it is a
+// projection that quietly invents something: a MOVE silently removed, a
+// separator chosen rather than read, or an insertion applied a second time.
+
+function project(mut, args = ['--json'], fixture = null) {
+  const dir = mkdtempSync(join(tmpdir(), 'mat-'));
+  const doc = join(dir, 'doc.md'), sf = join(dir, 'so.json'), out = join(dir, 'out.md');
+  writeFileSync(doc, fixture ? fixture.text : DOC);
+  const so = fixture ? fixture.so() : BASE();
+  so.verdicts = ['KEEP', 'REWRITE', 'MOVE', 'DROP'].map(verdict => ({ verdict }));
+  so.units.forEach(u => { u.verdict = 'KEEP'; });
+  mut(so);
+  writeFileSync(sf, JSON.stringify(so));
+  const r = spawnSync('python3', [join(SKILL, 'materialize.py'), sf, doc, '--out', out, ...args],
+                      { encoding: 'utf8' });
+  const text = r.status === 0 ? readFileSync(out, 'utf8') : '';
+  const json = args.includes('--json') && r.status === 0 ? JSON.parse(r.stdout) : null;
+  return { status: r.status, stderr: r.stderr, text, json, dir, doc, sf };
+}
+
+test('an annotation specifying nothing executable projects the document unchanged', () => {
+  const r = project(() => {});
+  assert.equal(r.text, DOC, 'all-KEEP and no insertions is a no-op, byte for byte');
+  assert.deepEqual(r.json.joins, {}, 'nothing was removed, so nothing was left behind');
+});
+
+test('DROP is executed and REWRITE and MOVE are left standing, named', () => {
+  const r = project((so) => {
+    so.units[0].verdict = 'REWRITE';
+    so.units[1].verdict = 'MOVE';
+  });
+  assert.match(r.text, /Close the lid/, 'a REWRITE keeps its text: no replacement is stored');
+  assert.match(r.text, /Check it twice/, 'a MOVE keeps its text: no destination is stored');
+  assert.deepEqual(r.json.standing.map(s => [s.uid, s.verdict]),
+    [['u-001', 'REWRITE'], ['u-002', 'MOVE']]);
+
+  const dropped = project((so) => { so.units[1].verdict = 'DROP'; });
+  assert.doesNotMatch(dropped.text, /Check it twice/);
+  assert.equal(dropped.json.dropped_words, 3);
+});
+
+// MOVE is the one place this disagrees with check.py, which reads DROP and MOVE
+// together as "should have left". That is right when JUDGING a rewrite a person
+// made, because the person put the text somewhere. Here there is nowhere.
+test('a MOVE is not a DROP: removing it would lose text with no record of where it went', () => {
+  const r = project((so) => { so.units[1].verdict = 'MOVE'; });
+  assert.match(r.text, /Check it twice/);
+  assert.equal(r.json.dropped_words, 0);
+});
+
+// The separator is READ off the document, not chosen. Picking one would be the
+// same kind of guess as inventing a REWRITE.
+test('an insertion inherits the separator already standing at its boundary', () => {
+  // u-001 and u-002 are separated by a blank line, so that boundary is a block.
+  const block = project((so) => {
+    so.insertions = [{ after: 'u-001', text: 'A new paragraph.' }];
+  });
+  assert.match(block.text, /spoil\.\n\nA new paragraph\.\n\nCheck/);
+
+  // The tail's gap is the file's end, no blank line, so the text joins the run.
+  const inline = project((so) => {
+    so.insertions = [{ after: 'u-002', text: 'And once more.' }];
+  });
+  assert.match(inline.text, /Check it twice\. And once more\./);
+});
+
+test('the head of the document is a block, since it can continue nothing', () => {
+  const r = project((so) => { so.insertions = [{ after: null, text: 'A lead sentence.' }]; });
+  assert.ok(r.text.startsWith('A lead sentence.\n\nClose the lid'), r.text.slice(0, 60));
+});
+
+// A reporter blind to the commonest artifact of its own edit reads as an
+// all-clear. Both units of the main fixture are whole paragraphs, so dropping
+// one strands nothing; the artifacts only appear where units SHARE a line,
+// which is the ordinary sentence-grain case.
+const RUN = {
+  text: 'One here. Two here. Three here.\n',
+  so: () => ({
+    kind: 'standoff/1', target: { path: 'doc.md' },
+    vocabulary: [{ label: 'WHAT' }],
+    units: [{ uid: 'r-1', start: 0, end: 9, kind: 'sent', words: 2, label: 'WHAT' },
+            { uid: 'r-2', start: 10, end: 19, kind: 'sent', words: 2, label: 'WHAT' },
+            { uid: 'r-3', start: 20, end: 31, kind: 'sent', words: 2, label: 'WHAT' }],
+  }),
+};
+
+test('the whitespace a removal leaves is reported rather than cleaned up', () => {
+  const r = project((so) => { so.units[1].verdict = 'DROP'; }, ['--json'], RUN);
+  assert.equal(r.text, 'One here.  Three here.\n',
+    'the span is removed and the spaces around it are left exactly as they were');
+  assert.deepEqual(r.json.joins, { 'double space': 1 });
+});
+
+// The shape a first pass missed entirely: cutting the LAST unit of a line
+// strands the space before it against the newline, which no mid-line run
+// matches. It reported {} on an edit that had visibly left something.
+test('a removal at the end of a line is reported too, not only one in the middle', () => {
+  const r = project((so) => { so.units[2].verdict = 'DROP'; }, ['--json'], RUN);
+  assert.equal(r.text, 'One here. Two here. \n');
+  assert.deepEqual(r.json.joins, { 'trailing space': 1 });
+});
+
+// THE DIGEST IS THE LIFECYCLE. An insertion is pending while the document still
+// has the bytes the annotation was made against; applying the projection ends
+// that, and the same gate that protects the offsets is what stops a second
+// application. Nothing has to mark an insertion "applied".
+test('applying the projection retires its insertions, because the digest stops matching', () => {
+  const r = project((so) => {
+    so.target.sha256 = createHash('sha256').update(DOC).digest('hex');
+    so.insertions = [{ after: 'u-001', text: 'A new paragraph.' }];
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.text, /A new paragraph/);
+
+  // Write the projection over the target, the way a session would, then re-run.
+  writeFileSync(r.doc, r.text);
+  const again = spawnSync('python3', [join(SKILL, 'materialize.py'), r.sf, r.doc],
+                          { encoding: 'utf8' });
+  assert.notEqual(again.status, 0, 'the insertion would have been applied twice');
+  assert.match(again.stderr, /not the document this standoff annotates/);
+  assert.match(again.stderr, /re-anchoring/, 'the refusal says what to do instead');
+});
+
+// ── THE CLASSIFIER AND THE SEGMENTER, HELD TOGETHER ──────────────────────────
+// `kind` is derived from a span so a boundary edit cannot leave it stale, which
+// only works while the derivation agrees with the segmenter that produced the
+// kinds in the first place. They are two statements of one rule in two
+// languages: segment.py dispatches on a BLOCK, Standoff.kindOf on a SPAN, and a
+// browser has no segmenter to fall back on. A drift makes a patched unit and a
+// rebuilt one disagree about the same text, which nothing else would report.
+//
+// Run over the repo's own documents rather than a fixture, because the shapes
+// that separate the two orderings (a fence whose body holds blank lines, a
+// heading straight after a fence) are not ones a fixture author thinks to write.
+
+const CORPUS = ['docs/SURFACING.md', 'docs/TRACKER.md', 'docs/CONVENTIONS.md',
+                'skills/state-the-rule/SKILL.md', 'CLAUDE.md', 'docs/registries.md',
+                'docs/showing.md', 'docs/stage.md', 'docs/loader.md'];
+
+// PYTHON INDEXES BY CODE POINT AND JAVASCRIPT BY UTF-16 CODE UNIT, so one astral
+// character (every emoji in these documents) shifts every later offset by one.
+// docs/SURFACING.md carries 49 of them, and a browser slicing at segment.py's
+// offsets reads a span starting two characters early. That is a defect in the
+// FORMAT, not in the classification this test is about, and no stored run hits
+// it yet (CONVENTIONS.md has none), so the offsets are converted here rather
+// than the corpus being trimmed to documents that hide it.
+function toUtf16(text) {
+  const map = [];
+  for (let i = 0; i < text.length;) { map.push(i); i += text.codePointAt(i) > 0xFFFF ? 2 : 1; }
+  map.push(text.length);
+  return map;
+}
+
+test('Standoff.kindOf agrees with segment.py on every unit of the repo corpus', () => {
+  const seen = {}, drift = [];
+  let n = 0, astral = 0;
+  for (const rel of CORPUS) {
+    const path = join(repoRoot, rel);
+    const text = readFileSync(path, 'utf8');
+    const map = toUtf16(text);
+    astral += text.length - (map.length - 1);
+    const units = execFileSync('python3', [join(SKILL, 'segment.py'), path, '1', '99999'],
+                               { encoding: 'utf8' }).trim().split('\n').map(l => JSON.parse(l));
+    for (const u of units) {
+      n++;
+      seen[u.kind] = (seen[u.kind] || 0) + 1;
+      const got = KIT.kindOf(text, map[u.start], map[u.end]);
+      if (got !== u.kind) drift.push(`${rel} ${u.uid}: segment.py ${u.kind}, kindOf ${got}` +
+                                     ` — ${JSON.stringify(u.text.slice(0, 48))}`);
+    }
+  }
+  assert.deepEqual(drift, []);
+  // A corpus that lost its fences or tables would pass while testing nothing,
+  // since `sent` is the fallback both sides reach by doing nothing.
+  assert.ok(n > 1000, `only ${n} units in the corpus`);
+  for (const k of ['heading', 'sent', 'code', 'table'])
+    assert.ok(seen[k] >= 10, `only ${seen[k] || 0} ${k} units to compare`);
+  // And the conversion above is doing something, so a corpus quietly losing its
+  // emoji cannot turn this into a test of nothing.
+  assert.ok(astral > 20, `only ${astral} astral characters: the offset skew is untested`);
+});
+
+// The ordering is the whole design, and it is not obvious from either file. A
+// structural marker outranks the remaining tests EXCEPT heterogeneity, which
+// outranks every marker but a fence: a fence body legitimately holds blank
+// lines, and nothing else does.
+test('a fence outranks the blank line inside it, and every other marker does not', () => {
+  const fence = '```markdown\nfirst line\n\nafter a blank line\n```';
+  assert.equal(KIT.kindOf(fence, 0, fence.length), 'code',
+    'reading the blank line first would call a fenced example mixed');
+
+  const heading = '## Scope and precedence\n\nA sentence follows it.';
+  assert.equal(KIT.kindOf(heading, 0, 23), 'heading');
+  assert.equal(KIT.kindOf(heading, 0, 32), 'mixed',
+    'a heading that swallowed across the break is no longer just a heading');
+
+  const table = '| a | b |\n| - | - |';
+  assert.equal(KIT.kindOf(table, 0, table.length), 'table');
+});
+
+// THE WHOLE TRIP, over the document that actually carries the problem.
+// docs/SURFACING.md holds 49 astral characters, so every unit after the first is
+// shifted for a browser reading segment.py's offsets directly. A fixture cannot
+// stand in for this: the drift is proportional to how many emoji precede a unit,
+// so only a real document exercises the accumulation.
+test('every unit of an emoji-carrying document resolves to the text segment.py recorded', () => {
+  const rel = 'docs/SURFACING.md';
+  const path = join(repoRoot, rel);
+  const text = readFileSync(path, 'utf8');
+  const units = execFileSync('python3', [join(SKILL, 'segment.py'), path, '1', '99999'],
+                             { encoding: 'utf8' }).trim().split('\n').map(l => JSON.parse(l));
+  const astral = text.length - [...text].length;
+  assert.ok(astral >= 40, `only ${astral} astral characters: the drift is untested`);
+
+  const stored = { units: units.map(u => ({ uid: u.uid, start: u.start, end: u.end })) };
+  const browser = KIT.adopt(stored, text);
+  const wrong = browser.units
+    .map((u, i) => [u.uid, text.slice(u.start, u.end), units[i].text])
+    .filter(([, got, want]) => got !== want);
+  assert.deepEqual(wrong.map(w => w[0]), [], 'adopted spans that do not match segment.py');
+
+  // And back, byte for byte, since this is what gets written to the run file.
+  assert.deepEqual(KIT.emit(browser, text).units, stored.units);
+
+  // Without the conversion, most of the document is wrong: the assertion above
+  // would pass over a no-op if the maps were ever reduced to identity.
+  const raw = units.filter(u => text.slice(u.start, u.end) !== u.text).length;
+  assert.ok(raw > units.length / 2,
+    `only ${raw} of ${units.length} units drift unconverted; is the corpus still emoji-heavy?`);
 });

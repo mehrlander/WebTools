@@ -1,63 +1,66 @@
-// screenshot.mjs interaction scenario: a numbered list renders as one.
+// screenshot.mjs interaction scenario: a numbered list renders as one, and a
+// sentence taken from inside an item stays inside it.
 //
 //   node tools/render/screenshot.mjs pages/audit-render.html --width 900 \
 //     --script tools/render/scenarios/audit-list.mjs
 //
-// Each unit is rendered as markdown ON ITS OWN, so a numbered list only survives
-// if each item is one unit carrying its own marker. When the segmenter cut `1. `
-// off as a sentence, the marker rendered as an <ol> with an empty <li> and the
-// item rendered as a bare paragraph: three empty numbers over three unindented
-// sentences, which is a document nobody would read as a list.
+// THE MECHANISM THIS ONCE GUARDED IS GONE, and the property is not. The page
+// used to render each unit as markdown on its own, so a numbered list survived
+// only if every item was one unit carrying its own marker: a unit holding just
+// `1. ` drew an <ol> with an empty <li>, an item that had lost its marker drew
+// as a bare paragraph, and the three items renumbered to 1,1,1 unless marked
+// read each authored ordinal into its own <ol start=N>. The document is rendered
+// once now and the <ol> is its own, so all of that is structurally impossible.
 //
-// The numbering across separately-rendered items is the second half and it is
-// not free: `2. …` alone is an <ol start="2"> only because marked reads the
-// authored number. So the check is the rendered ordinal, not the presence of a
-// list.
+// What is checked instead is what a reader actually sees: one list, three
+// numbered items, and every unit's text inside the item it belongs to. That last
+// one is the same question one level up, and the answer no longer depends on the
+// grain at all.
 export default async function (page) {
-  await page.waitForSelector('[x-ref="doc"] span');
+  await page.waitForSelector('[x-ref="doc"] [data-uid]');
   const out = await page.evaluate(() => {
     const d = Alpine.$data(document.body);
     const at = d.a.text.indexOf('ask three questions in order');
-    const items = d.units.filter(u => u.start > at && u.start < at + 400);
-    const marks = items.map(u => {
-      const el = document.querySelector(`[data-uid="${CSS.escape(u.uid)}"]`);
-      const li = el?.querySelector('li');
-      return { uid: u.uid, text: d.a.text.slice(u.start, u.start + 3),
-               isList: !!li, empty: li ? !li.textContent.trim() : null,
-               start: el?.querySelector('ol')?.getAttribute('start') };
-    });
-    return { marks, section: at };
+    const units = d.units.filter(u => u.start > at && u.start < at + 460);
+    // The <li> each unit's text landed in, by the piece rather than by a
+    // per-unit element: a unit is several pieces now, and any of them answers.
+    const liOf = (u) => document.querySelector(`[data-uid="${CSS.escape(u.uid)}"]`)?.closest('li');
+    const lis = [...new Set(units.map(liOf).filter(Boolean))];
+    const ol = lis[0]?.closest('ol');
+    return {
+      units: units.map(u => ({ uid: u.uid, text: d.a.text.slice(u.start, u.start + 3),
+                               li: lis.indexOf(liOf(u)) })),
+      items: lis.length,
+      oneList: lis.every(li => li.closest('ol') === ol),
+      ordinals: ol ? [...ol.children].map(li => getComputedStyle(li, '::marker').content
+                                              || String([...ol.children].indexOf(li) + 1)) : [],
+      empties: lis.filter(li => !li.textContent.trim()).length,
+      lefts: lis.map(li => Math.round(li.getBoundingClientRect().left)),
+      section: at,
+    };
   });
-  console.log('LIST ' + JSON.stringify(out.marks));
+  console.log('LIST ' + JSON.stringify(out.units));
+  console.log('SHAPE ' + JSON.stringify({ items: out.items, oneList: out.oneList,
+                                          empties: out.empties, lefts: out.lefts }));
 
-  const numbered = out.marks.filter(m => /^\d\.\s/.test(m.text));
-  if (numbered.length !== 3) throw new Error(`expected 3 numbered items, saw ${numbered.length}`);
-  for (const m of numbered) {
-    if (!m.isList) throw new Error(`${m.uid} carries a marker but renders as prose`);
-    if (m.empty) throw new Error(`${m.uid} renders an empty list item`);
-  }
-  // Separately rendered items keep their authored ordinal: 1, then start="2",
-  // then start="3". A missing `start` on the second or third means all three
-  // drew as "1".
-  const starts = numbered.map(m => m.start ?? '1');
-  if (starts.join(',') !== '1,2,3') throw new Error(`the list renumbers: ${starts}`);
+  if (out.items !== 3) throw new Error(`expected 3 list items, saw ${out.items}`);
+  if (!out.oneList) throw new Error('the three items are not in one <ol>');
+  if (out.empties) throw new Error(`${out.empties} list item(s) render empty`);
+  if (new Set(out.lefts).size !== 1)
+    throw new Error(`the items sit at different indents: ${out.lefts}`);
 
-  // A CONTINUATION is a sentence from inside an item, and it has to sit on the
-  // item's indent rather than back at the prose margin. Measured against the
-  // item above it, not against a constant, since the indent comes from the
-  // prose styles and a constant would agree with them only by luck.
-  const indent = await page.evaluate((at) => {
-    const d = Alpine.$data(document.body);
-    const item = d.units.find(u => u.start > at && /^\s{0,3}2\.\s/.test(d.a.text.slice(u.start, u.start + 4)));
-    const cont = d.units.find(u => u.start > item.end);
-    const box = (u) => document.querySelector(`[data-uid="${CSS.escape(u.uid)}"]`)
-      ?.querySelector('li')?.getBoundingClientRect().left;
-    return { item: box(item), cont: box(cont), contText: d.a.text.slice(cont.start, cont.start + 20) };
-  }, out.section);
-  console.log('INDENT ' + JSON.stringify(indent));
-  if (indent.cont == null) throw new Error('the continuation renders outside any list item');
-  if (Math.abs(indent.cont - indent.item) > 1)
-    throw new Error(`the continuation sits at ${indent.cont}, the item it belongs to at ${indent.item}`);
+  // EVERY UNIT BETWEEN THE FIRST ITEM AND THE LAST IS INSIDE AN ITEM, including
+  // the ones carrying no marker. That is the whole claim: text keeps the element
+  // status it had in the document, whatever the annotation did to the boundaries
+  // around it. Bounded by the list's own extent rather than by a character
+  // window, since the prose after it is legitimately outside.
+  const first = out.units.findIndex(u => u.li >= 0);
+  const last = out.units.map(u => u.li >= 0).lastIndexOf(true);
+  const loose = out.units.slice(first, last + 1).filter(u => u.li < 0);
+  if (first < 0) throw new Error('no unit landed in a list item at all');
+  if (loose.length)
+    throw new Error(`inside the list but outside any item: ` +
+                    loose.map(u => `${u.uid} (${u.text})`).join(', '));
 
   await page.evaluate((at) => {
     const d = Alpine.$data(document.body);

@@ -97,13 +97,35 @@ test('the last unit has nothing to merge with', () => {
   assert.match(complaints.join('\n'), /refused/);
 });
 
-test('a merge across two kinds reports mixed, not one of them', () => {
-  const b = base(); b.units[1].kind = 'heading';
-  const { so } = S.apply(b, [{ op: 'merge', uid: 'u-001' }], DOC);
+// DERIVED FROM THE SPAN, NOT FROM THE LABELS JOINED. The rule here used to be
+// "the two kinds differ, so say mixed", which read the operands and not the
+// result: merging two `sent` units across a blank line kept `sent`, though the
+// survivor plainly covered two paragraphs. Both units below are `sent`, so the
+// old rule would have kept `sent` and this test would fail.
+test('a merge reports the kind of the span it produced', () => {
+  const { so } = S.apply(base(), [{ op: 'merge', uid: 'u-001' }], DOC);
   assert.equal(so.units.length, 1);
-  assert.equal(so.units[0].kind, 'mixed');
+  assert.equal(so.units[0].kind, 'mixed', 'the survivor spans a blank line');
   assert.equal(so.units[0].end, 59, 'the survivor covers both spans');
   assert.equal(so.units[0].from, 'merge:u-001+u-002');
+});
+
+// The op that made this urgent, and the one the old rule could not reach at all:
+// a boundary MOVE leaves both sides describing spans neither of them had.
+test('a split and a shift re-derive the kind of every span they touch', () => {
+  const doc = '## Scope and precedence\n\nA sentence follows it.';
+  const head = () => ({ ...base(), units: [
+    { uid: 'h-1', start: 0, end: 23, kind: 'heading', words: 3, label: 'WHAT' },
+    { uid: 'h-2', start: 25, end: 47, kind: 'sent', words: 4, label: 'WHAT' }] });
+
+  const split = S.apply(head(), [{ op: 'split', uid: 'h-1', at: 10 }], doc).so;
+  assert.deepEqual(split.units.map(u => [u.uid, u.kind]),
+    [['h-1a', 'heading'], ['h-1b', 'sent'], ['h-2', 'sent']],
+    '"nd precedence" carries no marker, so it is not a heading');
+
+  const shifted = S.apply(head(), [{ op: 'shift', after: 'h-1', to: 32 }], doc).so;
+  assert.deepEqual(shifted.units.map(u => u.kind), ['mixed', 'sent'],
+    'the heading swallowed across the blank line and is no longer just a heading');
 });
 
 test('a note is set and cleared through the same operation', () => {
@@ -168,18 +190,18 @@ test('an overlap is a complaint, and it was not one until 2026-08-30', () => {
 });
 
 test('moving a boundary moves both units, so the partition survives', () => {
-  const { so, complaints } = S.apply(base(), [{ op: 'move', after: 'u-001', to: 30 }], DOC);
+  const { so, complaints } = S.apply(base(), [{ op: 'shift', after: 'u-001', to: 30 }], DOC);
   assert.deepEqual(complaints, []);
   assert.deepEqual([so.units[0].start, so.units[0].end], [0, 30]);
   assert.deepEqual([so.units[1].start, so.units[1].end], [30, 59]);
-  assert.equal(so.units[0].from, 'move:u-001/u-002');
-  assert.equal(so.units[1].from, 'move:u-001/u-002');
+  assert.equal(so.units[0].from, 'shift:u-001/u-002');
+  assert.equal(so.units[1].from, 'shift:u-001/u-002');
   assert.deepEqual(S.check(so, DOC), [], 'no gap and no overlap, by construction');
 });
 
 test('a boundary cannot be moved outside the pair it separates', () => {
   for (const to of [0, 200, 59]) {
-    const { complaints } = S.apply(base(), [{ op: 'move', after: 'u-001', to }], DOC);
+    const { complaints } = S.apply(base(), [{ op: 'shift', after: 'u-001', to }], DOC);
     assert.match(complaints.join('\n'), /refused/, `to=${to} should be refused`);
   }
 });
@@ -194,20 +216,20 @@ test('a boundary cannot be moved so far that a side is only whitespace', () => {
     { uid: 'p-2', start: 6, end: 14, kind: 'sent', words: 1, label: 'WHAT' }] };
   assert.deepEqual(S.check(so, PAD), [], 'the fixture itself is sound');
   for (const to of [12, 13])
-    assert.match(S.apply(so, [{ op: 'move', after: 'p-1', to }], PAD).complaints.join('\n'),
+    assert.match(S.apply(so, [{ op: 'shift', after: 'p-1', to }], PAD).complaints.join('\n'),
       /refused/, `to=${to} would leave p-2 holding only spaces`);
-  assert.deepEqual(S.apply(so, [{ op: 'move', after: 'p-1', to: 11 }], PAD).complaints, [],
+  assert.deepEqual(S.apply(so, [{ op: 'shift', after: 'p-1', to: 11 }], PAD).complaints, [],
     'one character of real text on each side is enough');
 });
 
 test('word counts follow the boundary on both sides', () => {
-  const { so } = S.apply(base(), [{ op: 'move', after: 'u-001', to: 14 }], DOC);
+  const { so } = S.apply(base(), [{ op: 'shift', after: 'u-001', to: 14 }], DOC);
   assert.equal(so.units[0].words, 3, '"Close the lid,"');
   assert.equal(so.units[1].words, 7);
 });
 
 test('the last unit has no boundary after it', () => {
-  const { complaints } = S.apply(base(), [{ op: 'move', after: 'u-002', to: 50 }], DOC);
+  const { complaints } = S.apply(base(), [{ op: 'shift', after: 'u-002', to: 50 }], DOC);
   assert.match(complaints.join('\n'), /refused/);
 });
 
@@ -244,6 +266,30 @@ test('the commit message states the judgments, not the result', () => {
        'relabel u-001b WHY-MOT', 'note u-001a', 'note u-001a (cleared)']);
 });
 
+// EVERY OP, BECAUSE THE TWO THAT WERE MISSING BOTH CAME OUT WRONG. The four
+// above were the whole of this test, so `verdict` went undescribed and `shift`
+// rendered as "note undefined (cleared)": the chain that used to be here ended
+// in a default that read `uid`, and a boundary op has none. The commit message
+// is the patch's only surviving record, so it stated the opposite of what
+// happened. Enumerated against the op table, so adding an op without a
+// sentence fails here rather than in a commit nobody re-reads.
+test('every operation the kit accepts has a sentence, including both boundary ops', () => {
+  assert.deepEqual(S.describe([
+    { op: 'shift', after: 'u-001', to: 30 },
+    { op: 'verdict', uid: 'u-002', verdict: 'DROP' },
+    { op: 'insert', after: 'u-001', text: 'a new sentence.' },
+    { op: 'insert', after: null, text: 'a lead sentence.' },
+    { op: 'insert', after: 'u-001', text: '' },
+  ]), ['shift the boundary after u-001 to 30',
+       'u-002 DROP',
+       'insert at the boundary after u-001',
+       'insert at the head of the document',
+       'insert at the boundary after u-001 (cleared)']);
+
+  const undescribed = Object.keys(S.ops).filter(op => /undescribed/.test(S.describe([{ op }])[0]));
+  assert.deepEqual(undescribed, [], 'operations the commit message cannot state');
+});
+
 // ── the bytes, against the stored run ──────────────────────────────────────
 
 test('serialize reproduces the committed file exactly', () => {
@@ -259,4 +305,67 @@ test('the stored run passes its own invariants through the kit', () => {
     'skills/state-the-rule/runs/2026-08-29-conventions/standoff.json'), 'utf8'));
   const text = readFileSync(path.join(repoRoot, so.target.path), 'utf8');
   assert.deepEqual(S.check(so, text), []);
+});
+
+// ── ONE STRING, TWO WAYS TO INDEX IT ─────────────────────────────────────────
+// Python indexes by code point, JavaScript by UTF-16 code unit, so an astral
+// character is one index in segment.py and two here. The failure is silent: the
+// spans still resolve, they resolve to the wrong text, and every check passes
+// over the wrong span. Held here because nothing else can see it: the invariants
+// are about the partition, and a shifted partition is still a partition.
+
+const EMOJI = 'Plain. 🥏 Toss it. 📦 Publish.';
+
+test('a document with no astral character maps to itself, in both directions', () => {
+  const so = { units: [{ uid: 'u-1', start: 0, end: 42 }, { uid: 'u-2', start: 44, end: 59 }] };
+  assert.deepEqual(S.adopt(so, DOC).units, so.units);
+  assert.deepEqual(S.emit(so, DOC).units, so.units);
+});
+
+test('an adopted span is the text segment.py recorded, not one shifted by the emoji before it', () => {
+  const cp = [...EMOJI];
+  // The spans as Python counts them, which is what segment.py would write.
+  const spans = [[0, 6], [7, 18], [19, 28]];
+  const so = { units: spans.map(([start, end], i) => ({ uid: `u-${i}`, start, end })) };
+  const browser = S.adopt(so, EMOJI);
+  assert.deepEqual(browser.units.map(u => EMOJI.slice(u.start, u.end)),
+                   spans.map(([a, b]) => cp.slice(a, b).join('')));
+  // Reading the stored offsets directly is the defect this replaces.
+  assert.notEqual(EMOJI.slice(7, 18), cp.slice(7, 18).join(''),
+    'without the conversion the browser reads a different span');
+});
+
+test('every offset in the document round-trips, and one inside a pair snaps to its start', () => {
+  const n = [...EMOJI].length;
+  const drift = [];
+  for (let a = 0; a <= n; a++) {
+    const back = S.emit(S.adopt({ units: [{ uid: 'u', start: a, end: n }] }, EMOJI), EMOJI);
+    if (back.units[0].start !== a) drift.push([a, back.units[0].start]);
+  }
+  assert.deepEqual(drift, [], 'code-point offsets that did not survive the round trip');
+
+  // The low half of a surrogate pair is the one UTF-16 index with no code-point
+  // counterpart. It is not a place a boundary can be, since it would cut one
+  // character in half, so it snaps to the character's start rather than to the
+  // next one, which would be a different character.
+  const pair = EMOJI.indexOf('\u{1F94F}');
+  assert.equal(S.emit({ units: [{ uid: 'u', start: pair + 1, end: EMOJI.length }] }, EMOJI)
+                .units[0].start,
+               S.emit({ units: [{ uid: 'u', start: pair, end: EMOJI.length }] }, EMOJI)
+                .units[0].start);
+});
+
+// A patch carries offsets too, and it is read by ops.py, so it converts on the
+// way out. An insertion carries none: it is anchored by uid, which is keying by
+// uid rather than by offset paying off a second time.
+test('a patch converts its offsets and leaves an insertion alone', () => {
+  const patch = [{ op: 'split', uid: 'u-1', at: 12 },
+                 { op: 'shift', after: 'u-0', to: 20 },
+                 { op: 'insert', after: 'u-0', text: 'no offset to convert' },
+                 { op: 'relabel', uid: 'u-1', label: 'WHAT' }];
+  const out = S.emitPatch(patch, EMOJI);
+  assert.equal(out[0].at, 11, 'one astral character before it');
+  assert.equal(out[1].to, 18, 'two');
+  assert.deepEqual(out[2], patch[2]);
+  assert.deepEqual(out[3], patch[3]);
 });
