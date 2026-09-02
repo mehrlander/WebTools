@@ -117,6 +117,10 @@ where a clause changes application at an edge.
 **Expect to beat the removal floor, and do not expect it.** `KEEP` units
 compress too, and a sentence-level pass cannot see that. Per-run figures are in `runs.csv`.
 
+**Start from the projection, not from the original.** `materialize.py` runs what
+the annotation states and leaves the rest for you; see "Projecting the
+annotation" below.
+
 ### 5. Route what leaves
 
 | Class | Destination |
@@ -335,6 +339,51 @@ serializations agree byte for byte with `audit-payload.py`'s, which a test
 holds, so a save from the page and a rebuild from the run do not reformat each
 other's file.
 
+## Projecting the annotation
+
+```bash
+python3 materialize.py <standoff.json> <doc.md> [--out <file>] [--json]
+```
+
+**Two of the four verdicts execute, and the other two are reported.** `DROP`
+removes its span and every insertion is placed; `KEEP` is a no-op. `REWRITE`
+names no replacement and `MOVE` names no destination, so neither can run without
+inventing text, and inventing text is the one thing a projection must not do.
+Both are left standing and named. What comes out is a **draft for step 4**, not a
+finished rewrite.
+
+`MOVE` is left standing rather than removed, which is the one place this
+disagrees with `check.py`. That check reads `DROP` and `MOVE` together as
+"should have left", which is right when it is *judging* a rewrite a person made:
+the person put the moved text somewhere. Here there is nowhere to put it.
+
+**An insertion inherits the separator already standing at its boundary.** A gap
+holding a blank line separates blocks, so the text arrives as its own block;
+anything else is a run, so it joins with a space. Reading the separator off the
+document is mechanical; choosing one would be the same guess as inventing a
+`REWRITE`. Two consequences: the head of the document is a block by
+construction, having no separator to read; and the tail joins the final
+paragraph, since the separator standing there is a line ending. A closing
+*block* is therefore not expressible, and would take an explicit field on the
+insertion rather than a smarter default.
+
+**It does not tidy.** Removing a span leaves the whitespace the span sat in, and
+collapsing that is neither stated by the annotation nor invariant over markdown,
+since inside a fenced block whitespace is content. The artifacts are counted and
+reported instead.
+
+**The digest is the gate, and it is also the insertion's whole lifecycle.** A
+standoff's spans are offsets into particular bytes, so a projection onto any
+other bytes would splice in the wrong places and is refused. The same refusal is
+what retires an insertion: applying the output over the target changes the bytes,
+the digest stops matching, and a second run cannot double-apply. Nothing marks an
+insertion "applied", and nothing needs to. The text is then ordinary document
+text, annotated like any other, and the annotation that proposed it wants
+`reanchor.py`, not another projection.
+
+Held by `tools/test/state-the-rule.test.mjs`, which pins each of those against a
+mutation that would break it.
+
 ## Boundaries
 
 - Only for executed documents. A document written to be read straight through is
@@ -358,7 +407,7 @@ other's file.
 
 ## Files
 
-`segment.py` · `check.py` · `seams.py` · `ops.py` · `runs.csv` · `LOG.md` · `runs/<date>-<patient>/`
+`segment.py` · `check.py` · `seams.py` · `ops.py` · `materialize.py` · `runs.csv` · `LOG.md` · `runs/<date>-<patient>/`
 
 Hub only, and not part of the skill: `lib/kits/standoff.js` (the same rules for a
 browser), `tools/build/audit-payload.py` (the artifact and its delivery payload),

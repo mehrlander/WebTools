@@ -9,10 +9,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { repoRoot } from './bootstrap.mjs';
 
 const SKILL = join(repoRoot, 'skills', 'state-the-rule');
@@ -518,4 +519,130 @@ test('a merge is refused while an insertion sits on the boundary it removes', ()
 
 test('an insertion anchored to no unit is refused by both', () => {
   assert.equal(both([{ op: 'insert', after: 'u-404', text: 'nowhere' }]).refused, true);
+});
+
+// ── PROJECTING A STANDOFF ONTO TEXT ──────────────────────────────────────────
+// materialize.py runs the edits the annotation SPECIFIES and reports the ones it
+// cannot: DROP and insert are mechanical, REWRITE and MOVE each imply content
+// the standoff does not carry. The failure worth pinning is not a crash, it is a
+// projection that quietly invents something: a MOVE silently removed, a
+// separator chosen rather than read, or an insertion applied a second time.
+
+function project(mut, args = ['--json'], fixture = null) {
+  const dir = mkdtempSync(join(tmpdir(), 'mat-'));
+  const doc = join(dir, 'doc.md'), sf = join(dir, 'so.json'), out = join(dir, 'out.md');
+  writeFileSync(doc, fixture ? fixture.text : DOC);
+  const so = fixture ? fixture.so() : BASE();
+  so.verdicts = ['KEEP', 'REWRITE', 'MOVE', 'DROP'].map(verdict => ({ verdict }));
+  so.units.forEach(u => { u.verdict = 'KEEP'; });
+  mut(so);
+  writeFileSync(sf, JSON.stringify(so));
+  const r = spawnSync('python3', [join(SKILL, 'materialize.py'), sf, doc, '--out', out, ...args],
+                      { encoding: 'utf8' });
+  const text = r.status === 0 ? readFileSync(out, 'utf8') : '';
+  const json = args.includes('--json') && r.status === 0 ? JSON.parse(r.stdout) : null;
+  return { status: r.status, stderr: r.stderr, text, json, dir, doc, sf };
+}
+
+test('an annotation specifying nothing executable projects the document unchanged', () => {
+  const r = project(() => {});
+  assert.equal(r.text, DOC, 'all-KEEP and no insertions is a no-op, byte for byte');
+  assert.deepEqual(r.json.joins, {}, 'nothing was removed, so nothing was left behind');
+});
+
+test('DROP is executed and REWRITE and MOVE are left standing, named', () => {
+  const r = project((so) => {
+    so.units[0].verdict = 'REWRITE';
+    so.units[1].verdict = 'MOVE';
+  });
+  assert.match(r.text, /Close the lid/, 'a REWRITE keeps its text: no replacement is stored');
+  assert.match(r.text, /Check it twice/, 'a MOVE keeps its text: no destination is stored');
+  assert.deepEqual(r.json.standing.map(s => [s.uid, s.verdict]),
+    [['u-001', 'REWRITE'], ['u-002', 'MOVE']]);
+
+  const dropped = project((so) => { so.units[1].verdict = 'DROP'; });
+  assert.doesNotMatch(dropped.text, /Check it twice/);
+  assert.equal(dropped.json.dropped_words, 3);
+});
+
+// MOVE is the one place this disagrees with check.py, which reads DROP and MOVE
+// together as "should have left". That is right when JUDGING a rewrite a person
+// made, because the person put the text somewhere. Here there is nowhere.
+test('a MOVE is not a DROP: removing it would lose text with no record of where it went', () => {
+  const r = project((so) => { so.units[1].verdict = 'MOVE'; });
+  assert.match(r.text, /Check it twice/);
+  assert.equal(r.json.dropped_words, 0);
+});
+
+// The separator is READ off the document, not chosen. Picking one would be the
+// same kind of guess as inventing a REWRITE.
+test('an insertion inherits the separator already standing at its boundary', () => {
+  // u-001 and u-002 are separated by a blank line, so that boundary is a block.
+  const block = project((so) => {
+    so.insertions = [{ after: 'u-001', text: 'A new paragraph.' }];
+  });
+  assert.match(block.text, /spoil\.\n\nA new paragraph\.\n\nCheck/);
+
+  // The tail's gap is the file's end, no blank line, so the text joins the run.
+  const inline = project((so) => {
+    so.insertions = [{ after: 'u-002', text: 'And once more.' }];
+  });
+  assert.match(inline.text, /Check it twice\. And once more\./);
+});
+
+test('the head of the document is a block, since it can continue nothing', () => {
+  const r = project((so) => { so.insertions = [{ after: null, text: 'A lead sentence.' }]; });
+  assert.ok(r.text.startsWith('A lead sentence.\n\nClose the lid'), r.text.slice(0, 60));
+});
+
+// A reporter blind to the commonest artifact of its own edit reads as an
+// all-clear. Both units of the main fixture are whole paragraphs, so dropping
+// one strands nothing; the artifacts only appear where units SHARE a line,
+// which is the ordinary sentence-grain case.
+const RUN = {
+  text: 'One here. Two here. Three here.\n',
+  so: () => ({
+    kind: 'standoff/1', target: { path: 'doc.md' },
+    vocabulary: [{ label: 'WHAT' }],
+    units: [{ uid: 'r-1', start: 0, end: 9, kind: 'sent', words: 2, label: 'WHAT' },
+            { uid: 'r-2', start: 10, end: 19, kind: 'sent', words: 2, label: 'WHAT' },
+            { uid: 'r-3', start: 20, end: 31, kind: 'sent', words: 2, label: 'WHAT' }],
+  }),
+};
+
+test('the whitespace a removal leaves is reported rather than cleaned up', () => {
+  const r = project((so) => { so.units[1].verdict = 'DROP'; }, ['--json'], RUN);
+  assert.equal(r.text, 'One here.  Three here.\n',
+    'the span is removed and the spaces around it are left exactly as they were');
+  assert.deepEqual(r.json.joins, { 'double space': 1 });
+});
+
+// The shape a first pass missed entirely: cutting the LAST unit of a line
+// strands the space before it against the newline, which no mid-line run
+// matches. It reported {} on an edit that had visibly left something.
+test('a removal at the end of a line is reported too, not only one in the middle', () => {
+  const r = project((so) => { so.units[2].verdict = 'DROP'; }, ['--json'], RUN);
+  assert.equal(r.text, 'One here. Two here. \n');
+  assert.deepEqual(r.json.joins, { 'trailing space': 1 });
+});
+
+// THE DIGEST IS THE LIFECYCLE. An insertion is pending while the document still
+// has the bytes the annotation was made against; applying the projection ends
+// that, and the same gate that protects the offsets is what stops a second
+// application. Nothing has to mark an insertion "applied".
+test('applying the projection retires its insertions, because the digest stops matching', () => {
+  const r = project((so) => {
+    so.target.sha256 = createHash('sha256').update(DOC).digest('hex');
+    so.insertions = [{ after: 'u-001', text: 'A new paragraph.' }];
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.text, /A new paragraph/);
+
+  // Write the projection over the target, the way a session would, then re-run.
+  writeFileSync(r.doc, r.text);
+  const again = spawnSync('python3', [join(SKILL, 'materialize.py'), r.sf, r.doc],
+                          { encoding: 'utf8' });
+  assert.notEqual(again.status, 0, 'the insertion would have been applied twice');
+  assert.match(again.stderr, /not the document this standoff annotates/);
+  assert.match(again.stderr, /re-anchoring/, 'the refusal says what to do instead');
 });
