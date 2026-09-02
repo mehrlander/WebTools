@@ -443,7 +443,9 @@ test('the closing reply is markdown, and its rest is a tap rather than a tooltip
   const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/session-brief.js'), 'utf8');
   const at = src.indexOf('x-show="closingRaw"');
   assert.ok(at > 0, 'the block is found by the thing it shows on');
-  const block = src.slice(at, src.indexOf('</button>', at));
+  // To the end of the card, not to the first `</button>`: the control is the
+  // label row now, and the body it governs sits after it.
+  const block = src.slice(at, src.indexOf('<!-- The switch and the exits', at));
   assert.doesNotMatch(block, /:?title=/, 'no tooltip carries the rest of it');
   // The LABEL is still x-text, and should be: it is a fidelity claim in one
   // word, not the reply.
@@ -468,4 +470,19 @@ test('the closing reply is markdown, and its rest is a tap rather than a tooltip
   // second markdown-to-text pass sitting here is what would get reached for
   // next time.
   assert.doesNotMatch(src, /speechText/, 'session-brief no longer flattens anything itself');
+});
+
+test('the clipped box is not inside the button, because Safari sizes one from its unclipped content', () => {
+  // The whole block was a button with the body inside it. The body clipped and
+  // the fade landed, and the button stayed as tall as five paragraphs: three
+  // lines of text over an inch of empty card, on the phone only. Chrome sizes
+  // the button from the clipped child and shows nothing wrong, so this is
+  // asserted as structure rather than measured as pixels.
+  const el = window.document.getElementById('lent');
+  const clip = [...el.querySelectorAll('div')].find(d => /max-height/.test(d.getAttribute('style') || ''));
+  assert.ok(clip, 'the collapsed body carries its height inline');
+  assert.equal(clip.closest('button'), null, 'and no button is sized by what it hides');
+  const btn = [...el.querySelectorAll('button[aria-expanded]')][0];
+  assert.ok(btn, 'the control is still there');
+  assert.equal(btn.contains(clip), false, 'holding only the small thing you tap');
 });

@@ -61,3 +61,4 @@ word-boundary-before-alternation,a scan reports zero and looks authoritative,1,2
 x-collapse-needs-x-show,a panel renders at zero size,1,2026-07-15,2026-07-15,environment/testing.md
 cross-repo-lib-consumer-invisible,in-repo greps cannot see an external runtime consumer of a lib file,0,,,
 line-clamp-is-not-a-height,"the utility collided with a display four times in one branch, then failed only on the phone",0,,,
+safari-button-sizes-from-unclipped-content,"the child clipped, the fade landed, and the button stayed tall",0,,,
