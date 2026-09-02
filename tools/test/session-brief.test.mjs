@@ -112,7 +112,7 @@ window.Alpine = Alpine;
 // pathOf lives in the sessions cache kit, and the component reads it there
 // rather than deriving a second copy. The Sessions pane always has it loaded;
 // a cold pages/session.html does not, which is the case the listing covers.
-for (const k of ['lib/kits/repo-sessions-cache.js']) {
+for (const k of ['lib/kits/closing-state.js', 'lib/kits/repo-sessions-cache.js']) {
   new window.Function('window', readFileSync(path.join(repoRoot, k), 'utf8'))(window);
 }
 for (const p of ['lib/alpine-bundle.js', 'lib/alpineComponents/session-brief.js']) {
@@ -524,7 +524,11 @@ test('the kit that draws the notes is in the chain that loads them', () => {
   // replaced. Nothing else on this page loaded the kit before.
   const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/session-brief.js'), 'utf8');
   assert.match(src, /'kits\/note\.js'/);
-  assert.match(src, /window\.Note\) return;/, 'and the early return counts it, or the chain never runs');
+  assert.match(src, /'kits\/closing-state\.js'/);
+  // The early return must count every kit the chain loads, or a host that
+  // already has the first three skips the rest and the page renders half-drawn.
+  assert.match(src, /&& window\.Note && window\.ClosingState\) return;/,
+    'the early return counts them, or the chain never runs');
 });
 
 test('the page tells the brief that no embedder draws its header', () => {

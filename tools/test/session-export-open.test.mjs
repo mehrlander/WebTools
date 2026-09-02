@@ -27,6 +27,7 @@ import { repoRoot, makeWindow } from './bootstrap.mjs';
 // before this view is built. A file that left it out would test the fallback
 // and call it the behaviour.
 const KITS = ['lib/kits/proof.js', 'lib/kits/swipe-deck.js', 'lib/kits/chat-render.js',
+              'lib/kits/closing-state.js',
               'lib/kits/session-render.js', 'lib/kits/session-export.js',
               'lib/kits/read-aloud.js'];
 
@@ -502,4 +503,92 @@ test('the open body wraps on the ask\'s measure, not the card\'s', async () => {
   // With no deck the `auto` track collapses, so nothing is reserved and the two
   // are still one measure. The pin is what keeps the body out of that track.
   assert.doesNotMatch(body.className, /\bpr-|\bpl-/, 'and no pad guesses at the glyph');
+});
+
+// ── The rail ────────────────────────────────────────────────────────────────
+//
+// It keyed on `kind` until 2026-09-02: blue down the asks, clay down the
+// replies, nothing beside the work. Three things had made that wrong, and the
+// row itself is two of them: every row now shows a blue ask and a clay reply,
+// so the rule marked a subset of them in the same two colours for a different
+// distinction, and the distinction it drew (`calls === 0`) is printed on the
+// row in words as the tool tally. The third is that its blue was a lie, since
+// `ask` means the record kept a prompt with no reply beside it.
+//
+// What it carries now is the conventions' closing state, which is a code the
+// reader has already learnt from the chat.
+
+const STATEFUL = {
+  ...RECORD,
+  exchanges: 3, prompts_stored: 3,
+  prompts: [{ at: '2026-09-01T10:00:00Z', text: 'First ask' },
+            { at: '2026-09-01T10:30:00Z', text: 'Second ask' },
+            { at: '2026-09-01T11:00:00Z', text: 'Third ask' }],
+  replies_total: 3, replies_stored: 3,
+  replies: [
+    { at: '2026-09-01T10:05:00Z', text: 'Did it.\n\n🟢 **Ready to continue.** Named on go.' },
+    { at: '2026-09-01T10:35:00Z', text: 'Two ways.\n\n🆚 **Choice needed.** Pick one.\n\n🟢 **Ready.** Or go.' },
+    { at: '2026-09-01T11:05:00Z', text: 'No state here at all.' },
+  ],
+  calls_total: 0, calls: [],
+};
+
+const railOf = (n = 1) => {
+  const box = [...window.document.querySelectorAll('.relative.mb-0\\.5')][n - 1];
+  return [...(box?.firstElementChild?.children || [])];
+};
+
+test('the rail carries where the exchange arrived, one segment per state', () => {
+  buildWith(STATEFUL);
+  const one = railOf(1), two = railOf(2), three = railOf(3);
+  assert.equal(one.length, 1, 'a card that closed once draws one segment');
+  assert.equal(two.length, 2, 'and a card that closed twice draws two, in order');
+  assert.equal(three.length, 0, 'a card that closed on nothing draws nothing');
+  // The order is the exchange's, so a decision put and then acted on reads
+  // top to bottom the way it happened.
+  assert.match(two[0].getAttribute('data-note'), /Choice needed/);
+  assert.match(two[1].getAttribute('data-note'), /Ready to continue/);
+});
+
+test('a routine state is muted, not dropped, and that was settled by looking', () => {
+  // 73% of exchanges across the store carry a state and `ready` alone is 57% of
+  // those, which argued for drawing only the rest. Rendered both ways, the
+  // opposite is true: with every row ruled the exceptions read AGAINST a
+  // baseline, and with only the exceptions ruled they float beside nothing.
+  buildWith(STATEFUL);
+  const [ready] = railOf(1);
+  assert.equal(ready.style.opacity, '0.4', 'the rhythm is quiet');
+  const [choice, alsoReady] = railOf(2);
+  assert.equal(choice.style.opacity, '', 'and an event is not');
+  assert.equal(alsoReady.style.opacity, '0.4');
+});
+
+test('routineFade 0 drops them after all, which is the reading this replaced', () => {
+  buildWith(STATEFUL, { routineFade: 0 });
+  assert.equal(railOf(1).length, 0);
+  assert.equal(railOf(2).length, 1, 'only the event survives');
+  assert.match(railOf(2)[0].getAttribute('data-note'), /Choice needed/);
+});
+
+test('a state names itself through the note kit, not a bare colour', () => {
+  // Eleven hues is a code, and the seven that are a coloured disc are learnable
+  // from the chat the reader already saw. The four that are not (🆚 ✴️ ❇️ ⚫)
+  // are not, so every segment carries its gloss the way the facts strip does.
+  buildWith(STATEFUL);
+  const seg = railOf(1)[0];
+  assert.ok(seg.hasAttribute('data-note'));
+  assert.ok(seg.hasAttribute('data-note-bare'), 'a 2px bar has no text to underline');
+  assert.equal(seg.getAttribute('title'), null, 'and it is not a tooltip');
+});
+
+test('the capture note keeps its own rule, which no closing state can say', () => {
+  // The one card that is the RENDERER's rather than the session's, so it has no
+  // closing state to carry and its rule is the one survivor of the old scheme.
+  // `tools` is one of the three things the summary card is built from, and the
+  // cheapest to state.
+  buildWith({ ...STATEFUL, tools: { Bash: 3 } });
+  const notes = [...window.document.querySelectorAll('.bg-warning\\/40')];
+  assert.equal(notes.length, 1, 'exactly the renderer\'s own card');
+  assert.ok(notes[0].parentElement.className.includes('w-[2px]'),
+    'and it is a rail segment like any other, not a border on the box');
 });

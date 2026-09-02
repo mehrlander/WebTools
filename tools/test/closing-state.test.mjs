@@ -1,0 +1,88 @@
+// kits/closing-state.js — the conventions' closing state, as one vocabulary.
+//
+// This kit exists to end a split, so most of what is worth pinning is that the
+// split stays ended: every key the pattern can produce has a glyph, a gloss and
+// a rail colour, and no consumer keeps a second table. A marker added to
+// SURFACING.md lands in one file or it does not land.
+//
+// The parser itself is strict for one reason, and it is the reason a looser one
+// would look correct for months: this repo's own sessions EDIT the conventions,
+// so a reply can quote the whole vocabulary as a bulleted list. Line start plus
+// a bold lead is what keeps a session from reading its own quotation as its
+// state, and the two tests below are that case and its control.
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { repoRoot } from './bootstrap.mjs';
+
+const win = {};
+new Function('window', readFileSync(path.join(repoRoot, 'lib/kits/closing-state.js'), 'utf8'))(win);
+const CS = win.ClosingState;
+
+test('a marker at the start of a line with a bold lead is a state', () => {
+  assert.deepEqual(CS.marks('work happened\n\n🟢 **Ready to continue.** Named on go.'), ['ready']);
+  assert.deepEqual(CS.marks('🟣 **Merged.** It shipped.'), ['merged']);
+  // A blockquote still closes a reply; the harness quotes them back that way.
+  assert.deepEqual(CS.marks('> ⚪ **Clean exit.** Done.'), ['clean']);
+});
+
+test('the vocabulary quoted as a list is not a state', () => {
+  // The exact shape a session editing SURFACING.md writes, which is why the
+  // pattern demands a line start: a list marker fails it.
+  const doc = [
+    '  - 🟢 **Ready to continue:** work is ready to do now.',
+    '  - 🟣 **Merged:** this branch merged.',
+    '* ⚪ **Clean exit:** work here is done.',
+  ].join('\n');
+  assert.deepEqual(CS.marks(doc), []);
+  // And a marker with no bold lead is prose about a state, not one.
+  assert.deepEqual(CS.marks('🟢 is the marker we use for ready.'), []);
+});
+
+test('both spellings of the three variation-selector glyphs settle to one key', () => {
+  // ⚪/⚪️, ✴️/✴ and ❇️/❇ are the same state written two ways, which is the whole
+  // reason keys exist rather than glyphs being passed around.
+  assert.deepEqual(CS.marks('⚪ **a**'), CS.marks('⚪️ **a**'));
+  assert.deepEqual(CS.marks('✴️ **a**'), CS.marks('✴ **a**'));
+  assert.deepEqual(CS.marks('❇️ **a**'), CS.marks('❇ **a**'));
+});
+
+test('order and duplicates survive, because an exchange that closed twice did', () => {
+  const md = '🆚 **Choice needed.** Pick.\n\n…\n\n🟢 **Ready.** Go.\n\n🟢 **Ready.** Again.';
+  assert.deepEqual(CS.marks(md), ['choice', 'ready', 'ready']);
+});
+
+test('every key the pattern can produce is complete in all three tables', () => {
+  // The split this kit ended was exactly a key present in one table and absent
+  // from another, so completeness is the invariant rather than a tidiness.
+  const keys = [...new Set(Object.values(CS.MARK))];
+  for (const k of keys) {
+    assert.ok(CS.GLYPH[k], 'no glyph for ' + k);
+    assert.ok(CS.GLOSS[k], 'no gloss for ' + k);
+    assert.ok(CS.RAIL[k], 'no rail colour for ' + k);
+    assert.equal(CS.MARK[CS.GLYPH[k]], k, 'glyph and key disagree for ' + k);
+  }
+  assert.equal(keys.length, 11);
+});
+
+test('nobody keeps a second copy of the pattern or the table', () => {
+  // repo-sessions-cache.js owned the parser and estate.js the glyph table, each
+  // correct about its own half and neither able to see the other.
+  for (const f of ['lib/kits/repo-sessions-cache.js', 'lib/kits/session-render.js',
+                   'lib/kits/session-export.js']) {
+    const src = readFileSync(path.join(repoRoot, f), 'utf8');
+    assert.doesNotMatch(src, /🟢\|❇/, f + ' rebuilt the pattern');
+    assert.doesNotMatch(src, /'🟢':\s*'ready'/, f + ' rebuilt the glyph table');
+  }
+});
+
+test('routine names the rhythm, and it is two states out of eleven', () => {
+  // Measured 2026-09-02 over 60 records and 1,165 exchanges: 73% carry a state
+  // and ready alone is 57% of those. The set is a default a caller opts into,
+  // not a filter this kit imposes, which is what let both readings be rendered
+  // and compared rather than argued.
+  assert.deepEqual(CS.ROUTINE, ['ready', 'clean']);
+  for (const k of CS.ROUTINE) assert.ok(CS.GLYPH[k], 'routine names a real state');
+});

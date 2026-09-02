@@ -18,10 +18,14 @@ const src = readFileSync(path.join(repoRoot, 'lib/kits/repo-sessions-cache.js'),
 // The title join parses the export through the shared CSV kit, so the fixture
 // window carries it the same way app/index.html's load chain does.
 const csvSrc = readFileSync(path.join(repoRoot, 'lib/kits/csv.js'), 'utf8');
+// The closing-state vocabulary is a kit of its own since 2026-09-02, loaded
+// ahead of this one in app/index.html; the fixture window mirrors that.
+const stateSrc = readFileSync(path.join(repoRoot, 'lib/kits/closing-state.js'), 'utf8');
 
 function load() {
   const win = {};
   new Function('window', csvSrc)(win);
+  new Function('window', stateSrc)(win);
   new Function('window', src)(win);
   return win.RepoSessionsCache;
 }

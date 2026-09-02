@@ -63,6 +63,7 @@ window.TOKEN = 'tkn';
 window.GH = FakeGH;
 await startAlpine(window, [
   'lib/alpine-bundle.js',
+  'lib/kits/closing-state.js',
   'lib/kits/repo-sessions-cache.js',
   'lib/kits/estate-search.js',
 ]);
