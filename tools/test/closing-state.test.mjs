@@ -2,7 +2,7 @@
 //
 // This kit exists to end a split, so most of what is worth pinning is that the
 // split stays ended: every key the pattern can produce has a glyph, a gloss and
-// a rail colour, and no consumer keeps a second table. A marker added to
+// a hue, and no consumer keeps a second table. A marker added to
 // SURFACING.md lands in one file or it does not land.
 //
 // The parser itself is strict for one reason, and it is the reason a looser one
@@ -61,7 +61,7 @@ test('every key the pattern can produce is complete in all three tables', () => 
   for (const k of keys) {
     assert.ok(CS.GLYPH[k], 'no glyph for ' + k);
     assert.ok(CS.GLOSS[k], 'no gloss for ' + k);
-    assert.ok(CS.RAIL[k], 'no rail colour for ' + k);
+    assert.ok(CS.HUE[k], 'no hue for ' + k);
     assert.equal(CS.MARK[CS.GLYPH[k]], k, 'glyph and key disagree for ' + k);
   }
   assert.equal(keys.length, 11);
@@ -76,13 +76,4 @@ test('nobody keeps a second copy of the pattern or the table', () => {
     assert.doesNotMatch(src, /🟢\|❇/, f + ' rebuilt the pattern');
     assert.doesNotMatch(src, /'🟢':\s*'ready'/, f + ' rebuilt the glyph table');
   }
-});
-
-test('routine names the rhythm, and it is two states out of eleven', () => {
-  // Measured 2026-09-02 over 60 records and 1,165 exchanges: 73% carry a state
-  // and ready alone is 57% of those. The set is a default a caller opts into,
-  // not a filter this kit imposes, which is what let both readings be rendered
-  // and compared rather than argued.
-  assert.deepEqual(CS.ROUTINE, ['ready', 'clean']);
-  for (const k of CS.ROUTINE) assert.ok(CS.GLYPH[k], 'routine names a real state');
 });

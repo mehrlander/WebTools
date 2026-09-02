@@ -505,18 +505,19 @@ test('the open body wraps on the ask\'s measure, not the card\'s', async () => {
   assert.doesNotMatch(body.className, /\bpr-|\bpl-/, 'and no pad guesses at the glyph');
 });
 
-// ── The rail ────────────────────────────────────────────────────────────────
+// ── The marks ───────────────────────────────────────────────────────────────
 //
-// It keyed on `kind` until 2026-09-02: blue down the asks, clay down the
-// replies, nothing beside the work. Three things had made that wrong, and the
-// row itself is two of them: every row now shows a blue ask and a clay reply,
-// so the rule marked a subset of them in the same two colours for a different
-// distinction, and the distinction it drew (`calls === 0`) is printed on the
-// row in words as the tool tally. The third is that its blue was a lie, since
-// `ask` means the record kept a prompt with no reply beside it.
+// The left edge keyed on `kind` until 2026-09-02: blue down the asks, clay down
+// the replies, nothing beside the work. It marked a subset of the rows in the
+// same two colours the row already spends, and the distinction it drew
+// (`calls === 0`) is printed on the row in words as the tool tally.
 //
 // What it carries now is the conventions' closing state, which is a code the
-// reader has already learnt from the chat.
+// reader has already learnt from the chat. It ran as a full-height 2px rail for
+// exactly one day: adjacent rows drew one unbroken line, and the rhythm was
+// muted to 0.4 to keep it quiet, which is also where 2px of green stops reading
+// as green. A dot is bounded and small, so it needs neither the fade nor the
+// knob that turned the fade off.
 
 const STATEFUL = {
   ...RECORD,
@@ -533,15 +534,15 @@ const STATEFUL = {
   calls_total: 0, calls: [],
 };
 
-const railOf = (n = 1) => {
+const marksOf = (n = 1) => {
   const box = [...window.document.querySelectorAll('.relative.mb-0\\.5')][n - 1];
   return [...(box?.firstElementChild?.children || [])];
 };
 
-test('the rail carries where the exchange arrived, one segment per state', () => {
+test('the edge carries where the exchange arrived, one dot per state', () => {
   buildWith(STATEFUL);
-  const one = railOf(1), two = railOf(2), three = railOf(3);
-  assert.equal(one.length, 1, 'a card that closed once draws one segment');
+  const one = marksOf(1), two = marksOf(2), three = marksOf(3);
+  assert.equal(one.length, 1, 'a card that closed once draws one dot');
   assert.equal(two.length, 2, 'and a card that closed twice draws two, in order');
   assert.equal(three.length, 0, 'a card that closed on nothing draws nothing');
   // The order is the exchange's, so a decision put and then acted on reads
@@ -550,45 +551,40 @@ test('the rail carries where the exchange arrived, one segment per state', () =>
   assert.match(two[1].getAttribute('data-note'), /Ready to continue/);
 });
 
-test('a routine state is muted, not dropped, and that was settled by looking', () => {
-  // 73% of exchanges across the store carry a state and `ready` alone is 57% of
-  // those, which argued for drawing only the rest. Rendered both ways, the
-  // opposite is true: with every row ruled the exceptions read AGAINST a
-  // baseline, and with only the exceptions ruled they float beside nothing.
+test('every state is drawn at full strength, because the dot is small enough', () => {
+  // The rail muted `ready` and `clean` to 0.4, since 73% of exchanges across
+  // the store carry a state and `ready` alone is 57% of those. A 6px disc is
+  // quiet at full opacity, so the fade went and took its knob with it: nothing
+  // here reads a routine set, and a green dot is the same green as any other.
   buildWith(STATEFUL);
-  const [ready] = railOf(1);
-  assert.equal(ready.style.opacity, '0.4', 'the rhythm is quiet');
-  const [choice, alsoReady] = railOf(2);
-  assert.equal(choice.style.opacity, '', 'and an event is not');
-  assert.equal(alsoReady.style.opacity, '0.4');
-});
-
-test('routineFade 0 drops them after all, which is the reading this replaced', () => {
-  buildWith(STATEFUL, { routineFade: 0 });
-  assert.equal(railOf(1).length, 0);
-  assert.equal(railOf(2).length, 1, 'only the event survives');
-  assert.match(railOf(2)[0].getAttribute('data-note'), /Choice needed/);
+  for (const el of [...marksOf(1), ...marksOf(2)]) {
+    assert.equal(el.style.opacity, '', 'no mark is dimmed');
+    assert.ok(el.className.includes('rounded-full'), 'and every mark is a disc');
+  }
+  assert.equal(marksOf(1)[0].style.background, 'rgb(63, 185, 80)', "🟢's own green");
 });
 
 test('a state names itself through the note kit, not a bare colour', () => {
   // Eleven hues is a code, and the seven that are a coloured disc are learnable
   // from the chat the reader already saw. The four that are not (🆚 ✴️ ❇️ ⚫)
-  // are not, so every segment carries its gloss the way the facts strip does.
+  // are not, so every dot carries its gloss the way the facts strip does.
   buildWith(STATEFUL);
-  const seg = railOf(1)[0];
-  assert.ok(seg.hasAttribute('data-note'));
-  assert.ok(seg.hasAttribute('data-note-bare'), 'a 2px bar has no text to underline');
-  assert.equal(seg.getAttribute('title'), null, 'and it is not a tooltip');
+  const d = marksOf(1)[0];
+  assert.ok(d.hasAttribute('data-note'));
+  assert.ok(d.hasAttribute('data-note-bare'), 'a 6px disc has no text to underline');
+  assert.equal(d.getAttribute('title'), null, 'and it is not a tooltip');
 });
 
-test('the capture note keeps its own rule, which no closing state can say', () => {
+test('the capture note is a ring, which says not-a-state without a hue', () => {
   // The one card that is the RENDERER's rather than the session's, so it has no
-  // closing state to carry and its rule is the one survivor of the old scheme.
-  // `tools` is one of the three things the summary card is built from, and the
-  // cheapest to state.
+  // closing state and never will. A filled dot in a twelfth colour would read
+  // as a twelfth state, so the shape carries it instead. `tools` is one of the
+  // three things the summary card is built from, and the cheapest to state.
   buildWith({ ...STATEFUL, tools: { Bash: 3 } });
-  const notes = [...window.document.querySelectorAll('.bg-warning\\/40')];
+  const notes = [...window.document.querySelectorAll('.relative.mb-0\\.5')]
+    .flatMap(b => [...(b.firstElementChild?.children || [])])
+    .filter(d => d.style.boxShadow);
   assert.equal(notes.length, 1, 'exactly the renderer\'s own card');
-  assert.ok(notes[0].parentElement.className.includes('w-[2px]'),
-    'and it is a rail segment like any other, not a border on the box');
+  assert.equal(notes[0].style.background, '', 'hollow, so it spends no colour');
+  assert.match(notes[0].getAttribute('data-note'), /not a turn/);
 });
