@@ -162,7 +162,7 @@ test('the strip counts a zero rather than dropping it, and drops what is absent'
 test('the closing reply is on the page from the row, record or no record', () => {
   const d = Alpine.$data(window.document.getElementById('unread'));
   assert.equal(d.record, null, 'this record could not be read');
-  assert.equal(d.closing, 'a closing reply the cache carried');
+  assert.equal(d.closingRaw, 'a closing reply the cache carried');
   assert.match(d.err, /Could not open nosuch/, 'and it says so rather than reading as empty');
   // The strip is the row's the whole time, so an unreadable record costs the
   // outline and nothing else.
@@ -200,7 +200,7 @@ test('the record overwrites what the row lent', () => {
   const d = lent();
   assert.equal(d.record.short, 'b8fae678');
   assert.equal(d.head.title, 'described b8fae678', 'describe owns the name once the record is here');
-  assert.equal(d.closing, 'and here is what came of it',
+  assert.equal(d.closingRaw, 'and here is what came of it',
     'the CLOSING reply, by timestamp, not the first or the longest');
   assert.equal(d.closingLabel, 'closing reply');
 });
@@ -212,7 +212,7 @@ test('a record with no replies says its text is a tail, not a turn', () => {
   window.document.body.append(el);
   Alpine.initTree(el);
   const d = Alpine.$data(el);
-  assert.equal(d.closing, 'the tail');
+  assert.equal(d.closingRaw, 'the tail');
   assert.equal(d.closingLabel, 'final turn, tail only');
 });
 
@@ -402,9 +402,8 @@ test('a mount handed its record still loads the kit chain', async () => {
   // `load()` short-circuits when the record is already in hand, and until
   // 2026-09-01 it returned BEFORE `ready()`. That path is the one a reader with
   // no token takes (#gz=), and it was giving them the worst copy of the page:
-  // no speaker on the deck, no reduction of the closing reply, markdown markers
-  // down every row of the picker. The skip is of the FETCH, never of the
-  // renderers.
+  // no speaker on the deck, no markdown anywhere, markdown markers down every
+  // row of the picker. The skip is of the FETCH, never of the renderers.
   loads.length = 0;
   log.length = 0;
   const el = window.document.createElement('div');
@@ -417,9 +416,8 @@ test('a mount handed its record still loads the kit chain', async () => {
   assert.equal(d.record.short, 'b8fae678');
   assert.deepEqual(log, [], 'and it still reads nothing from the store');
   assert.ok(loads.includes('kits/read-aloud.js'),
-    'the kit the closing reply and the picker rows reduce their markdown through');
+    'the kit the deck speaks with and the picker rows reduce their previews through');
   assert.ok(loads.includes('kits/session-render.js'), 'and the one settle() renders with');
-  assert.equal(d.kitsIn, true, 'which is what lets the closing reply repaint as prose');
 });
 
 test('the brief fills its host, rather than drawing a phone column on a desktop', () => {
@@ -435,4 +433,28 @@ test('the brief fills its host, rather than drawing a phone column on a desktop'
   assert.ok(shell, 'the outer shell div, the one the framed/standalone class rides');
   assert.doesNotMatch(shell[1], /\bmax-w-|\bmx-auto\b/, shell[1]);
   assert.match(shell[1], /\bw-full\b/);
+});
+
+test('the closing reply is markdown, and its rest is a tap rather than a tooltip', async () => {
+  // It was `x-text` of a string this component flattened itself, with the whole
+  // of it parked in a `title`: a fact with no route on a phone, and the one
+  // thing the house style names outright. It is a reply like every other one on
+  // this page, so it goes through the kit that renders those.
+  const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/session-brief.js'), 'utf8');
+  const at = src.indexOf('x-show="closingRaw"');
+  assert.ok(at > 0, 'the block is found by the thing it shows on');
+  const block = src.slice(at, src.indexOf('</button>', at));
+  assert.doesNotMatch(block, /:?title=/, 'no tooltip carries the rest of it');
+  // The LABEL is still x-text, and should be: it is a fidelity claim in one
+  // word, not the reply.
+  assert.doesNotMatch(block, /x-text="closing(Raw)?"/, 'the reply itself is not set as flat text');
+  assert.match(block, /x-ref="closingBody"/);
+  assert.match(block, /aria-expanded/, 'the block is the control the tooltip used to be');
+  assert.match(src, /chatRender\.markdown\(md, \{ dense: true \}\)/,
+    'through the same renderer every other reply on this page uses');
+
+  // And the flattening it used to do is GONE rather than merely unused: a
+  // second markdown-to-text pass sitting here is what would get reached for
+  // next time.
+  assert.doesNotMatch(src, /speechText/, 'session-brief no longer flattens anything itself');
 });
