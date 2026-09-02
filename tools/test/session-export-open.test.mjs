@@ -443,6 +443,37 @@ test('the ask takes the blue, and nothing else on the row does', () => {
   assert.ok(openRows().length >= 1, 'and open is still readable off the row');
 });
 
+test('the open card is scoped by an edge, and only the open one', () => {
+  // Reported 2026-09-02: with several cards on screen the open one had no
+  // scope, since the only marks were its height and the clay replies inside it,
+  // and both read as more list. NOT A BAND: a tint behind the head is what this
+  // had before, through primary and then a neutral, and both washed the ask
+  // sitting on them. An inset ring draws the edge and takes no layout, so the
+  // alignment the grid exists for is untouched.
+  buildWith(STATEFUL);
+  const boxes = () => [...window.document.querySelectorAll('.mb-0\\.5.pl-3')];
+  assert.equal(boxes().filter(b => b.style.boxShadow).length, 0, 'nothing is scoped shut');
+  boxes()[0].querySelector('button[aria-label^="Open card"]')
+    .dispatchEvent(new window.Event('click'));
+  const ringed = boxes().filter(b => b.style.boxShadow);
+  assert.equal(ringed.length, 1, 'exactly the card that was opened');
+  assert.match(ringed[0].style.boxShadow, /inset/);
+  assert.ok(ringed[0].className.includes('rounded-lg'));
+  // And no fill anywhere, which is the answer this replaced twice.
+  for (const b of boxes()) assert.equal(b.style.background, '');
+});
+
+test('the open body is bounded, so a long exchange stays a panel in the list', () => {
+  // It opened to nine screens of reply, so the row that was tapped scrolled off
+  // the top and the list under it was unreachable without dragging past it all.
+  buildWith(STATEFUL);
+  const body = window.document.querySelector('.col-start-1');
+  assert.ok(body.className.includes('overflow-y-auto'));
+  assert.match(body.className, /max-h-\[min\(60vh,28rem\)\]/);
+  // Outside the button, so a drag inside it cannot toggle the card it is in.
+  assert.equal(body.closest('button'), null);
+});
+
 test('every ask is set the same, whatever the exchange did', () => {
   // The title keyed on `kind` until 2026-09-02: quiet for an exchange that ran
   // tools, `font-medium` a notch larger for one that did not. So two of the
