@@ -356,7 +356,9 @@ test('a row with no address, or none at all, is not openable', () => {
 // link which resolves and renders into a link that shows last week's code.
 test('a lib change without a rebuilt pre-build is reported, not swallowed', () => {
   assert.equal(R.bundleStale(['lib/alpineComponents/stage.js']), true);
-  assert.equal(R.bundleStale(['lib/alpineComponents/stage.js', 'dist/web-tools.js']), false);
+  assert.equal(R.bundleStale(['lib/alpineComponents/stage.js', 'dist/app.js']), false);
+  assert.equal(R.bundleStale(['lib/alpineComponents/stage.js', 'dist/web-tools.js']), true,
+    'the app pins its own bundle now; the whole-library one is not what ?use= fetches here');
   assert.equal(R.bundleStale(['pages/branch.html']), false, 'a page change does not ride the bundle');
   assert.equal(R.bundleStale([]), false);
 });

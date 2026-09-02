@@ -1172,3 +1172,33 @@ test('a verdict is counted once per session, so the counts never undershoot', ()
   const total = Object.values(d.delivered).reduce((a, b) => a + b, 0);
   assert.ok(total >= d.sessions, 'every session on the row is represented by a verdict');
 });
+
+// ── The prose leaves the row (2026-09-02) ──────────────────────────────────
+// summarize() still derives the scroll back, the states and the reply, since
+// a card opened on one row runs it on the record in the browser; the FILE
+// stores none of it, carried rows included, so an existing cache thins on its
+// next commit without a record re-read.
+test('buildCache stores lean rows: the prose keys are absent, the scalars stay', () => {
+  const p = 'sessions/2026/08/2026-08-05-b8fae678.json';
+  const cache = S.buildCache(null, { [p]: { record: record({
+    replies: [reply('2026-08-05T16:00:00Z', 'Done.\n\n⚪ **Clean exit.** Merged.')],
+  }), sha: 'x' } }, null, 'now');
+  const row = cache.rows[0];
+  for (const k of S.PROSE_KEYS) assert.ok(!(k in row), k + ' left the stored row');
+  assert.equal(row.state, 'clean', 'the closing-state scalar stays for the chips');
+  assert.ok('ask' in row && 'askAt' in row, 'the ask stays for the list');
+  // And what summarize() hands a card still has the prose.
+  const full = S.summarize(record({ replies: [reply('2026-08-05T16:00:00Z', 'Done.')] }), 'x');
+  assert.ok(Array.isArray(full.turns) && 'reply' in full && Array.isArray(full.states));
+});
+
+test('a carried row from an older file is thinned without a re-read', () => {
+  const p = 'sessions/2026/08/2026-08-05-b8fae678.json';
+  const fat = { ...S.summarize(record(), 'same'), turns: [['u', 'hi', '', 0]], reply: 'long reply' };
+  const prev = { rows: [fat] };
+  const next = S.buildCache(prev, {}, [p], 'now');
+  assert.equal(next.rows.length, 1, 'carried');
+  assert.ok(!('reply' in next.rows[0]) && !('turns' in next.rows[0]), 'and lean');
+  assert.deepEqual(S.stalePaths(next, [{ path: p, sha: 'same' }]), [], 'sha and version still match');
+  assert.equal(S.leanRow(null), null);
+});

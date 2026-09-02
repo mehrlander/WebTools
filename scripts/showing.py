@@ -166,7 +166,7 @@ def consumers():
             continue
         for arg in re.findall(r"gh\.load\(\s*['\"]([^'\"]+)['\"]", src):
             out.setdefault(f"lib/{arg}", set()).add(page)
-        if "dist/web-tools.js" in src:
+        if "dist/web-tools.js" in src or "dist/app.js" in src:
             prebuilt.append(page)
     return out, prebuilt
 
@@ -252,7 +252,7 @@ def pick(paths, base, ref, use_git=True, diff=None):
     # Lib, which is the case that gets called wrong.
     if b["lib"] or b["dist"]:
         if b["lib"] and not b["dist"]:
-            warn.append("lib/ changed but dist/web-tools.js did not: ?use= fetches the pre-build, so run `npm run build:lib` and commit, or the link serves the old bundle.")
+            warn.append("lib/ changed but no dist/ bundle did: ?use= fetches the pre-build (dist/app.js for the app, dist/web-tools.js elsewhere), so run `npm run build:lib` and `npm run build:app` and commit, or the link serves the old bundle.")
         rts = routes_for(b["lib"])
         direct = set()
         for p in b["lib"]:

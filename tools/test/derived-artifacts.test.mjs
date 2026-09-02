@@ -30,6 +30,11 @@ test('dist/web-tools.js matches lib/', () => {
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'build:lib --check failed');
 });
 
+test('dist/app.js matches lib/ and the app page', () => {
+  const r = check(['tools/build/build-app.mjs', '--check']);
+  assert.equal(r.status, 0, (r.stderr || '').trim() || 'build:app --check failed');
+});
+
 test('the page catalogs match pages/', () => {
   const r = check(['tools/build/pages-index.mjs', '--check']);
   assert.equal(r.status, 0, (r.stderr || '').trim() || 'pages-index --check failed');

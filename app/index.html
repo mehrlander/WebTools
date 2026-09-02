@@ -86,14 +86,36 @@
   // since a branch ref MOVES and the HTTP cache is keyed by URL alone: blob
   // import defeats the module cache and nothing was defeating the other one
   // (no SHA needed). The no-?use path stays the fastest same-origin import.
+  //
+  // The bundle is the APP'S OWN since 2026-09-02 (dist/app.js, tools/build/
+  // build-app.mjs): the part of lib/ this page can reach, 22 components rather
+  // than 32 registered at import, and the heavy on-demand kits (annotate, pdf,
+  // dictate, xlsx) left to load on first use. dist/web-tools.js, the whole
+  // library, stays for the pages that import it.
+  //
+  // A branch NAME moves, which is why the fetch by name is no-store, and that
+  // re-downloaded the whole bundle on every preview load. So a name is resolved
+  // to its commit first (one small anonymous API call) and the bundle fetched
+  // by SHA, an address that cannot move and that the HTTP cache may keep; a
+  // SHA given directly skips the resolve, and a failed resolve falls back to
+  // the uncached fetch by name.
   const ref = new URLSearchParams(location.search).get('use');
   if (ref) {
-    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
+    let sha = /^[0-9a-f]{40}$/.test(ref) ? ref : '';
+    if (!sha) {
+      try {
+        const r = await fetch(`https://api.github.com/repos/mehrlander/web-tools/commits/${encodeURIComponent(ref)}`,
+                              { headers: { Accept: 'application/vnd.github.sha' } });
+        if (r.ok) sha = (await r.text()).trim();
+      } catch {}
+    }
+    const at = sha || ref;
+    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${at}/dist/app.js`, sha ? {} : { cache: 'no-store' });
     if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
     const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
     try { await import(url); } finally { URL.revokeObjectURL(url); }
   } else {
-    await import('../dist/web-tools.js');
+    await import('../dist/app.js');
   }
   // gh-store rides in the pre-build cached but unexecuted; this load runs it
   // from the inlined cache (no network) so GH.prototype.save exists as before.

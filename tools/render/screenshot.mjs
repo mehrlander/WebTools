@@ -88,7 +88,10 @@ function transformPage(html) {
 // Does this page boot from the pre-build rather than the gh.load chain? Read
 // from the page's own source, since that is what decides which code runs, and
 // it is the precondition for the staleness warning built after the render.
-const preBuildPage = (await readFile(pageAbs, 'utf8')).includes('dist/web-tools.js');
+// Which pre-build, if any: the app imports its walked build (dist/app.js),
+// other pre-build pages the whole library (dist/web-tools.js).
+const pageSrcText = await readFile(pageAbs, 'utf8');
+const preBuildPage = pageSrcText.includes('dist/app.js') ? 'app' : pageSrcText.includes('dist/web-tools.js') ? 'lib' : '';
 
 // Loopback static server rooted at the repo. The target page is transformed in
 // flight; every other path is served raw from disk (lets dist/<page>.js and any
@@ -212,11 +215,13 @@ if (badScripts.length) {
   warnings.push('  a page that boots the pre-build keeps running its inlined copy, so these pixels may be the last build');
 }
 if (preBuildPage) {
-  const check = spawnSync(process.execPath, [path.join(repoRoot, 'tools/build/build-lib.mjs'), '--check'],
+  const builder = preBuildPage === 'app' ? 'build-app' : 'build-lib';
+  const artifact = preBuildPage === 'app' ? 'dist/app.js' : 'dist/web-tools.js';
+  const check = spawnSync(process.execPath, [path.join(repoRoot, `tools/build/${builder}.mjs`), '--check'],
                           { cwd: repoRoot, encoding: 'utf8' });
   if (check.status !== 0) {
-    warnings.push('dist/web-tools.js is BEHIND lib/, and this page boots from it: these pixels are the last build');
-    warnings.push('  run: npm run build:lib');
+    warnings.push(`${artifact} is BEHIND lib/, and this page boots from it: these pixels are the last build`);
+    warnings.push(`  run: npm run ${builder.replace('-', ':')}`);
   }
 }
 // Thrown JS only. A failed request is NOT warned on: this sandbox blocks the

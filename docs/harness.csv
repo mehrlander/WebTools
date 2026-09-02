@@ -21,6 +21,7 @@ scripts/text-carriers.py,"inventory the CSV and JSON carriers that already hold 
 scripts/unclaimed-code.py,"per-layer counts of files, files prose names, and files a test exercises; the code-scan behind code-layers.md",scripts,187,npm:code-scan,no,yes,no
 tools/build/audit-payload.py,"build a standoff annotation from a document plus its segmentation and labels, and the audit/1 delivery payload that carries it into a page",tools/build,164,argv,no,yes,yes
 tools/build/bake.mjs,emit dist/<page>.html: the page's chain inlined into a standalone file,tools/build,53,npm:bake,yes,yes,no
+tools/build/build-app.mjs,"emit dist/app.js, the app's own pre-build: the part of lib/ app/index.html can reach, by the shared emitter; --check for the gate",tools/build,158,npm:build:app,yes,yes,yes
 tools/build/build-lib.mjs,"emit dist/web-tools.js, the pre-build: the whole lib/ as one self-booting offline artifact",tools/build,108,npm:build:lib,yes,yes,yes
 tools/build/build.mjs,"emit dist/<page>.js: a page's gh.load chain frozen offline, through lib/build.js's emitter",tools/build,77,npm:build,yes,yes,no
 tools/build/console-suite.mjs,assemble console/suite.js from base.js plus the layered console modules,tools/build,51,npm:build:console,yes,yes,yes
@@ -201,4 +202,4 @@ tools/render/scenarios/stage-transform-chip.mjs,"stages three transform-shaped i
 tools/render/scenarios/state-view.mjs,"Populate the State view for a screenshot: stub the registry reads with a current cache, a stale one, an unchecked one, and the buttonless entity index",tools/render/scenarios,280,driver,no,no,no
 tools/render/scenarios/subject-action-probe.mjs,"probe: can the shell invoke a toss subject's action closure, or only reach it",tools/render/scenarios,124,driver,no,no,no
 tools/render/scenarios/toss-fragment.mjs,prove toss-render hands a trailing #frag to the rendered page in both trust postures,tools/render/scenarios,96,driver,no,no,no
-tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,254,npm:shot,yes,yes,yes
+tools/render/screenshot.mjs,the Chromium pixel render behind npm run shot; --script drives a scenario first,tools/render,259,npm:shot,yes,yes,yes
