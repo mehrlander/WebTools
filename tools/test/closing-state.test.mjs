@@ -68,12 +68,56 @@ test('every key the pattern can produce is complete in all three tables', () => 
 });
 
 test('nobody keeps a second copy of the pattern or the table', () => {
-  // repo-sessions-cache.js owned the parser and estate.js the glyph table, each
-  // correct about its own half and neither able to see the other.
+  // repo-sessions-cache.js owned the parser and estate.js the glyph-and-gloss
+  // table, each correct about its own half and neither able to see the other.
+  // estate.js is in this list because it was the OTHER half: it kept its own
+  // SESSION_STATE literal for one commit after this kit landed, which is the
+  // split with an extra step rather than the split ended.
   for (const f of ['lib/kits/repo-sessions-cache.js', 'lib/kits/session-render.js',
-                   'lib/kits/session-export.js']) {
+                   'lib/kits/session-export.js', 'lib/alpineComponents/estate.js']) {
     const src = readFileSync(path.join(repoRoot, f), 'utf8');
     assert.doesNotMatch(src, /🟢\|❇/, f + ' rebuilt the pattern');
     assert.doesNotMatch(src, /'🟢':\s*'ready'/, f + ' rebuilt the glyph table');
+    assert.doesNotMatch(src, /ready:\s*\['🟢'/, f + ' rebuilt the glyph and gloss table');
+    for (const gloss of Object.values(CS.GLOSS)) {
+      assert.ok(!src.includes(gloss), f + ' copied a gloss: ' + gloss);
+    }
+  }
+});
+
+// ── closings(): the same passages, carried whole ────────────────────────────
+// `marks` says where a reply arrived; a row wants what it arrived AT, because
+// every 🟢 lead reads "Ready to continue" and the sentence after it is the
+// content of the state.
+
+test('a closing carries its own block, to the end of the paragraph', () => {
+  const md = 'Did it.\n\n🟢 **Ready to continue.** On "go" I will build it.\nAnd a second line.\n\nA later paragraph.';
+  const [c] = CS.closings(md);
+  assert.equal(c.key, 'ready');
+  assert.equal(c.glyph, '🟢');
+  assert.equal(c.text, '**Ready to continue.** On "go" I will build it.\nAnd a second line.');
+});
+
+test('the glyph is dropped and the emphasis kept, for the prose pass downstream', () => {
+  // readAloud.speechText takes the emphasis off along with the link targets and
+  // the fences, so handing it markdown is what keeps one reduction in one place.
+  const [c] = CS.closings('🆚 **Choice needed.** A or B.');
+  assert.match(c.text, /^\*\*Choice needed\.\*\*/);
+  assert.doesNotMatch(c.text, /🆚/);
+});
+
+test('a passage that closes twice yields both, in order', () => {
+  const md = '🆚 **Choice needed.** Pick.\n\n…\n\n🟢 **Ready.** Go.';
+  assert.deepEqual(CS.closings(md).map(c => c.key), ['choice', 'ready']);
+  assert.match(CS.closings(md)[1].text, /Go\./);
+});
+
+test('closings and marks agree on what counts as a state', () => {
+  // Two readers of one pattern is exactly the split this kit ended, so the
+  // quoted-vocabulary case has to fail both.
+  const doc = '  - 🟢 **Ready to continue:** work is ready to do now.\n* ⚪ **Clean exit:** done.';
+  assert.deepEqual(CS.closings(doc), []);
+  for (const md of ['🟢 **a** b', '> ⚪ **c** d', 'no state here']) {
+    assert.deepEqual(CS.closings(md).map(c => c.key), CS.marks(md));
   }
 });

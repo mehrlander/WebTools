@@ -505,19 +505,21 @@ test('the open body wraps on the ask\'s measure, not the card\'s', async () => {
   assert.doesNotMatch(body.className, /\bpr-|\bpl-/, 'and no pad guesses at the glyph');
 });
 
-// ── The marks ───────────────────────────────────────────────────────────────
+// ── Where the exchange arrived ──────────────────────────────────────────────
 //
 // The left edge keyed on `kind` until 2026-09-02: blue down the asks, clay down
 // the replies, nothing beside the work. It marked a subset of the rows in the
 // same two colours the row already spends, and the distinction it drew
 // (`calls === 0`) is printed on the row in words as the tool tally.
 //
-// What it carries now is the conventions' closing state, which is a code the
-// reader has already learnt from the chat. It ran as a full-height 2px rail for
-// exactly one day: adjacent rows drew one unbroken line, and the rhythm was
-// muted to 0.4 to keep it quiet, which is also where 2px of green stops reading
-// as green. A dot is bounded and small, so it needs neither the fade nor the
-// knob that turned the fade off.
+// What the row carries now is the conventions' closing state, and it took three
+// readings in one day to land. A full-height 2px rail: adjacent rows drew one
+// unbroken line and the rhythm was muted to 0.4, which is where 2px of green
+// stops reading as green. A dot in the box's left pad: bounded and legible, but
+// hung at the height of the ask, so the ASSISTANT's claim about where the work
+// arrived sat on the row carrying what the READER said. A line under the reply,
+// which is where it belongs and is also the only one of the three that can
+// print what the exchange arrived AT rather than only that it arrived.
 
 const STATEFUL = {
   ...RECORD,
@@ -525,66 +527,97 @@ const STATEFUL = {
   prompts: [{ at: '2026-09-01T10:00:00Z', text: 'First ask' },
             { at: '2026-09-01T10:30:00Z', text: 'Second ask' },
             { at: '2026-09-01T11:00:00Z', text: 'Third ask' }],
-  replies_total: 3, replies_stored: 3,
+  replies_total: 4, replies_stored: 4,
   replies: [
-    { at: '2026-09-01T10:05:00Z', text: 'Did it.\n\n🟢 **Ready to continue.** Named on go.' },
+    { at: '2026-09-01T10:05:00Z', text: 'Did it.\n\n🟢 **Ready to continue.** The first offer.' },
+    // A second turn in the SAME exchange, closing on the same state: one line,
+    // and it is this one.
+    { at: '2026-09-01T10:10:00Z', text: 'And again.\n\n🟢 **Ready to continue.** The live offer.' },
     { at: '2026-09-01T10:35:00Z', text: 'Two ways.\n\n🆚 **Choice needed.** Pick one.\n\n🟢 **Ready.** Or go.' },
     { at: '2026-09-01T11:05:00Z', text: 'No state here at all.' },
   ],
   calls_total: 0, calls: [],
 };
 
-const marksOf = (n = 1) => {
-  const box = [...window.document.querySelectorAll('.relative.mb-0\\.5')][n - 1];
-  return [...(box?.firstElementChild?.children || [])];
+const boxOf = (n = 1) => [...window.document.querySelectorAll('.mb-0\\.5.py-1.pl-3')][n - 1];
+const statesOf = (n = 1) => {
+  const row = boxOf(n)?.querySelector('button[aria-label^="Open card"]');
+  return [...(row?.querySelectorAll('span.rounded-full') || [])]
+    .map(mark => ({ mark, line: mark.nextElementSibling }));
 };
 
-test('the edge carries where the exchange arrived, one dot per state', () => {
+test('a closing state is a line under the reply, in the reply\'s own words', () => {
   buildWith(STATEFUL);
-  const one = marksOf(1), two = marksOf(2), three = marksOf(3);
-  assert.equal(one.length, 1, 'a card that closed once draws one dot');
-  assert.equal(two.length, 2, 'and a card that closed twice draws two, in order');
-  assert.equal(three.length, 0, 'a card that closed on nothing draws nothing');
+  assert.equal(statesOf(1).length, 1, 'a card that closed once draws one line');
+  assert.equal(statesOf(2).length, 2, 'and a card that closed twice draws two, in order');
+  assert.equal(statesOf(3).length, 0, 'a card that closed on nothing draws nothing');
   // The order is the exchange's, so a decision put and then acted on reads
   // top to bottom the way it happened.
-  assert.match(two[0].getAttribute('data-note'), /Choice needed/);
-  assert.match(two[1].getAttribute('data-note'), /Ready to continue/);
+  assert.match(statesOf(2)[0].line.textContent, /^Choice needed\. Pick one\./);
+  assert.match(statesOf(2)[1].line.textContent, /^Ready\. Or go\./);
 });
 
-test('every state is drawn at full strength, because the dot is small enough', () => {
-  // The rail muted `ready` and `clean` to 0.4, since 73% of exchanges across
-  // the store carry a state and `ready` alone is 57% of those. A 6px disc is
-  // quiet at full opacity, so the fade went and took its knob with it: nothing
-  // here reads a routine set, and a green dot is the same green as any other.
+test('the bold lead stays, because the row has to survive without its colour', () => {
+  // Dropped, the 🆚 line reads "Pick one." and the only thing saying a decision
+  // was put to the reader is a pink dot.
   buildWith(STATEFUL);
-  for (const el of [...marksOf(1), ...marksOf(2)]) {
-    assert.equal(el.style.opacity, '', 'no mark is dimmed');
-    assert.ok(el.className.includes('rounded-full'), 'and every mark is a disc');
-  }
-  assert.equal(marksOf(1)[0].style.background, 'rgb(63, 185, 80)', "🟢's own green");
+  assert.match(statesOf(2)[0].line.textContent, /Choice needed/);
+  // And the emphasis goes, since this runs through the same speechText pass the
+  // reply preview does.
+  assert.doesNotMatch(statesOf(2)[0].line.textContent, /\*\*/);
 });
 
-test('a state names itself through the note kit, not a bare colour', () => {
-  // Eleven hues is a code, and the seven that are a coloured disc are learnable
-  // from the chat the reader already saw. The four that are not (🆚 ✴️ ❇️ ⚫)
-  // are not, so every dot carries its gloss the way the facts strip does.
+test('two closings on one state are one line, and it is the later claim', () => {
+  // Two assistant turns in one exchange both offering to continue are two
+  // versions of one offer, not two offers.
   buildWith(STATEFUL);
-  const d = marksOf(1)[0];
-  assert.ok(d.hasAttribute('data-note'));
-  assert.ok(d.hasAttribute('data-note-bare'), 'a 6px disc has no text to underline');
-  assert.equal(d.getAttribute('title'), null, 'and it is not a tooltip');
+  assert.equal(statesOf(1).length, 1);
+  assert.match(statesOf(1)[0].line.textContent, /The live offer/);
+  assert.doesNotMatch(statesOf(1)[0].line.textContent, /The first offer/);
 });
 
-test('the capture note is a ring, which says not-a-state without a hue', () => {
-  // The one card that is the RENDERER's rather than the session's, so it has no
-  // closing state and never will. A filled dot in a twelfth colour would read
-  // as a twelfth state, so the shape carries it instead. `tools` is one of the
-  // three things the summary card is built from, and the cheapest to state.
+test('the mark is a disc in the row\'s own gutter, not a bar beside the ask', () => {
+  // It was absolutely positioned in the box's left pad, which is outside the
+  // grid and at the height of the ask; it is a grid child of the row now, so it
+  // sits in the same track as the user and sparkle glyphs.
+  buildWith(STATEFUL);
+  const { mark } = statesOf(1)[0];
+  assert.equal(mark.parentElement.getAttribute('aria-label'), 'Open card 1');
+  assert.ok(mark.className.includes('rounded-full') && mark.className.includes('size-[6px]'));
+  assert.equal(mark.style.background, 'rgb(63, 185, 80)', "🟢's own green");
+  assert.equal(mark.style.opacity, '', 'and nothing is dimmed: the disc is small, not quiet');
+});
+
+test('the disc opens nothing, because it is inside the row\'s own button', () => {
+  // It carried `data-note` while it was a bare dot in the box's pad, outside
+  // any control. Inside the button, the note kit's capture-phase pointerdown
+  // does not stop propagation, so one tap would open a panel AND expand the
+  // card. The words beside it carry the gloss instead.
+  buildWith(STATEFUL);
+  const { mark } = statesOf(1)[0];
+  assert.equal(mark.getAttribute('data-note'), null);
+  assert.equal(mark.getAttribute('title'), null, 'and it is not a tooltip either');
+  assert.equal(mark.getAttribute('aria-hidden'), 'true', 'the line beside it says the same thing');
+});
+
+test('opening the card withdraws the state lines with the preview', () => {
+  // The turns underneath carry the closing block whole, so leaving the summary
+  // on screen would say it twice.
+  buildWith(STATEFUL);
+  const { mark, line } = statesOf(1)[0];
+  boxOf(1).querySelector('button[aria-label^="Open card"]').dispatchEvent(new window.Event('click'));
+  assert.equal(mark.style.display, 'none');
+  assert.equal(line.style.display, 'none');
+});
+
+test('the capture note has no closing state, and draws no line', () => {
+  // The one card that is the RENDERER's rather than the session's. It carried a
+  // hollow ring for one commit, to say not-a-state without spending a colour;
+  // with the mark moved onto the reply's line there is no reply to hang it on,
+  // and the row already reads Note in the warning colour.
   buildWith({ ...STATEFUL, tools: { Bash: 3 } });
-  const notes = [...window.document.querySelectorAll('.relative.mb-0\\.5')]
-    .flatMap(b => [...(b.firstElementChild?.children || [])])
-    .filter(d => d.style.boxShadow);
-  assert.equal(notes.length, 1, 'exactly the renderer\'s own card');
-  assert.equal(notes[0].style.background, '', 'hollow, so it spends no colour');
-  assert.match(notes[0].getAttribute('data-note'), /not a turn/);
+  const boxes = [...window.document.querySelectorAll('.mb-0\\.5.py-1.pl-3')];
+  const note = boxes.find(b => /What this session touched/.test(b.textContent));
+  assert.ok(note, 'the capture card is drawn');
+  assert.equal(note.querySelectorAll('span.rounded-full').length, 0);
 });
