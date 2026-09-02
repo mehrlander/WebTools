@@ -781,3 +781,77 @@ test('the panel is dismissed from inside the component, not from the document', 
   boxOf(2).dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
   assert.equal(peekOf(1), null, 'a tap elsewhere in the list closes it');
 });
+
+// ── Hover, and the ask's own type ───────────────────────────────────────────
+
+const hoverable = (on) => {
+  window.matchMedia = (q) => ({ matches: on && /hover:\s*hover/.test(q), media: q,
+                                addListener() {}, removeListener() {} });
+};
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+test('a fine pointer opens on hover after a dwell, and closes after leaving both', async () => {
+  // Asked for on 2026-09-02: a reader running a mouse down the list wants the
+  // half under it, not a click per row. The dwell stops a pointer crossing the
+  // row from flashing a panel at it; the grace after leaving is what lets the
+  // panel be entered, which is the rule kits/note.js can skip because its own
+  // panel is `pointer-events:none` and this one is not.
+  hoverable(true);
+  buildWith(STATEFUL);
+  const t = trigs(1)[0];
+  t.dispatchEvent(new window.Event('pointerover', { bubbles: true }));
+  assert.equal(peekOf(1), null, 'not on arrival');
+  await wait(220);
+  assert.ok(peekOf(1), 'and open after the dwell');
+
+  t.dispatchEvent(new window.Event('pointerout', { bubbles: true }));
+  assert.ok(peekOf(1), 'still there through the grace');
+  await wait(320);
+  assert.equal(peekOf(1), null, 'and gone after it');
+});
+
+test('entering the panel keeps it, which is why the grace exists', async () => {
+  hoverable(true);
+  buildWith(STATEFUL);
+  const t = trigs(1)[0];
+  t.dispatchEvent(new window.Event('pointerover', { bubbles: true }));
+  await wait(220);
+  const panel = peekOf(1);
+  t.dispatchEvent(new window.Event('pointerout', { bubbles: true }));
+  panel.dispatchEvent(new window.Event('pointerover', { bubbles: true }));
+  await wait(320);
+  assert.ok(peekOf(1), 'the pointer is in the panel, so it stays');
+});
+
+test('a coarse pointer never hover-opens, because a tap synthesises one', async () => {
+  // Without the gate the dwell and the tap both fire and the panel opens and
+  // toggles itself shut.
+  hoverable(false);
+  buildWith(STATEFUL);
+  trigs(1)[0].dispatchEvent(new window.Event('pointerover', { bubbles: true }));
+  await wait(220);
+  assert.equal(peekOf(1), null);
+  trigs(1)[0].click();
+  assert.ok(peekOf(1), 'the tap is what opens it');
+  hoverable(true);
+});
+
+test('the ask reads at the panel\'s size, and its double spaces are squeezed', async () => {
+  // chat-render renders a prompt verbatim in a `<pre>`, because a prompt is
+  // typed text and not markdown, and in dense mode drops it to 11px so the ask
+  // reads under the reply it is context for. In a panel titled YOU there is
+  // nothing to be under. And the verbatim whitespace shows every double space
+  // after a sentence, which the row directly above collapses.
+  buildWith({
+    ...STATEFUL,
+    prompts: [{ at: '2026-09-01T10:00:00Z', text: 'One.  Two.\n\n    indented line' },
+              ...STATEFUL.prompts.slice(1)],
+  });
+  trigs(1)[0].click();
+  await drawn();
+  const pre = peekOf(1).querySelector('pre');
+  assert.equal(pre.style.fontSize, '13px', 'the reading size, not the deck\'s subordinate one');
+  assert.match(pre.textContent, /One\. Two\./, 'the mid-line run is squeezed');
+  assert.match(pre.textContent, /\n\n {4}indented line/,
+    'and both the newlines and the line-leading indent survive, which is what a paste needs');
+});
