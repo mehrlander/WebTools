@@ -124,9 +124,10 @@ const chip = (label) => [...window.document.querySelectorAll('button')].find(b =
 // button's own pressed state is what says it, with an inset ring on the card so
 // a lit icon is not the only mark across twenty rows.
 const openRows = () => [...window.document.querySelectorAll('button[aria-pressed="true"]')];
-// The panel, and the two triggers that open it.
+// The panel, and the trigger that opens it: the ROW, since one panel carries
+// the whole exchange now rather than one per half.
 const peekOf = (n = 1) => boxOf(n)?.querySelector('.shadow-xl');
-const trigs = (n = 1) => [...(rowOf(n)?.querySelectorAll('[role="button"]') || [])];
+const trig = (n = 1) => rowOf(n);
 const stat = () => window.document.querySelector('.tabular-nums.text-base-content\\/50')?.textContent || '';
 
 test('nothing is picked to begin with, so nothing is selected and the bar is away', () => {
@@ -248,12 +249,12 @@ test('the role toggles decide what comes with a picked card', () => {
 // only just opened has an empty box for a tick.
 const drawn = () => new Promise(r => setTimeout(r, 30));
 
-test('a peeked half is drawn by the deck\'s renderer, not by a second one here', async () => {
+test('the panel is drawn by the deck\'s renderer, not by a second one here', async () => {
   // The whole point of the 2026-09-01 change: two drawings of one turn, met
   // within two taps of each other. If this file ever grows its own turn markup
   // again, the markdown stops being markdown and that is what fails first.
   build();
-  trigs(1)[1].click();                       // the reply line
+  trig(1).click();
   await drawn();
   const panel = peekOf(1);
   assert.ok(panel, 'the panel is hung on the card that owns the half');
@@ -301,8 +302,8 @@ test('one control per destination: the text peeks, the glyph decks, the ring pic
   const v = SE.index(RECORD, { onOpen: (i) => opened.push(i) });
   window.document.body.replaceChildren(v.el);
 
-  trigs(1)[0].click();
-  assert.deepEqual(opened, [], 'tapping a half does not leave for the deck');
+  trig(1).click();
+  assert.deepEqual(opened, [], 'tapping the row does not leave for the deck');
   assert.equal(v.selectedCount, 0, 'nor does it pick: reading and picking are separate now');
   pills()[0].click();
   assert.equal(v.selectedCount > 0, true, 'the pick is what selects');
@@ -311,7 +312,7 @@ test('one control per destination: the text peeks, the glyph decks, the ring pic
   assert.deepEqual(opened, [1], 'and the glyph is the only way out to the deck');
 });
 
-test('the row carries the ask itself, clamped, and the panel carries it whole', async () => {
+test('the row carries the ask clamped, and the panel carries the exchange whole', async () => {
   build();
   const title = rowOf(1).querySelector('.line-clamp-2');
   assert.ok(title, 'closed, the ask is clamped to two lines');
@@ -324,15 +325,16 @@ test('the row carries the ask itself, clamped, and the panel carries it whole', 
   assert.match(title.textContent, /^First ask/, 'and it is the ask, not a title derived from it');
   // THE CLAMP NEVER COMES OFF NOW. The row stopped expanding on 2026-09-02, so
   // its lines stay one and two lines forever and the whole text is a panel away.
-  trigs(1)[0].click();
+  trig(1).click();
   await drawn();
   assert.ok(rowOf(1).querySelector('.line-clamp-2'), 'the row is unchanged by a peek');
   assert.match(peekOf(1).textContent, /First ask/, 'and the panel has it whole');
+  assert.match(peekOf(1).textContent, /The reply runs on/, 'with the reply under it');
 });
 
-test('what the reply\'s panel carries is the reply, not the whole card again', async () => {
+test('the panel carries the exchange, and not the machinery around it', async () => {
   build();
-  trigs(1)[1].click();
+  trig(1).click();
   await drawn();
   const body = peekOf(1).textContent;
   assert.ok(body.includes('The reply runs on'), 'the prose that answers');
@@ -341,7 +343,7 @@ test('what the reply\'s panel carries is the reply, not the whole card again', a
   // first card, not under every row here.
   assert.ok(!body.includes('does not hold'), 'no capture note');
   assert.ok(!body.includes('ls -la'), 'no tool turns, which the row already counts');
-  assert.equal((body.match(/First ask/g) || []).length, 0, 'and the ask is the other panel');
+  assert.equal((body.match(/First ask/g) || []).length, 1, 'and the ask appears once, at the top');
 });
 
 // ── The reply on the surface ────────────────────────────────────────────────
@@ -478,18 +480,18 @@ test('a picked card is scoped by an edge, and only a picked one', () => {
   for (const b of boxes()) assert.equal(b.style.background, '');
 });
 
-test('the panel is bounded, so a long half stays a panel in the list', () => {
+test('the panel is bounded, so a long exchange stays a panel in the list', () => {
   // The row expanded in place until 2026-09-02 and opened to nine screens of
   // reply, so the row that was tapped scrolled off the top and the list under
   // it was unreachable without dragging past it all. The panel is capped, and
   // it overlays rather than pushing, so the list never moves at all.
   buildWith(STATEFUL);
-  trigs(1)[0].click();
+  trig(1).click();
   const panel = peekOf(1);
   assert.ok(panel.className.includes('overflow-y-auto'));
   assert.match(panel.className, /max-h-\[min\(60vh,26rem\)\]/);
   assert.ok(panel.className.includes('absolute'), 'it overlays, so nothing below it moves');
-  assert.equal(panel.parentElement, boxOf(1), 'hung on the card that owns the half');
+  assert.equal(panel.parentElement, boxOf(1), 'hung on the card it belongs to');
 });
 
 test('every ask is set the same, whatever the exchange did', () => {
@@ -507,8 +509,22 @@ test('every ask is set the same, whatever the exchange did', () => {
   for (const t of titles) {
     assert.ok(t.className.includes('font-normal'), 'no ask is set heavier than another');
     assert.ok(!t.className.includes('font-medium'));
-    assert.ok(t.className.includes('text-[14px]'));
+    // 13px, DOWN FROM 14. The ask was the largest thing on the row while being
+    // its context, and the reply preview under it runs 13; one size for both is
+    // what makes the pair read as one exchange rather than a heading and a note.
+    assert.ok(t.className.includes('text-[13px]'));
   }
+});
+
+test('the ask is blue everywhere it is drawn, which is what "consistent" meant', () => {
+  // The row set it in `base-content/70`, a grey, while the panel showed the same
+  // words in chat-render's ask colour, a primary darkened to 78%: two readings
+  // of one prompt, one above the other. Off the THEME's primary rather than a
+  // literal, so the text tracks a theme change the way its own fill does.
+  buildWith(STATEFUL);
+  const ask = askOf();
+  assert.match(ask.style.color, /--color-primary/);
+  assert.doesNotMatch(ask.className, /text-base-content\/\d/, 'and no grey class left to fight it');
 });
 
 test('a card with no ask takes no fill, and keeps its role word', () => {
@@ -530,7 +546,7 @@ test('the row is unchanged by a peek, because the panel overlays it', async () =
   // over `display`, shipped twice in this file, has no site left here.
   buildWith(MD_RECORD);
   const before = rowOf(1).innerHTML;
-  trigs(1)[1].click();
+  trig(1).click();
   await drawn();
   assert.equal(preview().style.display, '', 'the preview stays put');
   assert.equal(mark().style.display, '', 'and so does its glyph');
@@ -564,7 +580,7 @@ test('without the kit the row still previews, and the emphasis still lands', () 
 
 test('the panel takes the card\'s measure, not the row\'s', async () => {
   buildWith(MD_RECORD);
-  trigs(1)[1].click();
+  trig(1).click();
   await drawn();
   // The open body used to be a cell of the head, pinned to the ask's column so
   // the two wrapped on one measure. A panel has no such constraint and wants
@@ -703,16 +719,14 @@ test('the disc opens nothing, because it is inside the row\'s own button', () =>
   assert.equal(mark.getAttribute('aria-hidden'), 'true', 'the line beside it says the same thing');
 });
 
-test('the state line opens the REPLY\'s panel, because that is what it is', () => {
-  // It is a passage inside the reply, which is why it is indented under it; a
-  // third panel for it would be a third speaker again.
+test('no line is its own trigger: the row is the one, and the card is the scope', () => {
+  // It was one trigger per half for a commit. Two panels asked the reader to
+  // know which half they were on before knowing what was in it, and left no
+  // honest answer to "what does this belong to" beyond proximity.
   buildWith(STATEFUL);
-  const { mark } = statesOf(1)[0];
-  const wrap = mark.parentElement;
-  assert.equal(wrap.getAttribute('role'), 'button');
-  wrap.dispatchEvent(new window.Event('click'));
-  assert.ok(peekOf(1), 'a panel opened');
-  assert.match(peekOf(1).textContent, /^Claude/, 'and it is the reply\'s, not one of its own');
+  const inner = [...rowOf(1).querySelectorAll('[role="button"]')];
+  assert.deepEqual(inner, [], 'nothing inside the row opens anything of its own');
+  assert.equal(rowOf(1).getAttribute('role'), 'button');
 });
 
 test('the capture note has no closing state, and draws no line', () => {
@@ -736,18 +750,20 @@ test('the capture note has no closing state, and draws no line', () => {
 // say which card it was. A panel per HALF instead, since the ask and the reply
 // are separate things to want.
 
-test('the ask and the reply each open their own, and one at a time', () => {
+test('one panel at a time, and opening another card moves it', async () => {
   buildWith(STATEFUL);
-  trigs(1)[0].click();
-  assert.match(peekOf(1).textContent, /^You/);
-  trigs(1)[1].click();
-  assert.match(peekOf(1).textContent, /^Claude/, 'the second replaces the first');
-  assert.equal(peekOf(2), null, 'and no other card is holding one');
+  trig(1).click();
+  await drawn();
+  assert.ok(peekOf(1));
+  trig(2).click();
+  await drawn();
+  assert.equal(peekOf(1), null, 'the first is gone');
+  assert.ok(peekOf(2), 'and the second has it');
 });
 
-test('a second tap on the same half closes it, so the trigger is a toggle', () => {
+test('a second tap on the same row closes it, so the trigger is a toggle', () => {
   buildWith(STATEFUL);
-  const t = trigs(1)[0];
+  const t = trig(1);
   t.click();
   assert.ok(peekOf(1));
   assert.equal(t.getAttribute('aria-expanded'), 'true');
@@ -762,7 +778,7 @@ test('a trigger is not a button, because Safari sizes one from unclipped content
   // safari-button-sizes-from-unclipped-content). `role` and a tabindex buy the
   // same reach without the box.
   buildWith(STATEFUL);
-  for (const t of trigs(1)) {
+  for (const t of [trig(1)]) {
     assert.notEqual(t.tagName, 'BUTTON');
     assert.equal(t.getAttribute('tabindex'), '0');
     assert.ok(t.className.includes('line-clamp-1') || t.className.includes('line-clamp-2')
@@ -776,7 +792,7 @@ test('the panel is dismissed from inside the component, not from the document', 
   buildWith(STATEFUL);
   const src = readFileSync(path.join(repoRoot, 'lib/kits/session-export.js'), 'utf8');
   assert.doesNotMatch(src, /document\.addEventListener/, 'no listener outlives the mount');
-  trigs(1)[0].click();
+  trig(1).click();
   assert.ok(peekOf(1));
   boxOf(2).dispatchEvent(new window.Event('pointerdown', { bubbles: true }));
   assert.equal(peekOf(1), null, 'a tap elsewhere in the list closes it');
@@ -798,7 +814,7 @@ test('a fine pointer opens on hover after a dwell, and closes after leaving both
   // panel is `pointer-events:none` and this one is not.
   hoverable(true);
   buildWith(STATEFUL);
-  const t = trigs(1)[0];
+  const t = trig(1);
   t.dispatchEvent(new window.Event('pointerover', { bubbles: true }));
   assert.equal(peekOf(1), null, 'not on arrival');
   await wait(220);
@@ -813,7 +829,7 @@ test('a fine pointer opens on hover after a dwell, and closes after leaving both
 test('entering the panel keeps it, which is why the grace exists', async () => {
   hoverable(true);
   buildWith(STATEFUL);
-  const t = trigs(1)[0];
+  const t = trig(1);
   t.dispatchEvent(new window.Event('pointerover', { bubbles: true }));
   await wait(220);
   const panel = peekOf(1);
@@ -828,10 +844,10 @@ test('a coarse pointer never hover-opens, because a tap synthesises one', async 
   // toggles itself shut.
   hoverable(false);
   buildWith(STATEFUL);
-  trigs(1)[0].dispatchEvent(new window.Event('pointerover', { bubbles: true }));
+  trig(1).dispatchEvent(new window.Event('pointerover', { bubbles: true }));
   await wait(220);
   assert.equal(peekOf(1), null);
-  trigs(1)[0].click();
+  trig(1).click();
   assert.ok(peekOf(1), 'the tap is what opens it');
   hoverable(true);
 });
@@ -847,11 +863,43 @@ test('the ask reads at the panel\'s size, and its double spaces are squeezed', a
     prompts: [{ at: '2026-09-01T10:00:00Z', text: 'One.  Two.\n\n    indented line' },
               ...STATEFUL.prompts.slice(1)],
   });
-  trigs(1)[0].click();
+  trig(1).click();
   await drawn();
   const pre = peekOf(1).querySelector('pre');
   assert.equal(pre.style.fontSize, '13px', 'the reading size, not the deck\'s subordinate one');
   assert.match(pre.textContent, /One\. Two\./, 'the mid-line run is squeezed');
   assert.match(pre.textContent, /\n\n {4}indented line/,
     'and both the newlines and the line-leading indent survive, which is what a paste needs');
+});
+
+test('each card is an item, and the hovered one is scoped without a fill', () => {
+  // The rows ran together: with the guideline gone from the left edge there was
+  // nothing between one exchange and the next but 2px of margin. A hairline
+  // under each is the cheapest thing that reads as a list, and the objection
+  // this file used to carry against one went with the rule it named.
+  //
+  // The scope is a 2px strip at the card's own edge, NOT a tint behind the
+  // head: a band washes the blue ask sitting on it, since this theme's greys
+  // are cool, and it was reported twice and removed for it.
+  buildWith(STATEFUL);
+  const boxes = [...window.document.querySelectorAll('.mb-0\\.5.pl-3')];
+  for (const b of boxes) assert.match(b.className, /border-b/, 'every card is bounded');
+  assert.match(boxes.at(-1).className, /last:border-b-0/, 'except under the last');
+  const rule = boxes[0].querySelector('.pointer-events-none');
+  assert.match(rule.className, /group-hover:opacity-100/, 'it lights on hover');
+  // The step matters: 25 is not one Tailwind generates, so the class renders
+  // fully transparent and reads as a colour that did not arrive. `dead-opacity`
+  // is the gate for that and it named both the line and the nearest step.
+  assert.match(rule.className, /bg-base-content\/20/);
+  assert.equal(boxes[0].style.background, '', 'and nothing behind the head');
+});
+
+test('the scope stays lit while the panel is open, and is handed back after', () => {
+  buildWith(STATEFUL);
+  const rule = boxOf(1).querySelector('.pointer-events-none');
+  assert.equal(rule.style.opacity, '', 'hover governs it to begin with');
+  trig(1).click();
+  assert.equal(rule.style.opacity, '1', 'and the open panel holds it');
+  trig(1).click();
+  assert.equal(rule.style.opacity, '', 'handed back on close, so :hover governs again');
 });
