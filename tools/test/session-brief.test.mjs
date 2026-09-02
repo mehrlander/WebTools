@@ -450,6 +450,17 @@ test('the closing reply is markdown, and its rest is a tap rather than a tooltip
   assert.doesNotMatch(block, /x-text="closing(Raw)?"/, 'the reply itself is not set as flat text');
   assert.match(block, /x-ref="closingBody"/);
   assert.match(block, /aria-expanded/, 'the block is the control the tooltip used to be');
+
+  // AND IT IS CUT BY HEIGHT, NOT BY `line-clamp`. That utility counts line
+  // boxes, which needs inline content; this holds the paragraphs a markdown
+  // render returns. Chrome clamps anyway and iOS Safari does not: it keeps the
+  // box at the full height of every paragraph and hides only the spill, so the
+  // collapsed block reached a phone as three lines over an inch of empty card.
+  // The desktop cannot show this failure, which is why the rule is asserted
+  // rather than the pixels.
+  assert.doesNotMatch(block, /line-clamp/, 'no clamp on a container of blocks');
+  assert.match(block, /:style="closingOpen \? '' : CLAMP"/, 'the collapsed state is a style');
+  assert.match(src, /CLAMP: 'max-height:\d+px;/, 'and what it sets is a height');
   assert.match(src, /chatRender\.markdown\(md, \{ dense: true \}\)/,
     'through the same renderer every other reply on this page uses');
 
