@@ -348,8 +348,13 @@ each rendered text node back to the source by finding it with a moving cursor,
 which works because the rendered text is a subsequence of the source. What it
 cannot find it leaves unmapped, and an unmapped run offers no offset, so markup
 is not a place: `**`, `[`, `](url)` and a fence's backticks are in no text node.
-An inline construct is atomic on top of that, since a boundary inside a link's
-label breaks it as surely as one inside its target. This is a **placement** rule
+An inline construct is atomic on top of that. That was once a necessity, since
+each unit was rendered from its own slice of source and a boundary inside a
+link's label left one side holding an unclosed delimiter. The page renders the
+document once now and paints units as ranges over its text, so no boundary can
+break an element and atomicity is a **choice** about what a unit should mean
+rather than a patch over a rendering failure. It is kept: a boundary inside a
+link's label is not a place a reader can mean. This is a **placement** rule
 and not an invariant: `check.py` is stdlib Python with no markdown parser, and a
 second disagreeing implementation would be worse than none, so a hand-authored
 patch can still do what the interface cannot. Where the page is

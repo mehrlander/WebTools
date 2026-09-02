@@ -26,11 +26,15 @@ const STATE = process.env.STATE || 'full';
 // long enough to aim at, and wait for its pins.
 const fresh = (page) => page.evaluate(() => {
   const d = Alpine.$data(document.body);
-  const open = (u) => {
-    const el = document.querySelector(`[data-uid="${u.uid}"]`);
-    return el && [...el.querySelectorAll('[data-src]:not([data-atomic])')]
-      .some(s => s.firstChild && s.firstChild.length > 24);
-  };
+  // A UNIT IS SEVERAL PIECES, and each piece is itself the mapped run: the page
+  // renders the document once and cuts the units out of its text nodes, so
+  // data-uid and data-src sit on the same element rather than one inside the
+  // other. This used to look for [data-src] INSIDE the unit's element and found
+  // nothing after that change, which reads as "no unit has a locatable
+  // boundary" when in fact every one of them does.
+  const open = (u) => [...document.querySelectorAll(
+      `[data-uid="${u.uid}"][data-src]:not([data-atomic])`)]
+    .some(s => s.firstChild && s.firstChild.length > 24);
   for (let i = 3; i < d.units.length - 1; i++) {
     const u = d.units[i];
     if (u.kind !== 'sent' || !open(u)) continue;
@@ -105,9 +109,10 @@ export default async function (page) {
 
   // ── a tap in the text places the armed boundary there ───────────────────
   const spot = await page.evaluate((uid) => {
-    const unit = document.querySelector(`[data-uid="${uid}"]`);
-    const run = [...unit.querySelectorAll('[data-src]:not([data-atomic])')]
+    const run = [...document.querySelectorAll(
+        `[data-uid="${uid}"][data-src]:not([data-atomic])`)]
       .find(s => s.firstChild && s.firstChild.length > 24);
+    if (!run) throw new Error(`no open run in ${uid}`);
     const r = document.createRange();
     r.setStart(run.firstChild, 8); r.collapse(true);
     const b = r.getBoundingClientRect();

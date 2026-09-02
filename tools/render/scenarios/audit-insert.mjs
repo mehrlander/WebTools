@@ -62,15 +62,24 @@ export default async function (page) {
     return els.map(el => ({
       after: el.dataset.ins,
       text: el.textContent,
-      mapped: !!el.querySelector('[data-src]'),
-      prev: el.previousElementSibling?.dataset?.uid ?? null,
+      mapped: !!el.querySelector('[data-src]') || el.hasAttribute('data-src'),
+      // BETWEEN BLOCKS, not beside a piece. The page renders the document once
+      // and a unit is now several tinted pieces inside the document's own
+      // elements, so an insertion at a block boundary belongs after that block.
+      // Dropping it beside the piece would put a block element inside the
+      // paragraph or heading the piece belongs to.
+      prevHolds: el.previousElementSibling
+        ?.querySelector(`[data-uid="${CSS.escape(el.dataset.ins || '')}"]`) != null,
+      prevTag: el.previousElementSibling?.tagName ?? null,
     }));
   });
   console.log('DRAWN ' + JSON.stringify(drawn));
   if (drawn.length !== 1) throw new Error(`${drawn.length} insertions drawn, wanted 1`);
   if (drawn[0].mapped) throw new Error('the inserted text was mapped; a boundary could land in it');
-  if (!head && drawn[0].prev !== target.uid)
-    throw new Error(`drawn after ${drawn[0].prev}, wanted ${target.uid}`);
+  if (!head && !drawn[0].prevHolds)
+    throw new Error(`drawn after a ${drawn[0].prevTag} that does not hold ${target.uid}`);
+  if (head && drawn[0].prevTag !== null)
+    throw new Error('a head insertion should open the document, not follow a block');
 
   const off = await page.evaluate(() => {
     const el = document.querySelector('[data-ins]');
