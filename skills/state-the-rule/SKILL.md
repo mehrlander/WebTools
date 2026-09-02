@@ -274,6 +274,17 @@ says about either, and grain for its own sake is not a finding. On
 `CONVENTIONS.md`, 36 of 69 prose units carry a clause boundary and 10 met the
 bar; every one of the ten was a rule with its reason fused on.
 
+**Offsets are code points, which is what Python counts.** A browser counts UTF-16
+code units, so an astral character (every emoji in these documents) is one index
+here and two there, and every offset after the first one drifts. The spans still
+resolve, they resolve to the wrong text, so no invariant can see it: a shifted
+partition is still a partition. `docs/SURFACING.md` carries 49.
+
+The format does not change. `lib/kits/standoff.js` converts where a number
+crosses the boundary, `adopt` on the way in and `emit` on the way out for the
+stored file and for a patch `ops.py` will read. An insertion carries no offset at
+all, being anchored by uid. A document with no astral character maps to itself.
+
 **`kind` is derived from the span, not carried through the edit.** It was written
 once by `segment.py` and then survived every operation, so a boundary move left
 it describing a span that no longer existed: splitting `## Scope and precedence`

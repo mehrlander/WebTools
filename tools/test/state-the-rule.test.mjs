@@ -735,3 +735,34 @@ test('a fence outranks the blank line inside it, and every other marker does not
   const table = '| a | b |\n| - | - |';
   assert.equal(KIT.kindOf(table, 0, table.length), 'table');
 });
+
+// THE WHOLE TRIP, over the document that actually carries the problem.
+// docs/SURFACING.md holds 49 astral characters, so every unit after the first is
+// shifted for a browser reading segment.py's offsets directly. A fixture cannot
+// stand in for this: the drift is proportional to how many emoji precede a unit,
+// so only a real document exercises the accumulation.
+test('every unit of an emoji-carrying document resolves to the text segment.py recorded', () => {
+  const rel = 'docs/SURFACING.md';
+  const path = join(repoRoot, rel);
+  const text = readFileSync(path, 'utf8');
+  const units = execFileSync('python3', [join(SKILL, 'segment.py'), path, '1', '99999'],
+                             { encoding: 'utf8' }).trim().split('\n').map(l => JSON.parse(l));
+  const astral = text.length - [...text].length;
+  assert.ok(astral >= 40, `only ${astral} astral characters: the drift is untested`);
+
+  const stored = { units: units.map(u => ({ uid: u.uid, start: u.start, end: u.end })) };
+  const browser = KIT.adopt(stored, text);
+  const wrong = browser.units
+    .map((u, i) => [u.uid, text.slice(u.start, u.end), units[i].text])
+    .filter(([, got, want]) => got !== want);
+  assert.deepEqual(wrong.map(w => w[0]), [], 'adopted spans that do not match segment.py');
+
+  // And back, byte for byte, since this is what gets written to the run file.
+  assert.deepEqual(KIT.emit(browser, text).units, stored.units);
+
+  // Without the conversion, most of the document is wrong: the assertion above
+  // would pass over a no-op if the maps were ever reduced to identity.
+  const raw = units.filter(u => text.slice(u.start, u.end) !== u.text).length;
+  assert.ok(raw > units.length / 2,
+    `only ${raw} of ${units.length} units drift unconverted; is the corpus still emoji-heavy?`);
+});

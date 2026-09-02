@@ -150,11 +150,13 @@ offset for `surfac-023` reads a span starting two characters early, `".\n\n* **S
 pixels.**…"` rather than `"* **Show pixels.**…"`. Nothing has noticed because
 the one stored run annotates `docs/CONVENTIONS.md`, which has none. Found by a
 corpus test comparing the two implementations, which had to convert the offsets
-to compare anything at all. The corrected move is not to trim the corpus:
-convert at the boundary, and until the format picks one unit, do not store a run
-over a document carrying astral characters. → the standoff's offset model is
-undecided; `tools/test/state-the-rule.test.mjs` carries the conversion and the
-measurement.
+to compare anything at all. The corrected move is a boundary rather than a new
+format: each language stays native inside itself and converts where a number
+crosses, so the 37 places the page indexes the document are untouched and a
+document with no astral character maps to itself. →
+[`state-the-rule/SKILL.md`](../skills/state-the-rule/SKILL.md), "Offsets are
+code points"; `Standoff.adopt`/`emit`/`emitPatch` carry it and
+`tools/test/standoff-kit.test.mjs` holds the round trip.
 
 ### untracked-file-invisible-to-the-suite: a local green over a file the scanner never enumerated
 `npm test` passed twice, 2707/0, over a brand-new `docs/routes-paste.csv`

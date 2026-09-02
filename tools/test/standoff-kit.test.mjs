@@ -371,3 +371,66 @@ test('a numbered item is a list item too, and a decimal is not', () => {
   assert.equal(S.isContinuation(ordered, ordered.indexOf('And its second')), true);
   assert.equal(S.opensList('3.14 is not a list marker.', 0), false);
 });
+
+// ── ONE STRING, TWO WAYS TO INDEX IT ─────────────────────────────────────────
+// Python indexes by code point, JavaScript by UTF-16 code unit, so an astral
+// character is one index in segment.py and two here. The failure is silent: the
+// spans still resolve, they resolve to the wrong text, and every check passes
+// over the wrong span. Held here because nothing else can see it: the invariants
+// are about the partition, and a shifted partition is still a partition.
+
+const EMOJI = 'Plain. 🥏 Toss it. 📦 Publish.';
+
+test('a document with no astral character maps to itself, in both directions', () => {
+  const so = { units: [{ uid: 'u-1', start: 0, end: 42 }, { uid: 'u-2', start: 44, end: 59 }] };
+  assert.deepEqual(S.adopt(so, DOC).units, so.units);
+  assert.deepEqual(S.emit(so, DOC).units, so.units);
+});
+
+test('an adopted span is the text segment.py recorded, not one shifted by the emoji before it', () => {
+  const cp = [...EMOJI];
+  // The spans as Python counts them, which is what segment.py would write.
+  const spans = [[0, 6], [7, 18], [19, 28]];
+  const so = { units: spans.map(([start, end], i) => ({ uid: `u-${i}`, start, end })) };
+  const browser = S.adopt(so, EMOJI);
+  assert.deepEqual(browser.units.map(u => EMOJI.slice(u.start, u.end)),
+                   spans.map(([a, b]) => cp.slice(a, b).join('')));
+  // Reading the stored offsets directly is the defect this replaces.
+  assert.notEqual(EMOJI.slice(7, 18), cp.slice(7, 18).join(''),
+    'without the conversion the browser reads a different span');
+});
+
+test('every offset in the document round-trips, and one inside a pair snaps to its start', () => {
+  const n = [...EMOJI].length;
+  const drift = [];
+  for (let a = 0; a <= n; a++) {
+    const back = S.emit(S.adopt({ units: [{ uid: 'u', start: a, end: n }] }, EMOJI), EMOJI);
+    if (back.units[0].start !== a) drift.push([a, back.units[0].start]);
+  }
+  assert.deepEqual(drift, [], 'code-point offsets that did not survive the round trip');
+
+  // The low half of a surrogate pair is the one UTF-16 index with no code-point
+  // counterpart. It is not a place a boundary can be, since it would cut one
+  // character in half, so it snaps to the character's start rather than to the
+  // next one, which would be a different character.
+  const pair = EMOJI.indexOf('\u{1F94F}');
+  assert.equal(S.emit({ units: [{ uid: 'u', start: pair + 1, end: EMOJI.length }] }, EMOJI)
+                .units[0].start,
+               S.emit({ units: [{ uid: 'u', start: pair, end: EMOJI.length }] }, EMOJI)
+                .units[0].start);
+});
+
+// A patch carries offsets too, and it is read by ops.py, so it converts on the
+// way out. An insertion carries none: it is anchored by uid, which is keying by
+// uid rather than by offset paying off a second time.
+test('a patch converts its offsets and leaves an insertion alone', () => {
+  const patch = [{ op: 'split', uid: 'u-1', at: 12 },
+                 { op: 'shift', after: 'u-0', to: 20 },
+                 { op: 'insert', after: 'u-0', text: 'no offset to convert' },
+                 { op: 'relabel', uid: 'u-1', label: 'WHAT' }];
+  const out = S.emitPatch(patch, EMOJI);
+  assert.equal(out[0].at, 11, 'one astral character before it');
+  assert.equal(out[1].to, 18, 'two');
+  assert.deepEqual(out[2], patch[2]);
+  assert.deepEqual(out[3], patch[3]);
+});

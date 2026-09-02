@@ -805,6 +805,12 @@ window.__audit = {
       const spec = p.get('src') || new URLSearchParams(location.hash.slice(1)).get('src');
       if (spec) payload = JSON.parse((await gh.get(spec)).text);
       this.a = payload;
+      // INTO THIS BROWSER'S COORDINATES, ONCE. segment.py writes offsets in code
+      // points and every slice below is UTF-16, so an emoji anywhere earlier in
+      // the document shifts a span silently. Everything from here to save() is
+      // native; emit() puts it back. Identity on a document with no astral
+      // character, which is every one annotated so far.
+      this.a.standoff = Standoff.adopt(this.a.standoff, this.a.text);
       this.sections = mdDoc.split(this.a.text);
       this.base = JSON.parse(JSON.stringify(this.a.standoff));
       this.regroup();
@@ -1019,7 +1025,12 @@ window.__audit = {
       this.menu = 'split';
     },
     get applied() { return this.patch.slice(0, this.at); },
-    get patchJson() { return JSON.stringify(this.applied, null, 1); },
+    // BACK TO CODE POINTS ON THE WAY OUT, because a patch is read by ops.py.
+    // The live patch stays in the page's own coordinates, since undo replays it
+    // against the annotation in memory.
+    get patchJson() {
+      return JSON.stringify(Standoff.emitPatch(this.applied, this.a.text), null, 1);
+    },
     get patchHref() { return 'data:application/json;charset=utf-8,' + encodeURIComponent(this.patchJson); },
 
     // SAVING. The page writes to the ref it is READING: you previewed a branch,
@@ -1039,8 +1050,9 @@ window.__audit = {
         // unit already records its own `from`.
         const head = `standoff: ${this.at} operation${this.at === 1 ? '' : 's'} `
                    + `on ${this.so.target.path}`;
-        await gh.save(this.so.self.path, Standoff.serialize(this.so),
-                      `${head}\n\n${Standoff.describe(this.applied).join('\n')}\n`);
+        await gh.save(this.so.self.path, Standoff.serialize(Standoff.emit(this.so, this.a.text)),
+                      `${head}\n\n`
+                      + `${Standoff.describe(Standoff.emitPatch(this.applied, this.a.text)).join('\n')}\n`);
         this.saved = `${this.units.length} units to ${this.target}`;
         this.base = JSON.parse(JSON.stringify(this.so));
         this.patch = []; this.at = 0;
