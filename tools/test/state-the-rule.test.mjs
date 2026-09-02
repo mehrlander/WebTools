@@ -515,6 +515,46 @@ test('an insertion anchored to no unit is refused by both', () => {
   assert.equal(both([{ op: 'insert', after: 'u-404', text: 'nowhere' }]).refused, true);
 });
 
+// THE SHAPE IS THE ONE THING THE DOCUMENT CANNOT ALWAYS ANSWER. materialize.py
+// reads the separator standing at a boundary, which is mechanical and right
+// everywhere the document has one to read. The tail does not: a file's final
+// newline is a terminator, so the gap says "run" for a reason that has nothing
+// to do with intent, and a closing paragraph was unsayable. `as` states it.
+// Held here because it is an optional key, and an optional key is exactly where
+// two serializations drift without either looking wrong.
+test('an insertion may state how it arrives, and both languages write the same key', () => {
+  const so = agree([{ op: 'insert', after: 'u-002', text: 'A closing paragraph.', as: 'block' }]);
+  assert.deepEqual(Object.keys(so.insertions[0]), ['after', 'text', 'as']);
+  assert.equal(so.insertions[0].as, 'block');
+});
+
+test('the shape sits before the reason, in both languages', () => {
+  const so = agree([{ op: 'insert', after: 'u-002', text: 'A closing paragraph.',
+                      as: 'block', why: 'the section ends without stating its own bound' }]);
+  assert.deepEqual(Object.keys(so.insertions[0]), ['after', 'text', 'as', 'why']);
+});
+
+test('an unstated shape writes no key at all, which is not a third value of one', () => {
+  const so = agree([{ op: 'insert', after: 'u-002', text: 'A closing paragraph.' }]);
+  assert.ok(!('as' in so.insertions[0]),
+    'unset hands the answer to the boundary; a stored default would not');
+});
+
+test('a shape the vocabulary does not carry is refused by both', () => {
+  assert.equal(both([{ op: 'insert', after: 'u-002', text: 'x', as: 'paragraph' }]).refused, true);
+});
+
+// Not a matter of taste: the head precedes every unit, so there is no run on
+// its side of the boundary for the text to join. Refusing it is the same kind
+// of statement as refusing a shift with a unit on one side only.
+test('a run at the head of the document is refused by both, having nothing to run into', () => {
+  const { py, refused } = both([{ op: 'insert', after: null, text: 'x', as: 'run' }]);
+  assert.equal(refused, true);
+  assert.match(py.out, /nothing here to run into/);
+  assert.equal(both([{ op: 'insert', after: null, text: 'x', as: 'block' }]).refused, false,
+    'a block at the head is the default said out loud, not a contradiction');
+});
+
 // KIND IS DERIVED, so it is a third thing the two implementations have to agree
 // about, and the one with no segmenter on the browser side. Asserted through the
 // parity harness rather than twice, because the failure worth catching is one
@@ -605,6 +645,41 @@ test('an insertion inherits the separator already standing at its boundary', () 
 test('the head of the document is a block, since it can continue nothing', () => {
   const r = project((so) => { so.insertions = [{ after: null, text: 'A lead sentence.' }]; });
   assert.ok(r.text.startsWith('A lead sentence.\n\nClose the lid'), r.text.slice(0, 60));
+});
+
+// THE CASE THAT NAMED THE FIELD, and its mirror. The tail's reading is not
+// wrong so much as unavailable, so the annotation says it instead; the mirror
+// is here because a fix that only reached the tail would be a special case
+// wearing a general field's name.
+test('a stated shape overrules the separator the document is carrying', () => {
+  const closing = project((so) => {
+    so.insertions = [{ after: 'u-002', text: 'A closing paragraph.', as: 'block' }];
+  });
+  assert.match(closing.text, /Check it twice\.\n\nA closing paragraph\./,
+    'the tail read "run" and the annotation said otherwise');
+
+  const joined = project((so) => {
+    so.insertions = [{ after: 'u-001', text: 'And a rider.', as: 'run' }];
+  });
+  assert.match(joined.text, /spoil\. And a rider\.\n\nCheck/,
+    'a block boundary overruled the other way, so the field is not tail-only');
+});
+
+// An honored override the account does not mention reads as a reading, and the
+// two differ in who is answerable for the shape.
+test('the report says how many insertions stated a shape rather than read one', () => {
+  const r = project((so) => {
+    so.insertions = [{ after: 'u-001', text: 'Read off the gap.' },
+                     { after: 'u-002', text: 'Stated.', as: 'block' }];
+  }, []);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.json, null);
+  const both_ = project((so) => {
+    so.insertions = [{ after: 'u-001', text: 'Read off the gap.' },
+                     { after: 'u-002', text: 'Stated.', as: 'block' }];
+  });
+  assert.equal(both_.json.inserted, 2);
+  assert.equal(both_.json.stated, 1);
 });
 
 // A reporter blind to the commonest artifact of its own edit reads as an

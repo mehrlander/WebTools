@@ -286,6 +286,13 @@ test('every operation the kit accepts has a sentence, including both boundary op
        'insert at the head of the document',
        'insert at the boundary after u-001 (cleared)']);
 
+  // The shape rides in the sentence because it changes what the projection
+  // does: two insertions with the same text and different shapes are two
+  // different edits, and the commit message is the only record that survives.
+  assert.deepEqual(S.describe([
+    { op: 'insert', after: 'u-002', text: 'a closing paragraph.', as: 'block' },
+  ]), ['insert at the boundary after u-002 as a block']);
+
   const undescribed = Object.keys(S.ops).filter(op => /undescribed/.test(S.describe([{ op }])[0]));
   assert.deepEqual(undescribed, [], 'operations the commit message cannot state');
 });

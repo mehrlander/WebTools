@@ -89,5 +89,59 @@ export default async function (page) {
   });
   console.log('OFFSET-INSIDE-INSERTION ' + JSON.stringify(off));
   if (off !== null) throw new Error(`an offset (${off}) was found inside the inserted text`);
+
+  // ── how it arrives, which the document cannot always answer ─────────────
+  // The shape is what materialize.py splices with, so it is not decoration:
+  // an insertion the page can write but cannot shape is one a reader can only
+  // finish by hand-editing the file. Three choices, and `document` is a state
+  // of its own, so the control must be able to get BACK to writing no key at
+  // all. A toggle that could only set one would look identical here.
+  const shapes = ['block', 'run', 'document'];
+
+  // AT THE HEAD THE QUESTION DOES NOT ARISE. A run has nothing to run into
+  // there, and Standoff.check refuses one, so offering the choice would be
+  // offering a state the annotation will reject.
+  if (head) {
+    // Counted as DISPLAYED, not as present: x-show hides with CSS and leaves the
+    // buttons in the DOM, so a querySelectorAll here reports three either way.
+    const offered = await page.evaluate(() => ({
+      shown: [...document.querySelectorAll('[data-shape]')].filter(el => el.offsetParent).length,
+      inForce: Alpine.$data(document.body).shapeInForce,
+    }));
+    console.log('SHAPE ' + JSON.stringify(offered));
+    if (offered.shown || offered.inForce !== null)
+      throw new Error(`the head offers a shape (${JSON.stringify(offered)}), where a run is refused`);
+    await page.waitForTimeout(300);
+    return;
+  }
+
+  const seen = [];
+  for (const want of shapes) {
+    const hit = await page.evaluate((want) => {
+      const b = document.querySelector(`[data-shape="${want}"]`);
+      if (!b) return null;
+      b.click();
+      return true;
+    }, want);
+    if (!hit) throw new Error(`no "${want}" control beside the insert field`);
+    await page.waitForTimeout(200);
+    seen.push(await page.evaluate(() => {
+      const d = Alpine.$data(document.body);
+      const ins = d.so.insertions[0];
+      return { as: ins.as ?? null, keys: Object.keys(ins), text: ins.text,
+               op: d.patch.at(-1), bad: Standoff.check(d.so, d.a.text).length,
+               active: [...document.querySelectorAll('[data-shape].btn-active')]
+                 .map(e => e.dataset.shape) };
+    }));
+  }
+  console.log('SHAPE ' + JSON.stringify(seen));
+  if (seen.map(s => s.as).join() !== 'block,run,') throw new Error('the control did not set each shape');
+  if (seen[2].keys.includes('as')) throw new Error('"document" must write no key, not a third value');
+  if (seen.some(s => s.text !== (head ? 'A lead sentence.' : TEXT)))
+    throw new Error('restating the shape lost the text it was carrying');
+  if (seen.some(s => s.bad)) throw new Error('a shape change broke the annotation');
+  if (seen.some((s, i) => s.active.join() !== shapes[i]))
+    throw new Error('exactly one control should read as in force, naming the shape: '
+                    + JSON.stringify(seen.map(s => s.active)));
   await page.waitForTimeout(300);
 }

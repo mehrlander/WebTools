@@ -1258,6 +1258,29 @@ window.__audit = {
     insAt(after) {
       return (this.so.insertions || []).find(x => (x.after ?? null) === (after ?? null)) || null;
     },
+    // THE SHAPE IN FORCE at the armed boundary, or null where the question does
+    // not arise: no insertion stands there, or it is the head, where a run has
+    // nothing to run into and the check refuses it. `document` is an answer and
+    // not the absence of one, which is why the button group reads it from here
+    // rather than from `as` directly.
+    //
+    // A getter because x-for renders inside x-show whether or not the group is
+    // displayed, so an expression reaching through a null armedEdge throws on
+    // every repaint with nothing on screen to show for it.
+    get shapeInForce() {
+      const e = this.armedEdge, ins = e?.after ? this.insAt(e.after) : null;
+      return ins ? (ins.as || 'document') : null;
+    },
+    // The shape, restated as a whole insert. The op is keyed by its anchor and
+    // REPLACES what stands there, so setting the shape is the same operation as
+    // setting the text and needs no op of its own. `document` writes no field
+    // at all, which is why it cannot be a third value of one.
+    setShape(s) {
+      const e = this.armedEdge, ins = e && this.insAt(e.after);
+      if (!ins) return;
+      this.push({ op: 'insert', after: e.after, text: ins.text,
+                  ...(s === 'document' ? {} : { as: s }) });
+    },
     // A tap in the text is two different requests, and which one is a state the
     // reader set by tapping a pinhead. Armed: put this boundary here. Otherwise:
     // make that unit the active one.
@@ -1882,6 +1905,23 @@ window.__audit = {
                x-effect="$el.value = armedEdge ? (insAt(armedEdge.after)?.text || '') : ''"
                @change="armedEdge && push({op:'insert', after: armedEdge.after,
                                            text:$event.target.value})">
+        <!-- HOW THE TEXT MEETS WHAT IS AROUND IT. Three choices, not two,
+             because `document` is a distinct state and not a synonym for one of
+             the others: it leaves the field unset and hands the answer to the
+             boundary, which is the honest default at every boundary but the
+             tail, where a document's final newline is a terminator rather than
+             a paragraph break. Absent at the head, where a run has nothing to
+             run into and the check refuses it. -->
+        <div class="flex items-center gap-2 mt-1" x-cloak x-show="shapeInForce">
+          <span class="opacity-60">arrives as</span>
+          <div class="join">
+            <template x-for="s in ['document', 'run', 'block']" :key="s">
+              <button class="join-item btn btn-xs" x-text="s" @click="setShape(s)"
+                      :data-shape="s"
+                      :class="shapeInForce === s ? 'btn-active' : ''"></button>
+            </template>
+          </div>
+        </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-1 mt-2">
