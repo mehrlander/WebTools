@@ -100,3 +100,42 @@ test('lib without a rebuilt pre-build warns, since ?use= fetches dist', () => {
   const built = run('lib/kits/session-render.js,dist/web-tools.js');
   assert.ok(!/build:lib/.test(built.warnings.join(' ')));
 });
+
+// ── the read itself, not the classifier ─────────────────────────────────────
+//
+// Every test above hands the script a file list with --files, which is exactly
+// the blind spot that shipped: the classifier was right the whole time and the
+// INPUT was empty, because `sh()` returned `.stdout.strip()` without reading
+// the exit code. A failed `git diff` and a branch that changed nothing were the
+// same value, so a nine-file branch printed "No render link: nothing that
+// renders changed" and a session passed that on (2026-09-03, PR #574).
+//
+// Driven through git rather than a fixture, since the defect lives in the git
+// read. `git commit-tree` on the empty tree makes a dangling orphan commit: it
+// shares no ancestor with HEAD, so `orphan...HEAD` fails with "no merge base",
+// which is the same failure the sandbox's shallow clone produces every run.
+// Nothing is written: no ref moves and the working tree is untouched.
+test('a diff that FAILS is never reported as a diff that found nothing', () => {
+  const orphan = execFileSync('git',
+    ['commit-tree', execFileSync('git', ['hash-object', '-t', 'tree', '/dev/null'],
+      { cwd: repoRoot, encoding: 'utf8' }).trim(), '-m', 'orphan probe'],
+    { cwd: repoRoot, encoding: 'utf8', input: '' }).trim();
+
+  const raw = execFileSync('python3', [SCRIPT, '--base', orphan, '--json'],
+    { cwd: repoRoot, encoding: 'utf8' });
+  const d = JSON.parse(raw);
+
+  assert.equal(d.mechanism, 'unknown', 'a failed read is its own answer');
+  assert.notEqual(d.mechanism, 'none-needed',
+    'the whole defect: "could not read" wearing the words of "nothing to show"');
+  assert.match(d.warnings.join(' '), /could not read the diff|SHALLOW/);
+  assert.equal(d.links.length, 0);
+
+  // And the printed line, which is what a session actually copies. It must not
+  // contain the phrase that travelled into a reply.
+  const text = execFileSync('python3', [SCRIPT, '--base', orphan],
+    { cwd: repoRoot, encoding: 'utf8' });
+  assert.match(text, /CANNOT TELL/);
+  assert.ok(!/nothing that renders changed/.test(text),
+    'the false-negative wording must not appear on a failed read');
+});

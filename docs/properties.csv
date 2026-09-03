@@ -4,6 +4,7 @@ docs,status,recorded,,none,column,yes,living;record;measured,"whether the docume
 docs,reach,computed,tools/build/docs-reach.mjs,value,column,yes,injected;project;skill;app;orphan,"who can get to the document: injected at session start, reachable from project instructions, a skill, the app, or nothing"
 docs,words,computed,tools/build/docs-reach.mjs,value,column,yes,,"the document's size, and its share of the folder"
 docs,maintenance,recorded,,counted,column,yes,,who keeps the document true; a bare row is counted by the registry rather than hidden
+docs,formerly,recorded,,none,column,yes,,"prior paths of the same document, semicolon-separated; a read of one is a read of this row, so a rename never shows as an unresolved read"
 tests,kind,recorded,,value,column,yes,behavior;gate,what the check claims: that code does the right thing, or that a committed file is still true. The vocabulary is closed and the gate holds rows to it
 tests,protects,recorded,,counted,column,yes,,the one thing that breaks if the test is deleted; blanks are counted
 tests,assertions,computed,tools/build/tests-index.mjs,counted,column,yes,,"how many assertions the file makes. Blank, never zero, on the 10 browser-driven checks that are not node:test files, because test() is not their unit; the blank is the honest reading and the count is the ledger figure"

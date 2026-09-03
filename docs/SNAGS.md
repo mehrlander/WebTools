@@ -163,8 +163,14 @@ read, not the two-dot form, which on a shallow clone compares two grafted tips
 and returned 300+ files here. **Third sighting of one shape**, after
 `showing-whitelists-pages-only` and `showing-answers-commits-only`: the diff was
 wrong or absent and the classifier had no case for it, so per the conventions'
-recurrence rule this one earns a fix rather than another entry. The fix is in
-`sh()`, which should distinguish a failed command from an empty result. →
+recurrence rule this one earned a fix rather than another entry. **Fixed the same
+day:** `sh()` takes `check=True`, the two reads that decide the answer
+(`changed`, `diff_text`) ask for it, and a failed read is now its own mechanism,
+`unknown`, printing "CANNOT TELL" rather than borrowing the words of "nothing to
+show". `diff_remedy` names the shallow case and the command. Held by
+`tools/test/showing-pick.test.mjs`, which drives a real orphan-base diff rather
+than a file fixture, since every other test there hands the script its input and
+would have passed throughout. →
 [showing.md](showing.md), and the classifier at [../scripts/showing.py](../scripts/showing.py);
 [`skills/sandbox-traps/SKILL.md`](../skills/sandbox-traps/SKILL.md) for the
 shallow-clone family this belongs to. *(seen: 2026-09-03)*
