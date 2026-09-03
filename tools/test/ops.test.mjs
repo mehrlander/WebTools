@@ -48,6 +48,15 @@ test('every op evaluates to one function and reaches neither window nor document
   }
 });
 
+// Styling is a presentation layer over the same words: undo it to assert on content.
+const plainText = (s) => Array.from(s).map(ch => {
+  const c = ch.codePointAt(0);
+  if (c >= 0x1D5D4 && c <= 0x1D5ED) return String.fromCharCode(65 + c - 0x1D5D4);
+  if (c >= 0x1D5EE && c <= 0x1D607) return String.fromCharCode(97 + c - 0x1D5EE);
+  if (c >= 0x1D7EC && c <= 0x1D7F5) return String.fromCharCode(48 + c - 0x1D7EC);
+  return ch;
+}).join('').replace(/^[\u{1F33F}\u{1F558}] /u, '').replace(/ {2}/g, ' · ');
+
 const row = (id, minsAgo, ask, branches = [], repos = []) =>
   ({ id, started: new Date(Date.now() - minsAgo * 60000).toISOString(), ask, branches, repos });
 
@@ -91,18 +100,23 @@ test('session-menu: the clipboard shapes all reduce to the branch', () => {
     want + '\nsecond line of a caption',
   ]) {
     const { fn } = load('session-menu.js', { body });
-    assert.equal(fn({ input: clip, token: 't' }).caption, '1 on double-tap-read-aloud-shortcut', JSON.stringify(clip));
+    assert.equal(plainText(fn({ input: clip, token: 't' }).caption), 'This branch · double-tap-read-aloud-shortcut', JSON.stringify(clip));
   }
 });
 
 test('session-menu: the caption names each case in words, by branch slug, and stamps the index age', () => {
   const here = row('aaaaaaaa', 30, 'Ask', ['claude/x']);
   const other = row('bbbbbbbb', 90, 'Ask', ['claude/y']);
-  const at = new Date(Date.now() - 3 * 3600000).toISOString();
-  const run = (rows, input) => load('session-menu.js', { body: { rows, generatedAt: at } }).fn({ input, token: 't' }).caption;
-  assert.equal(run([here, other], 'claude/x'), '1 on x · index 3h');
-  assert.equal(run([other], 'claude/x'), 'No session on x yet, showing recent · index 3h');
-  assert.equal(run([other], 'not a branch'), 'No branch on the clipboard, showing recent · index 3h');
+  const fresh = new Date(Date.now() - 3 * 3600000).toISOString();
+  const stale = new Date(Date.now() - 16 * 3600000).toISOString();
+  const run = (rows, input, at) => load('session-menu.js', { body: { rows, generatedAt: at } }).fn({ input, token: 't' }).caption;
+  assert.equal(plainText(run([here, other], 'claude/x', fresh)), 'This branch · x');
+  assert.equal(plainText(run([other], 'claude/x', fresh)), 'Recent · none yet on x');
+  assert.equal(plainText(run([other], 'not a branch', fresh)), 'Recent · no branch on the clipboard');
+  // The index's age is said only when it is old enough to explain an absence.
+  assert.equal(plainText(run([other], 'claude/x', stale)), 'Recent · none yet on x · index 16h old');
+  assert.match(run([here], 'claude/x', fresh), /^\u{1F33F} /u, 'the branch header carries the branch glyph');
+  assert.match(run([other], 'claude/x', fresh), /^\u{1F558} /u, 'the recent header carries the recent glyph');
 });
 
 test('session-menu: branch rows lead and are marked, recent rows fill, nothing repeats, every label maps to its page', () => {
@@ -114,8 +128,9 @@ test('session-menu: branch rows lead and are marked, recent rows fill, nothing r
   const r = load('session-menu.js', { body }).fn({ input: 'claude/x', token: 't' });
   const ids = r.rows.map(l => r.urls[l].slice(-8));
   assert.deepEqual(ids, ['cccccccc', 'aaaaaaaa', 'bbbbbbbb']);
-  assert.equal(r.rows[0], 'this branch · 1h · On the branch too');
-  assert.ok(!r.rows[2].includes('this branch'));
+  assert.equal(plainText(r.rows[0]), '1h · On the branch too');
+  assert.match(r.rows[0], /^\u{1F33F} /u, 'a branch row carries the branch glyph');
+  assert.match(r.rows[2], /^\u{1F558} /u, 'a recent row carries the recent glyph');
   for (const l of r.rows) assert.doesNotMatch(l, /[0-9a-f]{8}$/, 'no id on a row that is already distinct');
   for (const l of r.rows) assert.match(r.urls[l], /^https:\/\/mehrlander\.github\.io\/web-tools\/pages\/session\.html#id=[0-9a-f]{8}$/);
   assert.equal(Object.keys(r.urls).length, 3);
@@ -131,5 +146,6 @@ test('session-menu: an ask is plain and bounded, and a duplicate ask still yield
   assert.match(r.rows[0], /…/);
   assert.notEqual(r.rows[0], r.rows[1], 'the repeat earns its id');
   assert.match(r.rows[1], / · bbbbbbbb$/);
+  assert.match(r.rows[0], /^\u{1F558} \u{1D7F1}\u{1D5FA}  /u, 'the age is set in mathematical sans-serif bold');
   assert.equal(Object.keys(r.urls).length, 2);
 });
