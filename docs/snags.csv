@@ -65,6 +65,7 @@ word-boundary-before-alternation,a scan reports zero and looks authoritative,1,2
 x-collapse-needs-x-show,a panel renders at zero size,1,2026-07-15,2026-07-15,environment/testing.md
 an-unlayered-rule-beats-every-layer,`max-w-none` reads as the undo and is not one,0,,,
 backtick-in-an-html-comment-ends-the-template,"a component that will not parse, from prose",0,,,
+both-caps-sat-in-the-guard-exemptions,a clean scan over a screen with two corridors,0,,,
 cross-repo-lib-consumer-invisible,in-repo greps cannot see an external runtime consumer of a lib file,0,,,
 line-clamp-is-not-a-height,"the utility collided with a display four times in one branch, then failed only on the phone",0,,,
 python-offsets-read-as-utf16,an emoji shifts every standoff offset the browser reads,0,,,

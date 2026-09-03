@@ -145,17 +145,20 @@ test('no stray warnings or errors after the resolves', async () => {
   assert.deepEqual(problems, []);
 });
 
-test('the markdown preview scrolls on its pane, not on its text column', () => {
+test('the markdown preview scrolls on its pane, and its column is uncapped', () => {
   // One element carrying both `overflow-auto` and the prose measure put the
   // scrollbar at the end of the TEXT, stranded mid-pane with empty space to its
   // right. It read as a layout bug and was reported as one.
   //
-  // The class list looked right the whole time: it carried `max-w-none`. That
-  // never took, because Tailwind v4 emits utilities into `@layer utilities`
-  // while the typography plugin's stylesheet is unlayered, and an unlayered
-  // declaration beats a layered one whatever the specificity or order. So the
-  // structure is the fix, not the utility: the scroll container is the pane and
-  // the measured column is its child.
+  // Two separate things are pinned here, and they were once conflated. The
+  // SCROLLBAR is fixed by structure: the scroll container is the pane and the
+  // measured column is its child. The WIDTH is fixed by the bang. `max-w-none`
+  // alone never took, because Tailwind v4 emits utilities into `@layer
+  // utilities` while the typography plugin's stylesheet is unlayered, and an
+  // unlayered declaration beats a layered one whatever the specificity or
+  // order; `!max-w-none` carries `!important` and reaches past the layer.
+  // Reading that as "no utility can reach it" left the column centred at 506px
+  // for as long as it stood (daisy-alpine rule 3, fixed 2026-09-03).
   //
   // Rendered as a string, so this reads it as one rather than mounting: show()
   // pulls marked from the CDN, which never resolves under jsdom.
@@ -169,9 +172,9 @@ test('the markdown preview scrolls on its pane, not on its text column', () => {
   assert.ok(column, 'the prose column is a child, not the pane itself');
   assert.match(pane.className, /overflow-auto/, 'the PANE scrolls');
   assert.doesNotMatch(column.className, /overflow-/, 'and the column does not');
-  assert.match(column.className, /mx-auto/, 'the column is centred in the pane it no longer fills');
-  assert.doesNotMatch(column.className, /max-w-/,
-    'a max-w utility here loses to the unlayered .prose rule; use an inline style if a width is wanted');
+  assert.doesNotMatch(column.className, /mx-auto/, 'the column is flush left, not a centred corridor');
+  assert.match(column.className, /!max-w-none/,
+    'the BANG form: a plain max-w-none is layered and loses to the unlayered .prose 65ch measure');
 
   // An html payload is a framed document and has none of this. jsdom has no
   // URL.createObjectURL, so stand one up for the length of the call.
