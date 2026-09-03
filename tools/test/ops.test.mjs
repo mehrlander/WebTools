@@ -91,17 +91,17 @@ test('session-menu: the clipboard shapes all reduce to the branch', () => {
     want + '\nsecond line of a caption',
   ]) {
     const { fn } = load('session-menu.js', { body });
-    assert.equal(fn({ input: clip, token: 't' }).caption, '1 on ' + want, JSON.stringify(clip));
+    assert.equal(fn({ input: clip, token: 't' }).caption, '1 on double-tap-read-aloud-shortcut', JSON.stringify(clip));
   }
 });
 
-test('session-menu: the caption names each case in words, and stamps the index age', () => {
+test('session-menu: the caption names each case in words, by branch slug, and stamps the index age', () => {
   const here = row('aaaaaaaa', 30, 'Ask', ['claude/x']);
   const other = row('bbbbbbbb', 90, 'Ask', ['claude/y']);
   const at = new Date(Date.now() - 3 * 3600000).toISOString();
   const run = (rows, input) => load('session-menu.js', { body: { rows, generatedAt: at } }).fn({ input, token: 't' }).caption;
-  assert.equal(run([here, other], 'claude/x'), '1 on claude/x · index 3h');
-  assert.equal(run([other], 'claude/x'), 'No session on claude/x yet, showing recent · index 3h');
+  assert.equal(run([here, other], 'claude/x'), '1 on x · index 3h');
+  assert.equal(run([other], 'claude/x'), 'No session on x yet, showing recent · index 3h');
   assert.equal(run([other], 'not a branch'), 'No branch on the clipboard, showing recent · index 3h');
 });
 
@@ -112,10 +112,12 @@ test('session-menu: branch rows lead and are marked, recent rows fill, nothing r
     row('cccccccc', 60, 'On the branch too', [], [{ name: 'home', branch: 'claude/x' }]),
   ] };
   const r = load('session-menu.js', { body }).fn({ input: 'claude/x', token: 't' });
-  assert.deepEqual(r.rows.map(l => l.slice(-8)), ['cccccccc', 'aaaaaaaa', 'bbbbbbbb']);
-  assert.equal(r.rows[0], 'this branch · 1h · On the branch too · cccccccc');
+  const ids = r.rows.map(l => r.urls[l].slice(-8));
+  assert.deepEqual(ids, ['cccccccc', 'aaaaaaaa', 'bbbbbbbb']);
+  assert.equal(r.rows[0], 'this branch · 1h · On the branch too');
   assert.ok(!r.rows[2].includes('this branch'));
-  for (const l of r.rows) assert.equal(r.urls[l], 'https://mehrlander.github.io/web-tools/pages/session.html#id=' + l.slice(-8));
+  for (const l of r.rows) assert.doesNotMatch(l, /[0-9a-f]{8}$/, 'no id on a row that is already distinct');
+  for (const l of r.rows) assert.match(r.urls[l], /^https:\/\/mehrlander\.github\.io\/web-tools\/pages\/session\.html#id=[0-9a-f]{8}$/);
   assert.equal(Object.keys(r.urls).length, 3);
   assert.equal(r.count, 3);
 });
@@ -124,9 +126,10 @@ test('session-menu: an ask is plain and bounded, and a duplicate ask still yield
   const long = '**Bold** and `code` and [label](https://x.y/z) ' + 'word '.repeat(60);
   const body = { rows: [row('aaaaaaaa', 5, long), row('bbbbbbbb', 5, long)] };
   const r = load('session-menu.js', { body }).fn({ input: '', token: 't' });
-  assert.ok(r.rows[0].length < 100, 'row was ' + r.rows[0].length);
+  assert.ok(r.rows[0].length < 70, 'row was ' + r.rows[0].length);
   assert.doesNotMatch(r.rows[0], /[*`\[\]]/);
   assert.match(r.rows[0], /…/);
-  assert.notEqual(r.rows[0], r.rows[1]);
+  assert.notEqual(r.rows[0], r.rows[1], 'the repeat earns its id');
+  assert.match(r.rows[1], / · bbbbbbbb$/);
   assert.equal(Object.keys(r.urls).length, 2);
 });

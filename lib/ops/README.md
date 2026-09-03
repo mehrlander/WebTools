@@ -46,5 +46,8 @@ as attaching to `expression`. The rule and its place among the other layers:
 
 The public address of an op, for a caller off the app:
 `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/ops/<name>.js`.
-jsDelivr caches a branch ref for up to twelve hours; after a change, purge with
-`https://purge.jsdelivr.net/gh/mehrlander/web-tools/lib/ops/<name>.js`.
+jsDelivr caches a branch ref for up to twelve hours; after a change, purge the
+**ref path**, `https://purge.jsdelivr.net/gh/mehrlander/web-tools@main/lib/ops/<name>.js`.
+Purging the bare path reported finished and left the alias serving the old copy
+(2026-09-03). A caller's own HTTP cache is a second layer: the file is served
+with `max-age=604800`, so a caller appends a throwaway query, as Run-Op does.
