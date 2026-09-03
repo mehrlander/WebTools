@@ -1660,11 +1660,14 @@ html.dk-dragging main{transition:none !important}
          query carried over (goSearch → searchSeed).
 
          It READS the file too, through the shared viewer embedded inside it,
-         which is why this pane is no longer capped at max-w-4xl: a results
-         column and a file beside it want the width the Tools gallery takes.
-         The per-repo Files view (?view=files) keeps the tree walk. -->
+         so a results column and a file beside it want every pixel the window
+         has. It was capped at max-w-4xl, then at max-w-7xl, and both were the
+         same mistake one size apart: measured at a 1920 viewport on 2026-09-03,
+         the 7xl cap left 320px of dead margin down each side while the reader's
+         own column ran 455px. Uncapped now, like Tools and Map. A cap on this
+         pane is not a small size choice; it is the corridor. -->
     <div x-show="view==='search'" data-pane="search" class="h-full overflow-y-auto">
-      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-7xl">
+      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 !max-w-none">
         <template x-if="searchSeen">
           <div x-data="searchView()"></div>
         </template>
