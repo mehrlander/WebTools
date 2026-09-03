@@ -3,7 +3,6 @@
 _Generated from tasks/. Do not hand-edit._
 
 ## On deck
-- 🎫 [Audit the three repaired units in the conventions run for splitting](tasks/audit-repaired-units-for-splitting-e6jfgs.md) · XS
 - 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
 - 🎫 [Enforce the house style, now that it is findable](tasks/enforce-house-style-ryz0z5.md) · M
 - 🎫 [Read estate.js's commentary the way show-repo.html's was read](tasks/estate-js-commentary-read-mymt4u.md) · M
@@ -43,6 +42,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Give an app view one address key and an identity of its own](tasks/app-view-address-and-icon-tc1a91.md) (`claude/budget-drs-web-tools-tcpcq6`)
 - 🎫 [The FAB drawer should let you pick which layer it describes](tasks/app-view-fab-subject-1evnwv.md) (`claude/toss-url-shorthand-dz0xpt`)
 - 🎫 [App views - designate a page as an estate-level view](tasks/app-views-estate-level-btp6m4.md) (`claude/web-tools-app-views-m3pkyo`)
+- 🎫 [Audit the three repaired units in the conventions run for splitting](tasks/audit-repaired-units-for-splitting-e6jfgs.md) (`claude/standoff-atomicity-boundaries-k3n8p2`)
 - 🎫 [Automate the merge guide from PR bodies](tasks/automate-merge-guide-from-pr-bodies-uaect4.md) (`claude/task-tracker-discussion-wg27xv`)
 - 🎫 [Backfill guide regions into old PR bodies and full-regenerate the merge guide](tasks/backfill-guide-regions-merge-guide-bkk4xv.md) (`claude/merge-guide-web-tools-gjhw8l`)
 - 🎫 [Converge the branch page's authored layer on the branch-review surface](tasks/branch-authored-layer-surface-0j0zik.md) (`claude/show-repo-progress-b8l63x`)
