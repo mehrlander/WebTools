@@ -174,6 +174,12 @@ RE_DOM_ANY = re.compile(
 # The transient-clipboard idiom, which every consumer of it copied verbatim.
 RE_TRANSIENT = re.compile(r"position:fixed;opacity:0|\.select\(\)[\s\S]{0,80}remove\(\)")
 
+# An op (lib/ops/): the whole file, comments aside, is one parenthesised
+# function expression. It attaches to nothing a page holds; its caller
+# evaluates the text and calls the value. Checked on the stripped source so a
+# header comment cannot make or break the match.
+RE_EXPR = re.compile(r"^\s*\(\s*function\b[\s\S]*\}\s*\)\s*;?\s*$")
+
 
 def browser_shape(rel, raw, boot_set):
     src = code_only(raw)
@@ -189,6 +195,8 @@ def browser_shape(rel, raw, boot_set):
     comps = sorted(set(RE_ALPINE_DATA.findall(src)))
     for c in comps:
         attaches.append("Alpine.data:" + c)
+    if RE_EXPR.match(src):
+        attaches.append("expression")
 
     # DOM posture.
     body_hits = len(RE_BODY.findall(src))
