@@ -51,7 +51,7 @@ export default async function (page) {
     const d = Alpine.$data(document.body);
     for (let i = 1; i < d.units.length - 1; i++) {
       const u = d.units[i];
-      if (u.kind !== 'heading') continue;
+      if (!/^h[1-6]$/.test(u.kind)) continue;
       const piece = [...document.querySelectorAll(`[data-uid="${CSS.escape(u.uid)}"][data-src]`)]
         .find(el => el.closest(H) && el.textContent.trim().includes(' '));
       if (!piece) continue;

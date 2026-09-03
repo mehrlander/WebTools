@@ -29,7 +29,7 @@ either wholly valid against its base or it does not run.
 """
 import sys, json, pathlib, re
 
-ATX = re.compile(r"^[ \t]*#{1,6} ")
+ATX = re.compile(r"^[ \t]*(#{1,6}) ")
 
 # HOW AN INSERTION MEETS THE TEXT AROUND IT. Optional: unset means the shape
 # standing at that boundary in the document, which materialize.py reads. Stated
@@ -51,6 +51,10 @@ def kind_of(text, start, end):
     heterogeneity of the two stored LABELS and missed the kind the joined SPAN
     introduced, so merging two sentences across a blank line kept `sent`.
 
+    A HEADING'S KIND CARRIES ITS LEVEL, `h1` through `h6`, rather than a bare
+    `heading`: the level is in the span and dropping it made a section title and
+    a sub-sub-heading the same thing to every reader of the field.
+
     THE ORDER IS segment.py's OWN DISPATCH, read against a span rather than a
     block, which is what lets lib/kits/standoff.js answer without a segmenter.
     A structural marker outranks heterogeneity: putting the blank-line test
@@ -66,8 +70,9 @@ def kind_of(text, start, end):
         return "mixed"
     if s.startswith("|"):
         return "table"
-    if ATX.match(s):
-        return "heading"
+    m = ATX.match(s)
+    if m:
+        return f"h{len(m.group(1))}"
     return "sent"
 
 

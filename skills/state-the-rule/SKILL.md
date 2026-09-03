@@ -285,10 +285,11 @@ crosses the boundary, `adopt` on the way in and `emit` on the way out for the
 stored file and for a patch `ops.py` will read. An insertion carries no offset at
 all, being anchored by uid. A document with no astral character maps to itself.
 
-**`kind` is derived from the span, not carried through the edit.** It was written
+**`kind` is derived from the span, not carried through the edit, and names a
+heading's level (`h1` to `h6`).** It was written
 once by `segment.py` and then survived every operation, so a boundary move left
 it describing a span that no longer existed: splitting `## Scope and precedence`
-gave a unit reading "nd precedence" still labelled `heading`, and three of the
+gave a unit reading "nd precedence" still labelled `h2`, and three of the
 nine headings in `CONVENTIONS.md` offer that split one tap away. `split`, `merge`
 and `shift` now re-derive it; the other operations touch no span and do not.
 `merge`'s old rule (differing kinds become `mixed`) was a partial version of the
@@ -354,7 +355,9 @@ link's label left one side holding an unclosed delimiter. The page renders the
 document once now and paints units as ranges over its text, so no boundary can
 break an element and atomicity is a **choice** about what a unit should mean
 rather than a patch over a rendering failure. It is kept: a boundary inside a
-link's label is not a place a reader can mean. This is a **placement** rule
+link's label is not a place a reader can mean. Nothing else is refused, measured:
+no boundary in the stored run sits inside a construct, and the three the
+interface offers inside a heading render correctly. This is a **placement** rule
 and not an invariant: `check.py` is stdlib Python with no markdown parser, and a
 second disagreeing implementation would be worse than none, so a hand-authored
 patch can still do what the interface cannot. Where the page is

@@ -166,7 +166,7 @@ test('a heading with no blank line under it does not swallow its section', () =>
   const units = execFileSync('python3', [join(SKILL, 'segment.py'), f, '1', '99'],
                              { encoding: 'utf8' }).trim().split('\n').map(JSON.parse);
   rmSync(dir, { recursive: true, force: true });
-  assert.equal(units[0].kind, 'heading', 'the heading is its own unit');
+  assert.equal(units[0].kind, 'h3', 'the heading is its own unit, at its own level');
   assert.equal(units[0].text, '### Rules', 'and owns only its own line');
   assert.ok(units.length >= 5,
     `three bullets and a two-sentence first one is 5+ units, got ${units.length}`);
@@ -786,8 +786,15 @@ test('Standoff.kindOf agrees with segment.py on every unit of the repo corpus', 
   // A corpus that lost its fences or tables would pass while testing nothing,
   // since `sent` is the fallback both sides reach by doing nothing.
   assert.ok(n > 1000, `only ${n} units in the corpus`);
-  for (const k of ['heading', 'sent', 'code', 'table'])
+  for (const k of ['sent', 'code', 'table'])
     assert.ok(seen[k] >= 10, `only ${seen[k] || 0} ${k} units to compare`);
+  // Headings are a family now, so count them as one and then insist the corpus
+  // actually spans levels: a corpus of nothing but `##` would agree on every
+  // unit while never exercising the digit that was the point of the change.
+  const heads = Object.entries(seen).filter(([k]) => /^h[1-6]$/.test(k));
+  assert.ok(heads.reduce((n, [, c]) => n + c, 0) >= 10,
+    `only ${heads.length} heading kind(s) to compare`);
+  assert.ok(heads.length >= 3, `the corpus carries only ${heads.length} heading level(s)`);
   // And the conversion above is doing something, so a corpus quietly losing its
   // emoji cannot turn this into a test of nothing.
   assert.ok(astral > 20, `only ${astral} astral characters: the offset skew is untested`);
@@ -803,7 +810,8 @@ test('a fence outranks the blank line inside it, and every other marker does not
     'reading the blank line first would call a fenced example mixed');
 
   const heading = '## Scope and precedence\n\nA sentence follows it.';
-  assert.equal(KIT.kindOf(heading, 0, 23), 'heading');
+  assert.equal(KIT.kindOf(heading, 0, 23), 'h2');
+  assert.equal(KIT.kindOf('#### Deeper still', 0, 17), 'h4', 'the kind carries the level');
   assert.equal(KIT.kindOf(heading, 0, 32), 'mixed',
     'a heading that swallowed across the break is no longer just a heading');
 

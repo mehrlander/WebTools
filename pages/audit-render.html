@@ -129,7 +129,7 @@ window.__audit = {
     "uid": "conven-001",
     "start": 0,
     "end": 32,
-    "kind": "heading",
+    "kind": "h1",
     "words": 4,
     "label": "META",
     "verdict": "KEEP"
@@ -219,7 +219,7 @@ window.__audit = {
     "uid": "conven-011",
     "start": 894,
     "end": 917,
-    "kind": "heading",
+    "kind": "h2",
     "words": 4,
     "label": "META",
     "verdict": "KEEP"
@@ -282,7 +282,7 @@ window.__audit = {
     "uid": "conven-018",
     "start": 1457,
     "end": 1524,
-    "kind": "heading",
+    "kind": "h2",
     "words": 11,
     "label": "META",
     "verdict": "KEEP"
@@ -347,7 +347,7 @@ window.__audit = {
     "uid": "conven-024",
     "start": 2362,
     "end": 2393,
-    "kind": "heading",
+    "kind": "h2",
     "words": 5,
     "label": "META",
     "verdict": "KEEP"
@@ -383,7 +383,7 @@ window.__audit = {
     "uid": "conven-048",
     "start": 2993,
     "end": 3051,
-    "kind": "heading",
+    "kind": "h2",
     "words": 12,
     "label": "META",
     "verdict": "KEEP"
@@ -410,7 +410,7 @@ window.__audit = {
     "uid": "conven-051",
     "start": 3720,
     "end": 3755,
-    "kind": "heading",
+    "kind": "h2",
     "words": 8,
     "label": "META",
     "verdict": "KEEP"
@@ -446,7 +446,7 @@ window.__audit = {
     "uid": "conven-055",
     "start": 3944,
     "end": 3990,
-    "kind": "heading",
+    "kind": "h2",
     "words": 7,
     "label": "META",
     "verdict": "KEEP"
@@ -655,7 +655,7 @@ window.__audit = {
     "uid": "conven-072",
     "start": 5584,
     "end": 5597,
-    "kind": "heading",
+    "kind": "h2",
     "words": 3,
     "label": "META",
     "verdict": "KEEP"
@@ -709,7 +709,7 @@ window.__audit = {
     "uid": "conven-078",
     "start": 6154,
     "end": 6192,
-    "kind": "heading",
+    "kind": "h2",
     "words": 6,
     "label": "META",
     "verdict": "KEEP"
@@ -808,8 +808,9 @@ window.__audit = {
   // `kind` is the segmenter's word, and the panel was printing it raw: a reader
   // asked what "sent" meant, which is a fair question about a field abbreviated
   // for a JSONL file and then shown to a person.
-  const KINDS = { sent: 'sentence', heading: 'heading', code: 'code block',
-                  table: 'table', mixed: 'mixed' };
+  const KINDS = { sent: 'sentence', code: 'code block', table: 'table', mixed: 'mixed',
+                  h1: 'heading 1', h2: 'heading 2', h3: 'heading 3',
+                  h4: 'heading 4', h5: 'heading 5', h6: 'heading 6' };
 
   const WORD = /[\w'\u2019-]/;
   const snapWord = (text, i) => {

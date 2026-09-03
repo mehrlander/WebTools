@@ -73,7 +73,7 @@
    "uid": "conven-001",
    "start": 0,
    "end": 32,
-   "kind": "heading",
+   "kind": "h1",
    "words": 4,
    "label": "META",
    "verdict": "KEEP"
@@ -163,7 +163,7 @@
    "uid": "conven-011",
    "start": 894,
    "end": 917,
-   "kind": "heading",
+   "kind": "h2",
    "words": 4,
    "label": "META",
    "verdict": "KEEP"
@@ -226,7 +226,7 @@
    "uid": "conven-018",
    "start": 1457,
    "end": 1524,
-   "kind": "heading",
+   "kind": "h2",
    "words": 11,
    "label": "META",
    "verdict": "KEEP"
@@ -291,7 +291,7 @@
    "uid": "conven-024",
    "start": 2362,
    "end": 2393,
-   "kind": "heading",
+   "kind": "h2",
    "words": 5,
    "label": "META",
    "verdict": "KEEP"
@@ -327,7 +327,7 @@
    "uid": "conven-048",
    "start": 2993,
    "end": 3051,
-   "kind": "heading",
+   "kind": "h2",
    "words": 12,
    "label": "META",
    "verdict": "KEEP"
@@ -354,7 +354,7 @@
    "uid": "conven-051",
    "start": 3720,
    "end": 3755,
-   "kind": "heading",
+   "kind": "h2",
    "words": 8,
    "label": "META",
    "verdict": "KEEP"
@@ -390,7 +390,7 @@
    "uid": "conven-055",
    "start": 3944,
    "end": 3990,
-   "kind": "heading",
+   "kind": "h2",
    "words": 7,
    "label": "META",
    "verdict": "KEEP"
@@ -599,7 +599,7 @@
    "uid": "conven-072",
    "start": 5584,
    "end": 5597,
-   "kind": "heading",
+   "kind": "h2",
    "words": 3,
    "label": "META",
    "verdict": "KEEP"
@@ -653,7 +653,7 @@
    "uid": "conven-078",
    "start": 6154,
    "end": 6192,
-   "kind": "heading",
+   "kind": "h2",
    "words": 6,
    "label": "META",
    "verdict": "KEEP"

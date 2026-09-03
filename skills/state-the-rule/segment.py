@@ -76,10 +76,10 @@ def block_units(block, bstart, base_off, out):
         return
     # A heading owns its own line only; whatever follows it is segmented on its
     # own terms.
-    m = re.match(r'[ \t]*#{1,6} [^\n]*', block)
+    m = re.match(r'[ \t]*(#{1,6}) [^\n]*', block)
     if m:
-        out.append((base_off + bstart, base_off + bstart + m.end(), 'heading',
-                    block[:m.end()].strip()))
+        out.append((base_off + bstart, base_off + bstart + m.end(),
+                    f'h{len(m.group(1))}', block[:m.end()].strip()))
         rest = block[m.end():]
         if rest.strip():
             block_units(rest, bstart + m.end(), base_off, out)
