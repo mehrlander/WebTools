@@ -122,7 +122,7 @@ tools/render/scenarios/estate-surfaces-embed.mjs,"the Surfaces view rendering a 
 tools/render/scenarios/estate-unfiled.mjs,,tools/render/scenarios,99,driver,no,no,no
 tools/render/scenarios/fab-export.mjs,the FAB's Export controls,tools/render/scenarios,31,driver,no,yes,no
 tools/render/scenarios/fab-guide.mjs,the fab's Render tab seeded token-free so the guide pane renders,tools/render/scenarios,144,driver,no,no,no
-tools/render/scenarios/fab-menu.mjs,"The launcher's long-press menu on the app: its three built-in rows, one line each, and the app answering as a stage host so its paste stays in place.",tools/render/scenarios,38,driver,no,no,no
+tools/render/scenarios/fab-menu.mjs,"The launcher's long-press menu on the app: its three built-in rows, one line each, and the app answering as a stage host so its paste stays in place.",tools/render/scenarios,39,driver,no,no,no
 tools/render/scenarios/fab-paste-offapp.mjs,"The paste row's other ending, on a page that is not the app: no stage host, both small kits warmed by the press, and the 233K stage component not pulled.",tools/render/scenarios,36,driver,no,no,no
 tools/render/scenarios/fab-text-match.mjs,"drive the Text tab for a shot: the read is real, the tree and registry reads are seeded, and STATE picks the un-run pane, the resolved match, or a selection-scoped read",tools/render/scenarios,89,driver,no,no,no
 tools/render/scenarios/fab-toss.mjs,toss-render address mode with the fab's toss integration and singleton guard,tools/render/scenarios,49,driver,no,no,no

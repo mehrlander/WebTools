@@ -323,12 +323,17 @@ test('the press it consumed does not eat the NEXT ordinary tap', async () => {
 // ── The aim rows ───────────────────────────────────────────────────────────
 //
 // The menu had one note destination and the card had four aims, so three of
-// them were two taps further in. These check the one that is conditional, since
-// the other three are unconditional rows and a template test would only be
-// re-reading the template.
+// them were two taps further in. Since 2026-09-03 the four aims are icon
+// buttons sharing one "Note" row rather than four full-width rows, so their
+// labels moved from a visible span to aria-label; rowLabels reads both, and
+// these tests check the one aim that is conditional, since the other three
+// are unconditional buttons and a template test would only be re-reading the
+// template.
 
-const rowLabels = (host) =>
-  [...host.querySelectorAll('button span')].map(e => e.textContent.trim()).filter(Boolean);
+const rowLabels = (host) => [
+  ...[...host.querySelectorAll('button span')].map(e => e.textContent.trim()),
+  ...[...host.querySelectorAll('button[aria-label]')].map(e => e.getAttribute('aria-label')),
+].filter(Boolean);
 
 // A declared markdown render, made the way kits/md-doc.js makes one, so the
 // fab is reading a real declaration rather than a shape a stub agreed to.

@@ -1,8 +1,9 @@
-// The launcher's long-press menu on the app, showing its three built-in rows:
-// "Take a note" (one line, no prose under it), "Paste to Stage", and "Web Tools
-// home". The `menu` contract has no contributor now that the paste is built in,
-// so `contributed` is expected to be empty here and the shape under test is the
-// three rows plus the one-line rule.
+// The launcher's long-press menu on the app, showing its built-in rows: the
+// Note row (the verb once, its aims as icon buttons beside it), "Peek", "To
+// Stage", and "Home", each one line with no prose under it. The `menu`
+// contract has no contributor now that the paste is built in and show-repo's
+// header row is retired, so `contributed` is expected to be empty here and the
+// shape under test is those rows plus the one-line rule.
 //
 // Driven by calling openFabMenu() rather than by synthesising a 450ms pointer
 // hold: the gesture is covered by the fab's own tests, and what a screenshot
