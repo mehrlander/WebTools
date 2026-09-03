@@ -644,6 +644,23 @@ test('a shell read of a doc counts, keyed to the checkout the command names', ()
   assert.equal(out['home/docs/TRACKER.md'], 1, 'a cd in the same command governs the relative path after it');
 });
 
+test('a docs path cut by the pre-schema-5 arg cap is dropped, not read as a shorter name', () => {
+  // Records before schema 5 stored `arg` cut to 200 characters with no marker,
+  // so `docs/SNAGS.md` at the cut read as `docs/SNAGS.m`. Three such rows sat
+  // in the Docs tab's unresolved strip on 2026-09-03.
+  const pad = 'x'.repeat(200 - 'cat  docs/SNAGS.m'.length);
+  const arg = 'cat ' + pad + ' docs/SNAGS.m';
+  assert.equal(arg.length, 200);
+  const old = { schema: 4, repos: [{ name: 'web-tools' }], calls: [{ name: 'Bash', arg }] };
+  assert.deepEqual(S.shellDocsOf(old), {}, 'the name the cap left is not a name anyone typed');
+  const current = { schema: 5, repos: [{ name: 'web-tools' }], calls: [{ name: 'Bash', arg }] };
+  assert.equal(S.shellDocsOf(current)['web-tools/docs/SNAGS.m'], 1,
+    'a schema-5 arg of exactly 200 characters is whole, and its path counts as typed');
+  const mid = { schema: 4, repos: [{ name: 'web-tools' }], calls: [
+    { name: 'Bash', arg: 'cat docs/SNAGS.md ' + 'x'.repeat(200 - 'cat docs/SNAGS.md '.length) }] };
+  assert.equal(S.shellDocsOf(mid)['web-tools/docs/SNAGS.md'], 1, 'a capped arg still counts a path the cap did not touch');
+});
+
 test('a bare path in a multi-checkout session is dropped rather than guessed', () => {
   const many = { repos: [{ name: 'web-tools' }, { name: 'home' }], calls: [
     { name: 'Bash', arg: 'grep -n toss docs/SURFACING.md' },
