@@ -91,7 +91,7 @@ import path from 'node:path';
 import { parseCsv, writeCsv } from './registries-load.mjs';
 
 // Column order is fixed here so a restamp cannot reorder the file.
-const DOC_COLS = ['path', 'subject', 'status', 'reach', 'words', 'maintenance'];
+const DOC_COLS = ['path', 'subject', 'status', 'reach', 'words', 'maintenance', 'formerly'];
 import { fileURLToPath } from 'node:url';
 
 export const CHANNELS = ['injected', 'project', 'skill', 'app', 'orphan'];
@@ -245,8 +245,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
       d.reach = nextReach;
       d.words = nextWords;
       // Fixed key order, so a restamp never reshuffles the file.
-      const ordered = { path: d.path, subject: d.subject, status: d.status,
-                        reach: d.reach, words: d.words, maintenance: d.maintenance };
+      const ordered = Object.fromEntries(DOC_COLS.map(k => [k, d[k] ?? '']));
       for (const k of Object.keys(d)) delete d[k];
       Object.assign(d, ordered);
     }
