@@ -115,11 +115,23 @@ test('lib without a rebuilt pre-build warns, since ?use= fetches dist', () => {
 // shares no ancestor with HEAD, so `orphan...HEAD` fails with "no merge base",
 // which is the same failure the sandbox's shallow clone produces every run.
 // Nothing is written: no ref moves and the working tree is untouched.
+//
+// The identity is passed in rather than inherited. `commit-tree` writes a
+// commit object and so demands an author, and a CI runner has no git identity
+// configured: this test passed on every developer machine and failed the first
+// time it ran on Actions with "fatal: empty ident name" (run 33777865076). The
+// value is irrelevant, since the object is never referenced or pushed; what
+// matters is that the test carries its own and depends on no ambient config.
+const IDENT = {
+  GIT_AUTHOR_NAME: 'showing-test', GIT_AUTHOR_EMAIL: 'showing-test@invalid',
+  GIT_COMMITTER_NAME: 'showing-test', GIT_COMMITTER_EMAIL: 'showing-test@invalid',
+};
+
 test('a diff that FAILS is never reported as a diff that found nothing', () => {
-  const orphan = execFileSync('git',
-    ['commit-tree', execFileSync('git', ['hash-object', '-t', 'tree', '/dev/null'],
-      { cwd: repoRoot, encoding: 'utf8' }).trim(), '-m', 'orphan probe'],
-    { cwd: repoRoot, encoding: 'utf8', input: '' }).trim();
+  const emptyTree = execFileSync('git', ['hash-object', '-t', 'tree', '/dev/null'],
+    { cwd: repoRoot, encoding: 'utf8' }).trim();
+  const orphan = execFileSync('git', ['commit-tree', emptyTree, '-m', 'orphan probe'],
+    { cwd: repoRoot, encoding: 'utf8', input: '', env: { ...process.env, ...IDENT } }).trim();
 
   const raw = execFileSync('python3', [SCRIPT, '--base', orphan, '--json'],
     { cwd: repoRoot, encoding: 'utf8' });
