@@ -1,5 +1,5 @@
 // dist/app.js — the Web Tools app's pre-build: the part of lib/ the app can
-// reach (76 of 106 files), frozen into one self-booting artifact by
+// reach (76 of 107 files), frozen into one self-booting artifact by
 // the same emitter as dist/web-tools.js. Importing it boots the loader,
 // registers the 22 Alpine components the app mounts, and starts Alpine.
 // A lib path the app names at runtime but this walk did not see falls through
