@@ -25,7 +25,7 @@ tools/build/build-app.mjs,"emit dist/app.js, the app's own pre-build: the part o
 tools/build/build-lib.mjs,"emit dist/web-tools.js, the pre-build: the whole lib/ as one self-booting offline artifact",tools/build,108,npm:build:lib,yes,yes,yes
 tools/build/build.mjs,"emit dist/<page>.js: a page's gh.load chain frozen offline, through lib/build.js's emitter",tools/build,77,npm:build,yes,yes,no
 tools/build/console-suite.mjs,assemble console/suite.js from base.js plus the layered console modules,tools/build,51,npm:build:console,yes,yes,yes
-tools/build/docs-reach.mjs,restamp the derived reach and words fields of docs/docs.csv,tools/build,279,npm:docs-reach,yes,yes,yes
+tools/build/docs-reach.mjs,restamp the derived reach and words fields of docs/docs.csv,tools/build,278,npm:docs-reach,yes,yes,yes
 tools/build/docs-readme.mjs,regenerate docs/README.md from docs/docs.csv,tools/build,98,npm:docs-readme,yes,yes,yes
 tools/build/graph.mjs,the static resolver for a page's gh.load chain; feeds build.mjs its cache,tools/build,86,imported,no,yes,no
 tools/build/graphql-schema.mjs,regenerate the pruned GitHub GraphQL schema the suite typechecks queries against,tools/build,230,npm:graphql-schema,yes,no,no
