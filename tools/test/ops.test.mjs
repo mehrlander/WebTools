@@ -59,22 +59,25 @@ test('session-menu reads the index once, synchronously, raw, with the token as g
   assert.match(open.url, /web-tools-private\/contents\/state\/sessions\.json\?ref=main$/);
   assert.deepEqual(sent.find(s => s[0] === 'Authorization'), ['Authorization', 'Bearer ghp_x']);
   assert.deepEqual(sent.find(s => s[0] === 'Accept'), ['Accept', 'application/vnd.github.raw']);
-  assert.equal(sent.filter(s => s.method).length, 1);
+  assert.equal(sent.filter(s => s.method).length, 1, 'no probe on the happy path');
 });
 
-test('session-menu: no token is an ERROR result, not a request', () => {
+test('session-menu: no token is an ERROR result, and the index is never read without one', () => {
   const { fn, sent } = load('session-menu.js');
   const r = fn({ input: 'claude/x' });
-  assert.match(r.caption, /^ERROR no token/);
+  assert.equal(r.caption, 'ERROR no token reached the op at start');
   assert.deepEqual(r.rows, []);
-  assert.equal(sent.length, 0);
+  assert.equal(sent.filter(s => s.method && /sessions\.json/.test(s.url) && !/zen/.test(s.url)).length, 1,
+    'only the probe touches the index address, once, with the token alone');
+  assert.deepEqual(Object.keys(r.probe), ['zen plain', 'zen auth', 'index auth only']);
 });
 
-test('session-menu: a failed read is an ERROR result carrying the status', () => {
+test('session-menu: a failed read is an ERROR result naming the status, the stage, and a network probe', () => {
   const { fn } = load('session-menu.js', { status: 401 });
   const r = fn({ input: 'claude/x', token: 't' });
-  assert.equal(r.caption, 'ERROR HTTP 401 reading state/sessions.json');
-  assert.equal(r.error, 'HTTP 401 reading state/sessions.json');
+  assert.equal(r.caption, 'ERROR HTTP 401 reading state/sessions.json at status 401');
+  assert.equal(r.error, r.caption);
+  assert.deepEqual(Object.keys(r.probe), ['zen plain', 'zen auth', 'index auth only']);
 });
 
 test('session-menu: the clipboard shapes all reduce to the branch', () => {
