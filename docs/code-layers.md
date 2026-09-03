@@ -26,6 +26,7 @@ column of them is a category nobody has stated.
 | `lib/` **scaffolding** | extends `GH.prototype`, or is a boot bundle | `GH.prototype`, or nothing (a bundle) |
 | `lib/kits/` **kit** | everything else that registers a `window` namespace | `window.<Name>` |
 | `lib/alpineComponents/` **component** | renders and holds reactive state | `Alpine.data(name, fn)` |
+| `lib/ops/` **op** | is one function expression, reaching neither `window` nor `document` | nothing in a page: its caller evaluates the text |
 | `scripts/` **standalone** | argv-driven, runs from any repo root, no repo of its own | a shell invocation |
 | `tools/` **harness** | exercises or builds this repo, in Node, never shipped to a page | a `node`/`npm` invocation |
 
@@ -99,6 +100,36 @@ not become a component, it gets a component wrapper.
 [`lib/kits/cm6.js`](../lib/kits/cm6.js) is the reference pair. The shape rules a
 `lib/` file must honor to load at all are in [`docs/loader.md`](loader.md), and
 [`lib/kits/README.md`](../lib/kits/README.md) carries the per-kit table.
+
+### `lib/ops/`: added 2026-09-03
+
+**An op is one file that is one value.** A single parenthesised function
+expression, one serialisable argument in, one serialisable result out, and no
+reference to `window` or `document`. It attaches to nothing a page holds; the
+caller evaluates the text and calls what comes back. That is the whole rule,
+and [`code-shape.py`](../scripts/code-shape.py) reports it as `expression`.
+
+It is a layer rather than a stricter kind of kit because the same file has two
+runners that share nothing else: a page in this app, and a phone with no page
+at all, which fetches the text and runs it inside a `data:` URL that Shortcuts
+coerces to text and never displays (shortcut-tools' `Run-Op`, on the
+`Get-FromJs` route that library's `docs/idioms.md` names as its one door to
+JavaScript). A kit's contract admits a page, so nothing stops a kit from being
+unusable off one, and the phone would learn that at run time. An op's contract
+forbids the page, and the test learns it first.
+
+Two rules follow from the phone runner, stated in
+[`lib/ops/README.md`](../lib/ops/README.md): an op is synchronous, because the
+coercion captures the page before a promise resolves; and a credential arrives
+as input, because the phone has none of the app's storage. Both are
+consequences of the attachment rule, not additions to it.
+
+Measured when the layer was added, and the reason it was named rather than left
+implicit: a heuristic pass over `lib/kits/` found 27 of 66 kits already
+reaching no browser API, a split in the folder that nothing had stated. That is
+the condition this document exists to catch. They stay kits, since each
+registers a namespace, which is the attachment that decides; the op layer is
+where a new page-free function goes, not a migration target for the 27.
 
 ## tools/, which is the weak layer
 

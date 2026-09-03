@@ -32,6 +32,7 @@ const isBundle = r => /-bundle\.js$/.test(r.path);
 const extendsProto = r => r.attaches.includes('GH.prototype');
 const registersNamespace = r => r.attaches.some(a => a.startsWith('window.'));
 const registersComponent = r => r.attaches.some(a => a.startsWith('Alpine.data:'));
+const isExpression = r => r.attaches.includes('expression');
 
 test('lib/kits/: nothing extends GH.prototype', () => {
   const bad = rows.filter(r => r.layer === 'lib/kits' && extendsProto(r));
@@ -57,4 +58,26 @@ test('lib/alpineComponents/: everything registers Alpine.data', () => {
   const bad = rows.filter(r => r.layer === 'lib/alpineComponents' && !registersComponent(r));
   assert.deepEqual(bad.map(r => r.path), [],
     'component file(s) register no Alpine.data; a plain logic module belongs in lib/kits/');
+});
+
+// lib/ops/ (added 2026-09-03): a file that is one function expression and
+// reaches nothing a page holds. Its caller evaluates the text, so the only
+// attachment is "expression" and it must be the only one: an op that also
+// registered a namespace or touched the DOM would run in the app and fail on
+// the phone, silently, which is the case the layer exists to make impossible.
+test('lib/ops/: every file is one function expression and nothing else', () => {
+  const ops = rows.filter(r => r.layer === 'lib/ops');
+  assert.ok(ops.length > 0, 'lib/ops/ should hold at least one op');
+  for (const r of ops) {
+    assert.deepEqual(r.attaches, ['expression'],
+      `${r.path} attaches ${JSON.stringify(r.attaches)}; an op is one function expression, ` +
+      `registers no namespace and extends nothing (lib/ops/README.md)`);
+    assert.equal(r.dom, 'none', `${r.path} reaches the document; an op has no page`);
+  }
+});
+
+test('nothing outside lib/ops/ is a bare function expression', () => {
+  const strays = rows.filter(r => r.layer !== 'lib/ops' && isExpression(r) && r.attaches.length === 1);
+  assert.deepEqual(strays.map(r => r.path), [],
+    'a file that is only a function expression belongs in lib/ops/ (docs/code-layers.md)');
 });
