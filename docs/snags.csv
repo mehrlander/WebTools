@@ -13,6 +13,7 @@ cached-read-feeds-a-write,a fresh-looking read hands back the sha it just replac
 mcp-approval-is-often-routing,an approval prompt that is really a wall,2,2026-08-15,2026-07-15;2026-08-15,github/mcp-server-routing.md
 ci-watch-on-blocked-api,a curl watch loop on the GitHub API waits forever,2,2026-08-14,2026-08-10;2026-08-14,environment/capabilities.md
 x-data-scope-shadows-component-names,"a mount's config read a component, not the host's field",2,2026-08-14,2026-08-14;2026-08-14,show-repo.md;../skills/daisy-alpine/SKILL.md
+shallow-clone-has-no-merge-base,"the render-link script reported ""nothing"" over a nine-file branch",1,2026-09-03,2026-09-03,
 pipe-eats-the-exit-code,"a runner that reports a fatal, read through a pipe that returns zero",1,2026-09-01,2026-09-01,environment/testing.md
 annotated-document-resists-edits,editing CONVENTIONS.md costs an annotation rebuild,1,2026-08-31,2026-08-31,
 corpus-artifact-stale-on-a-tree-that-exists-only-in-ci,"green locally, red on the PR",1,2026-08-31,2026-08-31,docs.csv
