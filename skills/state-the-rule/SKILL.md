@@ -272,7 +272,9 @@ pass silently; it reads `from` and refuses without `--reset`.
 would both be `WHAT` separates two rules without changing what the annotation
 says about either, and grain for its own sake is not a finding. On
 `CONVENTIONS.md`, 36 of 69 prose units carry a clause boundary and 10 met the
-bar; every one of the ten was a rule with its reason fused on.
+bar; every one of the ten was a rule with its reason fused on. A heading is one
+unit, so the page offers no split inside one; a unit spanning a blank line
+offers that line.
 
 **Offsets are code points, which is what Python counts.** A browser counts UTF-16
 code units, so an astral character (every emoji in these documents) is one index

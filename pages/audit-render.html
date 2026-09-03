@@ -967,7 +967,7 @@ window.__audit = {
     // lib/kits/standoff.js, and skills/state-the-rule/ops.py is the same rules
     // in Python. This page is the view: it decides what to offer and where to
     // put it, and delegates what an operation MEANS.
-    patch: [], at: 0, base: null, menu: null, boundaries: [], opErr: '',
+    patch: [], at: 0, base: null, menu: null, boundaries: [], splitNote: '', opErr: '',
     // UNDO IS FREE, and it is free because the patch is declarative. The
     // annotation on screen is `apply(base, patch.slice(0, at))`, so stepping
     // back is decrementing a number and replaying: no inverse operation to
@@ -1029,15 +1029,38 @@ window.__audit = {
     // The connective rides with the SECOND half, so the boundary is a
     // lookahead: splitting after "because" leaves the rule ending on a dangling
     // connective and the reason unable to say it is one.
+    //
+    // A BLOCK BOUNDARY IS A CANDIDATE TOO, and the prose regex cannot see one.
+    // A `shift` across a blank line makes a `mixed` unit, and the menu offered
+    // nothing at all on one, so a heading dragged into the paragraph below it
+    // could be put back only by undo. The blank line is where a reader would
+    // cut, and it is the same test `kind_of` runs to call the unit mixed, so the
+    // offer and the classification agree by construction. Not inside a fence,
+    // for that classifier's own reason: a fence body legitimately holds blank
+    // lines and cutting one leaves two halves that are not fences.
+    //
+    // A HEADING OFFERS NOTHING. Its `:` fires the clause branch, so the menu
+    // offered to cut three of CONVENTIONS.md's section titles from their own
+    // claims (`## Status:` from `frozen, stale, wrong`), and neither half is a
+    // thing either axis can say anything about.
     openSplit(u) {
       const t = this.a.text;
-      const re = /[.!?][*`)\]]*\s+|;\s+|:\s+|,\s+(?=so\b|because\b|since\b|which is why\b)/g;
       const body = t.slice(u.start, u.end);
-      this.boundaries = [...body.matchAll(re)]
+      const head = /^h[1-6]$/.test(u.kind);
+      const re = /[.!?][*`)\]]*\s+|;\s+|:\s+|,\s+(?=so\b|because\b|since\b|which is why\b)/g;
+      const found = head ? [] : [...body.matchAll(re)];
+      if (!head && u.kind !== 'code') found.push(...body.matchAll(/\n[ \t]*\n\s*/g));
+      // Sorted so the menu reads in document order, then deduped: `.\n\n`
+      // matches both branches and would offer one boundary twice.
+      const rows = found
         .map(m => ({ at: u.start + m.index + m[0].length,
                      lead: body.slice(Math.max(0, m.index - 26), m.index + m[0].length).trim(),
                      rest: body.slice(m.index + m[0].length, m.index + m[0].length + 40).trim() }))
-        .filter(b => b.at > u.start && b.at < u.end);
+        .filter(b => b.at > u.start && b.at < u.end)
+        .sort((a, b) => a.at - b.at);
+      this.boundaries = rows.filter((b, i) => !i || b.at !== rows[i - 1].at);
+      this.splitNote = head ? 'a heading is one unit'
+                            : 'no clause or block boundary inside this unit';
       this.menu = 'split';
     },
     get applied() { return this.patch.slice(0, this.at); },
@@ -2008,7 +2031,7 @@ window.__audit = {
 
       <div class="mt-2 space-y-1" x-show="menu==='split'">
         <template x-if="!boundaries.length">
-          <span class="opacity-60">no clause boundary inside this unit</span>
+          <span class="opacity-60" x-text="splitNote"></span>
         </template>
         <template x-for="b in boundaries" :key="b.at">
           <button class="btn btn-xs btn-block justify-start font-normal h-auto py-1 text-left"
