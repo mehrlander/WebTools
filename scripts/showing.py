@@ -69,8 +69,36 @@ TOP_LEVEL = [
 ]
 
 
-def sh(*args, cwd=ROOT):
-    return subprocess.run(args, cwd=cwd, capture_output=True, text=True).stdout.strip()
+class GitFailed(RuntimeError):
+    """A git command exited non-zero, carrying stderr so a caller can name the
+    remedy rather than guess at one."""
+
+    def __init__(self, args, err):
+        self.args, self.err = list(args), err
+        super().__init__(" ".join(args) + ": " + (err or "exited non-zero"))
+
+
+def sh(*args, cwd=ROOT, check=False):
+    """stdout, stripped. `check=True` raises instead of letting a failed command
+    read as an empty result.
+
+    THAT CONFLATION WAS THIS SCRIPT'S WORST BUG, because it fails in the
+    direction of confidence. Every read here goes through one helper that
+    returned `.stdout.strip()` and never looked at the exit code, so
+    `git diff --name-only base...ref` dying with `fatal: no merge base` produced
+    `[]`, and `pick()` walked its whole ladder to the last rung and printed "No
+    render link: nothing that renders changed." over a nine-file branch. A
+    session read that as a verdict and passed it to the user (2026-09-03, PR
+    #574; snag `shallow-clone-has-no-merge-base`).
+
+    So the two reads that decide the answer, `changed` and `diff_text`, ask for
+    `check=True`. The incidental ones do not: `git rev-parse origin/<branch>`
+    on an unpushed branch SHOULD read as empty, which is how `ref_facts` knows
+    it is unpushed."""
+    r = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
+    if check and r.returncode != 0:
+        raise GitFailed(args, r.stderr.strip())
+    return r.stdout.strip()
 
 
 def repo_slug():
@@ -94,8 +122,26 @@ def hosted_ok():
 # ---- what changed --------------------------------------------------------
 
 def changed(base, ref):
-    out = sh("git", "diff", "--name-only", f"{base}...{ref}")
+    out = sh("git", "diff", "--name-only", f"{base}...{ref}", check=True)
     return [p for p in out.splitlines() if p]
+
+
+def diff_remedy(exc, base, ref):
+    """Why the diff could not be read, and what to run. One case is named
+    because it is the one a Claude Code web session hits every time: the sandbox
+    clones shallow, so `base` and `ref` share no ancestor inside the graft
+    boundary and the three-dot form has no merge base to resolve.
+
+    The two-dot form is NOT the fallback and is named here so the next reader
+    does not reach for it: on a shallow clone it compares two grafted tips, which
+    measured 300+ files against a nine-file branch (2026-09-03)."""
+    shallow = sh("git", "rev-parse", "--is-shallow-repository") == "true"
+    if shallow and "merge base" in exc.err.lower():
+        return ("this clone is SHALLOW, so " + base + " and " + ref + " share no ancestor "
+                "inside the graft boundary and `" + base + "..." + ref + "` has no merge base. "
+                "Run `git fetch --unshallow origin` (about 20s) and re-run. Not the two-dot "
+                "form: on a shallow clone it compares two grafted tips and names most of the repo.")
+    return "git could not read the diff, so the file list is unknown: " + (exc.err or "non-zero exit")
 
 
 def uncommitted():
@@ -127,7 +173,7 @@ def uncommitted():
 def diff_text(base, ref, paths):
     if not paths:
         return ""
-    return sh("git", "diff", f"{base}...{ref}", "--unified=0", "--", *paths)
+    return sh("git", "diff", f"{base}...{ref}", "--unified=0", "--", *paths, check=True)
 
 
 def ref_facts(ref):
@@ -331,6 +377,12 @@ def lines(d):
         # NOT "no render link", which is the answer this case is most easily
         # mistaken for and the one that travels into a reply.
         out.append("Nothing committed yet, so there is nothing to link.")
+    elif d["mechanism"] == "unknown":
+        # The loudest case in the file, and deliberately not phrased as an
+        # answer. "No render link" is what this used to print when the diff
+        # failed, and it is indistinguishable from a real verdict.
+        out.append("CANNOT TELL: the file list could not be read, so this is NOT "
+                   "a \"nothing changed\" answer. Fix the read below and re-run.")
     elif d["mechanism"] == "none-needed":
         out.append("No render link: " + " ".join(d["why"]))
     elif d["mechanism"] == "none":
@@ -368,7 +420,12 @@ def main():
         paths = [p for p in a.files.split(",") if p]
         d = pick(paths, a.base, "0" * 40, use_git=False, diff=diff)
     else:
-        d = pick(changed(a.base, a.ref), a.base, a.ref, diff=diff)
+        try:
+            d = pick(changed(a.base, a.ref), a.base, a.ref, diff=diff)
+        except GitFailed as e:
+            facts = ref_facts(a.ref)
+            d = decision("unknown", [], facts["sha"], repo_slug(), hosted_ok(),
+                         [], [diff_remedy(e, a.base, a.ref)], facts)
     print(json.dumps(d, indent=2) if a.json else "\n".join(lines(d)))
     return 0
 

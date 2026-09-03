@@ -100,3 +100,54 @@ test('lib without a rebuilt pre-build warns, since ?use= fetches dist', () => {
   const built = run('lib/kits/session-render.js,dist/web-tools.js');
   assert.ok(!/build:lib/.test(built.warnings.join(' ')));
 });
+
+// ── the read itself, not the classifier ─────────────────────────────────────
+//
+// Every test above hands the script a file list with --files, which is exactly
+// the blind spot that shipped: the classifier was right the whole time and the
+// INPUT was empty, because `sh()` returned `.stdout.strip()` without reading
+// the exit code. A failed `git diff` and a branch that changed nothing were the
+// same value, so a nine-file branch printed "No render link: nothing that
+// renders changed" and a session passed that on (2026-09-03, PR #574).
+//
+// Driven through git rather than a fixture, since the defect lives in the git
+// read. `git commit-tree` on the empty tree makes a dangling orphan commit: it
+// shares no ancestor with HEAD, so `orphan...HEAD` fails with "no merge base",
+// which is the same failure the sandbox's shallow clone produces every run.
+// Nothing is written: no ref moves and the working tree is untouched.
+//
+// The identity is passed in rather than inherited. `commit-tree` writes a
+// commit object and so demands an author, and a CI runner has no git identity
+// configured: this test passed on every developer machine and failed the first
+// time it ran on Actions with "fatal: empty ident name" (run 33777865076). The
+// value is irrelevant, since the object is never referenced or pushed; what
+// matters is that the test carries its own and depends on no ambient config.
+const IDENT = {
+  GIT_AUTHOR_NAME: 'showing-test', GIT_AUTHOR_EMAIL: 'showing-test@invalid',
+  GIT_COMMITTER_NAME: 'showing-test', GIT_COMMITTER_EMAIL: 'showing-test@invalid',
+};
+
+test('a diff that FAILS is never reported as a diff that found nothing', () => {
+  const emptyTree = execFileSync('git', ['hash-object', '-t', 'tree', '/dev/null'],
+    { cwd: repoRoot, encoding: 'utf8' }).trim();
+  const orphan = execFileSync('git', ['commit-tree', emptyTree, '-m', 'orphan probe'],
+    { cwd: repoRoot, encoding: 'utf8', input: '', env: { ...process.env, ...IDENT } }).trim();
+
+  const raw = execFileSync('python3', [SCRIPT, '--base', orphan, '--json'],
+    { cwd: repoRoot, encoding: 'utf8' });
+  const d = JSON.parse(raw);
+
+  assert.equal(d.mechanism, 'unknown', 'a failed read is its own answer');
+  assert.notEqual(d.mechanism, 'none-needed',
+    'the whole defect: "could not read" wearing the words of "nothing to show"');
+  assert.match(d.warnings.join(' '), /could not read the diff|SHALLOW/);
+  assert.equal(d.links.length, 0);
+
+  // And the printed line, which is what a session actually copies. It must not
+  // contain the phrase that travelled into a reply.
+  const text = execFileSync('python3', [SCRIPT, '--base', orphan],
+    { cwd: repoRoot, encoding: 'utf8' });
+  assert.match(text, /CANNOT TELL/);
+  assert.ok(!/nothing that renders changed/.test(text),
+    'the false-negative wording must not appear on a failed read');
+});

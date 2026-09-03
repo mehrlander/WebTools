@@ -1660,11 +1660,14 @@ html.dk-dragging main{transition:none !important}
          query carried over (goSearch → searchSeed).
 
          It READS the file too, through the shared viewer embedded inside it,
-         which is why this pane is no longer capped at max-w-4xl: a results
-         column and a file beside it want the width the Tools gallery takes.
-         The per-repo Files view (?view=files) keeps the tree walk. -->
+         so a results column and a file beside it want every pixel the window
+         has. It was capped at max-w-4xl, then at max-w-7xl, and both were the
+         same mistake one size apart: measured at a 1920 viewport on 2026-09-03,
+         the 7xl cap left 320px of dead margin down each side while the reader's
+         own column ran 455px. Uncapped now, like Tools and Map. A cap on this
+         pane is not a small size choice; it is the corridor. -->
     <div x-show="view==='search'" data-pane="search" class="h-full overflow-y-auto">
-      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 max-w-7xl">
+      <div class="mx-auto px-4 lg:px-6 pt-4 pb-8 lg:pt-6 !max-w-none">
         <template x-if="searchSeen">
           <div x-data="searchView()"></div>
         </template>
@@ -1840,28 +1843,17 @@ function app(){ return {
   // this stays the app's implementation and the fab's fallback (parking the
   // paste through kits/stage-handoff.js) is for everywhere else.
   //
-  // ── What the contract carries now: the header ────────────────────────────
+  // ── What the contract carried, and no longer does: the header ────────────
   //
-  // The same argument that promoted the paste is what puts this here. An app
-  // view opens at `shell: none`, so there is no header on screen to reach for
-  // and the launcher is the only control that is always somewhere: a row
-  // BEFORE the drawer, found without knowing which tab to open.
-  //
-  // It is the second owner of one control, not a second control. `toggles`
-  // offers the same header switch on the Render tab, beside the ref and width
-  // bars, because which ref, what shape and how much shell are one question
-  // once you are already in the drawer. This is the same call for the reader
-  // who is not.
-  get menu(){
-    const on = this.shellMode !== 'none';
-    return [{
-      label: on ? 'Hide the header' : 'Show the header',
-      icon: on ? 'ph-arrows-out' : 'ph-layout',
-      title: on ? 'Show the view alone (?shell=none)'
-                : 'Bring the header back, and its sidebar toggle with it',
-      run: () => this.setHeader(!on),
-    }];
-  },
+  // From 2026-08-22 to 2026-09-03 this getter also contributed a "Hide the
+  // header" row, on the theory that an app view opens at `shell: none` with
+  // no header on screen and the launcher is the only control always
+  // reachable: a row BEFORE the drawer, found without knowing which tab to
+  // open. Retired: the launcher's drawer is that control too, one tab-switch
+  // away on the Render tab's own Header toggle (`toggles`, below), and the
+  // long-press menu is for a verb wanted before the drawer opens at all, not
+  // a second address for one already inside it. The contract is unused here
+  // now, kept for a future row rather than removed.
   view: 'landing',        // 'estate' | 'todo' | 'jots' | 'activity' | 'sessions' | 'map' | 'tools' | 'search' | 'landing' | 'pages' | 'atlas' | 'stage' | 'config' | 'app' | 'public'
   // Window-level drag counter for the app-wide drop (init wires the listeners;
   // nested enter/leave is why it counts rather than flips), and what the cue
