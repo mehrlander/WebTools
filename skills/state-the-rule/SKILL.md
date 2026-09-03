@@ -244,7 +244,7 @@ boundary follows.
 | `{"op":"verdict","uid":…,"verdict":…}` | a verdict from the declared list |
 | `{"op":"note","uid":…,"text":…}` | what the label cannot say; an empty text clears it |
 | `{"op":"shift","after":…,"to":<document offset>}` | the boundary after that unit moves |
-| `{"op":"insert","after":…,"text":…}` | text the document does not have; an empty text clears it |
+| `{"op":"insert","after":…,"text":…,"as":…}` | text the document does not have; an empty text clears it, and `as` says how it arrives |
 
 **Operations are keyed by uid, not by array index.** RFC 6902 is the standard and
 the wrong altitude: its paths are positions, so inserting one unit invalidates
@@ -285,10 +285,11 @@ crosses the boundary, `adopt` on the way in and `emit` on the way out for the
 stored file and for a patch `ops.py` will read. An insertion carries no offset at
 all, being anchored by uid. A document with no astral character maps to itself.
 
-**`kind` is derived from the span, not carried through the edit.** It was written
+**`kind` is derived from the span, not carried through the edit, and names a
+heading's level (`h1` to `h6`).** It was written
 once by `segment.py` and then survived every operation, so a boundary move left
 it describing a span that no longer existed: splitting `## Scope and precedence`
-gave a unit reading "nd precedence" still labelled `heading`, and three of the
+gave a unit reading "nd precedence" still labelled `h2`, and three of the
 nine headings in `CONVENTIONS.md` offer that split one tap away. `split`, `merge`
 and `shift` now re-derive it; the other operations touch no span and do not.
 `merge`'s old rule (differing kinds become `mixed`) was a partial version of the
@@ -354,7 +355,9 @@ link's label left one side holding an unclosed delimiter. The page renders the
 document once now and paints units as ranges over its text, so no boundary can
 break an element and atomicity is a **choice** about what a unit should mean
 rather than a patch over a rendering failure. It is kept: a boundary inside a
-link's label is not a place a reader can mean. This is a **placement** rule
+link's label is not a place a reader can mean. Nothing else is refused, measured:
+no boundary in the stored run sits inside a construct, and the three the
+interface offers inside a heading render correctly. This is a **placement** rule
 and not an invariant: `check.py` is stdlib Python with no markdown parser, and a
 second disagreeing implementation would be worse than none, so a hand-authored
 patch can still do what the interface cannot. Where the page is
@@ -390,15 +393,23 @@ disagrees with `check.py`. That check reads `DROP` and `MOVE` together as
 "should have left", which is right when it is *judging* a rewrite a person made:
 the person put the moved text somewhere. Here there is nowhere to put it.
 
-**An insertion inherits the separator already standing at its boundary.** A gap
-holding a blank line separates blocks, so the text arrives as its own block;
-anything else is a run, so it joins with a space. Reading the separator off the
-document is mechanical; choosing one would be the same guess as inventing a
-`REWRITE`. Two consequences: the head of the document is a block by
-construction, having no separator to read; and the tail joins the final
-paragraph, since the separator standing there is a line ending. A closing
-*block* is therefore not expressible, and would take an explicit field on the
-insertion rather than a smarter default.
+**An insertion inherits the separator already standing at its boundary, and
+`as` overrules it.** A gap holding a blank line separates blocks, so the text
+arrives as its own block; anything else is a run, so it joins with a space.
+Reading the separator off the document is mechanical; choosing one would be the
+same guess as inventing a `REWRITE`. The head of the document is a block by
+construction, having no separator to read.
+
+The reading is not always available. A file's final newline is a terminator
+rather than a paragraph break, so at the tail the gap answers "run" for a reason
+unrelated to intent, and a closing block was unsayable until 2026-09-02.
+`"as": "block"` or `"as": "run"` on the insertion states the shape at any
+boundary, which is not the same kind of guess because it is not a guess: the
+annotator said it. Unset writes no key at all, a state rather than a third value
+of one, and the page's `arrives as` control can return to it. `"run"` at the
+head is refused, having nothing to run into. `materialize.py` reports how many
+insertions stated a shape and how many read one, since an honored override the
+account does not mention reads as a reading.
 
 **It does not tidy.** Removing a span leaves the whitespace the span sat in, and
 collapsing that is neither stated by the annotation nor invariant over markdown,

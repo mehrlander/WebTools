@@ -166,7 +166,7 @@ test('a heading with no blank line under it does not swallow its section', () =>
   const units = execFileSync('python3', [join(SKILL, 'segment.py'), f, '1', '99'],
                              { encoding: 'utf8' }).trim().split('\n').map(JSON.parse);
   rmSync(dir, { recursive: true, force: true });
-  assert.equal(units[0].kind, 'heading', 'the heading is its own unit');
+  assert.equal(units[0].kind, 'h3', 'the heading is its own unit, at its own level');
   assert.equal(units[0].text, '### Rules', 'and owns only its own line');
   assert.ok(units.length >= 5,
     `three bullets and a two-sentence first one is 5+ units, got ${units.length}`);
@@ -515,6 +515,46 @@ test('an insertion anchored to no unit is refused by both', () => {
   assert.equal(both([{ op: 'insert', after: 'u-404', text: 'nowhere' }]).refused, true);
 });
 
+// THE SHAPE IS THE ONE THING THE DOCUMENT CANNOT ALWAYS ANSWER. materialize.py
+// reads the separator standing at a boundary, which is mechanical and right
+// everywhere the document has one to read. The tail does not: a file's final
+// newline is a terminator, so the gap says "run" for a reason that has nothing
+// to do with intent, and a closing paragraph was unsayable. `as` states it.
+// Held here because it is an optional key, and an optional key is exactly where
+// two serializations drift without either looking wrong.
+test('an insertion may state how it arrives, and both languages write the same key', () => {
+  const so = agree([{ op: 'insert', after: 'u-002', text: 'A closing paragraph.', as: 'block' }]);
+  assert.deepEqual(Object.keys(so.insertions[0]), ['after', 'text', 'as']);
+  assert.equal(so.insertions[0].as, 'block');
+});
+
+test('the shape sits before the reason, in both languages', () => {
+  const so = agree([{ op: 'insert', after: 'u-002', text: 'A closing paragraph.',
+                      as: 'block', why: 'the section ends without stating its own bound' }]);
+  assert.deepEqual(Object.keys(so.insertions[0]), ['after', 'text', 'as', 'why']);
+});
+
+test('an unstated shape writes no key at all, which is not a third value of one', () => {
+  const so = agree([{ op: 'insert', after: 'u-002', text: 'A closing paragraph.' }]);
+  assert.ok(!('as' in so.insertions[0]),
+    'unset hands the answer to the boundary; a stored default would not');
+});
+
+test('a shape the vocabulary does not carry is refused by both', () => {
+  assert.equal(both([{ op: 'insert', after: 'u-002', text: 'x', as: 'paragraph' }]).refused, true);
+});
+
+// Not a matter of taste: the head precedes every unit, so there is no run on
+// its side of the boundary for the text to join. Refusing it is the same kind
+// of statement as refusing a shift with a unit on one side only.
+test('a run at the head of the document is refused by both, having nothing to run into', () => {
+  const { py, refused } = both([{ op: 'insert', after: null, text: 'x', as: 'run' }]);
+  assert.equal(refused, true);
+  assert.match(py.out, /nothing here to run into/);
+  assert.equal(both([{ op: 'insert', after: null, text: 'x', as: 'block' }]).refused, false,
+    'a block at the head is the default said out loud, not a contradiction');
+});
+
 // KIND IS DERIVED, so it is a third thing the two implementations have to agree
 // about, and the one with no segmenter on the browser side. Asserted through the
 // parity harness rather than twice, because the failure worth catching is one
@@ -605,6 +645,41 @@ test('an insertion inherits the separator already standing at its boundary', () 
 test('the head of the document is a block, since it can continue nothing', () => {
   const r = project((so) => { so.insertions = [{ after: null, text: 'A lead sentence.' }]; });
   assert.ok(r.text.startsWith('A lead sentence.\n\nClose the lid'), r.text.slice(0, 60));
+});
+
+// THE CASE THAT NAMED THE FIELD, and its mirror. The tail's reading is not
+// wrong so much as unavailable, so the annotation says it instead; the mirror
+// is here because a fix that only reached the tail would be a special case
+// wearing a general field's name.
+test('a stated shape overrules the separator the document is carrying', () => {
+  const closing = project((so) => {
+    so.insertions = [{ after: 'u-002', text: 'A closing paragraph.', as: 'block' }];
+  });
+  assert.match(closing.text, /Check it twice\.\n\nA closing paragraph\./,
+    'the tail read "run" and the annotation said otherwise');
+
+  const joined = project((so) => {
+    so.insertions = [{ after: 'u-001', text: 'And a rider.', as: 'run' }];
+  });
+  assert.match(joined.text, /spoil\. And a rider\.\n\nCheck/,
+    'a block boundary overruled the other way, so the field is not tail-only');
+});
+
+// An honored override the account does not mention reads as a reading, and the
+// two differ in who is answerable for the shape.
+test('the report says how many insertions stated a shape rather than read one', () => {
+  const r = project((so) => {
+    so.insertions = [{ after: 'u-001', text: 'Read off the gap.' },
+                     { after: 'u-002', text: 'Stated.', as: 'block' }];
+  }, []);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.json, null);
+  const both_ = project((so) => {
+    so.insertions = [{ after: 'u-001', text: 'Read off the gap.' },
+                     { after: 'u-002', text: 'Stated.', as: 'block' }];
+  });
+  assert.equal(both_.json.inserted, 2);
+  assert.equal(both_.json.stated, 1);
 });
 
 // A reporter blind to the commonest artifact of its own edit reads as an
@@ -711,8 +786,15 @@ test('Standoff.kindOf agrees with segment.py on every unit of the repo corpus', 
   // A corpus that lost its fences or tables would pass while testing nothing,
   // since `sent` is the fallback both sides reach by doing nothing.
   assert.ok(n > 1000, `only ${n} units in the corpus`);
-  for (const k of ['heading', 'sent', 'code', 'table'])
+  for (const k of ['sent', 'code', 'table'])
     assert.ok(seen[k] >= 10, `only ${seen[k] || 0} ${k} units to compare`);
+  // Headings are a family now, so count them as one and then insist the corpus
+  // actually spans levels: a corpus of nothing but `##` would agree on every
+  // unit while never exercising the digit that was the point of the change.
+  const heads = Object.entries(seen).filter(([k]) => /^h[1-6]$/.test(k));
+  assert.ok(heads.reduce((n, [, c]) => n + c, 0) >= 10,
+    `only ${heads.length} heading kind(s) to compare`);
+  assert.ok(heads.length >= 3, `the corpus carries only ${heads.length} heading level(s)`);
   // And the conversion above is doing something, so a corpus quietly losing its
   // emoji cannot turn this into a test of nothing.
   assert.ok(astral > 20, `only ${astral} astral characters: the offset skew is untested`);
@@ -728,7 +810,8 @@ test('a fence outranks the blank line inside it, and every other marker does not
     'reading the blank line first would call a fenced example mixed');
 
   const heading = '## Scope and precedence\n\nA sentence follows it.';
-  assert.equal(KIT.kindOf(heading, 0, 23), 'heading');
+  assert.equal(KIT.kindOf(heading, 0, 23), 'h2');
+  assert.equal(KIT.kindOf('#### Deeper still', 0, 17), 'h4', 'the kind carries the level');
   assert.equal(KIT.kindOf(heading, 0, 32), 'mixed',
     'a heading that swallowed across the break is no longer just a heading');
 

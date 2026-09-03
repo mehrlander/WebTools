@@ -47,7 +47,16 @@ def placements(so, text):
     A boundary whose gap holds a blank line separates blocks, so the text
     arrives as its own block; anything else is a run, so it joins with a space.
     Reading the separator off the document is mechanical; picking one would be
-    the same kind of guess as inventing a REWRITE."""
+    the same kind of guess as inventing a REWRITE.
+
+    THE ANNOTATION MAY OVERRULE THE READING, and only the annotation: an `as` of
+    "block" or "run" on the insertion is honored over the gap. That is not the
+    same kind of guess, because it is not a guess: the annotator stated it. It
+    exists because the reading is not always available. A document's final
+    newline is a terminator rather than a paragraph break, so at the tail there
+    is nothing to read and the gap answers "run" for a reason that has nothing
+    to do with the author's intent; a closing paragraph was unsayable until
+    `as` arrived."""
     units = sorted(so["units"], key=lambda u: u["start"])
     by_uid = {u["uid"]: i for i, u in enumerate(units)}
     out = []
@@ -60,7 +69,8 @@ def placements(so, text):
             out.append((units[0]["start"] if units else 0, ins["text"] + "\n\n"))
             continue
         i = by_uid[after]
-        block = bool(BLANK.search(_gap_after(text, units, i)))
+        block = (ins["as"] == "block") if ins.get("as") \
+            else bool(BLANK.search(_gap_after(text, units, i)))
         out.append((units[i]["end"], ("\n\n" if block else " ") + ins["text"]))
     return out
 
@@ -98,6 +108,10 @@ def materialize(so, text):
         "verdicts": tally,
         "dropped_words": sum(u.get("words", 0) for u in units if u.get("verdict") == "DROP"),
         "inserted": len(so.get("insertions", [])),
+        # HOW MANY OVERRULED THE DOCUMENT, because an honored override that the
+        # account does not mention reads as a reading, and the two differ in
+        # who is answerable for the shape.
+        "stated": sum(1 for i in so.get("insertions", []) if i.get("as")),
         "standing": standing,
         "joins": {k: v for k, v in joins.items() if v > 0},
     }
@@ -112,7 +126,9 @@ def report(r):
                 "MOVE": ", left standing: no destination is stored"}.get(v, "")
         w.append(f"  {v:<8} {n:>3} unit(s){note}")
     if r["inserted"]:
-        w.append(f"  {'insert':<8} {r['inserted']:>3} placed")
+        shapes = (f", {r['stated']} stating a shape, "
+                  f"{r['inserted'] - r['stated']} read off the document") if r["stated"] else ""
+        w.append(f"  {'insert':<8} {r['inserted']:>3} placed{shapes}")
     for k, n in r["joins"].items():
         w.append(f"  {'joins':<8} {n:>3} {k}(s) left by a removal, not cleaned up")
     for s in r["standing"]:

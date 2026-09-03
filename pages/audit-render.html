@@ -129,7 +129,7 @@ window.__audit = {
     "uid": "conven-001",
     "start": 0,
     "end": 32,
-    "kind": "heading",
+    "kind": "h1",
     "words": 4,
     "label": "META",
     "verdict": "KEEP"
@@ -219,7 +219,7 @@ window.__audit = {
     "uid": "conven-011",
     "start": 894,
     "end": 917,
-    "kind": "heading",
+    "kind": "h2",
     "words": 4,
     "label": "META",
     "verdict": "KEEP"
@@ -282,7 +282,7 @@ window.__audit = {
     "uid": "conven-018",
     "start": 1457,
     "end": 1524,
-    "kind": "heading",
+    "kind": "h2",
     "words": 11,
     "label": "META",
     "verdict": "KEEP"
@@ -347,7 +347,7 @@ window.__audit = {
     "uid": "conven-024",
     "start": 2362,
     "end": 2393,
-    "kind": "heading",
+    "kind": "h2",
     "words": 5,
     "label": "META",
     "verdict": "KEEP"
@@ -383,7 +383,7 @@ window.__audit = {
     "uid": "conven-048",
     "start": 2993,
     "end": 3051,
-    "kind": "heading",
+    "kind": "h2",
     "words": 12,
     "label": "META",
     "verdict": "KEEP"
@@ -410,7 +410,7 @@ window.__audit = {
     "uid": "conven-051",
     "start": 3720,
     "end": 3755,
-    "kind": "heading",
+    "kind": "h2",
     "words": 8,
     "label": "META",
     "verdict": "KEEP"
@@ -446,7 +446,7 @@ window.__audit = {
     "uid": "conven-055",
     "start": 3944,
     "end": 3990,
-    "kind": "heading",
+    "kind": "h2",
     "words": 7,
     "label": "META",
     "verdict": "KEEP"
@@ -470,26 +470,48 @@ window.__audit = {
     "verdict": "KEEP"
    },
    {
-    "uid": "conven-058",
+    "uid": "conven-058a",
     "start": 4244,
-    "end": 4311,
+    "end": 4283,
     "kind": "sent",
-    "words": 14,
+    "words": 8,
     "label": "WHAT",
     "verdict": "KEEP",
-    "from": "merge:conven-058+conven-059",
-    "why": "the merged unit is the rule, not the META the bare marker had to be given"
+    "from": "split:conven-058",
+    "why": "the test and the action it licenses take different labels"
    },
    {
-    "uid": "conven-060",
-    "start": 4312,
-    "end": 4405,
+    "uid": "conven-058b",
+    "start": 4283,
+    "end": 4311,
     "kind": "sent",
-    "words": 17,
+    "words": 6,
+    "label": "HOW",
+    "verdict": "KEEP",
+    "from": "split:conven-058",
+    "why": "the test and the action it licenses take different labels"
+   },
+   {
+    "uid": "conven-060a",
+    "start": 4312,
+    "end": 4354,
+    "kind": "sent",
+    "words": 8,
     "label": "WHAT",
     "verdict": "KEEP",
-    "from": "merge:conven-060+conven-061",
-    "why": "the merged unit is the rule"
+    "from": "split:conven-060",
+    "why": "the test and the action it licenses take different labels"
+   },
+   {
+    "uid": "conven-060b",
+    "start": 4354,
+    "end": 4405,
+    "kind": "sent",
+    "words": 9,
+    "label": "HOW",
+    "verdict": "KEEP",
+    "from": "split:conven-060",
+    "why": "the test and the action it licenses take different labels"
    },
    {
     "uid": "conven-062",
@@ -501,15 +523,26 @@ window.__audit = {
     "verdict": "KEEP"
    },
    {
-    "uid": "conven-063",
+    "uid": "conven-063a",
     "start": 4433,
-    "end": 4503,
+    "end": 4478,
     "kind": "sent",
-    "words": 12,
+    "words": 7,
     "label": "WHAT",
     "verdict": "KEEP",
-    "from": "merge:conven-063+conven-064",
-    "why": "the merged unit is the rule"
+    "from": "split:conven-063",
+    "why": "the test and the action it licenses take different labels"
+   },
+   {
+    "uid": "conven-063b",
+    "start": 4478,
+    "end": 4503,
+    "kind": "sent",
+    "words": 5,
+    "label": "HOW",
+    "verdict": "KEEP",
+    "from": "split:conven-063",
+    "why": "the test and the action it licenses take different labels"
    },
    {
     "uid": "conven-065a",
@@ -622,7 +655,7 @@ window.__audit = {
     "uid": "conven-072",
     "start": 5584,
     "end": 5597,
-    "kind": "heading",
+    "kind": "h2",
     "words": 3,
     "label": "META",
     "verdict": "KEEP"
@@ -676,7 +709,7 @@ window.__audit = {
     "uid": "conven-078",
     "start": 6154,
     "end": 6192,
-    "kind": "heading",
+    "kind": "h2",
     "words": 6,
     "label": "META",
     "verdict": "KEEP"
@@ -775,8 +808,9 @@ window.__audit = {
   // `kind` is the segmenter's word, and the panel was printing it raw: a reader
   // asked what "sent" meant, which is a fair question about a field abbreviated
   // for a JSONL file and then shown to a person.
-  const KINDS = { sent: 'sentence', heading: 'heading', code: 'code block',
-                  table: 'table', mixed: 'mixed' };
+  const KINDS = { sent: 'sentence', code: 'code block', table: 'table', mixed: 'mixed',
+                  h1: 'heading 1', h2: 'heading 2', h3: 'heading 3',
+                  h4: 'heading 4', h5: 'heading 5', h6: 'heading 6' };
 
   const WORD = /[\w'\u2019-]/;
   const snapWord = (text, i) => {
@@ -1258,6 +1292,29 @@ window.__audit = {
     insAt(after) {
       return (this.so.insertions || []).find(x => (x.after ?? null) === (after ?? null)) || null;
     },
+    // THE SHAPE IN FORCE at the armed boundary, or null where the question does
+    // not arise: no insertion stands there, or it is the head, where a run has
+    // nothing to run into and the check refuses it. `document` is an answer and
+    // not the absence of one, which is why the button group reads it from here
+    // rather than from `as` directly.
+    //
+    // A getter because x-for renders inside x-show whether or not the group is
+    // displayed, so an expression reaching through a null armedEdge throws on
+    // every repaint with nothing on screen to show for it.
+    get shapeInForce() {
+      const e = this.armedEdge, ins = e?.after ? this.insAt(e.after) : null;
+      return ins ? (ins.as || 'document') : null;
+    },
+    // The shape, restated as a whole insert. The op is keyed by its anchor and
+    // REPLACES what stands there, so setting the shape is the same operation as
+    // setting the text and needs no op of its own. `document` writes no field
+    // at all, which is why it cannot be a third value of one.
+    setShape(s) {
+      const e = this.armedEdge, ins = e && this.insAt(e.after);
+      if (!ins) return;
+      this.push({ op: 'insert', after: e.after, text: ins.text,
+                  ...(s === 'document' ? {} : { as: s }) });
+    },
     // A tap in the text is two different requests, and which one is a state the
     // reader set by tapping a pinhead. Armed: put this boundary here. Otherwise:
     // make that unit the active one.
@@ -1311,7 +1368,6 @@ window.__audit = {
       // later span's offset 0 is the same boundary at the place a reader sees
       // it, so prefer it and keep nodeAt for the end of a paragraph, where
       // there is no later span to ask.
-      let hit = Standoff.nodeAt(this.$refs.doc, at);
       // MARKUP HAS NO CHARACTER TO PIN, and until now that meant no pin at all.
       // Every list item opens with its marker, so every list item lost its
       // START handle and its opening boundary could not be moved from the page
@@ -1328,14 +1384,40 @@ window.__audit = {
       // bold end to end has no other run to offer. Dragging such a pin inward
       // is refused by offsetAt, which is the correct answer; dragging it
       // outward, to swallow the sentence before it, is the move it exists for.
-      if (!hit && this.sel) {
+      //
+      // Whitespace-only runs are excluded, and that is not tidiness: see the
+      // wrapped-space case at the bottom of this method.
+      const ownRun = () => {
         const runs = [...(this.$refs.doc
-          ?.querySelectorAll(`[data-uid="${CSS.escape(this.sel.uid)}"]`) || [])]
+          ?.querySelectorAll(`[data-uid="${CSS.escape(this.sel?.uid ?? '')}"]`) || [])]
           .map(sp => sp.firstChild)
           .filter(n => n && n.nodeType === 3 && n.data.trim());
         const n = which === 'end' ? runs.at(-1) : runs[0];
-        if (n) hit = { node: n, offset: which === 'end' ? n.length : 0 };
-      }
+        return n ? { node: n, offset: which === 'end' ? n.length : 0 } : null;
+      };
+
+      // A COLLAPSED RANGE AT THE END OF A RUN MEASURES ZERO, which is not the
+      // same as having no position: the boundary at the end of a paragraph is
+      // exactly where the last character stops. Measure that character and take
+      // its trailing edge, which is the same point by another route.
+      const measure = (h) => {
+        const r = document.createRange();
+        r.setStart(h.node, h.offset);
+        r.collapse(true);
+        let b = r.getBoundingClientRect();
+        if (!b.height && !b.width && h.offset > 0) {
+          r.setStart(h.node, h.offset - 1);
+          r.setEnd(h.node, h.offset);
+          const c = r.getBoundingClientRect();
+          if (c.height || c.width)
+            b = { left: c.right, right: c.right, top: c.top, bottom: c.bottom,
+                  width: 0, height: c.height, x: c.right, y: c.top };
+        }
+        return (b.height || b.width) ? b : null;
+      };
+
+      let hit = Standoff.nodeAt(this.$refs.doc, at);
+      if (!hit && this.sel) hit = ownRun();
       if (!hit) return null;
       // Landing at the END of a run means the boundary is a junction. Which
       // side of it the mark belongs on depends on which edge is being drawn:
@@ -1352,23 +1434,22 @@ window.__audit = {
         const next = runs[runs.indexOf(hit.node) + 1];
         if (next) hit = { node: next, offset: 0 };
       }
-      const r = document.createRange();
-      r.setStart(hit.node, hit.offset);
-      r.collapse(true);
-      let b = r.getBoundingClientRect();
-      // A COLLAPSED RANGE AT THE END OF A RUN MEASURES ZERO, which is not the
-      // same as having no position: the boundary at the end of a paragraph is
-      // exactly where the last character stops. Measure that character and take
-      // its trailing edge, which is the same point by another route.
-      if (!b.height && !b.width && hit.offset > 0) {
-        r.setStart(hit.node, hit.offset - 1);
-        r.setEnd(hit.node, hit.offset);
-        const c = r.getBoundingClientRect();
-        if (c.height || c.width)
-          b = { left: c.right, right: c.right, top: c.top, bottom: c.bottom,
-                width: 0, height: c.height, x: c.right, y: c.top };
-      }
-      return (b.height || b.width) ? b : null;
+      const b = measure(hit);
+      if (b) return b;
+      // AND A SPACE THAT WRAPPED MEASURES NOTHING AT ALL, which is the case the
+      // two measurements above both miss. A split hands the separator to one
+      // side (ops.py's halves meet, and openSplit's regex takes the whitespace
+      // with the first half), so a unit can end on a space; when the line breaks
+      // exactly there the browser gives that space a zero-width box and a Range
+      // over it no box, so the edge reported itself unpinnable while the reader
+      // could plainly see where the unit ended. Measured at 390 on
+      // conven-063a, which pins at 900 and did not at 390.
+      //
+      // The unit's own last non-blank character is that place. Same fallback as
+      // the markup case above, for the same reason: a position, not a claim
+      // about which character the offset is.
+      const own = this.sel && ownRun();
+      return own && own.node !== hit.node ? measure(own) : null;
     },
     // THE PINS ARE THE DICTATION PAGE'S PINS, painted by Dictate.pins: a ball
     // on a stem that covers the line, above on the left and below on the right,
@@ -1882,6 +1963,23 @@ window.__audit = {
                x-effect="$el.value = armedEdge ? (insAt(armedEdge.after)?.text || '') : ''"
                @change="armedEdge && push({op:'insert', after: armedEdge.after,
                                            text:$event.target.value})">
+        <!-- HOW THE TEXT MEETS WHAT IS AROUND IT. Three choices, not two,
+             because `document` is a distinct state and not a synonym for one of
+             the others: it leaves the field unset and hands the answer to the
+             boundary, which is the honest default at every boundary but the
+             tail, where a document's final newline is a terminator rather than
+             a paragraph break. Absent at the head, where a run has nothing to
+             run into and the check refuses it. -->
+        <div class="flex items-center gap-2 mt-1" x-cloak x-show="shapeInForce">
+          <span class="opacity-60">arrives as</span>
+          <div class="join">
+            <template x-for="s in ['document', 'run', 'block']" :key="s">
+              <button class="join-item btn btn-xs" x-text="s" @click="setShape(s)"
+                      :data-shape="s"
+                      :class="shapeInForce === s ? 'btn-active' : ''"></button>
+            </template>
+          </div>
+        </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-1 mt-2">

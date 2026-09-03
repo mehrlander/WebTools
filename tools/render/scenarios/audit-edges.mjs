@@ -240,4 +240,42 @@ export default async function (page) {
   });
   console.log('REACH ' + JSON.stringify(reach));
   if (reach.miss.length) throw new Error(`no pin for ${reach.miss.length} boundaries: ${reach.miss.slice(0, 6)}`);
+
+  // ── the wrapped space, declared rather than incidentally covered ────────
+  // A UNIT CAN END ON A SPACE: a split hands the separator to one side, and
+  // both splitters give it to the first half. When the line breaks exactly at
+  // that space the browser gives it a zero-width box and a Range over it no box
+  // at all, so rectAt's two measurements both come back empty and the edge
+  // reported itself unpinnable. REACH above catches it, but only while the
+  // payload happens to carry such a unit AND the width happens to wrap there,
+  // which is a gate nobody declared. This says so: it names the units at risk
+  // and fails if the payload no longer has one, since REACH would then pass
+  // while covering nothing.
+  const wrapped = await page.evaluate(() => {
+    const d = Alpine.$data(document.body);
+    const ends = d.units.filter(u => /\s$/.test(d.a.text.slice(u.start, u.end)));
+    const rows = ends.map(u => {
+      d.sel = { ...u, ref: d.srcRef(u) };
+      const run = [...document.querySelectorAll(`[data-uid="${CSS.escape(u.uid)}"]`)].at(-1);
+      const node = run?.firstChild;
+      let boxless = false;
+      if (node && node.nodeType === 3 && !node.data.trim()) {
+        const r = document.createRange();
+        r.setStart(node, 0); r.setEnd(node, node.length);
+        const b = r.getBoundingClientRect();
+        boxless = !b.width && !b.height;
+      }
+      return { uid: u.uid, boxless, pinned: !!d.rectAt(u.end, 'end') };
+    });
+    d.sel = null;
+    return rows;
+  });
+  console.log('WRAPPED ' + JSON.stringify(wrapped));
+  if (!wrapped.length)
+    throw new Error('no unit ends on whitespace, so REACH is not covering the wrapped-space case');
+  const unpinned = wrapped.filter(w => !w.pinned);
+  if (unpinned.length)
+    throw new Error('a unit ending on a space lost its end pin: ' + JSON.stringify(unpinned));
+  if (!wrapped.some(w => w.boxless))
+    console.log('WRAPPED note: no trailing space wrapped at this width; the fallback is untested here');
 }

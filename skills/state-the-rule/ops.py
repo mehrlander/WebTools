@@ -18,7 +18,8 @@ an op over a BOUNDARY is keyed by `after`, the unit that boundary follows.
     {"op": "verdict", "uid": …, "verdict": …} what to DO about it
     {"op": "note",    "uid": …, "text": …}
     {"op": "shift",   "after": …, "to": <offset>}   the boundary after that unit
-    {"op": "insert",  "after": …, "text": …}    text the document does not have
+    {"op": "insert",  "after": …, "text": …, "as": "block"|"run"}
+                                                text the document does not have
 
 Every operation is checked against the invariants the stored run is already held
 to (tools/test/audit-standoff.test.mjs): units tile the document with no gap,
@@ -28,7 +29,14 @@ either wholly valid against its base or it does not run.
 """
 import sys, json, pathlib, re
 
-ATX = re.compile(r"^[ \t]*#{1,6} ")
+ATX = re.compile(r"^[ \t]*(#{1,6}) ")
+
+# HOW AN INSERTION MEETS THE TEXT AROUND IT. Optional: unset means the shape
+# standing at that boundary in the document, which materialize.py reads. Stated
+# only where the document cannot answer or is being overruled, the tail being
+# the case that named this, since a document's final newline is a terminator
+# rather than a paragraph break and reading it either way is a choice.
+SHAPES = ("block", "run")
 
 
 def kind_of(text, start, end):
@@ -42,6 +50,10 @@ def kind_of(text, start, end):
     kinds become `mixed`) was a partial version of this fix: it caught
     heterogeneity of the two stored LABELS and missed the kind the joined SPAN
     introduced, so merging two sentences across a blank line kept `sent`.
+
+    A HEADING'S KIND CARRIES ITS LEVEL, `h1` through `h6`, rather than a bare
+    `heading`: the level is in the span and dropping it made a section title and
+    a sub-sub-heading the same thing to every reader of the field.
 
     THE ORDER IS segment.py's OWN DISPATCH, read against a span rather than a
     block, which is what lets lib/kits/standoff.js answer without a segmenter.
@@ -58,8 +70,9 @@ def kind_of(text, start, end):
         return "mixed"
     if s.startswith("|"):
         return "table"
-    if ATX.match(s):
-        return "heading"
+    m = ATX.match(s)
+    if m:
+        return f"h{len(m.group(1))}"
     return "sent"
 
 
@@ -113,6 +126,11 @@ def check(so, text):
             bad.append(f"insertion {name}: no text")
         if a in anchors:
             bad.append(f"insertion {name}: a second insertion at one boundary")
+        shape = ins.get("as")
+        if shape is not None and shape not in SHAPES:
+            bad.append(f"insertion {name}: {shape!r} is not a shape")
+        if a is None and shape == "run":
+            bad.append(f"insertion {name}: a run has nothing here to run into")
         anchors.add(a)
     return bad
 
@@ -232,7 +250,7 @@ def verdict(so, text, uid, value, why=None):
     return so
 
 
-def insert(so, text, after, text_, why=None):
+def insert(so, text, after, text_, why=None, shape=None):
     """TEXT THE DOCUMENT DOES NOT HAVE, placed at a boundary rather than over a
     span. The other five ops move boundaries and labels and leave the bytes
     alone, which is what lets target.sha256 stay true across a session; this one
@@ -244,7 +262,11 @@ def insert(so, text, after, text_, why=None):
     Keyed by `after` like shift, never by an offset, so a boundary that moves
     under it carries it along and a patch's own edits cannot invalidate it.
     `after=None` is the head of the document, the one boundary following no
-    unit."""
+    unit.
+
+    `shape` writes the optional `as`, which says whether the text arrives as its
+    own block or joins the run. Left unset it is read off the document, which is
+    every boundary's honest default and the tail's coin flip: see SHAPES."""
     units = sorted(so["units"], key=lambda x: x["start"])
     if after is not None and not any(u["uid"] == after for u in units):
         raise ValueError(f"{after}: no such unit to anchor an insertion to")
@@ -255,7 +277,9 @@ def insert(so, text, after, text_, why=None):
         # this file, and a disagreement makes every real change arrive inside a
         # whole-file reformat. deepEqual cannot see this, so the parity test
         # compares the serialized bytes.
-        ins.append({"after": after, "text": text_} | ({"why": why} if why else {}))
+        ins.append({"after": after, "text": text_}
+                   | ({"as": shape} if shape else {})
+                   | ({"why": why} if why else {}))
     # Ordered by where the anchor sits, head first, so the file is stable and a
     # reader meets them in the order the document would.
     order = {u["uid"]: i for i, u in enumerate(units)}
@@ -283,7 +307,7 @@ HANDLERS = {"split": lambda so, t, o: split(so, t, o["uid"], o["at"], o.get("why
             "verdict": lambda so, t, o: verdict(so, t, o["uid"], o["verdict"], o.get("why")),
             "note": lambda so, t, o: note(so, t, o["uid"], o.get("text", "")),
             "insert": lambda so, t, o: insert(so, t, o.get("after"), o.get("text", ""),
-                                              o.get("why"))}
+                                              o.get("why"), o.get("as"))}
 
 
 def apply(base, patch, text):
