@@ -470,26 +470,48 @@ window.__audit = {
     "verdict": "KEEP"
    },
    {
-    "uid": "conven-058",
+    "uid": "conven-058a",
     "start": 4244,
-    "end": 4311,
+    "end": 4283,
     "kind": "sent",
-    "words": 14,
+    "words": 8,
     "label": "WHAT",
     "verdict": "KEEP",
-    "from": "merge:conven-058+conven-059",
-    "why": "the merged unit is the rule, not the META the bare marker had to be given"
+    "from": "split:conven-058",
+    "why": "the test and the action it licenses take different labels"
    },
    {
-    "uid": "conven-060",
-    "start": 4312,
-    "end": 4405,
+    "uid": "conven-058b",
+    "start": 4283,
+    "end": 4311,
     "kind": "sent",
-    "words": 17,
+    "words": 6,
+    "label": "HOW",
+    "verdict": "KEEP",
+    "from": "split:conven-058",
+    "why": "the test and the action it licenses take different labels"
+   },
+   {
+    "uid": "conven-060a",
+    "start": 4312,
+    "end": 4354,
+    "kind": "sent",
+    "words": 8,
     "label": "WHAT",
     "verdict": "KEEP",
-    "from": "merge:conven-060+conven-061",
-    "why": "the merged unit is the rule"
+    "from": "split:conven-060",
+    "why": "the test and the action it licenses take different labels"
+   },
+   {
+    "uid": "conven-060b",
+    "start": 4354,
+    "end": 4405,
+    "kind": "sent",
+    "words": 9,
+    "label": "HOW",
+    "verdict": "KEEP",
+    "from": "split:conven-060",
+    "why": "the test and the action it licenses take different labels"
    },
    {
     "uid": "conven-062",
@@ -501,15 +523,26 @@ window.__audit = {
     "verdict": "KEEP"
    },
    {
-    "uid": "conven-063",
+    "uid": "conven-063a",
     "start": 4433,
-    "end": 4503,
+    "end": 4478,
     "kind": "sent",
-    "words": 12,
+    "words": 7,
     "label": "WHAT",
     "verdict": "KEEP",
-    "from": "merge:conven-063+conven-064",
-    "why": "the merged unit is the rule"
+    "from": "split:conven-063",
+    "why": "the test and the action it licenses take different labels"
+   },
+   {
+    "uid": "conven-063b",
+    "start": 4478,
+    "end": 4503,
+    "kind": "sent",
+    "words": 5,
+    "label": "HOW",
+    "verdict": "KEEP",
+    "from": "split:conven-063",
+    "why": "the test and the action it licenses take different labels"
    },
    {
     "uid": "conven-065a",
@@ -1334,7 +1367,6 @@ window.__audit = {
       // later span's offset 0 is the same boundary at the place a reader sees
       // it, so prefer it and keep nodeAt for the end of a paragraph, where
       // there is no later span to ask.
-      let hit = Standoff.nodeAt(this.$refs.doc, at);
       // MARKUP HAS NO CHARACTER TO PIN, and until now that meant no pin at all.
       // Every list item opens with its marker, so every list item lost its
       // START handle and its opening boundary could not be moved from the page
@@ -1351,14 +1383,40 @@ window.__audit = {
       // bold end to end has no other run to offer. Dragging such a pin inward
       // is refused by offsetAt, which is the correct answer; dragging it
       // outward, to swallow the sentence before it, is the move it exists for.
-      if (!hit && this.sel) {
+      //
+      // Whitespace-only runs are excluded, and that is not tidiness: see the
+      // wrapped-space case at the bottom of this method.
+      const ownRun = () => {
         const runs = [...(this.$refs.doc
-          ?.querySelectorAll(`[data-uid="${CSS.escape(this.sel.uid)}"]`) || [])]
+          ?.querySelectorAll(`[data-uid="${CSS.escape(this.sel?.uid ?? '')}"]`) || [])]
           .map(sp => sp.firstChild)
           .filter(n => n && n.nodeType === 3 && n.data.trim());
         const n = which === 'end' ? runs.at(-1) : runs[0];
-        if (n) hit = { node: n, offset: which === 'end' ? n.length : 0 };
-      }
+        return n ? { node: n, offset: which === 'end' ? n.length : 0 } : null;
+      };
+
+      // A COLLAPSED RANGE AT THE END OF A RUN MEASURES ZERO, which is not the
+      // same as having no position: the boundary at the end of a paragraph is
+      // exactly where the last character stops. Measure that character and take
+      // its trailing edge, which is the same point by another route.
+      const measure = (h) => {
+        const r = document.createRange();
+        r.setStart(h.node, h.offset);
+        r.collapse(true);
+        let b = r.getBoundingClientRect();
+        if (!b.height && !b.width && h.offset > 0) {
+          r.setStart(h.node, h.offset - 1);
+          r.setEnd(h.node, h.offset);
+          const c = r.getBoundingClientRect();
+          if (c.height || c.width)
+            b = { left: c.right, right: c.right, top: c.top, bottom: c.bottom,
+                  width: 0, height: c.height, x: c.right, y: c.top };
+        }
+        return (b.height || b.width) ? b : null;
+      };
+
+      let hit = Standoff.nodeAt(this.$refs.doc, at);
+      if (!hit && this.sel) hit = ownRun();
       if (!hit) return null;
       // Landing at the END of a run means the boundary is a junction. Which
       // side of it the mark belongs on depends on which edge is being drawn:
@@ -1375,23 +1433,22 @@ window.__audit = {
         const next = runs[runs.indexOf(hit.node) + 1];
         if (next) hit = { node: next, offset: 0 };
       }
-      const r = document.createRange();
-      r.setStart(hit.node, hit.offset);
-      r.collapse(true);
-      let b = r.getBoundingClientRect();
-      // A COLLAPSED RANGE AT THE END OF A RUN MEASURES ZERO, which is not the
-      // same as having no position: the boundary at the end of a paragraph is
-      // exactly where the last character stops. Measure that character and take
-      // its trailing edge, which is the same point by another route.
-      if (!b.height && !b.width && hit.offset > 0) {
-        r.setStart(hit.node, hit.offset - 1);
-        r.setEnd(hit.node, hit.offset);
-        const c = r.getBoundingClientRect();
-        if (c.height || c.width)
-          b = { left: c.right, right: c.right, top: c.top, bottom: c.bottom,
-                width: 0, height: c.height, x: c.right, y: c.top };
-      }
-      return (b.height || b.width) ? b : null;
+      const b = measure(hit);
+      if (b) return b;
+      // AND A SPACE THAT WRAPPED MEASURES NOTHING AT ALL, which is the case the
+      // two measurements above both miss. A split hands the separator to one
+      // side (ops.py's halves meet, and openSplit's regex takes the whitespace
+      // with the first half), so a unit can end on a space; when the line breaks
+      // exactly there the browser gives that space a zero-width box and a Range
+      // over it no box, so the edge reported itself unpinnable while the reader
+      // could plainly see where the unit ended. Measured at 390 on
+      // conven-063a, which pins at 900 and did not at 390.
+      //
+      // The unit's own last non-blank character is that place. Same fallback as
+      // the markup case above, for the same reason: a position, not a claim
+      // about which character the offset is.
+      const own = this.sel && ownRun();
+      return own && own.node !== hit.node ? measure(own) : null;
     },
     // THE PINS ARE THE DICTATION PAGE'S PINS, painted by Dictate.pins: a ball
     // on a stem that covers the line, above on the left and below on the right,

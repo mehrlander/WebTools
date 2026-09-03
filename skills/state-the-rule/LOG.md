@@ -380,3 +380,42 @@ be invisible to every invariant and visible only when rendered.** The invariants
 are about the partition; whether a unit can stand alone is a different question,
 and the only two things asking it are `balanced()` and a person looking at the
 page.
+
+**Wrong 2026-09-03 (web-tools #569) → the 2026-09-03 entry below:** `balanced()`
+no longer exists. The page renders the document once and paints the units over
+its text nodes, so a unit that is not a whole markdown construct renders
+correctly and nothing has to ask whether it can stand alone. A person looking at
+the page is the only thing asking now, and the question it answers is a
+different one.
+
+## 2026-09-03 — the three rejoined items wanted splitting after all
+
+**The repair left a question nobody asked.** The 2026-09-01 merges put each
+numbered item back together and stopped there; step 1 of the pass would then
+have asked whether the rejoined unit wants splitting, and nothing did. Tracker
+task `audit-repaired-units-for-splitting-e6jfgs` is that question, filed after it
+had been carried in two PR bodies.
+
+**All three met the bar, and the run's own precedent is what settled it.** The
+bar is "split where the two halves would take different labels", and
+`CONVENTIONS.md` already carries three pairs of exactly this shape: 009/010,
+021/022 and 066/067 each put a rule in `WHAT` and the action it licenses in
+`HOW`. `1. **Is this a fact the app derives?** Delete it and link the view.` is
+that shape a fourth time. The three splits and three relabels went through
+`ops.py`, so `conven-058a`/`conven-058b` record how the grain got here.
+
+**The counter-argument, recorded because it is not silly.** Each half depends on
+the other: "Delete it and link the view" is not a rule you can apply without its
+condition. That did not disqualify 021/022 or 023a/023b either, both of whose
+second halves need the first for their referent, so dependency between halves is
+not what the bar measures.
+
+**And the split found a hole in the page.** A `split` hands the separator to one
+side, so a unit can end on a space, and a space at a line break has a zero-width
+box and a `Range` over it no box at all. Both of `rectAt`'s measurements came
+back empty and `conven-063a`'s end edge reported itself unpinnable: pinned at
+900px, not at 390px, on the same annotation. The fallback for a boundary in
+markup was already there and already right, so it now runs for this case too.
+The hole was in the page, not in the split: `openSplit`'s own regex takes the
+whitespace with the first half, so the page could always produce this and the
+payload had simply never carried one.

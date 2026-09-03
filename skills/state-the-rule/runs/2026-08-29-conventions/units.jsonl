@@ -36,10 +36,13 @@
 {"uid": "conven-055", "path": "docs/CONVENTIONS.md", "start": 3944, "end": 3990, "kind": "heading", "words": 7, "text": "## Prose that describes state is unimplemented"}
 {"uid": "conven-056", "path": "docs/CONVENTIONS.md", "start": 3992, "end": 4145, "kind": "sent", "words": 30, "text": "A document that restates what an app derives, or what a check enforces, is carrying a copy, and the copy is the half that ages with nothing to report it."}
 {"uid": "conven-057", "path": "docs/CONVENTIONS.md", "start": 4146, "end": 4242, "kind": "sent", "words": 17, "text": "Before adding to a doc, and whenever one has outgrown its subject, ask three questions in order:"}
-{"uid": "conven-058", "path": "docs/CONVENTIONS.md", "start": 4244, "end": 4311, "kind": "sent", "words": 14, "text": "1. **Is this a fact the app derives?** Delete it and link the view."}
-{"uid": "conven-060", "path": "docs/CONVENTIONS.md", "start": 4312, "end": 4405, "kind": "sent", "words": 17, "text": "2. **Is this a rule the suite enforces?** Delete the description, keep a pointer to the gate."}
+{"uid": "conven-058a", "path": "docs/CONVENTIONS.md", "start": 4244, "end": 4283, "kind": "sent", "words": 8, "text": "1. **Is this a fact the app derives?** "}
+{"uid": "conven-058b", "path": "docs/CONVENTIONS.md", "start": 4283, "end": 4311, "kind": "sent", "words": 6, "text": "Delete it and link the view."}
+{"uid": "conven-060a", "path": "docs/CONVENTIONS.md", "start": 4312, "end": 4354, "kind": "sent", "words": 8, "text": "2. **Is this a rule the suite enforces?** "}
+{"uid": "conven-060b", "path": "docs/CONVENTIONS.md", "start": 4354, "end": 4405, "kind": "sent", "words": 9, "text": "Delete the description, keep a pointer to the gate."}
 {"uid": "conven-062", "path": "docs/CONVENTIONS.md", "start": 4406, "end": 4432, "kind": "sent", "words": 5, "text": "The test is the statement."}
-{"uid": "conven-063", "path": "docs/CONVENTIONS.md", "start": 4433, "end": 4503, "kind": "sent", "words": 12, "text": "3. **Does another document already own it?** Delete it and link there."}
+{"uid": "conven-063a", "path": "docs/CONVENTIONS.md", "start": 4433, "end": 4478, "kind": "sent", "words": 7, "text": "3. **Does another document already own it?** "}
+{"uid": "conven-063b", "path": "docs/CONVENTIONS.md", "start": 4478, "end": 4503, "kind": "sent", "words": 5, "text": "Delete it and link there."}
 {"uid": "conven-065a", "path": "docs/CONVENTIONS.md", "start": 4505, "end": 4609, "kind": "sent", "words": 20, "text": "**There is no fourth question that saves a passage, and a reason is not exempt because it is a reason.**"}
 {"uid": "conven-065b", "path": "docs/CONVENTIONS.md", "start": 4610, "end": 4720, "kind": "sent", "words": 19, "text": "Nearly every sentence in a bloated document is a reason somebody chose something, which is how it got bloated."}
 {"uid": "conven-066", "path": "docs/CONVENTIONS.md", "start": 4721, "end": 4870, "kind": "sent", "words": 25, "text": "What earns its place is the **criterion** inside a reason: the condition, threshold, or named exception that changes how the rule applies at an edge."}

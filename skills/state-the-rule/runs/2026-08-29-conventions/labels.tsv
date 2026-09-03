@@ -37,10 +37,13 @@ conven-054	WHAT	KEEP
 conven-055	META	KEEP
 conven-056	WHY	KEEP
 conven-057	HOW	KEEP
-conven-058	WHAT	KEEP
-conven-060	WHAT	KEEP
+conven-058a	WHAT	KEEP
+conven-058b	HOW	KEEP
+conven-060a	WHAT	KEEP
+conven-060b	HOW	KEEP
 conven-062	WHY	KEEP
-conven-063	WHAT	KEEP
+conven-063a	WHAT	KEEP
+conven-063b	HOW	KEEP
 conven-065a	WHAT	KEEP
 conven-065b	WHY	KEEP
 conven-066	WHAT	KEEP
