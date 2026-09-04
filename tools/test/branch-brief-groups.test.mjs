@@ -171,6 +171,33 @@ test('standalone: the document is left alone, and the lock is roomy-only', () =>
     'the guide takes what is left and scrolls the prose inside it');
 });
 
+// ONE FLAG, TWO FACTS, and the layout above is worth nothing while they are
+// confused. `framed` on a PAGE means it sits in an iframe, which is why its
+// masthead stands down. `framed` on the BRIEF means a host draws the branch
+// name and the state, and that the view is a slide rather than a page, so it
+// takes the single-scroller shape. The first is true of a toss; the second is
+// true only of show-repo's deck, which mounts the COMPONENT rather than either
+// page.
+//
+// Passing one for the other is not a cosmetic slip: every roomy: class sits
+// behind !framed, so a tossed branch refused the two-pane lock at any window
+// size, with the media query matching and nothing on screen to say why
+// (measured 2026-09-04 through the toss at 1440x900). session.html shipped the
+// same defect and fixed it on 2026-09-01; branch.html still had it three days
+// later, which is why this gate covers both pages rather than one.
+test('neither page hands the brief its own iframe test', () => {
+  for (const [file, mount] of [['pages/branch.html', /framed: false,/],
+                               ['pages/session.html', /framed: false,/]]) {
+    const src = readFileSync(path.join(repoRoot, file), 'utf8');
+    assert.match(src, mount, `${file}: the brief is handed a literal`);
+    assert.doesNotMatch(src, /framed: this\.framed/,
+      `${file}: no address form still passes the page's iframe test through`);
+    // The page keeps its own flag, which still stands its masthead down.
+    assert.match(src, /x-show="!framed \|\| !target"/,
+      `${file}: the page's own flag still drives its own chrome`);
+  }
+});
+
 // `roomy` IS NOT A TAILWIND BREAKPOINT. It is declared per page, so a host that
 // mounts this component standalone without the declaration gets classes that
 // compile to nothing and a page that silently reverts to document scroll: the
@@ -184,9 +211,14 @@ test('standalone: the document is left alone, and the lock is roomy-only', () =>
 // applying on somebody's window.
 test('every standalone host of this component declares the roomy variant', () => {
   const dir = path.join(repoRoot, 'pages');
+  // A PAGE that mounts this component is standalone by construction: the only
+  // framed host is show-repo's deck, which mounts it from estate.js and never
+  // from pages/. So the test is the mount, full stop. It also filtered on the
+  // absence of `framed: true` for one commit, which read PROSE rather than
+  // code and went quiet the moment a comment mentioned the flag by name.
   const hosts = readdirSync(dir).filter(f => f.endsWith('.html'))
     .map(f => [f, readFileSync(path.join(dir, f), 'utf8')])
-    .filter(([, src]) => /branchBrief\(/.test(src) && !/framed:\s*true/.test(src));
+    .filter(([, src]) => /x-data',\s*'branchBrief\(/.test(src));
   assert.ok(hosts.length, 'at least one page mounts the component standalone');
 
   for (const [name, src] of hosts) {

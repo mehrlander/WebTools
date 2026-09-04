@@ -172,9 +172,15 @@
 <body class="min-h-screen bg-base-200 text-base-content roomy:h-dvh roomy:min-h-0 roomy:overflow-hidden roomy:flex roomy:flex-col"
       x-data="branchPage()" x-cloak>
 
-  <!-- The masthead stands down inside a frame (show-repo's branch-detail
-       takeover embeds this page and supplies its own header), the same
-       courtesy links.html pays its embedder. Standalone use is unchanged.
+  <!-- The masthead stands down inside a frame, the same courtesy links.html
+       pays its embedder. Standalone use is unchanged.
+
+       This used to name show-repo's branch-detail takeover as the embedder,
+       which stopped being true on 2026-08-13 when the takeover swapped its
+       iframe for a direct mount of the component. The only page-level
+       embedder left is the toss. This flag is still the page's own and still
+       correct; what was NOT correct was handing the same flag to the brief,
+       which is the note at `framed: false` below.
 
        Except with nothing addressed, which was a dead end: a toss carrying no
        branch rendered "address a branch above" under a hidden bar, with
@@ -292,9 +298,25 @@
         }
         const authored = await this.readAuthored();
         this.input = repo + '@' + ref;
-        // `framed` rides through: an embedder supplies its own header, and the
-        // view drops the identity it would otherwise repeat.
-        this.target = { repo, branch: ref, base, authored, pr: t.pr || '', framed: this.framed,
+        // ONE FLAG WAS STANDING FOR TWO FACTS, and this line passed the wrong
+        // one. `this.framed` says the PAGE is in an iframe, which is why the
+        // masthead above stands down. The brief's `framed` says something
+        // else: that a HOST draws the branch name and the state, so the view
+        // need not repeat them, AND that it is a slide rather than a page, so
+        // it takes the single-scroller shape. That is true of show-repo's
+        // branch deck, which mounts the COMPONENT with framed: true. It is
+        // true of nothing that embeds this PAGE: the takeover stopped using an
+        // iframe on 2026-08-13, so the only embedder left is the toss, and the
+        // toss draws nothing.
+        //
+        // So a tossed branch showed no branch name anywhere and refused the
+        // two-pane lock at any window size, because every roomy: class sits
+        // behind !framed (reported 2026-09-04, measured through the toss at
+        // 1440x900 with the media query matching and the flag still true).
+        // session.html carried the identical defect and fixed it on
+        // 2026-09-01; tools/test/branch-brief-groups.test.mjs now holds both
+        // pages to the literal.
+        this.target = { repo, branch: ref, base, authored, pr: t.pr || '', framed: false,
                         // `&pane=` names a section and `&file=` opens the file
                         // deck on one path; the component owns what each means.
                         pane: t.pane || '', file: t.file || '' };
