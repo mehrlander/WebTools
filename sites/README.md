@@ -29,6 +29,12 @@ Mirroring the repo's four shapes, a site folder may contain:
   meant to be installed as a bookmark.)
 - `console/` — **console** snippets: JavaScript pasted into DevTools on that
   host. Different shape from pages, same domain assumption.
+- `courier/` — **courier** errand scripts, fetched and run on that host by
+  [`bookmarklets/courier.js`](../bookmarklets/courier.js) against an entry in
+  [`courier/errands.json`](../courier/errands.json). A console snippet is code
+  you choose to paste; a courier script is code a session has *queued* for that
+  host, and the queue is what makes it a different shape. Contract, including
+  the read-and-return rule: [`courier/README.md`](../courier/README.md).
 - `docs/` — reference notes about that host's data model or page structure.
 
 (`console/` was previously named `snippets/`; renamed to match the repo's

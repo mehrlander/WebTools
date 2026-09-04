@@ -60,7 +60,14 @@ function npmScriptMap(repoRoot) {
   return out;
 }
 
-/** Files another node file imports, so a helper is not read as dead. */
+/**
+ * Files another node file imports, so a helper is not read as dead. The
+ * importers include tools/test/, which is not itself a subject: a derivation
+ * a gate imports has a route, and reading it as `none found` would report the
+ * warning state on a file the suite runs on every push. It changes exactly one
+ * row today, the other four helpers imported only by tests having an npm
+ * script that outranks `imported` anyway.
+ */
 function importedSet(repoRoot, files) {
   const imported = new Set();
   for (const rel of files) {
@@ -85,7 +92,7 @@ export function deriveTools(repoRoot) {
     !f.startsWith('tools/test/') &&
     CODE_EXT.some(e => f.endsWith(e)));
   const npm = npmScriptMap(repoRoot);
-  const imported = importedSet(repoRoot, subjects);
+  const imported = importedSet(repoRoot, [...subjects, ...files.filter(f => f.startsWith('tools/test/'))]);
   const prose = files.filter(f => f.endsWith('.md')).map(f => read(repoRoot, f)).join('\n');
   const tests = files.filter(f => f.startsWith('tools/test/')).map(f => read(repoRoot, f)).join('\n');
 
