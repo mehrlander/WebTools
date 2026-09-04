@@ -301,7 +301,7 @@ test('the name can still be truncated once the directory is gone', () => {
   assert.match(dir.className, /shrink-\[9999\]/, 'the directory absorbs the shrinking first');
 });
 
-test('a workbook opens in the sheets mode, whatever the host asked for', () => {
+test('a workbook opens in the sheet mode, whatever the host asked for', () => {
   // The registry mounted above sets defaultMode { md, json, '*': 'raw' }, so a
   // workbook would fall to 'raw' by that map. It must not: raw for a ZIP is a
   // screen of replacement characters, which is what every surface here showed
@@ -311,10 +311,11 @@ test('a workbook opens in the sheets mode, whatever the host asked for', () => {
   const modes = R.getModes(f);
   // Spread into a node-realm literal: getModes builds its array inside jsdom,
   // and assert/strict compares prototypes, so a cross-realm Array never matches.
-  assert.deepEqual([...modes.map(m => m.id)], ['raw', 'xlsx'], 'raw stays available, one tap away');
+  assert.deepEqual([...modes.map(m => m.id)], ['raw', 'sheet', 'xlsx'],
+    'the sheet render, the grid, and raw one tap away');
 
   const v = window.Alpine.$data(window.document.getElementById('v'));
-  assert.equal(v.resolveDefaultMode(f, modes).id, 'xlsx');
+  assert.equal(v.resolveDefaultMode(f, modes).id, 'sheet');
 });
 
 test('isWorkbook and mimeFor agree on which extensions are workbooks', () => {
@@ -330,10 +331,34 @@ test('isWorkbook and mimeFor agree on which extensions are workbooks', () => {
   assert.equal(R.mimeFor('png'), 'image/png', 'and the image map still answers');
 });
 
-test('the sheets mode is exclusive, and the image mode still is too', () => {
+test('the sheet mode is exclusive, and the image mode still is too', () => {
   // Both make the same argument about a host's blanket defaultMode, so if one
   // ever loses the flag the other's reasoning has quietly changed as well.
   const byId = Object.fromEntries(window.ViewRegistry.modules.map(m => [m.id, m]));
-  assert.equal(byId.xlsx.exclusive, true);
+  assert.equal(byId.sheet.exclusive, true);
   assert.equal(byId.image.exclusive, true);
+  // The grid reads the same extension and must NOT be exclusive: two exclusive
+  // modules over one extension make resolveDefaultMode's "take the first"
+  // arbitrary, which is a coin toss decided by array order.
+  assert.ok(!byId.xlsx.exclusive, 'the grid defers to the sheet render');
+});
+
+test('one exclusive mode per file, which is what resolveDefaultMode assumes', () => {
+  const R = window.ViewRegistry;
+  for (const ext of ['xlsx', 'xlsm', 'png', 'pdf', 'docx', 'md', 'csv', 'json', 'js']) {
+    const exclusive = R.getModes({ name: 'f.' + ext, ext, content: '' }).filter(m => m.exclusive);
+    assert.ok(exclusive.length <= 1, `${ext} has ${exclusive.length} exclusive modes`);
+  }
+});
+
+test('a narrowed workbook reference is claimed by the grid', () => {
+  const R = window.ViewRegistry;
+  const grid = R.modules.find(m => m.id === 'xlsx');
+  const f = { name: 'book.xlsx', ext: 'xlsx', content: '' };
+  assert.ok(grid.claims(f, { filter: { col: 'Fund', find: '600-6' } }),
+    'rows are what a col/find reference names, and only the grid narrows to rows');
+  assert.ok(!grid.claims(f, {}), 'an unnarrowed workbook opens on the sheet render');
+  assert.ok(!grid.claims(f, { filter: { col: 'Fund' } }), 'half a narrowing is not one');
+  assert.ok(!grid.claims({ name: 'a.csv', ext: 'csv', content: '' }, { filter: { col: 'a', find: 'b' } }),
+    'a csv is the table mode, not this one');
 });
