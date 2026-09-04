@@ -1,7 +1,8 @@
 ---
 id: surface-census-feeds-relation-anle6b
 title: Make the cache-to-surface dependency checkable, not prose
-status: backlog
+status: in-progress
+session: claude/surface-census-feeds-relation-1v5n23
 opened: 2026-08-09
 size: M
 ---
@@ -64,3 +65,4 @@ fails the suite rather than orphaning a string.
 - 2026-09-04: `awaiting: nothing` dropped, `properties.json` corrected to `.csv`,
   `id:` restored to the filename per the frozen-slug rule, body cut from 839
   words. The derivation-granularity finding is the part worth not rediscovering.
+- 2026-09-04: Claimed on `claude/surface-census-feeds-relation-1v5n23`.

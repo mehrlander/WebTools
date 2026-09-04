@@ -26,10 +26,9 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Session-start nudge for repos that never opted in](tasks/session-start-nudge-unconfigured-z0g4zn.md) · S
 - 🎫 [Give the stage a way to carry part of a file](tasks/stage-partial-file-selection-k8mtou.md) · M
 - 🎫 [Decide the remaining stranded title attributes, panel or leave](tasks/stranded-titles-panel-or-drop-o6hqom.md) · M
-- 🎫 [Make the cache-to-surface dependency checkable, not prose](tasks/surface-census-feeds-relation-anle6b.md) · M
 
 ## In progress
-- (none)
+- 🎫 [Make the cache-to-surface dependency checkable, not prose](tasks/surface-census-feeds-relation-anle6b.md) · M (`claude/surface-census-feeds-relation-1v5n23`)
 
 ## Blocked
 - (none)
