@@ -45,7 +45,15 @@ function rec(over = {}) {
 
 class FakeGH {
   constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || 'main'; }
-  ago() { return 'recently'; }
+  // The real formatter's shape (gh-fetch.js proto.ago), not a constant, because
+  // the row's lifespan is built out of it: a stub returning one string cannot
+  // tell a start apart from a tip, which is the whole rule under test.
+  ago(d) {
+    const s = (Date.now() - new Date(d)) / 1000;
+    for (const [unit, v] of Object.entries({ y: 31536000, mo: 2592000, d: 86400, h: 3600, m: 60 }))
+      if (s >= v) return `${Math.floor(s / v)}${unit} ago`;
+    return 'just now';
+  }
   async repos() { return []; }
   async ls() { return []; }
   async get(name) {
@@ -93,6 +101,10 @@ const Alpine = await startAlpine(window, [
   'lib/kits/closing-state.js',
   'lib/kits/repo-sessions-cache.js',
   'lib/kits/surface.js',
+  // The session row's lifespan runs through the BRANCH row's helpers, so this
+  // fixture loads what app/index.html loads rather than a second copy of the
+  // rule.
+  'lib/kits/branch-status.js',
   'lib/alpineComponents/estate.js',
 ]);
 
@@ -299,6 +311,42 @@ test('durLabel reads as time, not as a number of minutes', () => {
   assert.equal(data.durLabel(49), '49m');
   assert.equal(data.durLabel(120), '2h');
   assert.equal(data.durLabel(178), '2h58m');
+});
+
+// The row shows the key the list is SORTED on. It showed a duration while
+// ordering by last activity, so three rows could read 8h1m, 8h19m, 7h14m in
+// that order and look wrong; the reader who reported it was reading the only
+// number on the row and it was not the one deciding the order.
+const HOURS = 36e5;
+const spanRow = (startedH, endedH, mins) => ({
+  started: new Date(Date.now() - startedH * HOURS).toISOString(),
+  ended: new Date(Date.now() - endedH * HOURS).toISOString(), mins,
+});
+
+test('the row states how long ago it was last active, and it is the sort key', () => {
+  const row = spanRow(9, 1, 481);
+  assert.equal(data.agoShort(data.sessionLastAt(row)), '1h', 'the tip is last activity');
+  assert.equal(data.sessionStartAgo(row), '9h', 'and the start leads it');
+});
+
+// One rule for the pair, borrowed from the branch row rather than restated, so
+// a session and its branch in one card cannot round differently. A session
+// short enough that both ends read the same drops the start instead of drawing
+// "1h → 1h", which reclaims the width for the rows with nothing to say with it.
+test('the start is dropped when it rounds to the same label as the tip', () => {
+  assert.equal(data.sessionStartAgo(spanRow(1.4, 1.1, 18)), '',
+               'a short session draws one number, not a span of itself');
+  assert.equal(data.sessionStartAgo(spanRow(30, 2, 1680)), '1d',
+               'and a long one still leads with its start');
+});
+
+// The duration left the row and has to still be reachable: the span between two
+// rounded labels is not the same fact as 8h1m, and the title is where a reader
+// goes for the clock times anyway.
+test('the title keeps the absolute times and the exact duration', () => {
+  const t = data.sessionSpanTitle({ started: '2026-09-04T04:53:59Z', ended: '2026-09-04T12:54:39Z', mins: 481 });
+  assert.match(t, /2026-09-04T04:53:59Z → 2026-09-04T12:54:39Z/);
+  assert.match(t, /8h1m/, 'the duration the row no longer prints');
 });
 
 test('the token headline is output, not the cache reads that dwarf it', () => {

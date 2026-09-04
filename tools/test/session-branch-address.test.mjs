@@ -13,8 +13,17 @@
 //   - the LATEST session on the branch, not the first one found. Filenames
 //     order by day and say nothing about the order within a day, so a walk that
 //     stopped on its first hit would be right across days and a coin toss
-//     inside one, which is exactly the case that matters: several sessions on
-//     one branch on one day is the normal shape of a day's work here.
+//     inside one.
+//
+//     **Wrong 2026-09-04 → the sentence that used to end the point above:** it
+//     read "several sessions on one branch on one day is the normal shape of a
+//     day's work here," and the store says otherwise. Across the 304 rows in
+//     state/sessions.json that day, 297 distinct branches appear and NOT ONE
+//     carries more than one session: the harness mints a fresh branch per
+//     session, so branch and session are 1:1. The property below is still worth
+//     holding, because nothing enforces that uniqueness and a tie would be
+//     silent, but it guards a case that has not yet occurred rather than the
+//     normal shape of a day.
 //   - it finishes the matching day and no more. The break is the only thing
 //     bounding the read below the cap, and a walk that kept going would open
 //     every record in the store to answer a question already answered.
@@ -22,6 +31,10 @@
 //     whose session is still running is a real and frequent miss, and an error
 //     naming that is the difference between a tap that explains itself and one
 //     that looks broken.
+//   - the branch arrives in whatever shape a clipboard held it. `branchOf` in
+//     the component reduces a full ref, a GitHub URL, a branch.html address or
+//     a name with a caption under it to the name, which is what lets a shortcut
+//     hand the clipboard over without inspecting it first.
 //
 // jsdom, no network, no pixels: FakeGH serves the tree and the blobs.
 
@@ -162,4 +175,28 @@ test('an explicit path still wins, so #gh= is untouched by any of this', async (
                           path: 'sessions/2026/08/2026-08-30-dddddddd.json' });
   assert.equal(d.record.short, 'dddddddd');
   assert.deepEqual([...reads], ['sessions/2026/08/2026-08-30-dddddddd.json'], 'no walk at all');
+});
+
+test('every shape the Claude app puts on a clipboard reduces to the branch', async () => {
+  const want = 'claude/read-aloud-x1';
+  for (const clip of [
+    want, 'origin/' + want, 'refs/heads/' + want, '  ' + want + '  ', want + '/',
+    'https://github.com/mehrlander/web-tools/tree/' + want,
+    'https://github.com/mehrlander/web-tools/compare/' + want + '?expand=1',
+    'https://mehrlander.github.io/web-tools/pages/branch.html#gh=mehrlander/web-tools@' + want,
+    want + '\nA caption line under it',
+  ]) {
+    const d = await mount({ branch: clip });
+    assert.equal(d.record?.short, 'cccccccc', JSON.stringify(clip));
+  }
+});
+
+test('a slashless branch name is honoured, not discarded as "not a branch"', async () => {
+  // Where this parts company with lib/ops/session-menu.js on purpose. The op
+  // demands a `/` because it is GUESSING whether a clipboard holds a branch at
+  // all and needs a way to answer no. Here the caller has already said it does,
+  // so `dev` is a branch to look for and miss, not an empty string to ignore.
+  // The error naming it is the proof the name survived the reduction.
+  const d = await mount({ branch: 'dev' });
+  assert.match(d.err, /No session on dev\b/);
 });

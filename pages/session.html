@@ -195,6 +195,13 @@
         // varied, and a shortcut passing it through should not have to know
         // which. A full ref, a URL carrying one, or the bare name all reduce to
         // the name.
+        //
+        // THIS REDUCTION IS FOR THE LABEL, not for the walk. `branchOf` in
+        // alpineComponents/session-brief.js is the authoritative one and runs
+        // again on whatever this hands over, so a shape only it knows (a second
+        // line, a trailing query) still finds the right session and only the
+        // caption shown while it loads is untidy. Widen this one to match if
+        // that ever matters; do not narrow that one to match this.
         const branch = pick('branch');
         if (branch) {
           const name = String(branch).trim()   // URLSearchParams already decoded it

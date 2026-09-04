@@ -86,12 +86,26 @@ which implements every line above for the non-interactive case: `data-note="…"
 where a `title` would have gone, one shared panel, delegated listeners so markup
 written later by `innerHTML` needs no re-init. Load the kit and write the
 attribute. Reach for a hand-built panel only where the content must be tapped,
-which is the same boundary rule 11 states. Two behaviours the kit had to add
-that the paragraph above does not cover, both found by measurement:
+which is the same boundary rule 11 states.
+
+**A page reproducing a document styles its own notes, and does not fork the
+kit.** `data-note-look="<token>"` stamps the token on the shared panel as
+`data-look`, and the page answers `#wt-note[data-look="<token>"]` with an
+unscoped rule. The kit ships one look and no variants, because it serves every
+page and only the page knows what it is imitating; the sheet render in
+`alpineComponents/viewer.js` asks for `excel` and draws Excel's comment box,
+square corners and info-tip yellow, on a page already drawing Excel. Since the
+kit clears the token on the next note, the unscoped rule reaches nothing else.
+
+Three behaviours the kit had to add that the paragraph above does not cover,
+each found by measurement:
 
 - **`focusin` alone leaves the panel open when focus goes nowhere.** A bare
   `blur()`, or a click on dead space, fires `focusout` with no `focusin` behind
   it, so the note survives and only Escape clears it. Handle `focusout` too.
+- **A note assembled from parts loses its breaks under `white-space: normal`.**
+  A caller joining a comment to the value a cell stores wrote a blank line
+  between them and got one run-on sentence. The panel is `pre-line`.
 - **A screen reader must still get the text.** `title` is announced, so a
   visual-only tooltip is a regression wearing an improvement's clothes. Follow
   the WAI-ARIA pattern: the trigger is focusable, the panel is `role="tooltip"`,

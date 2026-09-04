@@ -7,6 +7,6 @@ delimited,Delimited data,data (needs a viewer),ext csv or tsv,,table,data,toss-g
 code,Source code,a file (needs a renderer),any other text file,,code,,toss-gh,lib/kits/code-doc.js,"line range (one line, or a run of them)","path:N, or path:N-M",,,
 image,Image,a file (needs a renderer),ext in IMAGE_MIME,yes,image,data,toss-gh,,,,,,
 pdf,PDF,a file (needs a renderer),ext pdf,yes,pdf,pdf,toss-gh,,"page, then column or lattice cell",path p.N,,,
-workbook,Spreadsheet,a file (needs a renderer),ext xlsx or xlsm,yes,xlsx,data,toss-gh,,"sheet, then row and column",,,,
+workbook,Spreadsheet,a file (needs a renderer),ext xlsx or xlsm,yes,sheet,data,toss-gh,,"sheet, then row and column",,,,
 document,Word document,a file (needs a renderer),ext docx,yes,docx,data,toss-gh,,,,,,
 chat,Chat transcript,a fileset (needs an envelope),a chat-results envelope,,,chat-results,toss-gh,,turn,chat <id> turn N,,,
