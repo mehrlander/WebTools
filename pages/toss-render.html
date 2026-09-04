@@ -294,6 +294,40 @@
     // The forced-width layout owns the body's overflow, and only while there
     // is a frame under it: the input panel scrolls on its own terms.
     if (window.__tossWidthNow) document.body.style.overflow = 'hidden';
+    focusFrame();
+    // Again once the document is in, since swapping src or srcdoc lands focus
+    // back on the top document. Twice rather than once because the element is
+    // focusable before its content arrives and the two moments are different.
+    frame.addEventListener('load', focusFrame, { once: true });
+  }
+
+  // ── THE FRAME IS THE CONTENT, so give it the keyboard ─────────────────────
+  //
+  // A FRESH IFRAME NEVER RECEIVES A KEYSTROKE. Focus stays on the top document
+  // until something is clicked, so a rendered page's own shortcuts did nothing
+  // here until the reader clicked into the frame first: `document.hasFocus()`
+  // inside it read false and no keydown arrived at all. Measured 2026-09-04
+  // against the Web Tools app rendered in this shell, which is where it showed:
+  // its type-to-find needed a click on a page the reader had just opened to
+  // read. One focus() on the frame ELEMENT takes it, with no user activation,
+  // and does not scroll the frame into view (measured with the frame 1200px
+  // below the fold, parent scrollY unchanged).
+  //
+  // THE COST, named because it is real: the shell's paste-anywhere below then
+  // reaches the framed page instead of re-rendering here. That window was
+  // already only open until the reader's first click, so this closes it rather
+  // than removing something dependable; and the empty panel, where paste is
+  // the primary action and carries its own button, is untouched.
+  //
+  // Never taken from a field that SURVIVES the render, which is the only kind
+  // this can protect: a re-render from the drawer must not pull the caret out
+  // of the address input the reader is typing in. The empty panel's own field
+  // is a different case and needs no guard, since the reveal hides the panel
+  // and the browser blurs it a moment before this runs.
+  function focusFrame() {
+    const a = document.activeElement;
+    if (a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName || '') || a.isContentEditable)) return;
+    try { frame.focus(); } catch (e) {}
   }
 
   // ── Forced frame width: seeing a page at a shape the device is not ────────

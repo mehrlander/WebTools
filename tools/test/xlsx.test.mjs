@@ -415,10 +415,17 @@ test('sheetRows: formats are applied only when the workbook is passed', () => {
   const { xl } = xlsxKit.analyze(parts);
   assert.deepEqual(xlsxKit.sheetRows(xl.sheets.sheet1), // raw, the old behaviour
     [{ Row: 1, A: '45000', B: '0.125', C: '45000.5', D: '45000' }]);
+  // THE FORMAT CODE IS FOLLOWED, not merely classified. Before 2026-09-04 this
+  // read `2023-03-15`, `12.5%` and `2023-03-15 12:00:00`: the kind was right
+  // and the drawing was ISO, on the argument that an unambiguous date beats an
+  // approximation of Excel's. The three below are what Excel actually draws
+  // for ids 14, 9 and 22, which is the point of a sheet render.
   assert.deepEqual(xlsxKit.sheetRows(xl.sheets.sheet1, xl),
-    [{ Row: 1, A: '2023-03-15', B: '12.5%', C: '2023-03-15 12:00:00', D: '45000' }]);
+    [{ Row: 1, A: '03-15-23', B: '13%', C: '3/15/23 12:00', D: '45000' }]);
   // D carries no style, so it stays a number even under formatting. That is
   // the file's answer, not a fallback.
+  // B rounds: 0.125 under `0%` is 13%, in the workbook and here. The stored
+  // value is not lost, it is what sheetLayout hands back as the cell's `raw`.
 });
 
 test('formatValue: a non-numeric value under a date format is left alone', () => {
@@ -430,4 +437,658 @@ test('formatValue: a non-numeric value under a date format is left alone', () =>
 test('analyze: malformed XML in one part is skipped, not fatal', () => {
   const parts = [...buildParts(), ['xl/broken.xml', '<not><valid'] ];
   assert.doesNotThrow(() => xlsxKit.analyze(parts));
+});
+
+// ---------------------------------------------------------------------------
+// Appearance: styles.xml beyond the number format, sheet geometry, and the
+// layout that joins them. Added 2026-09-04 with the sheet render.
+// ---------------------------------------------------------------------------
+
+// A form, in miniature: a merged banded title across A1:C1, a gray input box,
+// a bold label, a theme-coloured fill and a currency column. The theme part
+// carries the `a:` prefix a real workbook writes, which is the whole reason
+// the kit matches on local names.
+const THEME = `<?xml version="1.0"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <a:themeElements><a:clrScheme name="Office">
+    <a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1>
+    <a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>
+    <a:dk2><a:srgbClr val="44546A"/></a:dk2>
+    <a:lt2><a:srgbClr val="E7E6E6"/></a:lt2>
+    <a:accent1><a:srgbClr val="4472C4"/></a:accent1>
+  </a:clrScheme></a:themeElements>
+</a:theme>`;
+
+const FORM_STYLES = `<?xml version="1.0"?>
+<styleSheet xmlns="s">
+  <numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/></numFmts>
+  <fonts count="3">
+    <font><sz val="11"/><name val="Calibri"/></font>
+    <font><b/><sz val="14"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><i/><sz val="9"/><color theme="1"/><name val="Arial"/></font>
+  </fonts>
+  <fills count="4">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF44546A"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor theme="0" tint="-0.15"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="2">
+    <border><left/><right/><top/><bottom/></border>
+    <border><left style="thin"><color rgb="FF000000"/></left><right style="thin"/><top style="medium"/><bottom/></border>
+  </borders>
+  <cellXfs count="5">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" applyFill="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="3" borderId="1" applyFill="1" applyBorder="1"><alignment indent="2"/></xf>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="0"/>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="0" applyFill="0"/>
+  </cellXfs>
+</styleSheet>`;
+
+// Row 1 is the merged title band and is 40pt tall. Row 2 declares ht without
+// customHeight, so the sheet default wins. Row 3 is hidden. Column A is wide,
+// column C is hidden, and the sheet is frozen below its title.
+const FORM_SHEET = `<?xml version="1.0"?>
+<worksheet xmlns="ws">
+  <sheetFormatPr defaultRowHeight="18"/>
+  <cols>
+    <col min="1" max="1" width="30" customWidth="1"/>
+    <col min="3" max="3" width="9" hidden="1"/>
+  </cols>
+  <sheetViews><sheetView><pane xSplit="1" ySplit="1" state="frozen"/></sheetView></sheetViews>
+  <sheetData>
+    <row r="1" ht="40" customHeight="1">
+      <c r="A1" s="1" t="inlineStr"><is><t>Facility Request</t></is></c>
+      <c r="B1" s="1"/><c r="C1" s="1"/>
+    </row>
+    <row r="2" ht="99">
+      <c r="A2" s="2" t="inlineStr"><is><t>Annual cost</t></is></c>
+      <c r="B2" s="3"><v>1234.5</v></c>
+    </row>
+    <row r="3" hidden="1"><c r="A3" t="inlineStr"><is><t>scratch</t></is></c></row>
+    <row r="5"><c r="B5" s="4" t="inlineStr"><is><t>note</t></is></c></row>
+  </sheetData>
+  <mergeCells count="1"><mergeCell ref="A1:C1"/></mergeCells>
+</worksheet>`;
+
+const FORM_WORKBOOK = `<?xml version="1.0"?>
+<workbook xmlns="wb" xmlns:r="rel">
+  <sheets><sheet name="Form" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+const FORM_RELS = `<?xml version="1.0"?>
+<Relationships xmlns="rel">
+  <Relationship Id="rId1" Type=".../worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`;
+
+// Reversed on purpose: theme1.xml is walked LAST, so any colour resolved
+// during the walk rather than in finalize() comes out null.
+const formParts = ({ reversed = false } = {}) => {
+  const entries = [
+    ['xl/theme/theme1.xml', THEME],
+    ['xl/workbook.xml', FORM_WORKBOOK],
+    ['xl/_rels/workbook.xml.rels', FORM_RELS],
+    ['xl/styles.xml', FORM_STYLES],
+    ['xl/worksheets/sheet1.xml', FORM_SHEET],
+  ];
+  return reversed ? entries.reverse() : entries;
+};
+
+const formXl = (opts) => xlsxKit.analyze(formParts(opts)).xl;
+
+test('theme colours resolve whatever order the parts are walked in', () => {
+  for (const reversed of [false, true]) {
+    const xl = formXl({ reversed });
+    // clrScheme order is dk1, lt1, dk2, lt2, accent1; Excel's indices swap the
+    // first two pairs, so theme 0 is lt1 (white) and theme 1 is dk1 (black).
+    assert.equal(xl.theme[0], '#ffffff', `theme 0, reversed=${reversed}`);
+    assert.equal(xl.theme[1], '#000000', `theme 1, reversed=${reversed}`);
+    assert.equal(xl.theme[2], '#e7e6e6', `theme 2, reversed=${reversed}`);
+    assert.equal(xl.theme[3], '#44546a', `theme 3, reversed=${reversed}`);
+    // The gray band every OFM form is ruled with: white tinted -0.15.
+    assert.equal(xl.fills[3], '#d9d9d9', `tinted fill, reversed=${reversed}`);
+  }
+});
+
+test('fills: only a solid pattern is a colour, and it reads fgColor', () => {
+  const xl = formXl();
+  assert.equal(xl.fills[0], null, 'patternType none is no fill');
+  assert.equal(xl.fills[1], null, 'gray125 is Excel default furniture, not a choice');
+  assert.equal(xl.fills[2], '#44546a', 'solid takes fgColor, not the indexed=64 bgColor');
+});
+
+test('cellStyle joins the four records a cell s names', () => {
+  const xl = formXl();
+  const title = xlsxKit.cellStyle(xl, 1);
+  assert.equal(title.bold, true);
+  assert.equal(title.size, 14);
+  assert.equal(title.color, '#ffffff');
+  assert.equal(title.fill, '#44546a');
+  assert.equal(title.align, 'center');
+  assert.equal(title.valign, 'center');
+  assert.equal(title.wrap, true);
+
+  const input = xlsxKit.cellStyle(xl, 2);
+  assert.equal(input.fill, '#d9d9d9');
+  assert.equal(input.indent, 2);
+  assert.equal(input.border.left.style, 'thin');
+  assert.equal(input.border.top.style, 'medium');
+  assert.equal(input.border.bottom, null, 'an edge with no style is not a border');
+
+  assert.equal(xlsxKit.cellStyle(xl, null), null, 'no style index is no record');
+});
+
+test('applyFill="0" means inherit, so the named fill is not painted', () => {
+  const xl = formXl();
+  // xf 4 names fillId 3 and switches it off. Reading fillId without the switch
+  // paints a gray box behind a note that Excel leaves clear.
+  assert.equal(xlsxKit.cellStyle(xl, 4).fill, null);
+  assert.equal(xlsxKit.cellStyle(xl, 4).italic, true, 'the font still applies');
+});
+
+test('sheet geometry: widths, heights, merges, freeze', () => {
+  const sheet = formXl().sheets.sheet1;
+  assert.deepEqual(sheet.merges, [{ r1: 1, c1: 0, r2: 1, c2: 2 }]);
+  assert.deepEqual(sheet.freeze, { x: 1, y: 1 });
+  assert.equal(sheet.defaultRowHeight, 18);
+  assert.deepEqual(sheet.cols.map(c => [c.min, c.max, c.width, c.hidden]),
+    [[1, 1, 30, false], [3, 3, 9, true]]);
+  const byRow = Object.fromEntries(sheet.rows.map(r => [r.row, r]));
+  assert.equal(byRow[1].height, 40, 'customHeight="1" pins the row');
+  assert.equal(byRow[2].height, null, 'ht without customHeight is Excel measuring, not the author');
+  assert.equal(byRow[3].hidden, true);
+});
+
+test('sheetLayout: merges become spans and cover the cells beneath them', () => {
+  const xl = formXl();
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  const row1 = out.rows.find(r => r.row === 1);
+  assert.equal(row1.cells.length, 1, 'B1 and C1 are covered by the merge, not emitted');
+  assert.equal(row1.cells[0].colSpan, 3);
+  assert.equal(row1.cells[0].rowSpan, 1);
+  assert.equal(row1.cells[0].text, 'Facility Request');
+  assert.equal(row1.height, Math.round(40 * 4 / 3), 'points to pixels');
+});
+
+test('sheetLayout: a hidden row is dropped and a missing row still holds its place', () => {
+  const xl = formXl();
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  const numbers = out.rows.map(r => r.row);
+  assert.deepEqual(numbers, [1, 2, 4, 5],
+    'row 3 is hidden; row 4 is absent from the file and still drawn, so the gutter stays true');
+  assert.equal(out.rows.find(r => r.row === 2).height, Math.round(18 * 4 / 3),
+    'a row without a custom height follows sheetFormatPr');
+});
+
+test('sheetLayout: column widths come from the file, and a hidden column is zero', () => {
+  const xl = formXl();
+  const { cols } = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  assert.equal(cols.length, 3);
+  assert.equal(cols[0].width, Math.round(30 * 7) + 5);
+  assert.equal(cols[1].width, Math.round(8.43 * 7) + 5, 'no <col> means the Excel default');
+  assert.equal(cols[2].width, 0, 'hidden');
+});
+
+test('sheetLayout: alignment follows the value, and the stored number rides along', () => {
+  const xl = formXl();
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  const row2 = out.rows.find(r => r.row === 2);
+  const [label, amount] = row2.cells;
+  assert.equal(label.numeric, false, 'an inline string is text however it looks');
+  assert.equal(amount.numeric, true);
+  assert.equal(amount.text, '$1,234.50', 'the custom currency code is applied');
+  assert.equal(amount.raw, '1234.5', 'the stored value, because the drawn one is not it');
+  assert.equal(label.raw, null, 'nothing to carry where the drawing is the value');
+});
+
+test('sheetLayout: an oversized sheet stops at the cap and says where', () => {
+  const rows = Array.from({ length: 40 }, (_, i) =>
+    `<row r="${i + 1}"><c r="A${i + 1}"><v>${i}</v></c><c r="B${i + 1}"><v>${i}</v></c></row>`).join('');
+  const big = `<?xml version="1.0"?><worksheet xmlns="ws"><sheetData>${rows}</sheetData></worksheet>`;
+  const parts = formParts().map(([p, x]) => p === 'xl/worksheets/sheet1.xml' ? [p, big] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl, { maxRows: 10 });
+  assert.equal(out.rows.length, 10);
+  assert.deepEqual(out.truncated, { fromRow: 11, lastRow: 40, reason: 'rows' });
+
+  const byCells = xlsxKit.sheetLayout(xl.sheets.sheet1, xl, { maxCells: 9 });
+  assert.equal(byCells.truncated.reason, 'cells');
+  assert.ok(byCells.rows.length < 40);
+
+  assert.equal(xlsxKit.sheetLayout(xl.sheets.sheet1, xl).truncated, null,
+    'under the default cap nothing is withheld');
+});
+
+test('sheetLayout: an empty sheet says so rather than drawing a grid of nothing', () => {
+  const blank = `<?xml version="1.0"?><worksheet xmlns="ws"><sheetData/></worksheet>`;
+  const parts = formParts().map(([p, x]) => p === 'xl/worksheets/sheet1.xml' ? [p, blank] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  assert.equal(out.empty, true);
+  assert.deepEqual(out.rows, []);
+});
+
+test('number formats: the codes a budget workbook actually carries', () => {
+  const at = (code, value) => xlsxKit.formatValue(String(value), { kind: xlsxKit.formatKind(code, 0), code });
+  assert.equal(at('#,##0', 1234.5), '1,235', 'no decimal places means rounded, as Excel draws it');
+  assert.equal(at('#,##0.00', 1234.5), '1,234.50');
+  assert.equal(at('"$"#,##0.00', 1234.5), '$1,234.50');
+  assert.equal(at('0.0%', 0.1256), '12.6%');
+  assert.equal(at('0', 42), '42');
+  assert.equal(at('0.00', 42), '42.00');
+  // An accounting code's negative section supplies its own notation, so the
+  // minus is NOT prefixed on top of the parentheses.
+  assert.equal(at('#,##0_);(#,##0)', -1234), '(1,234)');
+  assert.equal(at('#,##0', -1234), '-1,234', 'with no negative section, a minus');
+  assert.equal(at('#,##0;[Red](#,##0)', -1234), '(1,234)');
+  // A zero section is its own answer.
+  assert.equal(at('#,##0;(#,##0);"-"', 0), '-');
+});
+
+test('number formats: literals, padding and fill characters', () => {
+  const at = (code, value) => xlsxKit.formatValue(String(value), { kind: xlsxKit.formatKind(code, 0), code });
+  assert.equal(at('0" FTE"', 3), '3 FTE');
+  assert.equal(at('#,##0\\%', 5), '5%', 'an escaped percent is a literal, not a scale');
+  assert.equal(at('0%', 0.05), '5%', 'an unescaped one scales');
+  // _( reserves the width of a bracket and *  repeats a fill character. Neither
+  // survives into a browser cell, and dropping them is what keeps an
+  // accounting code from printing its own punctuation.
+  assert.equal(at('_("$"* #,##0.00_)', 12.5), '$12.50');
+});
+
+test('date formats: the m that is a minute', () => {
+  const at = (code, serial) => xlsxKit.formatValue(String(serial), { kind: xlsxKit.formatKind(code, 0), code });
+  assert.equal(at('m/d/yy h:mm', 45000.5), '3/15/23 12:00');
+  assert.equal(at('mm-dd-yy', 45000), '03-15-23');
+  assert.equal(at('d-mmm-yy', 45000), '15-Mar-23');
+  assert.equal(at('mmmm d, yyyy', 45000), 'March 15, 2023');
+  assert.equal(at('h:mm:ss', 45000.5), '12:00:00');
+  assert.equal(at('mm:ss', 45000.5), '00:00', 'both are time here, since ss follows');
+  assert.equal(at('dddd', 45000), 'Wednesday');
+  assert.equal(at('yyyy"-"mm', 45000), '2023-03', 'a quoted literal is not a token');
+});
+
+test('shared strings: a rich or empty entry still holds its index', () => {
+  // Four entries: plain, RICH (runs, no bare <t>), EMPTY, plain. A reader that
+  // drops either of the middle two shifts every index after it, and the sheet
+  // then draws real text in the wrong cells rather than blanks. Found in the
+  // OFM decision package addendum, which has 6 rich entries among 163.
+  const SS = `<?xml version="1.0"?>
+<sst xmlns="sst">
+  <si><t>first</t></si>
+  <si><r><rPr><b/></rPr><t>Section </t></r><r><t>One</t></r></si>
+  <si><t/></si>
+  <si><t>last</t></si>
+</sst>`;
+  const SHEET = `<?xml version="1.0"?>
+<worksheet xmlns="ws"><sheetData><row r="1">
+  <c r="A1" t="s"><v>0</v></c>
+  <c r="B1" t="s"><v>1</v></c>
+  <c r="C1" t="s"><v>2</v></c>
+  <c r="D1" t="s"><v>3</v></c>
+</row></sheetData></worksheet>`;
+  const parts = buildParts().map(([p, x]) =>
+    p === 'xl/sharedStrings.xml' ? [p, SS] : p === 'xl/worksheets/sheet1.xml' ? [p, SHEET] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  assert.equal(xl.strings.length, 4, 'four <si> elements are four entries');
+  assert.deepEqual(xlsxKit.sheetRows(xl.sheets.sheet1),
+    [{ Row: 1, A: 'first', B: 'Section One', C: '', D: 'last' }]);
+});
+
+test('shared strings: a phonetic hint is not part of the value', () => {
+  const SS = `<?xml version="1.0"?>
+<sst xmlns="sst"><si><t>東京</t><rPh sb="0" eb="2"><t>トウキョウ</t></rPh></si></sst>`;
+  const SHEET = `<?xml version="1.0"?>
+<worksheet xmlns="ws"><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c></row></sheetData></worksheet>`;
+  const parts = buildParts().map(([p, x]) =>
+    p === 'xl/sharedStrings.xml' ? [p, SS] : p === 'xl/worksheets/sheet1.xml' ? [p, SHEET] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  assert.deepEqual(xlsxKit.sheetRows(xl.sheets.sheet1), [{ Row: 1, A: '東京' }]);
+});
+
+// ---------------------------------------------------------------------------
+// The three things a sheet carries beside its cells: pictures anchored over
+// the grid, rules that repaint a cell, and the form's own notes on its inputs.
+// ---------------------------------------------------------------------------
+
+const CF_DV_STYLES = `<?xml version="1.0"?>
+<styleSheet xmlns="s">
+  <fonts count="1"><font><sz val="11"/></font></fonts>
+  <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+  <borders count="1"><border/></borders>
+  <cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellXfs>
+  <dxfs count="2">
+    <dxf>
+      <font><b/><i val="0"/><color rgb="FFFFFFFF"/></font>
+      <fill><patternFill><bgColor rgb="FFFF0000"/></patternFill></fill>
+    </dxf>
+    <dxf><font><color rgb="FF006100"/></font></dxf>
+  </dxfs>
+</styleSheet>`;
+
+test('a dxf reads its fill from bgColor, and val="0" turns a font switch off', () => {
+  const parts = formParts().map(([p, x]) => p === 'xl/styles.xml' ? [p, CF_DV_STYLES] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const red = xlsxKit.dxfStyle(xl, 0);
+  assert.equal(red.fill, '#ff0000', 'a differential fill is bgColor, the opposite of a cell fill');
+  assert.equal(red.bold, true);
+  assert.equal(red.italic, undefined, '<i val="0"/> is italic OFF, not italic present');
+  assert.equal(red.color, '#ffffff');
+  // A dxf that sets only a colour must not carry a fill, or it would paint the
+  // cell's own background away.
+  assert.deepEqual(xlsxKit.dxfStyle(xl, 1), { color: '#006100' });
+  assert.equal(xlsxKit.dxfStyle(xl, 9), null, 'an id the workbook does not have');
+});
+
+test('cfApplies: the rule types that are decidable from the cell alone', () => {
+  const cell = (text, raw) => ({ text, raw: raw ?? text });
+  const rule = (o) => ({ type: 'cellIs', operator: '', formulas: [], text: '', ...o });
+
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'lessThan', formulas: ['0'] }), cell('-4', '-4')), true);
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'lessThan', formulas: ['0'] }), cell('0', '0')), false,
+    'zero is not less than zero, which is why the OFM addendum draws no red on a blank form');
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'greaterThanOrEqual', formulas: ['10'] }), cell('10', '10')), true);
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'between', formulas: ['5', '1'] }), cell('3', '3')), true,
+    'a reversed pair is still a range');
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'equal', formulas: ['"Yes"'] }), cell('Yes')), true);
+
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'containsBlanks' }), cell('')), true);
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'containsText', text: 'fee' }), cell('Docket fee')), true);
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'beginsWith', text: 'RCW' }), cell('RCW 2.32.070')), true);
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'endsWith', text: 'x' }), cell('RCW 2.32.070')), false);
+
+  // NOT DECIDABLE, and null rather than false: a formula needs an engine, and a
+  // rule silently treated as not firing is a rule reported as evaluated.
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'expression', formulas: ['$A1=""'] }), cell('x')), null);
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'colorScale' }), cell('5')), null);
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'lessThan', formulas: ['$B$2'] }), cell('1', '1')), null,
+    'a reference is not a constant this can compare against');
+});
+
+const cfSheet = (cf, cells) => `<?xml version="1.0"?>
+<worksheet xmlns="ws"><sheetData><row r="1">${cells}</row></sheetData>${cf}</worksheet>`;
+
+test('the highest-priority rule that fires wins, and skipped rules are counted once', () => {
+  const cf = `<conditionalFormatting sqref="A1:C1">
+      <cfRule type="expression" dxfId="1" priority="1"><formula>$A1&gt;0</formula></cfRule>
+      <cfRule type="cellIs" dxfId="0" priority="2" operator="lessThan"><formula>0</formula></cfRule>
+    </conditionalFormatting>`;
+  const parts = formParts().map(([p, x]) =>
+    p === 'xl/styles.xml' ? [p, CF_DV_STYLES]
+      : p === 'xl/worksheets/sheet1.xml'
+        ? [p, cfSheet(cf, '<c r="A1"><v>-5</v></c><c r="B1"><v>5</v></c><c r="C1"><v>-1</v></c>')]
+        : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  const [a, b, c] = out.rows[0].cells;
+  assert.equal(a.cf, 0, 'the expression above it is undecidable, so the cellIs rule decides');
+  assert.equal(b.cf, null, '5 is not less than 0');
+  assert.equal(c.cf, 0);
+  assert.equal(out.cfSkipped, 1, 'one expression rule over three cells is one gap, not three');
+});
+
+test('validation notes: an inline list, a range list, and an input message', () => {
+  const dv = `<dataValidations count="3">
+      <dataValidation type="list" sqref="A1" ><formula1>"Bill,Budget,None"</formula1></dataValidation>
+      <dataValidation type="list" sqref="B1"><formula1>$D$1:$D$3</formula1></dataValidation>
+      <dataValidation sqref="C1" promptTitle="Fee Code" prompt="Enter the four digit code._x000a_See the inventory."/>
+    </dataValidations>`;
+  const sheet = `<?xml version="1.0"?>
+<worksheet xmlns="ws"><sheetData>
+  <row r="1"><c r="A1"/><c r="B1"/><c r="C1"/><c r="D1" t="inlineStr"><is><t>Alpha</t></is></c></row>
+  <row r="2"><c r="D2" t="inlineStr"><is><t>Beta</t></is></c></row>
+  <row r="3"><c r="D3" t="inlineStr"><is><t>Gamma</t></is></c></row>
+</sheetData>${dv}</worksheet>`;
+  const parts = formParts().map(([p, x]) => p === 'xl/worksheets/sheet1.xml' ? [p, sheet] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const [a, b, c] = xlsxKit.sheetLayout(xl.sheets.sheet1, xl).rows[0].cells;
+  assert.deepEqual(a.note.options, ['Bill', 'Budget', 'None']);
+  assert.deepEqual(b.note.options, ['Alpha', 'Beta', 'Gamma'], 'a range list is read out of the sheet');
+  assert.equal(c.note.options, null);
+  assert.equal(c.note.title, 'Fee Code');
+  assert.equal(c.note.prompt, 'Enter the four digit code.\nSee the inventory.',
+    '_x000a_ is a newline Excel could not write literally, not text');
+});
+
+test('a validation that says nothing leaves no note', () => {
+  const dv = `<dataValidations><dataValidation type="textLength" operator="lessThan" sqref="A1"><formula1>50</formula1></dataValidation></dataValidations>`;
+  const sheet = `<?xml version="1.0"?>
+<worksheet xmlns="ws"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>x</t></is></c></row></sheetData>${dv}</worksheet>`;
+  const parts = formParts().map(([p, x]) => p === 'xl/worksheets/sheet1.xml' ? [p, sheet] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  assert.equal(xlsxKit.sheetLayout(xl.sheets.sheet1, xl).rows[0].cells[0].note, undefined);
+});
+
+// A picture anchored from B2 to D4, wrapped the way Excel writes it: the same
+// anchor in mc:Choice and again in mc:Fallback.
+const DRAWING = `<?xml version="1.0"?>
+<xdr:wsDr xmlns:xdr="xdr" xmlns:a="a" xmlns:mc="mc" xmlns:r="rel">
+  <mc:AlternateContent>
+    <mc:Choice Requires="a14">
+      <xdr:twoCellAnchor>
+        <xdr:from><xdr:col>1</xdr:col><xdr:colOff>19050</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>9525</xdr:rowOff></xdr:from>
+        <xdr:to><xdr:col>3</xdr:col><xdr:colOff>28575</xdr:colOff><xdr:row>3</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+        <xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo"/></xdr:nvPicPr>
+          <xdr:blipFill><a:blip r:embed="rId1"/></xdr:blipFill></xdr:pic>
+      </xdr:twoCellAnchor>
+    </mc:Choice>
+    <mc:Fallback>
+      <xdr:twoCellAnchor>
+        <xdr:from><xdr:col>1</xdr:col><xdr:colOff>19050</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>9525</xdr:rowOff></xdr:from>
+        <xdr:to><xdr:col>3</xdr:col><xdr:colOff>28575</xdr:colOff><xdr:row>3</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+        <xdr:pic><xdr:nvPicPr><xdr:cNvPr id="3" name="Logo fallback"/></xdr:nvPicPr>
+          <xdr:blipFill><a:blip r:embed="rId1"/></xdr:blipFill></xdr:pic>
+      </xdr:twoCellAnchor>
+    </mc:Fallback>
+  </mc:AlternateContent>
+</xdr:wsDr>`;
+
+const DRAWING_RELS = `<?xml version="1.0"?>
+<Relationships xmlns="rel">
+  <Relationship Id="rId1" Type=".../image" Target="../media/image1.png"/>
+</Relationships>`;
+
+const SHEET_RELS = `<?xml version="1.0"?>
+<Relationships xmlns="rel">
+  <Relationship Id="rIdD" Type=".../drawing" Target="../drawings/drawing1.xml"/>
+</Relationships>`;
+
+// 12 columns of 10 chars and a bare grid, so the arithmetic below is legible.
+const PIC_SHEET = `<?xml version="1.0"?>
+<worksheet xmlns="ws" xmlns:r="rel">
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols><col min="1" max="12" width="10"/></cols>
+  <sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>top</t></is></c></row></sheetData>
+  <drawing r:id="rIdD"/>
+</worksheet>`;
+
+const picParts = (sheetXml = PIC_SHEET) => [
+  ...formParts().filter(([p]) => p !== 'xl/worksheets/sheet1.xml'),
+  ['xl/worksheets/sheet1.xml', sheetXml],
+  ['xl/worksheets/_rels/sheet1.xml.rels', SHEET_RELS],
+  ['xl/drawings/drawing1.xml', DRAWING],
+  ['xl/drawings/_rels/drawing1.xml.rels', DRAWING_RELS],
+];
+
+const withMedia = (xl) => { xl.media['xl/media/image1.png'] = 'data:image/png;base64,AAAA'; return xl; };
+
+test('a picture is read once, from mc:Choice, and joined to its media two hops out', () => {
+  const { xl } = xlsxKit.analyze(picParts());
+  const sheet = xl.sheets.sheet1;
+  assert.equal(sheet.images.length, 1,
+    'Excel writes the same anchor in Choice and Fallback; taking both draws the logo twice');
+  assert.equal(sheet.images[0].part, 'xl/media/image1.png',
+    "a blip's r:embed resolves through the DRAWING's rels, not the sheet's");
+  assert.equal(sheet.images[0].name, 'Logo');
+});
+
+test('a picture is placed as an offset from a cell, not from the sheet', () => {
+  const { xl } = xlsxKit.analyze(picParts());
+  withMedia(xl);
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  assert.equal(out.images.length, 1);
+  const img = out.images[0];
+  assert.equal(img.row, 2, 'the anchor row is zero-based in the file and one-based here');
+  assert.equal(img.col, 1);
+  assert.equal(img.dx, 2, '19050 EMU is two pixels at 9525 to the pixel');
+  assert.equal(img.dy, 1);
+  // Columns are 10 chars wide -> 75px; the picture spans B and C, less its own
+  // offset, plus the far corner's.
+  assert.equal(img.width, 75 * 2 - 2 + 3);
+  assert.equal(img.height, 20 * 2 - 1 + 0, 'rows are 15pt -> 20px');
+  assert.equal(img.src, 'data:image/png;base64,AAAA');
+});
+
+test('a picture below the last row of data still draws', () => {
+  // The capital Major Project report keeps its photographs on a tab with one
+  // text cell and the pictures below it. Stopping the layout at the last row
+  // holding a value dropped every one of them.
+  const { xl } = xlsxKit.analyze(picParts());
+  withMedia(xl);
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  assert.ok(out.rows.length >= 4, 'the drawn range reaches the anchor, not just the data');
+  assert.equal(out.images.length, 1);
+});
+
+test('a picture anchored inside a merge moves to the cell that is drawn', () => {
+  const merged = PIC_SHEET.replace('</sheetData>',
+    '</sheetData><mergeCells count="1"><mergeCell ref="A1:C3"/></mergeCells>');
+  const { xl } = xlsxKit.analyze(picParts(merged));
+  withMedia(xl);
+  const img = xlsxKit.sheetLayout(xl.sheets.sheet1, xl).images[0];
+  // B2 is covered by A1:C3 and is never emitted, so the picture rides on A1
+  // with the distance to B2 added to its offset.
+  assert.equal(img.row, 1);
+  assert.equal(img.col, 0);
+  assert.equal(img.dx, 2 + 75, 'one column across');
+  assert.equal(img.dy, 1 + 20, 'one row down');
+});
+
+test('a picture whose media the workbook does not carry is skipped, not drawn broken', () => {
+  const { xl } = xlsxKit.analyze(picParts());   // no media attached
+  assert.deepEqual(xlsxKit.sheetLayout(xl.sheets.sheet1, xl).images, []);
+});
+
+// ---------------------------------------------------------------------------
+// Comments: the fourth thing a sheet carries, and the only one a reader wrote
+// by hand. Legacy (non-threaded) comments, which is what OFM's templates use.
+// ---------------------------------------------------------------------------
+
+// Two authors, and the text run Excel actually writes: the author's name, a
+// colon and a newline, then the comment. authorId indexes the <authors> list.
+const COMMENTS = `<?xml version="1.0"?>
+<comments xmlns="c">
+  <authors><author>slm4303</author><author>Shields, Sharon (OFM)</author></authors>
+  <commentList>
+    <comment ref="B2" authorId="0"><text>
+      <r><rPr><b/></rPr><t xml:space="preserve">slm4303:</t></r>
+      <r><t xml:space="preserve">
+input the hours anticipated</t></r>
+    </text></comment>
+    <comment ref="C3" authorId="1"><text>
+      <r><t>Hint: include sales tax</t></r>
+    </text></comment>
+  </commentList>
+</comments>`;
+
+// The comments part rides a relationship with NOTHING in the sheet XML naming
+// it: <legacyDrawing> points at the VML that draws Excel's red corner, and the
+// comments themselves are reached by walking the sheet's rels.
+const COMMENT_RELS = `<?xml version="1.0"?>
+<Relationships xmlns="rel">
+  <Relationship Id="rIdV" Type=".../vmlDrawing" Target="../drawings/vmlDrawing1.vml"/>
+  <Relationship Id="rIdC" Type=".../comments" Target="../comments3.xml"/>
+</Relationships>`;
+
+const COMMENT_SHEET = `<?xml version="1.0"?>
+<worksheet xmlns="ws" xmlns:r="rel">
+  <sheetData>
+    <row r="2"><c r="B2"><v>5000</v></c></row>
+    <row r="3"><c r="C3" t="inlineStr"><is><t>220</t></is></c></row>
+  </sheetData>
+  <legacyDrawing r:id="rIdV"/>
+</worksheet>`;
+
+const commentParts = (extra = []) => [
+  ...formParts().filter(([p]) => p !== 'xl/worksheets/sheet1.xml'),
+  ['xl/worksheets/sheet1.xml', COMMENT_SHEET],
+  ['xl/worksheets/_rels/sheet1.xml.rels', COMMENT_RELS],
+  ['xl/comments3.xml', COMMENTS],
+  ...extra,
+];
+
+test('a comments part is found by walking the rels, not by matching sheet numbers', () => {
+  // comments3.xml on sheet1 is the case that breaks a numbering assumption, and
+  // it is what the OneWA template does: the parts are numbered by creation
+  // order, not by the sheet they belong to.
+  const { xl } = xlsxKit.analyze(commentParts());
+  const cs = xl.sheets.sheet1.comments;
+  assert.equal(cs.length, 2);
+  assert.deepEqual(cs.map(c => c.ref), ['B2', 'C3']);
+  assert.equal(cs[0].author, 'slm4303');
+  assert.equal(cs[1].author, 'Shields, Sharon (OFM)', 'authorId indexes the authors list');
+});
+
+test('the author prefix Excel writes into the text is not repeated in it', () => {
+  const { xl } = xlsxKit.analyze(commentParts());
+  const [first, second] = xl.sheets.sheet1.comments;
+  assert.equal(first.text, 'input the hours anticipated',
+    'Excel writes "Name:\\n" as the first run, and the author field already says it');
+  assert.equal(second.text, 'Hint: include sales tax',
+    'a comment typed without the prefix keeps every word, colon included');
+});
+
+test('a comment reaches the cell it sits on, and outranks the form\'s own note', () => {
+  const dv = '<dataValidations><dataValidation sqref="B2" promptTitle="Hours" prompt="Enter hours."/></dataValidations>';
+  const parts = commentParts().map(([p, x]) =>
+    p === 'xl/worksheets/sheet1.xml' ? [p, x.replace('<legacyDrawing', dv + '<legacyDrawing')] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  // A row carries only the cells it has, so B2 is that row's first cell.
+  const b2 = out.rows.find(r => r.row === 2).cells.find(c => c.col === 1);
+  assert.equal(b2.note.kind, 'comment', 'one marker per cell, and a comment is the strongest');
+  assert.equal(b2.note.comment.author, 'slm4303');
+  assert.equal(b2.note.title, 'Hours', 'the instruction is still carried, just not the kind');
+  assert.equal(b2.note.prompt, 'Enter hours.');
+});
+
+test('workbookNotes: one row per comment, one row per validation RULE', () => {
+  // A validation covering ninety-seven cells is one thing a reader wants to
+  // see, not ninety-seven; a comment is genuinely per-cell.
+  const dv = '<dataValidations><dataValidation sqref="D1:D50 F1" promptTitle="Code" prompt="Four digits."/></dataValidations>';
+  const parts = commentParts().map(([p, x]) =>
+    p === 'xl/worksheets/sheet1.xml' ? [p, x.replace('<legacyDrawing', dv + '<legacyDrawing')] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const notes = xlsxKit.workbookNotes(xl);
+  assert.equal(notes.length, 3, 'two comments and one rule');
+  assert.deepEqual(notes.map(n => n.kind), ['comment', 'comment', 'instruction']);
+  const rule = notes[2];
+  assert.equal(rule.cell, 'D1', 'addressed at the first cell of the range, so the cite lands');
+  assert.equal(rule.span, 'D1:D50 F1', 'and says the whole reach');
+  assert.equal(rule.text, 'Four digits.');
+});
+
+test('workbookNotes: sheets come in workbook order and cost nothing to ask for', () => {
+  const { xl } = xlsxKit.analyze(commentParts());
+  const notes = xlsxKit.workbookNotes(xl);
+  assert.deepEqual(notes.map(n => [n.sheet, n.cell]), [['Form', 'B2'], ['Form', 'C3']]);
+  // Read off the sheets, not off a layout, so a workbook past the draw cap
+  // still reports every note it carries.
+  assert.equal(xl.sheets.sheet1.rows.length, 2);
+});
+
+test('a workbook with nothing annotated returns an empty list, not a header row', () => {
+  assert.deepEqual(xlsxKit.workbookNotes(formXl()), []);
+  assert.deepEqual(xlsxKit.workbookNotes(null), []);
+});
+
+test('a threaded comment part is not read as a legacy one', () => {
+  // Modern Excel writes threadedComments/*.xml AND a legacy comments part that
+  // carries the same text with a machine-generated author. Reading both would
+  // list every comment twice.
+  const threaded = ['xl/threadedComments/threadedComment1.xml',
+    `<?xml version="1.0"?><ThreadedComments xmlns="tc"><threadedComment ref="B2" personId="{1}"><text>a reply</text></threadedComment></ThreadedComments>`];
+  const { xl } = xlsxKit.analyze(commentParts([threaded]));
+  assert.equal(xl.sheets.sheet1.comments.length, 2, 'the threaded part contributed nothing');
 });

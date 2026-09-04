@@ -1086,8 +1086,9 @@ same pattern as `io.js`).
 
 ```js
 const result = await window.xlsxKit.readZip(fileOrArrayBuffer);
-// result: { el, connectedPaths, conns, xl: { sheets, strings, styles,
-//           comments, relationships, definedNames, calcChain } }
+// result: { el, connectedPaths, conns, xl: { sheets, strings, styles, theme,
+//           fonts, fills, borders, xfs, comments, relationships,
+//           definedNames, calcChain } }
 
 xlsxKit.summary(result)             // { total, connected, unconnected, connectedPct }
 xlsxKit.views.paths(result)         // one row per distinct XML element path
@@ -1097,24 +1098,82 @@ xlsxKit.views.connections(result)   // one row per sheet: cells/strings/styles/
 xlsxKit.views.unconnected(result)   // paths with no recognized structure
 xlsxKit.views.files(result)         // one row per XML part: category, paths,
                                     //   connected count, sheets touched
-xlsxKit.sheetRows(result.xl.sheets.sheet1)
+xlsxKit.sheetRows(result.xl.sheets.sheet1, result.xl)
                                     // -> [{ Row, A, B, C, ... }], sparse rows/
-                                    //   columns left as gaps, not compacted
+                                    //   columns left as gaps, not compacted.
+                                    //   Pass `xl` to read values through their
+                                    //   number format; omit it for raw strings
+xlsxKit.sheetLayout(sheet, xl, opts) // the same sheet AS A PAGE: cells in place,
+                                    //   merges as spans, column widths and row
+                                    //   heights in px, spill runs, a style
+                                    //   index per cell, anchored `images`, and
+                                    //   `truncated` where opts.maxRows/maxCells
+                                    //   cut it short. Each cell may carry `cf`
+                                    //   (the dxf a conditional rule applies)
+                                    //   and `note` (a comment somebody left,
+                                    //   the form's input message, the choices
+                                    //   a list allows; `note.kind` is the
+                                    //   strongest of the three, for a caller
+                                    //   drawing one mark per cell)
+xlsxKit.workbookNotes(xl)           // every annotation in the workbook as one
+                                    //   list: { sheet, cell, span, kind,
+                                    //   author, title, text, options }. One row
+                                    //   per comment, one per validation RULE,
+                                    //   read off the sheets so it costs nothing
+                                    //   to ask and does not stop at a draw cap
+xlsxKit.cellStyle(xl, styleIndex)   // { bold, size, color, fill, border, align,
+                                    //   valign, wrap, indent, format }
+xlsxKit.dxfStyle(xl, dxfId)         // the same record for a conditional format,
+                                    //   with every field optional
+xlsxKit.cfApplies(rule, cell)       // true / false / null, where null is "not
+                                    //   decidable here"
 xlsxKit.colLetter(26)               // 'AA'
 ```
+
+**Addressing a place inside a workbook** is the viewer's, not the kit's:
+`ViewRegistry.parsePlace` reads `Sheet!H11`, `H11`, `A1:C3` or a bare name, and
+a mounted sheet publishes `locate({ sheet, cell, text })` on its root's
+`__sheets`, which switches sheets, resolves a covered cell to the merge that
+draws it, scrolls and marks. What makes it possible here is that `sheetLayout`
+gives every cell its A1 address, so the render can carry one.
+
+**Three boundaries worth knowing, each a case where the kit declines rather
+than guesses.** A conditional rule of type `expression` is a formula, and
+evaluating one means a formula engine; those are skipped and counted in
+`sheetLayout`'s `cfSkipped`, so a caller can say how much of Excel's painting
+it is not showing. A picture is read from DrawingML anchors; the legacy VML
+drawings Excel uses for comments and form controls are not, so a comment's TEXT
+is read while the box Excel would draw it in is not. And a list validation
+resolves an inline `"a,b,c"` or a cell range on any sheet, but a defined name
+returns null and the cell then carries only its prompt.
+
+**Comments are the legacy kind, and the part is found by walking the rels.**
+Nothing in the sheet XML names it: `<legacyDrawing>` points at the VML, and the
+comments part rides a relationship with no referring element, so `comments3.xml`
+can belong to `sheet1` and does in OFM's OneWA template. Excel writes the
+author's name as the comment's first run, followed by a colon; it is the same
+string the author field carries, so the kit strips it once rather than leaving
+every consumer to. A threaded comment (`xl/threadedComments/`) is skipped, since
+Excel writes the same text into a legacy part beside it and reading both lists
+each comment twice.
+
+**Two readings, and the second is why the style records exist.** `sheetRows`
+answers "what values are in this sheet" and feeds a data grid. `sheetLayout`
+answers "what does this sheet look like" and feeds a render that reproduces the
+document: it is what the viewer's `sheet` mode draws, and what makes an OFM
+budget form arrive as a form rather than as a list of strings. Neither touches
+the DOM; a caller turns a style record into whatever it draws with.
 
 `analyze(parts)` — the pure entry point — takes `[[path, xmlString], ...]` or
 `{path: xmlString}` for already-extracted `.xml`/`.rels` parts, so it's
 testable with plain fixture strings (`tools/test/xlsx.test.mjs`) and needs no
-real `.xlsx` file or JSZip. Two known limitations inherited from the source
-prototypes (not fixed, since a real fix needs cross-referencing
-`workbook.xml`'s `<sheets>` order, a nontrivial addition): named-range and
-calc-chain sheet association assumes `sheetN.xml`'s file number matches
-workbook sheet order, which can drift after a sheet reorder or rename; and
-cell-to-column mapping trusts each `<c>`'s `r` attribute (falling back to
-positional order only when `r` is absent), which is standard but not
-universal among third-party writers. See `kits/demos/xlsx.html` for live
-examples.
+real `.xlsx` file or JSZip. One known limitation remains: cell-to-column
+mapping trusts each `<c>`'s `r` attribute, falling back to positional order
+only when `r` is absent, which is standard but not universal among third-party
+writers. The sheet-order limitation this paragraph used to carry alongside it
+is gone: named ranges and calc-chain entries resolve through `workbook.xml`'s
+`<sheets>` and its rels, so they survive a reorder or a rename. See
+`kits/demos/xlsx.html` for live examples.
 
 ## Salvage status
 

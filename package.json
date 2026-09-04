@@ -47,6 +47,8 @@
     "test:toss-multiparam": "node tools/test/toss-multiparam.mjs",
     "test:toss-width": "node tools/test/toss-width.mjs",
     "test:toss-paste": "node tools/test/toss-paste.mjs",
+    "test:typeahead": "node tools/test/app-typeahead.mjs",
+    "test:toss-frame-focus": "node tools/test/toss-frame-focus.mjs",
     "test:toss-charset": "node tools/test/toss-charset.mjs",
     "test:toss-microphone": "node tools/test/toss-microphone.mjs",
     "test:viewer-image": "node tools/test/viewer-image.mjs",
