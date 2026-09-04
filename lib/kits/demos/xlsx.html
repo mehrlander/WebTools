@@ -78,6 +78,44 @@ console.table(xlsxKit.views.unconnected(window.__xlsx).slice(0, 10));`
 `const [firstSheet] = Object.values(window.__xlsx.xl.sheets);
 console.table(xlsxKit.sheetRows(firstSheet).slice(0, 20));`
         },
+        {
+          title: 'sheetRows through the number formats',
+          prose: `Pass the workbook and each value is read through its cell’s format code: a date serial as the date the file draws, an accounting cell as money. Omit it and you get the stored strings, which is what a structural inspection wants.`,
+          lang: 'js', kind: 'parent',
+          code:
+`const [firstSheet] = Object.values(window.__xlsx.xl.sheets);
+console.table(xlsxKit.sheetRows(firstSheet, window.__xlsx.xl).slice(0, 20));`
+        },
+      ],
+    },
+    {
+      title: 'The sheet as a page',
+      intro: 'sheetLayout answers the other question: not what the values are, but what the sheet looks like. Merges resolve to spans, columns carry the widths the author set, and every cell names the style record that paints it.',
+      examples: [
+        {
+          title: 'Geometry: widths, heights, merges, freeze',
+          prose: `<code class="${c()}">sheetLayout</code> works in pixels, so a renderer places cells without re-deriving Excel’s character-width unit. <code class="${c()}">truncated</code> is non-null where a very large sheet was cut short, which is a fact to show rather than swallow.`,
+          lang: 'js', kind: 'parent',
+          code:
+`const xl = window.__xlsx.xl;
+const [firstSheet] = Object.values(xl.sheets);
+const layout = xlsxKit.sheetLayout(firstSheet, xl);
+console.log({ cols: layout.cols.length, rows: layout.rows.length,
+              freeze: layout.freeze, truncated: layout.truncated });
+console.table(layout.cols.slice(0, 12));`
+        },
+        {
+          title: 'Every style the sheet uses',
+          prose: `A cell’s <code class="${c()}">s</code> indexes <code class="${c()}">cellXfs</code>; <code class="${c()}">cellStyle</code> joins that entry’s font, fill, border and alignment into one record. Colours are already resolved, theme indices and tints included.`,
+          lang: 'js', kind: 'parent',
+          code:
+`const xl = window.__xlsx.xl;
+const [firstSheet] = Object.values(xl.sheets);
+const used = new Set();
+for (const row of xlsxKit.sheetLayout(firstSheet, xl).rows)
+  for (const cell of row.cells) if (cell.style != null) used.add(cell.style);
+console.table([...used].map(s => ({ s, ...xlsxKit.cellStyle(xl, s) })));`
+        },
       ],
     },
   ];
