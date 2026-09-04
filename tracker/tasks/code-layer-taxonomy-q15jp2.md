@@ -5,7 +5,6 @@ status: done
 opened: 2026-08-04
 closed: 2026-08-06
 session: claude/web-tools-tracker-review-ij4pjj
-next: done on claude/web-tools-tracker-review-ij4pjj; the taxonomy is docs/code-layers.md, the survey is scripts/unclaimed-code.py
 ---
 # Name the code layers and account for tools/
 

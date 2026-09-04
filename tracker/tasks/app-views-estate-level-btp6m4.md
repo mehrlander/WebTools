@@ -5,7 +5,6 @@ status: done
 opened: 2026-07-18
 closed: 2026-07-19
 session: claude/web-tools-app-views-m3pkyo
-next: landed; News goes live in the estate switcher when home#314 reaches main
 ---
 # App views: designate a page as an estate-level view
 

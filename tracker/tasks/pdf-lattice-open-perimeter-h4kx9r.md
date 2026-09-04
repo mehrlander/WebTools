@@ -3,6 +3,7 @@ id: pdf-lattice-open-perimeter-h4kx9r
 title: Close open table perimeters in the pdf kit's lattice
 status: backlog
 opened: 2026-07-25
+size: M
 ---
 # Close open table perimeters in the pdf kit's lattice
 

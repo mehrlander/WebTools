@@ -5,7 +5,6 @@ status: done
 project: show-repo
 opened: 2026-07-17
 closed: 2026-07-17
-next: done — raw media type with git-blobs fallback landed in toss-render (ghText, showAddress, fetchShim) and gh-api.js get(); A/B headless test confirms the 5.9 MB DRS bundle is delivered where the old path returned blank
 ---
 # Render files over 1 MB in toss-render and the shell viewers
 

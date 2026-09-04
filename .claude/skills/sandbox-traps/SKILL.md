@@ -4,8 +4,9 @@ description: >-
   Diagnose a Claude Code web sandbox failure that impersonates a different
   problem. Use when a tool call returns MCP error -32003 or unexpectedly
   requires approval, when git log looks truncated or history appears rewritten,
-  when git push is rejected with HTTP 413, when an outbound request fails and it
-  is unclear whether the host is blocked, or when a repo hook that should have
+  when a check reports that a pinned commit is missing from the checkout, when
+  git push is rejected with HTTP 413, when an outbound request fails and it is
+  unclear whether the host is blocked, or when a repo hook that should have
   fired did not. Read before concluding anything from git history in a web
   session.
 ---
@@ -63,6 +64,16 @@ rewritten history: a rewrite replaces commits, a shallow clone omits them.
 
     git rev-parse --is-shallow-repository   # true means stop
     git fetch --unshallow                   # when the question needs real history
+
+The same shallow clone presents a second way, naming an object rather than a
+depth: a check that pins a baseline commit fails with *the pinned commit `<sha>`
+is not in this checkout*, which reads as a deleted or corrupted object. `git
+cat-file -e <sha>` confirms only that it is absent; the shallow test above gives
+the reason. Measured 2026-09-04 on `mehrlander/home`, whose session clone
+carried 175 of 4,351 commits, so the register-catalog step of
+`tools/verify-artifacts.sh` could not reach the commit it pins. No
+pinned-baseline check passes in a web session until the clone is deepened, and
+`--unshallow` on that repo took under a minute.
 
 **`HTTP 413` on push.** The proxy is refusing the request body, not a client
 buffer, so `http.postBuffer` changes nothing. A push carries only the objects the

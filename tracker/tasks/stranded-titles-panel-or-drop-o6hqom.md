@@ -8,7 +8,8 @@ priority: low
 ---
 # Decide the remaining stranded title attributes, panel or leave
 
-`npm run stranded-titles` reports 89 **stranded** titles across the app: places
+`npm run stranded-titles` reported 89 **stranded** titles across the app when
+this was filed, and 120 on 2026-09-04: places
 where a `title` attribute is the only route to a fact, so a phone reader never
 reaches it at all. PR #447 fixed the worst cases on the branch row and the
 sessions row and left the rest, because HTML-STYLE.md's rule turns on judgment
@@ -63,3 +64,10 @@ not the total.
   replacement it was missing (web-tools PR #543): HTML-STYLE.md states the four
   behaviours a built panel owes, and daisy-alpine carries it as house-style rule
   7, which is what should stop the total climbing while the backlog is worked.
+- 2026-09-04: 120 stranded, up from 110 a week earlier and 89 at filing. That is
+  the second consecutive reading where the count rose after the fix meant to hold
+  it: house-style rule 7 (PR #543) landed 2026-08-28 and the total gained ten in
+  the six days after. The rule is not holding the line on its own, which argues
+  for working the list a component at a time rather than waiting on it. The
+  four-component table is the 2026-08-19 survey and is not restamped; rerun the
+  command for current per-component figures.

@@ -15,8 +15,8 @@ than an Apple Shortcuts curiosity. It is the only route that reaches a phone's
 pasteboard from a sandbox.
 
 The case against is that it is narrow: it needs the Actions app, a receiving
-shortcut, and an iOS device, and none of the plugin's other 16 skills carry a
-device dependency.
+shortcut, and an iOS device, and none of the plugin's 15 skills carries a device
+dependency.
 
 Promotion also closes the drift this came out of. Plugin-shipped skills track
 `main` through the marketplace clone; an account-scope install does not, and
@@ -33,3 +33,9 @@ that is what left a superseded version firing unprompted (PR #392,
 
 **Done when** the skill is either moved with its manifest and README updated,
 or left in the library with the reasoning recorded here so it is not re-asked.
+
+## Progress log
+- 2026-09-04: Skill count corrected, 16 to 15, in a refinement pass:
+  `.claude/skills/` holds 15 `SKILL.md` files plus a `hooks/` directory that is
+  not a skill, against 41 in the on-demand `skills/` library. The decision is
+  untouched and still the whole task.

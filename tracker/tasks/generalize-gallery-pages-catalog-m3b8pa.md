@@ -5,7 +5,6 @@ status: done
 opened: 2026-07-18
 closed: 2026-07-19
 session: claude/web-tools-app-views-m3pkyo
-next: landed; live gallery for home needs home#314 on main (config cache reads main)
 ---
 # Generalize the gallery to a per-repo pages catalog
 
