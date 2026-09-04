@@ -22,11 +22,15 @@ Turn the request around and the wall is not there:
 | --- | --- |
 | Web Tools page reads a state website | blocked, no `Access-Control-Allow-Origin` |
 | script **on** the state website reads its own host | same-origin, nothing to refuse |
-| script on the state website reads `raw.githubusercontent.com` | allowed, that host sends `*` |
+| script on the state website reads `api.github.com` | allowed, that host sends `*` |
 
 So the courier runs **on the target page**. Its own code and its errand list
-come from `raw.githubusercontent.com`, which answers any origin and caches five
-minutes. Two things follow that no other route here gets:
+come from `api.github.com`, which answers any origin. Not the raw CDN: it caches
+five minutes at the edge and `cache: no-store` defeats only the browser's copy,
+so an errand added a moment ago could be invisible. The API answers current, at
+the cost of the unauthenticated rate limit, 60 an hour per address, which is
+about twenty courier runs. A 403 says which it was. Two things follow that no
+other route here gets:
 
 - **Cloudflare is already satisfied.** You cleared the interstitial by
   navigating like a person, so a same-origin `fetch()` from the errand script
@@ -42,14 +46,43 @@ minutes. Two things follow that no other route here gets:
 
 | Part | Where | Changes |
 | --- | --- | --- |
-| the pointer | [`bookmarklets/courier.js`](../bookmarklets/courier.js) | never; it is 286 bytes and names one URL |
+| the pointer | [`bookmarklets/courier.js`](../bookmarklets/courier.js) | never; it opens the window and names one URL |
 | the body | [`run.js`](run.js) | freely: routing, panel, gate, delivery |
 | the errand list | [`errands.json`](errands.json) | per errand |
 | the errand script | `sites/<hostname>/courier/<id>.js` | per errand, then frozen when it closes |
 
-Install the pointer once, as a bookmark whose URL is the whole file. It fetches
-`run.js` and runs it. `run.js` reads `location.hostname`, finds the open errands
-for that host, shows what it is about to run, and runs it on your tap.
+Install the pointer once, as a bookmark whose URL is the whole file. It opens a
+window, fetches `run.js` and runs it. `run.js` reads `location.hostname`, finds
+the open errands for that host, shows what it is about to run in that window,
+and runs it on your tap.
+
+## The interface is a popup, and the pointer has to open it
+
+A panel injected into somebody else's document loses fights it should not be in:
+a host stylesheet, a focus trap, `overflow:hidden` on `html`, `position:fixed`
+behaving oddly inside a transformed ancestor. Shadow DOM answers the styling
+half and none of the rest. A separate window answers all of it, and this repo
+already runs that pattern in
+[`bookmarklets/popup-launcher.js`](../bookmarklets/popup-launcher.js) and
+[`popups/`](../popups).
+
+**The window is opened by the pointer, synchronously, before its first `await`.**
+That is not a style choice. A popup is permitted only while the user-gesture
+token is live, and the first `await` spends it; by the time `run.js` has been
+fetched the gesture is gone. So the one thing the pointer does besides naming a
+URL is open the window, because it is the only place in the chain that still
+can. A test that fires the bookmarklet with `evaluate()` rather than a real
+click will not notice this, and will pass on code that fails in a browser.
+
+**A window opened with an empty URL inherits the opener's origin**, so `run.js`
+can script its document and `window.opener` survives. That gives the split the
+design needs: the errand script keeps running in the **host page**, where the
+DOM it must read actually is, and only the interface moves. Running the script
+inside the popup would hand it a blank document.
+
+**If the popup was blocked**, `w` arrives as null and a plain in-page panel runs
+instead: a shadow root, no scrim animation, the same markup and wiring. It is
+the fallback rather than the design, so it is kept simple deliberately.
 
 **The bookmark is a pointer on purpose, and the trade is worth naming.** The
 mechanism lived in the bookmark first, which put the confirm gate beyond this
@@ -123,6 +156,6 @@ intake instead.
 ## Testing an errand before it ships
 
 The sandbox browser cannot reach external hosts, so both halves are exercised
-against a fixture with the `raw.githubusercontent.com` reads routed to the local
+against a fixture with the `api.github.com` reads routed to the local
 checkout. That tests the real fetch path rather than stubbing it out of the code
 under test. Run the errand script alone first, then the courier end to end.
