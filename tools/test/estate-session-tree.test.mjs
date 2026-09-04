@@ -50,8 +50,11 @@ const activity = (branches) => ({ 'acme/widget': { defaultBranch: 'main', scan: 
 const branch = (name, extra = {}) =>
   ({ name, group: 'active', date: '2026-08-10', ...extra });
 // A session record, in the shape the sessions cache folds.
-const record = (id, { agent = '', repos = [], day = '2026-08-10' } = {}) =>
-  ({ id, agent, day, started: day + 'T00:00:00Z', repos, mins: 10, ask: 'do a thing',
+// `ended` defaults to the start, so a fixture that says nothing about time
+// still orders by the day it names. The tests that care state both.
+const record = (id, { agent = '', repos = [], day = '2026-08-10',
+                      started = day + 'T00:00:00Z', ended = '' } = {}) =>
+  ({ id, agent, day, started, ended: ended || started, repos, mins: 10, ask: 'do a thing',
      branches: repos.map(r => r.branch).filter(Boolean) });
 
 const set = (branches, records) => {
@@ -177,6 +180,50 @@ test('nodes are newest first and a stub is dated by its newest branch', () => {
   assert.equal(stub.day, '2026-08-12');
   assert.equal(data.sessionTree.nodes[0].key, stub.key);        // 08-12 leads 08-05
   assert.equal(stub.children.map(b => b.name).join(), 'new,old');
+});
+
+// The order is by LAST ACTIVITY at full precision, which is the fix for what
+// the pane did on 2026-09-04: three sessions of one day, and the one holding
+// the most recent activity in the whole cache sat second because it had opened
+// 34 minutes later than the row above it. Two separate defects produced that.
+//
+// The sort read `started`, so a long session still being worked ranked below a
+// short one that opened later and had already stopped. And it compared at DAY
+// precision, so every row of one day tied and their order fell to Map
+// insertion order, which loads all records before any stub: a stub could not
+// outrank a record of the same day whatever its clock said.
+test('same-day rows order by last activity, not by start and not by insertion', () => {
+  set([branch('ghost', { sessions: [SESS('GHOST')], date: '2026-08-10T18:00:00Z' })],
+      // `early` opens first and is still going at 20:00; `late` opens after it
+      // and is finished by 13:00. Sorting on `started` puts them the other way.
+      [record('late',  { agent: SESS('L'), day: '2026-08-10',
+                         started: '2026-08-10T12:00:00Z', ended: '2026-08-10T13:00:00Z' }),
+       record('early', { agent: SESS('E'), day: '2026-08-10',
+                         started: '2026-08-10T09:00:00Z', ended: '2026-08-10T20:00:00Z' })]);
+  assert.equal(data.sessionTree.nodes.map(n => n.id).join(','), 'early,GHOST,late');
+});
+
+// A record and a stub are measured against the same clock. The stub's is its
+// newest commit, which is the only evidence a session with no record leaves.
+test('a stub carries a full timestamp, and its day still reads as a day', () => {
+  set([branch('a', { sessions: [SESS('GHOST')], date: '2026-08-12T07:30:00Z' })],
+      [record('rec1', { agent: SESS('ZZZ'), day: '2026-08-05' })]);
+  const stub = data.sessionTree.nodes.find(n => n.kind === 'stub');
+  assert.equal(stub.at, '2026-08-12T07:30:00Z');
+  assert.equal(stub.day, '2026-08-12', 'the row still displays a plain day');
+});
+
+// The scopes read the same key as the sort. A session that opened 26 hours ago
+// and was worked ten minutes ago belongs in Day; reading `started` dropped it
+// out of every scope narrower than the one its FIRST turn fell in, which on
+// 2026-09-04 was three of the twelve sessions the pane had that day.
+test('a time scope counts last activity, not the opening turn', () => {
+  const ago = (h) => new Date(Date.now() - h * 36e5).toISOString();
+  set([], [record('longrunner', { agent: SESS('A'), day: ago(26).slice(0, 10),
+                                  started: ago(26), ended: ago(0.2) })]);
+  data.sessionScope = 'day';
+  assert.equal(data.sessionNodes.map(n => n.id).join(','), 'longrunner');
+  assert.equal(data.sessionScopes.find(s => s.key === 'day').count, 1);
 });
 
 // The standing "N of M branches placed" label is retired: it explained the
