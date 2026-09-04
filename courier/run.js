@@ -81,7 +81,8 @@
     </style>
     <div class="cx-panel">
       <h3></h3><p></p><div class="cx-body"></div><div class="cx-row"></div>
-      <p class="cx-foot"><a href="https://github.com/mehrlander/web-tools/blob/main/courier/README.md"
+      <p class="cx-foot"><span class="cx-src"></span><a
+        href="https://github.com/mehrlander/web-tools/blob/main/courier/README.md"
         target="_blank" rel="noopener">What the courier is, and what it will not do</a></p>
     </div>`;
 
@@ -119,6 +120,23 @@
   const esc = (t) => String(t == null ? '' : t)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const say = (title, note) => { $('h3').textContent = title; $('p').textContent = note || ''; };
+  // A script's leading comment banner is documentation, not logic, and reading
+  // past it to reach the code is the whole complaint. The panel drops it.
+  //
+  // Only a CONTIGUOUS run of `//` lines and blanks from the very START of the
+  // file, stopping at the first line that is neither. Nothing can precede the
+  // first line, so no string or regular expression can be mistaken for a
+  // comment, which is what makes this safe where a general comment stripper is
+  // not: it cannot remove code. Comments beside code stay, since those are read
+  // with the line they explain. The footer links the untrimmed file either way,
+  // so the confirm gate still reaches what actually runs.
+  const trimBanner = (t) => {
+    const lines = t.split('\n');
+    let i = 0;
+    while (i < lines.length && /^\s*(\/\/.*)?$/.test(lines[i])) i++;
+    const rest = lines.slice(i).join('\n');
+    return i && rest.trim() ? rest : t;
+  };
   const button = (label, cls, fn) => {
     const b = (root.ownerDocument || root).createElement('button');
     b.textContent = label;
@@ -180,7 +198,11 @@
   say(errand.title, errand.note || '');
   const body = $('.cx-body');
   body.className = 'cx-body cx-code';
-  body.textContent = src;
+  const shown = trimBanner(src);
+  body.textContent = shown;
+  $('.cx-src').innerHTML =
+    `<a href="https://github.com/${REPO}/blob/${REF}/${esc(errand.script)}" target="_blank" rel="noopener">`
+    + (shown === src ? 'This script' : 'This script in full, banner and all') + '</a> &middot; ';
   button('Cancel', 'cx-quiet', close);
   button('Run this script', 0, async () => {
     $('.cx-row').innerHTML = '';
