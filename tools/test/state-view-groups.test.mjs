@@ -21,13 +21,21 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { makeWindow, startAlpine, repoRoot } from './bootstrap.mjs';
 
+// The real manifest, so the composition below is checked against the file the
+// app fetches rather than against a fixture that could agree with a stale
+// reading of it.
+const ROUTES_CSV = readFileSync(path.join(repoRoot, 'docs/app-routes.csv'), 'utf8');
+
 class FakeGH {
   constructor(conf = {}) { this.repo = conf.repo || ''; this.ref = conf.ref || 'main'; }
   ago() { return 'a while ago'; }
   async ls() { return []; }
   async repos() { return []; }
   async history() { return []; }
-  async get() { throw new Error('404'); }
+  async get(p) {
+    if (p === 'docs/app-routes.csv') return { text: ROUTES_CSV };
+    throw new Error('404');
+  }
   async req() { throw new Error('404'); }
 }
 
@@ -51,6 +59,7 @@ window.__shell = shell;
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
+  'lib/kits/csv.js',
   'lib/kits/crawl-runs.js',
   'lib/alpineComponents/state-view.js',
 ]);
@@ -159,6 +168,41 @@ test('the group runs both crawls, and each is forced', () => {
 // in CI, where the workflow sets no timeout-minutes, it reads as a check that
 // runs for six hours and then fails. state-view-progress.test.mjs ends the same
 // way for the same reason.
+// ── The consumer chips, composed ───────────────────────────────────────────
+// `feeds` used to be an authored array on each cache row. It is now the inverse
+// of `reads` on docs/app-routes.csv, built at read time. state-feeds.test.mjs
+// holds the authored side to the code that does the reading; what it cannot
+// see is whether the app actually inverts it, since that is a file check and
+// this is a mount.
+
+test('a cache row draws the views that declare a read of it', async () => {
+  await data.loadRouteReads();
+  // Both directions on one relation. Repos declares configs, so configs draws
+  // Repos; anything the manifest does not name draws nothing at all.
+  assert.ok(data.routeReads.estate.includes('configs'), 'the manifest parsed no reads for Repos');
+  assert.ok(data.feedsOf('configs').includes('estate'));
+  assert.ok(data.feedsOf('sessions').includes('search'));
+  // Joined, not deep-compared, for the reason the fold assertion above states:
+  // Alpine hands these back through a reactive proxy, which fails deepEqual on
+  // the prototype while reporting the values as identical.
+  assert.equal(data.feedsOf('entities').join(' '), '',
+    'the entity index is consumed by pages, not views, so it draws no view chip');
+  assert.equal(data.feedsOf('no-such-cache').join(' '), '');
+});
+
+test('a chip carries the label and the shell method a tap needs', () => {
+  for (const v of data.feedsOf('sessions')) {
+    assert.notEqual(data.viewLabel(v), v, `${v}: no label, so the chip would show its raw key`);
+    assert.notEqual(data.viewIcon(v), 'ph-square', `${v}: no icon`);
+  }
+  // The label is a copy of the manifest's and has drifted from it before: the
+  // chip read "Search" for a route the nav calls Files.
+  const manifest = Object.fromEntries(window.Csv.rows(ROUTES_CSV).map(r => [r.key, r.label]));
+  for (const v of Object.keys(data.routeReads)) {
+    assert.equal(data.viewLabel(v), manifest[v], `${v}: the chip label and the manifest have parted`);
+  }
+});
+
 test('teardown clears the tick and the listeners', () => {
   data.destroy();
 });
