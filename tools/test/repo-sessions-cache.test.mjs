@@ -155,13 +155,41 @@ test('a crawl that did not look at a record keeps its row; a deleted record lose
   assert.equal(pruned.rows[0].id, 'b8fae678');
 });
 
-test('rows come back newest-first', () => {
+// Newest is LAST ACTIVITY, not start, and the fixture is built so the two
+// orders disagree: every row here starts in one sequence and ends in the
+// reverse one. A session runs for hours in this estate and the long ones
+// overlap, so ordering on `started` put a session that opened earlier and was
+// still being worked below one that opened later and had already stopped. That
+// is the bug this fixture exists to fail on: sort on `started` and it returns
+// the exact opposite list.
+test('rows come back newest-first by LAST ACTIVITY, not by start', () => {
   const cache = S.buildCache(null, {
-    'sessions/2026/08/2026-08-01-aaaaaaaa.json': { record: record({ short: 'aaaaaaaa', day: '2026-08-01', started: '2026-08-01T09:00:00Z' }), sha: 'a' },
-    'sessions/2026/08/2026-08-05-bbbbbbbb.json': { record: record({ short: 'bbbbbbbb', day: '2026-08-05', started: '2026-08-05T09:00:00Z' }), sha: 'b' },
-    'sessions/2026/08/2026-08-03-cccccccc.json': { record: record({ short: 'cccccccc', day: '2026-08-03', started: '2026-08-03T09:00:00Z' }), sha: 'c' },
+    // Started last, ended first: a short session opened late in the day.
+    'sessions/2026/08/2026-08-05-aaaaaaaa.json': { record: record({ short: 'aaaaaaaa', day: '2026-08-05', started: '2026-08-05T11:00:00Z', ended: '2026-08-05T11:30:00Z' }), sha: 'a' },
+    'sessions/2026/08/2026-08-05-bbbbbbbb.json': { record: record({ short: 'bbbbbbbb', day: '2026-08-05', started: '2026-08-05T10:00:00Z', ended: '2026-08-05T14:00:00Z' }), sha: 'b' },
+    // Started first, ended last, and on the NEXT DAY: the row a day-precision
+    // sort filed under the day it began.
+    'sessions/2026/08/2026-08-05-cccccccc.json': { record: record({ short: 'cccccccc', day: '2026-08-05', started: '2026-08-05T09:00:00Z', ended: '2026-08-06T02:00:00Z' }), sha: 'c' },
+  }, null, '2026-08-06T04:00:00Z');
+  assert.deepEqual(cache.rows.map(r => r.id), ['cccccccc', 'bbbbbbbb', 'aaaaaaaa']);
+});
+
+// A row too old or too partial to carry `ended` still has to sort somewhere
+// definite, and a tie has to resolve the same way on every crawl: this file is
+// committed, so an order that depends on which records a pass happened to
+// refetch is a diff on nothing.
+test('the sort falls back to start, and ties break on id', () => {
+  const same = { day: '2026-08-05', started: '2026-08-05T09:00:00Z', ended: '2026-08-05T12:00:00Z' };
+  const cache = S.buildCache(null, {
+    'sessions/2026/08/2026-08-05-cccccccc.json': { record: record({ ...same, short: 'cccccccc' }), sha: 'c' },
+    'sessions/2026/08/2026-08-05-aaaaaaaa.json': { record: record({ ...same, short: 'aaaaaaaa' }), sha: 'a' },
+    // No `ended` at all: falls back to its own start, which is the latest here.
+    'sessions/2026/08/2026-08-05-bbbbbbbb.json': { record: record({ short: 'bbbbbbbb', day: '2026-08-05', started: '2026-08-05T13:00:00Z', ended: '' }), sha: 'b' },
   }, null, '2026-08-05T18:00:00Z');
-  assert.deepEqual(cache.rows.map(r => r.id), ['bbbbbbbb', 'cccccccc', 'aaaaaaaa']);
+  assert.deepEqual(cache.rows.map(r => r.id), ['bbbbbbbb', 'aaaaaaaa', 'cccccccc']);
+  assert.equal(S.lastAt({ ended: 'E', started: 'S' }), 'E');
+  assert.equal(S.lastAt({ started: 'S' }), 'S', 'a row with no ended still has a key');
+  assert.equal(S.lastAt({}), '', 'and a row with neither sorts last, not first');
 });
 
 test('attention counts distinct sessions, not just accesses', () => {

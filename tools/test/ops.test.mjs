@@ -57,8 +57,15 @@ const plainText = (s) => Array.from(s).map(ch => {
   return ch;
 }).join('').replace(/^[\u{1F33F}\u{1F558}] /u, '').replace(/ {2}/g, ' · ');
 
-const row = (id, minsAgo, ask, branches = [], repos = []) =>
-  ({ id, started: new Date(Date.now() - minsAgo * 60000).toISOString(), ask, branches, repos });
+const stamp = (minsAgo) => new Date(Date.now() - minsAgo * 60000).toISOString();
+// `endedMinsAgo` is omitted by most callers on purpose: a row without `ended` is
+// exactly what the op's fallback is for, so leaving it off keeps that path under
+// test everywhere the ordering itself is not the subject.
+const row = (id, minsAgo, ask, branches = [], repos = [], endedMinsAgo = null) => {
+  const r = { id, started: stamp(minsAgo), ask, branches, repos };
+  if (endedMinsAgo !== null) r.ended = stamp(endedMinsAgo);
+  return r;
+};
 
 test('session-menu reads the index once, synchronously, raw, with the token as given', () => {
   const { fn, sent } = load('session-menu.js', { body: { rows: [] } });
@@ -111,9 +118,15 @@ test('session-menu: the caption names each case in words, by branch slug, and st
   const stale = new Date(Date.now() - 16 * 3600000).toISOString();
   const run = (rows, input, at) => load('session-menu.js', { body: { rows, generatedAt: at } }).fn({ input, token: 't' }).caption;
   assert.equal(plainText(run([here, other], 'claude/x', fresh)), 'This branch · x');
-  assert.equal(plainText(run([other], 'claude/x', fresh)), 'Recent · none yet on x');
   assert.equal(plainText(run([other], 'not a branch', fresh)), 'Recent · no branch on the clipboard');
-  // The index's age is said only when it is old enough to explain an absence.
+  // A branch that matched NOTHING carries the age however fresh the index is,
+  // because there the age is the difference between "no such session" and "the
+  // crawl has not run since it started". Three hours, and five minutes:
+  assert.equal(plainText(run([other], 'claude/x', fresh)), 'Recent · none yet on x · index 3h old');
+  assert.equal(plainText(run([other], 'claude/x', stamp(5))), 'Recent · none yet on x · index 5m old');
+  // A branch that DID match keeps the six-hour threshold: there the age only
+  // warns that a newer session may be missing.
+  assert.equal(plainText(run([here, other], 'claude/x', stale)), 'This branch · x · index 16h old');
   assert.equal(plainText(run([other], 'claude/x', stale)), 'Recent · none yet on x · index 16h old');
   assert.match(run([here], 'claude/x', fresh), /^\u{1F33F} /u, 'the branch header carries the branch glyph');
   assert.match(run([other], 'claude/x', fresh), /^\u{1F558} /u, 'the recent header carries the recent glyph');
@@ -135,6 +148,30 @@ test('session-menu: branch rows lead and are marked, recent rows fill, nothing r
   for (const l of r.rows) assert.match(r.urls[l], /^https:\/\/mehrlander\.github\.io\/web-tools\/pages\/session\.html#id=[0-9a-f]{8}$/);
   assert.equal(Object.keys(r.urls).length, 3);
   assert.equal(r.count, 3);
+});
+
+test('session-menu: rows order by last activity, not by when the session started', () => {
+  const body = { rows: [
+    // Picked up ten hours ago and STILL RUNNING: the one a reader means.
+    row('aaaaaaaa', 600, 'Long one, still going', ['claude/x'], [], 5),
+    // Started later and finished long ago, so `started` alone puts it first.
+    row('bbbbbbbb', 120, 'Short one, done', ['claude/x'], [], 110),
+  ] };
+  const r = load('session-menu.js', { body }).fn({ input: 'claude/x', token: 't' });
+  assert.deepEqual(r.rows.map(l => r.urls[l].slice(-8)), ['aaaaaaaa', 'bbbbbbbb']);
+  // And the age on the row is the same value the sort used, so a reader can
+  // check the order against what the rows say rather than taking it on faith.
+  assert.equal(plainText(r.rows[0]), '5m · Long one, still going');
+  assert.equal(plainText(r.rows[1]), '2h · Short one, done');
+});
+
+test('session-menu: a row with no `ended` falls back to `started` and sorts against one that has it', () => {
+  const body = { rows: [
+    row('aaaaaaaa', 30, 'No ended field'), // ordered on `started`, 30m
+    row('bbbbbbbb', 600, 'Ended ten minutes ago', [], [], 10),
+  ] };
+  const r = load('session-menu.js', { body }).fn({ input: '', token: 't' });
+  assert.deepEqual(r.rows.map(l => r.urls[l].slice(-8)), ['bbbbbbbb', 'aaaaaaaa']);
 });
 
 test('session-menu: an ask is plain and bounded, and a duplicate ask still yields distinct labels', () => {
