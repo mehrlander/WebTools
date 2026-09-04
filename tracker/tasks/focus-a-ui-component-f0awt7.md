@@ -1,73 +1,78 @@
 ---
 id: focus-a-ui-component-f0awt7
-title: Find a way to focus attention on one piece of a page's UI
+title: Let a brief cover one picked region instead of a whole page
 status: backlog
 opened: 2026-07-26
-size: ?
+size: M
 ---
-# Find a way to focus attention on one piece of a page's UI
+# Let a brief cover one picked region instead of a whole page
 
-Settle how a person designates **one region of a running page** and then works
-on just that: scope a review to it, filter a listing to it, highlight it in
-place. The unit is a piece of UI as a reader perceives it, which is not
-necessarily an Alpine component. It might be a toolbar, a card, a panel, one
-row of a table, or a subtree that no component boundary matches.
+Give `lib/kits/brief.js` a scope: assemble a brief covering one region of a
+running page and the code behind it, rather than the page whole.
 
-The consumer that motivated it is the review brief (`lib/kits/brief.js`, PR
-#295), which today can only take a whole page. On most pages that is 10-15K
-tokens and fine; the request behind it was narrower, and better: *focus on some
-piece*. But the affordance is worth more than the brief. Scoping, filtering,
-and highlighting are the same question asked three ways, and inspection and
-review both want the answer.
+This task was filed as an open design question about how a person designates a
+piece of UI at all. That question has since been answered by work that did not
+cite it, so what is left is the one consumer that motivated it.
 
-## What has to be decided
+## What is already built
 
-**Designation.** How does the region get picked? Candidates, none settled:
+**Designation: `lib/kits/peek.js`.** Point at something and the page answers
+with the element; point again in the same spot and it answers with the parent,
+then its parent, up to `<body>` and around. The chain is the unit, not the
+element, and stepping it re-queries nothing. That is the affordance this task
+was written to find, including the granularity fix it said the FAB's Inspect tab
+lacked: too coarse for one row inside a component, too fine for a whole sidebar
+is exactly what an ancestor chain with a step control resolves.
 
-- The FAB's Inspect tab already lists Alpine components and outlines one in
-  place on tap. That is a working picker, but its vocabulary is the component
-  registry, which is the wrong granularity in both directions: too coarse for
-  one row inside a component, too fine for "the whole left sidebar."
-- Point-and-pick against the live DOM (hover to outline, tap to select),
-  which needs no registry and matches how a person sees the page. Costs a
-  mode, and has to survive a drawer sitting over the page.
-- A declared region: an attribute a page author puts on a subtree. Precise
-  and stable, but only covers regions someone thought to mark.
+**Identity: `lib/kits/annotate.js`.** Five targeting modes with one note shape,
+each carrying an anchor meant to survive a reload: a W3C-style text quote
+(exact plus prefix and suffix) for text, a css path and text excerpt for a
+picked element, a rectangle in document coordinates for a region, and a source
+file plus line span for a section of a rendered markdown document.
 
-**Identity.** Whatever is picked has to be nameable in a way that survives a
-reload and can be written into a link, a brief header, or a task. A DOM path
-is fragile; a component id is stable but only where components exist.
+**The hard half, answered honestly rather than solved.** This task worried that
+going from a rendered region back to the code responsible for it is the part
+that might not be possible, and said that if so, the finding should be stated
+and the feature scoped to where the mapping exists. That is what annotate does:
+where a render declares what it is a rendering of, the address resolves to
+`docs/APP.md § Mechanism (lines 16-28)`; where it does not, the anchor is a css
+path, which addresses a DOM that exists only while the page is open. The
+distinction is stated at the top of the kit rather than papered over.
 
-**What "focus" then does.** At least three verbs, and they may not want the
-same mechanism:
-- *scope*: assemble a brief (or an export) covering only this region and the
-  code behind it
-- *filter*: hide or de-emphasize everything else in a listing
-- *highlight*: outline it in place, which the Inspect tab already does
+**Highlight**, one of the three verbs, is done: element and region notes get
+positioned outline boxes.
 
-## Why it is not obvious
+## What is left
 
-Going from a rendered region back to *the code responsible for it* is the hard
-half, and it is what a scoped brief needs. For an Alpine component the mapping
-exists (the registry knows which file defined it). For an arbitrary subtree it
-does not, and a wrong answer is worse than none: a brief that claims to cover a
-region while omitting the module that renders it is misleading in a way the
-whole-page brief cannot be.
+`brief.js` exposes `plan`, `assemble`, `copy`, `stageUrl`, and takes no scope.
+On a page that boots the whole pre-build it throws:
 
-`app/index.html` is the page that most needs this and the one
-that most resists it: it boots the whole pre-build (~262K tokens), so
-`brief.assemble` refuses it outright. Any answer here should make show-repo
-briefable a piece at a time, which is a good test of whether the answer is real.
+> This page boots the whole pre-build (~262K tokens). Brief a single component instead.
+
+There is no way to do what that message says. `app/index.html` is still the page
+that most needs this and the one that most resists it, and it is still the test
+of whether an answer is real.
+
+So: a scope option on `plan`/`assemble`, fed by a Peek chain, resolving to the
+modules behind the picked subtree. The `scope` verb is the work; `filter`, the
+third verb this task once listed, has no consumer asking for it and is dropped.
 
 ## Done means
 
-A decided mechanism, not necessarily a large one: a way to pick a region, a way
-to name it, and at least one of the three verbs working end to end. If the
-honest finding is that region-to-code cannot be done reliably for arbitrary
-subtrees, say so and scope the feature to where the mapping exists.
+`brief` assembles for a picked region of `app/index.html` and names its scope in
+the brief header, or the attempt establishes that region-to-module cannot be
+resolved for a subtree even with Peek's chain in hand, said in one line here.
 
 ## Progress log
 - 2026-07-26: Filed from PR #295 wrap-up. The brief kit and the FAB take-away
-  menu landed there; this is the piece deliberately left undone. Framing
-  widened from "per-Alpine-component briefs" to any UI region, since the
-  component registry is the wrong granularity for what a reader points at.
+  menu landed there; this is the piece deliberately left undone. Framing widened
+  from "per-Alpine-component briefs" to any UI region, since the component
+  registry is the wrong granularity for what a reader points at.
+- 2026-09-04: Rewritten to its residual during a tracker refinement pass, and
+  sized M rather than `?`. Two of the three things this task set out to decide
+  are built and were built without reference to it: `kits/peek.js` (PR #547) is
+  the picker, and `kits/annotate.js` is the anchoring vocabulary. The task's own
+  fallback position, scope the feature to where the source mapping is declared
+  and be honest elsewhere, is the position annotate took. `brief.js` is
+  unchanged and still refuses a whole-lib page while naming a per-component
+  scope that has no entry point, which is now the whole task.

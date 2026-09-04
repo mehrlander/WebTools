@@ -8,7 +8,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Read estate.js's commentary the way show-repo.html's was read](tasks/estate-js-commentary-read-mymt4u.md) · M
 - 🎫 [Persist FAB captures, the write path to state/captures/](tasks/fab-capture-button-f6q38m.md) · S
 - 🎫 [Let the Files pane find and the deck read, and stop it doing both](tasks/files-pane-finds-deck-reads-ubu13s.md) · M
-- 🎫 [Find a way to focus attention on one piece of a page's UI](tasks/focus-a-ui-component-f0awt7.md) · ?
+- 🎫 [Let a brief cover one picked region instead of a whole page](tasks/focus-a-ui-component-f0awt7.md) · M
 - 🎫 [Read a document's growth against its readership, on the Docs tab](tasks/growth-vs-reads-quadrant-ng3c97.md) · M
 - 🎫 [Live-confirm the BranchSessions query](tasks/live-confirm-graphql-queries-7maacy.md) · XS
 - 🎫 [Stop storing the conventions twice](tasks/one-copy-of-the-conventions-i9i931.md) · S (awaiting: a decision on whether to depend on the marketplace clone's path (stage 2 only; stage 1 is startable now))

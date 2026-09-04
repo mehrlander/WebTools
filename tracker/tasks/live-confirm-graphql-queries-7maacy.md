@@ -31,6 +31,10 @@ whether permissions elide nodes we expect.
 
 ## Notes
 
+The call site is `fab.js`'s branch scan, guarded by a `typeof` check and cached
+under a `walk|<repo>` scan key, so a rejection degrades silently rather than
+failing the pane. That guard is why nothing has surfaced either way.
+
 Not on a hot path: it runs once per repo per crawl. A rejection costs session
 links on uncovered rows, not a page.
 
@@ -48,3 +52,9 @@ links on uncovered rows, not a page.
 - 2026-08-07: refined per the 2026-08-07 assessment (narrow). Retitled to the
   one remaining confirmation; the BranchesForPath half is history in this log
   rather than open scope.
+- 2026-09-04: Verified still live during a refinement pass. `branchSessions` is
+  defined in `gh-fetch.js` and called from one place, `fab.js`'s branch scan.
+  Nothing has confirmed or rejected it since 2026-08-06, which is consistent
+  with the guard: a failure costs session links on uncovered rows and says
+  nothing. Unchanged in scope; the call site is now named so the next session
+  does not search for it.

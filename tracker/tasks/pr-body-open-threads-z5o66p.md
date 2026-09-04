@@ -18,7 +18,7 @@ Measured on web-tools, 2026-08-09:
 
 | | Count |
 | --- | --- |
-| Tracker tasks, all time | 72 (16 backlog, 56 done) |
+| Tracker tasks, all time | 72 (16 backlog, 56 done); 94 on 2026-09-04 |
 | Last 100 closed PRs carrying Next steps | 82 |
 | Bullet items in those 82 bodies | ~185 |
 
@@ -68,3 +68,9 @@ walking GitHub by hand, and ticking it there marks it in the body it came from.
 - 2026-08-09: Filed from a session working on the dictation extraction, which is
   itself one of PR #377's open threads and the observation that started this. The
   counts above are from that session's read of the last 100 closed PRs.
+- 2026-09-04: The formal side restamped, 72 tasks to 94 (24 backlog, 70 done).
+  The PR-body figures are still the 2026-08-09 reading, and are not restamped
+  because re-measuring means walking 100 bodies. Note which way the gap has
+  moved: the repo was near PR #440 when this was filed and is at #581 now, so
+  the informal ledger grew by roughly 140 PRs while the formal one grew by 22.
+  The order-of-magnitude finding this task rests on has widened, not closed.
