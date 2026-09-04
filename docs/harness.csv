@@ -4,7 +4,7 @@ scripts/bound-boolean-attrs.py,"report an Alpine boolean attribute (:disabled, :
 scripts/build-tree.py,render a repository file tree as a linked markdown table for chat,scripts,252,argv,no,yes,no
 scripts/check-branch-status.mjs,the stated agreement check for the branches view against home's unmerged-branches.sh,scripts,145,argv,no,yes,no
 scripts/code-shape.py,"per-file observable properties of lib/: what a file attaches to, boot, hub, DOM, Alpine; the instrument behind docs/code-layers.md and the code-layers gate",scripts,382,npm:code-shape,yes,yes,yes
-scripts/dead-links.py,"report markdown links that no longer resolve, in three classes (internal, cross-repo, github)",scripts,256,argv,no,yes,yes
+scripts/dead-links.py,"report markdown links that no longer resolve, in three classes (internal, cross-repo, github)",scripts,253,argv,no,yes,yes
 scripts/dead-opacity.py,"report a daisyUI theme colour carrying an opacity step that generates no CSS rule. The ramp daisyUI ships is 10..90 by tens, so every other step, both ends, and the bracket form fall back: a background to transparent and TEXT to full strength, which is the wrong direction and errors nowhere. Stock palette colours take any step and are never reported, which is the half a looser scan gets wrong. --check gates it",scripts,152,npm:opacity-scan,no,yes,yes
 scripts/declared-paths.py,check every page a .web-tools.json declares still exists; runs in consumer repos' verify suites,scripts,137,argv,no,yes,no
 scripts/doc-growth.py,"weekly size-and-churn series for a repo's markdown, as one JSON payload: every file's length in words at each sample plus the commit churn around it, for pages/doc-growth.html. Samples trees rather than diffing, and reads blob contents through one cat-file batch fed from a thread",scripts,176,npm:doc-growth,yes,yes,no
@@ -24,6 +24,7 @@ tools/build/bake.mjs,emit dist/<page>.html: the page's chain inlined into a stan
 tools/build/build-app.mjs,"emit dist/app.js, the app's own pre-build: the part of lib/ app/index.html can reach, by the shared emitter; --check for the gate",tools/build,158,npm:build:app,yes,yes,yes
 tools/build/build-lib.mjs,"emit dist/web-tools.js, the pre-build: the whole lib/ as one self-booting offline artifact",tools/build,108,npm:build:lib,yes,yes,yes
 tools/build/build.mjs,"emit dist/<page>.js: a page's gh.load chain frozen offline, through lib/build.js's emitter",tools/build,77,npm:build,yes,yes,no
+tools/build/cache-readers.mjs,"derive the cache-to-module half of the cache-to-view relation: for each thing the estate keeps derived, the app files that read it, with the shell and the declaring kit excluded as writers rather than consumers",tools/build,125,imported,no,yes,yes
 tools/build/console-suite.mjs,assemble console/suite.js from base.js plus the layered console modules,tools/build,51,npm:build:console,yes,yes,yes
 tools/build/docs-reach.mjs,restamp the derived reach and words fields of docs/docs.csv,tools/build,278,npm:docs-reach,yes,yes,yes
 tools/build/docs-readme.mjs,regenerate docs/README.md from docs/docs.csv,tools/build,98,npm:docs-readme,yes,yes,yes
@@ -38,7 +39,7 @@ tools/build/registries-reach.mjs,"stamp renders_in into docs/registries.csv: the
 tools/build/repo-pages-shots.mjs,regenerate pages-gallery thumbnails for another repo's pages catalog,tools/build,167,argv,no,yes,no
 tools/build/snags-index.mjs,generates the index at the top of docs/SNAGS.md and warns about likely repeats,tools/build,252,npm:snags-index,yes,yes,yes
 tools/build/tests-index.mjs,"restamp the derived half of docs/tests.csv, the test registry",tools/build,243,npm:tests-index,yes,no,yes
-tools/build/tools-index.mjs,restamp the derived half of this registry,tools/build,181,npm:tools-index,yes,yes,yes
+tools/build/tools-index.mjs,restamp the derived half of this registry,tools/build,188,npm:tools-index,yes,yes,yes
 tools/build/verify-build.mjs,prove a page's dist build renders byte-identical to its live gh.load chain,tools/build,86,npm:verify-build,no,yes,no
 tools/render/cdn.mjs,the CDN URL to local-file resolver both renderers share,tools/render,397,imported,no,yes,yes
 tools/render/estate-card-demo.mjs,screenshot driver: render the estate's Repos grid with seeded entries,tools/render,72,none found,no,no,no

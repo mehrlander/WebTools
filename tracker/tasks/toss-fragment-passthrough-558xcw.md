@@ -6,7 +6,6 @@ project: show-repo
 opened: 2026-07-25
 closed: 2026-07-25
 session: claude/toss-render-data-formats-4t55x7
-next: done on claude/toss-render-data-formats-4t55x7; lands via PR #288. Follow-on: have data-view consume the fragment for item selection
 ---
 # Pass a trailing fragment through toss-render to the rendered page
 

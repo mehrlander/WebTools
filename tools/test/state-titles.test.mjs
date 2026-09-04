@@ -19,7 +19,12 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeWindow, startAlpine } from './bootstrap.mjs';
+import { readFileSync } from 'node:fs';
+import nodePath from 'node:path';
+import { makeWindow, startAlpine, repoRoot } from './bootstrap.mjs';
+
+// The route manifest, which carries the authored side of who reads what.
+const ROUTES_CSV = readFileSync(nodePath.join(repoRoot, 'docs/app-routes.csv'), 'utf8');
 
 const HOUR = 3600 * 1000;
 const now = Date.now();
@@ -53,6 +58,7 @@ class FakeGH {
     gets++;
     if (p.endsWith('sessions.json')) return { text: JSON.stringify(SESSIONS) };
     if (p.endsWith('activity.json')) return { text: JSON.stringify({ repos: {} }) };
+    if (p === 'docs/app-routes.csv') return { text: ROUTES_CSV };
     throw new Error('404');
   }
 }
@@ -67,6 +73,7 @@ window.__shell = { REGISTRY_REPO: 'me/registry', hasToken: () => true, crawlProg
 
 const Alpine = await startAlpine(window, [
   'lib/alpine-bundle.js',
+  'lib/kits/csv.js',
   'lib/kits/crawl-runs.js',
   'lib/kits/repo-activity-cache.js',
   'lib/alpineComponents/state-view.js',
@@ -166,8 +173,13 @@ test('the row sits with Sessions, which is where the hand-off lands', async () =
     'the export reading has to be in that screen, not past the entity index');
 });
 
-test('it says who reads it, and answers to the deep link like any row', () => {
-  assert.deepEqual([...data.titles.feeds], ['sessions', 'search']);
+test('it says who reads it, and answers to the deep link like any row', async () => {
+  // Composed, not authored: the row carried its own `feeds` array until the
+  // relation got one owner. Titles have no file under state/ for a scan to
+  // find, so the row declares `via: 'sessions'` and the views that read it are
+  // the ones docs/app-routes.csv says read titles.
+  await data.loadRouteReads();
+  assert.equal(data.feedsOf('titles').join(' '), 'sessions search');
   data.aim('titles');
   assert.equal(data.item, 'titles');
   data.destroy();

@@ -6,7 +6,6 @@ project: repo
 opened: 2026-07-15
 closed: 2026-07-28
 session: claude/tracker-status-cjogjn
-next: done as a first cut; folder-vs-branch settled as a per-repo choice, both fields wired
 ---
 # Repo-designated inbox and outbox in .web-tools.json
 

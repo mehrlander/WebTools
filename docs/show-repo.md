@@ -1990,21 +1990,36 @@ cache and made the Sessions row look like a half that had been split off. Under
 the group heading the row is Branches, which is what its own `used by` chip
 always said.
 
-**Each row says who uses it, as view keys.** `feeds` is a list of shell view
-keys (`estate`, `activity`, `sessions`, `search`) rendered as chips
-that route through the shell's own `go*` methods, so a tap goes and looks at the
-data being consumed. The list is deliberately only the clean answers. The prose
-it replaced also named the sidebar, quick links, and things below view
-granularity, which is where the detail now lives instead: configs also drives
-the sidebar, the quick-link row, and every promoted app view; activity also
-feeds the Repos cards' per-repo rollups; sessions also feeds the branch rows'
-session links and the Search view's session lane. None of those is a view, so
-inventing keys for them would be the over-normalization
-[registries.md](registries.md) warns against. The entity index's consumers are
-`pages` rather than views, kept as a separate field because a page opens at its
-own URL while a view is a stop inside this shell, and one chip cannot honestly
-mean both. Each row's crawl cost rides its Refresh button's tooltip, where it is
-actionable, rather than a line of its own.
+**Each row says who uses it, as view keys**, rendered as chips that route
+through the shell's own `go*` methods, so a tap goes and looks at the data being
+consumed.
+
+**The chips are composed, not authored.** The authored side is `reads` on
+[`docs/app-routes.csv`](app-routes.csv), one column on the registry that already
+owns a routed view, naming what each view consumes; a cache row's chips are that
+relation read backwards, built at read time and stored nowhere. A scan
+([`cache-readers.mjs`](../tools/build/cache-readers.mjs)) bounds what may be
+claimed there, and [`state-feeds.test.mjs`](../tools/test/state-feeds.test.mjs)
+is where the two meet: it holds the upper bound (no view claims a read no file
+of its own makes) and the lower (a row listing a cache's own kit, or carrying a
+file that backs no other route, must declare it). The residue between the bounds
+is what only a person can settle, which is which of `estate.js`'s seven views
+consumes which cache.
+
+The list is still deliberately only the clean answers. The prose it replaced
+also named the sidebar, quick links, and things below view granularity, which is
+where the detail now lives instead: configs also drives the sidebar, the
+quick-link row, and every promoted app view; activity also feeds the Repos
+cards' per-repo rollups; sessions also feeds the branch rows' session links.
+None of those is a view, so inventing keys for them would be the
+over-normalization [registries.md](registries.md) warns against. The entity
+index's consumers are `pages` rather than views, kept as a separate field
+because a page opens at its own URL while a view is a stop inside this shell,
+and one chip cannot honestly mean both. Session titles have no file of their own
+at all: the crawl joins the export onto the sessions rows, so the row declares
+`via: 'sessions'` and a view claiming titles must claim sessions too. Each row's
+crawl cost rides its Refresh button's tooltip, where it is actionable, rather
+than a line of its own.
 
 **The JSON is read in the app, not on GitHub.** Every registry row carries one
 **Expand** control, a bare caret at the row's end: expanding a row to see its

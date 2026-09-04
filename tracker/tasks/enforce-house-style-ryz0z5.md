@@ -27,15 +27,16 @@ Three pieces, one outcome:
   `stranded-titles.py` both default to `lib app pages`, so the 2026-08-29 page,
   built in `dump/`, was checked by nothing. Either widen the defaults or make
   them read the branch diff, which is the shape `npm run showing` already uses.
-- **Then measure whether the description change worked.** PR #554 added
-  `skillAttention`, so the question is now answerable: over the sessions after
-  2026-08-30, does `daisy-alpine` fire on page work, and does it still trail
-  `dataviz` (5 invocations to 4 across the 266 sessions before the change)?
-  That is the test of the fix, and it needs elapsed time rather than a session.
+**The discovery half is confirmed to have worked, so it is no longer part of
+this task.** Read from `skillAttention` on 2026-09-03, across 296 sessions:
+`daisy-alpine` fired 5 times in the 267 sessions before 2026-08-31 and 8 times
+in the 29 since, moving from 1.9% of sessions to 28%. It was the most-invoked
+skill in the post-change window, ahead of `tasks`. `dataviz`, which it trailed
+5 to 4 before the change, has not fired since 2026-08-28. PR #554 worked; what
+is left here is the catching, not the finding.
 
-**Done when** a stat-card grid in a changed file fails the suite, the scanners
-reach files outside `lib app pages`, and the invocation counts have been read
-once against the pre-change baseline.
+**Done when** a stat-card grid in a changed file fails the suite and the
+scanners reach files outside `lib app pages`.
 
 ## Progress log
 - 2026-09-01: Rule 3 landed on `claude/map-injection-tab-wrapping-veo5r5` (PR #565), which corrects this task's claim that rule 1 was the only rule with a mechanical tell. The guard ships in the portable plugin rather than under `scripts/`, which also answers the second bullet for this rule: a `PreToolUse` hook is path-independent, so a page built in `dump/` is covered even though the scanners' default roots are not. Rule 1 and the invocation-count reading are the residual.

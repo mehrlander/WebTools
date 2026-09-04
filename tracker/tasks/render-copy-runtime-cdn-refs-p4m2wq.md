@@ -4,6 +4,7 @@ title: Inline the run-time CDN references a rendering copy still carries
 status: backlog
 project: export
 opened: 2026-07-27
+size: S
 ---
 # Inline the run-time CDN references a rendering copy still carries
 
@@ -19,7 +20,9 @@ They break on exactly the cases the rendering copy exists for: a private repo, o
 
 ## Shape of the fix
 
-Rewrite `<script src>` values pointing at `cdn.jsdelivr.net/gh/mehrlander/...` into `blob:` or `data:` URLs built from the same cache `collectCache` already gathers. The pieces exist; what is missing is deciding where the rewrite belongs. It is not `bake()`'s job (that owns the module import), and doing it in `renderCopy` means the zip export would keep the old behavior, which is a divergence worth arguing about first.
+Rewrite `<script src>` values pointing at `cdn.jsdelivr.net/gh/mehrlander/...` into `blob:` or `data:` URLs built from the same cache `collectCache` already gathers.
+
+**The placement question is settled: it goes in `bakeHtml`.** The task was filed worrying that putting the rewrite in `renderCopy` would leave the zip export behind, a divergence to argue about first. There is nothing left to argue: `lib/kits/export.js` defines one `bakeHtml` helper that calls `collectCache`, and both `renderCopy` and the zip path call it. A rewrite there covers both, and it is not `bake()`'s job, which owns the module import. The one real limit to state in the change: the zip only bakes under `offline: true`, so a plain `-export.zip` keeps the CDN references by design.
 
 ## Adjacent, smaller
 
@@ -27,3 +30,7 @@ A baked page built from the canonical boot block still carries the `?use=` branc
 
 ## Progress log
 - 2026-07-27 filed while adding `renderCopy`; the count exists because the gap was found by a test that blocks every repo host and watches what the copy still asks for (`tools/test/render-copy.mjs`)
+- 2026-09-04: Placement settled by reading `lib/kits/export.js` rather than by
+  arguing: `bakeHtml` is already shared by `renderCopy` and the zip, so the
+  divergence the task was holding for has no substance. What remains is writing
+  the rewrite. Sized S.

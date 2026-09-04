@@ -6,7 +6,6 @@ depends-on: toss-fragment-passthrough-558xcw
 opened: 2026-07-25
 closed: 2026-08-06
 session: claude/web-tools-tracker-review-ij4pjj
-next: done on claude/web-tools-tracker-review-ij4pjj; the vocabulary is `item`, index or name, and it is written back
 ---
 # Have data-view open at an addressed item via the fragment
 

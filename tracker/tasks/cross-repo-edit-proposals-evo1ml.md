@@ -5,7 +5,6 @@ status: done
 opened: 2026-07-23
 closed: 2026-07-28
 session: claude/tracker-status-cjogjn
-next: done as a first cut; the four scope drafts are staged as pending proposals for the user to apply
 ---
 # Confirm-gated cross-repo edit proposals via a web-tools-private channel
 
