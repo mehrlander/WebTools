@@ -53,7 +53,7 @@ const PULLS = {
   'feat/c': [],
 };
 
-const calls = { compare: [], pulls: [], csv: [] };
+const calls = { compare: [], pulls: [], csv: [], trees: [] };
 let hold = null;                 // when set, compares wait on it
 
 const { window } = makeWindow({
@@ -72,6 +72,18 @@ class FakeGH {
     return compareFor(head);
   }
   async req(p) {
+    // The SCAN's two reads, base tree and tip tree, which is what turns a file
+    // list into landed / differs / missing. Every branch's one changed file
+    // holds a different blob on each side, so the partition is one `differs`
+    // and the count is a fact rather than a zero.
+    if (/^git\/trees\//.test(p)) {
+      calls.trees.push(p);
+      const onTip = !/trees\/main/.test(p);
+      return { truncated: false, tree: [
+        { path: 'feat/a.js', type: 'blob', sha: onTip ? 'tip' : 'base' },
+        { path: 'feat/c.js', type: 'blob', sha: onTip ? 'tip' : 'base' },
+      ] };
+    }
     const m = /head=([^&]*)/.exec(p || '');
     const head = m ? decodeURIComponent(m[1]).split(':')[1] : '';
     calls.pulls.push(this.repo + '@' + head);
@@ -130,7 +142,8 @@ const mount = async (branch, extra = {}) => {
   return data;
 };
 
-const reset = () => { calls.compare.length = 0; calls.pulls.length = 0; calls.csv.length = 0; meta.length = 0; };
+const reset = () => { calls.compare.length = 0; calls.pulls.length = 0; calls.csv.length = 0;
+                      calls.trees.length = 0; meta.length = 0; };
 
 // What the reader tapping "Read the changed files" does, which is the row the
 // list leaves where the diff would be while the compare is deferred. It goes
@@ -356,6 +369,19 @@ test('with nothing lending the head, the compare is not deferred', async () => {
   assert.equal(d.brief.ahead, 2);
   assert.equal(d.brief.state, 'live');
   assert.deepEqual(calls.compare, ['me/tools@feat/a']);
+
+  // AND IT MEASURES WHAT IT READ. A host lends `scan` so its slide draws the
+  // verdict strip on the first frame; this host is lent nothing, so the only
+  // way the strip exists is the page computing it. It did not until 2026-09-04:
+  // the scan rides ensureCompare(), load() called that only for a branch with
+  // no guide, and feat/a has a pull request, so a cold page paid for the
+  // compare and rendered its file list with no strip over it.
+  await tick(8);
+  assert.equal(calls.trees.length, 2, 'the base tree and the tip tree, one read each');
+  assert.ok(d.scan, 'the cold host is the one that cannot be lent a verdict, so it computes one');
+  assert.equal(d.verdict.nUnique, 1);
+  assert.equal(d.verdict.nDiffers, 1, 'the file is on both sides and the bytes differ');
+  assert.equal(d.verdict.lent, false, 'measured here, not handed down');
 });
 
 test('a compare that lands after a step does not overwrite the newer branch', async () => {
