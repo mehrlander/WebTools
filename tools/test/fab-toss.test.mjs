@@ -8,7 +8,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { makeWindow, startAlpine, tick, repoRoot } from './bootstrap.mjs';
 
 const { window, problems } = makeWindow({
   html: `<!doctype html><html><body>
@@ -625,4 +627,49 @@ test('the address grammar splits three ways, and refuses what is not one', async
     'no @ref means the default branch, which is a real answer');
   assert.equal(d._addrParts('nonsense'), null);
   assert.equal(d._addrParts(''), null);
+});
+
+// ── The fab loads what the fab mounts ───────────────────────────────────────
+//
+// THIS SUITE IS WHY THE BUG SURVIVED. startAlpine above hands path-picker.js
+// into the window by hand, so the mount never threw here while the product
+// never loaded it: gh-boot pairs fab and picker in FAB_BOOT, and every page
+// that hand-loads the fab restates that pair from memory. Ten of the eleven
+// that do dropped the picker, so opening the drawer threw "pathPicker is not
+// defined" as an Alpine expression error and an uncaught page error, and on a
+// phone the drawer read as a control that does nothing (reported 2026-09-04).
+//
+// So the assertion is on the SOURCE, not on this window: whatever a harness
+// supplies, fab.js has to load every component it mounts, and the mount has to
+// be deferred until that lands. Read from the file rather than the built
+// bundle, since the bundle is a projection of it.
+test('every component the fab mounts, the fab loads, and the mount waits for it', () => {
+  const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/fab.js'), 'utf8');
+  const tpl = src.slice(src.indexOf('template: `'), src.indexOf('\n      `,'));
+
+  const mounted = [...new Set([...tpl.matchAll(/x-data="([a-zA-Z][a-zA-Z0-9]*)\(/g)].map(m => m[1]))];
+  assert.ok(mounted.length, 'the template mounts at least one component');
+
+  for (const name of mounted) {
+    const file = 'alpineComponents/' + name.replace(/[A-Z]/g, c => '-' + c.toLowerCase()) + '.js';
+    assert.ok(src.includes("'" + file + "'"),
+      `the fab mounts ${name} but never loads ${file}; a host that did not happen to `
+      + 'load it gets "is not defined" the moment the drawer opens');
+  }
+
+  // x-show would not do: it hides a rendered element, and x-data is evaluated
+  // the moment the element initialises. Only x-if defers the expression.
+  const guard = tpl.indexOf('<template x-if="pickerReady">');
+  assert.ok(guard > 0, 'the picker mount is gated on pickerReady');
+  const inside = tpl.slice(guard, tpl.indexOf('</template>', guard));
+  assert.match(inside, /x-data="pathPicker\(/,
+    'the gate wraps the mount rather than sitting beside it');
+
+  // And the flag is earned: set after the load resolves, never up front.
+  assert.match(src, /ensurePicker\(\)\s*\{[\s\S]*?\.then\(\(\)\s*=>\s*\{\s*this\.pickerReady\s*=\s*true/,
+    'pickerReady is set by the load, not declared ready');
+  // Keyed to `open`, not to toggle(): the drawer body is built off the flag,
+  // so anything that opens the drawer another way must get the picker too.
+  assert.match(src, /\$watch\('open',[\s\S]{0,80}?ensurePicker\(\)/,
+    'and the flag going true is what asks for it');
 });
