@@ -14,9 +14,10 @@ a generator owns outright and rewrites whole, and a **view** assembled at read
 time by joining them. Today one file kind pretends to be all three.
 
 The enforcement is already half-built. `docs/properties.csv` declares `mode` as
-`recorded` or `computed` for all 126 property definitions, so the gate is: a
+`recorded` or `computed` for every property definition, so the gate is: a
 property's declared mode must match which file its column lives in. That turns
-126 existing declarations from description into structure.
+those declarations from description into structure. 152 of them as of
+2026-09-04 (110 recorded, 42 computed), up from 126 at filing.
 
 ## Two causes, measured 2026-08-18
 
@@ -125,3 +126,8 @@ read.
   26 page blurbs living in the generator. The rule is about any registry whose rows describe
   files, not about one kind. Ids and the `kind` column changed in the same pass, so the tables
   above use the current names.
+- 2026-09-04: Property count restamped, 126 to 152, during a refinement pass.
+  The survey tables are deliberately not restamped: they are measured against
+  the 2026-08-18 branch tip and carry the shape of the finding rather than
+  totals. Unchanged and still first: the sibling-versus-frontmatter decision,
+  which nothing else can proceed without.

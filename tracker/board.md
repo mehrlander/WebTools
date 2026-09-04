@@ -3,32 +3,30 @@
 _Generated from tasks/. Do not hand-edit._
 
 ## On deck
-- 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) (needs: Find a way to focus attention on one piece of a page's UI)
+- 🎫 [Reach the take-away menu from show-repo's Pages gallery](tasks/brief-from-the-pages-gallery-7d4031.md) · S
 - 🎫 [Enforce the house style, now that it is findable](tasks/enforce-house-style-ryz0z5.md) · M
 - 🎫 [Read estate.js's commentary the way show-repo.html's was read](tasks/estate-js-commentary-read-mymt4u.md) · M
 - 🎫 [Persist FAB captures, the write path to state/captures/](tasks/fab-capture-button-f6q38m.md) · S
 - 🎫 [Let the Files pane find and the deck read, and stop it doing both](tasks/files-pane-finds-deck-reads-ubu13s.md) · M
-- 🎫 [Find a way to focus attention on one piece of a page's UI](tasks/focus-a-ui-component-f0awt7.md)
+- 🎫 [Find a way to focus attention on one piece of a page's UI](tasks/focus-a-ui-component-f0awt7.md) · ?
 - 🎫 [Read a document's growth against its readership, on the Docs tab](tasks/growth-vs-reads-quadrant-ng3c97.md) · M
 - 🎫 [Live-confirm the BranchSessions query](tasks/live-confirm-graphql-queries-7maacy.md) · XS
 - 🎫 [Stop storing the conventions twice](tasks/one-copy-of-the-conventions-i9i931.md) · S (awaiting: a decision on whether to depend on the marketplace clone's path (stage 2 only; stage 1 is startable now))
-- 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md)
+- 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md) · M
 - 🎫 [Audit the app's views for viewport breakpoints inside the content pane](tasks/pane-width-not-window-width-wnabwo.md) · S
 - 🎫 [pdf.flow's `start` does not survive the column's own layout](tasks/pdf-flow-start-does-not-hold-461ldz.md) · S
-- 🎫 [Pinch-zoom and pan for pdf-inspect's page view](tasks/pdf-inspect-pinch-zoom-5wz3kt.md)
-- 🎫 [Close open table perimeters in the pdf kit's lattice](tasks/pdf-lattice-open-perimeter-h4kx9r.md)
+- 🎫 [Pinch-zoom and pan for pdf-inspect's page view](tasks/pdf-inspect-pinch-zoom-5wz3kt.md) · M
+- 🎫 [Close open table perimeters in the pdf kit's lattice](tasks/pdf-lattice-open-perimeter-h4kx9r.md) · M
 - 🎫 [Draggable column boundaries with live reassignment, in pdf-inspect](tasks/pdf-table-splitter-page-q7vm2d.md) · S
 - 🎫 [Make the PR bodies' open threads readable as one list](tasks/pr-body-open-threads-z5o66p.md) · M
 - 🎫 [Decide whether apple-shortcuts-actions belongs in the portable plugin](tasks/promote-shortcuts-skill-to-plugin-5d74br.md) · S
 - 🎫 [Separate authored from derived data across the registries](tasks/registry-authored-derived-split-v3qm2x.md) · L
-- 🎫 [Inline the run-time CDN references a rendering copy still carries](tasks/render-copy-runtime-cdn-refs-p4m2wq.md)
+- 🎫 [Inline the run-time CDN references a rendering copy still carries](tasks/render-copy-runtime-cdn-refs-p4m2wq.md) · S
 - 🎫 [Retire `shell`, and name the parts instead of the collection](tasks/retire-shell-name-the-parts-r152bt.md) · M
-- 🎫 [Session-start nudge for unconfigured or legacy-manifest repos](tasks/session-start-nudge-unconfigured-z0g4zn.md) (`claude/skills-portable-conventions-8x1lua`)
-- 🎫 [Spike the snags log (friction learned the hard way)](tasks/spike-snags-log-gobdyq.md) (`claude/pr-219-review-22csrh`)
-- 🎫 [Give the stage a way to carry part of a file](tasks/stage-partial-file-selection-k8mtou.md)
+- 🎫 [Session-start nudge for repos that never opted in](tasks/session-start-nudge-unconfigured-z0g4zn.md) · S
+- 🎫 [Give the stage a way to carry part of a file](tasks/stage-partial-file-selection-k8mtou.md) · M
 - 🎫 [Decide the remaining stranded title attributes, panel or leave](tasks/stranded-titles-panel-or-drop-o6hqom.md) · M
-- 🎫 [Make the cache-to-surface dependency checkable, not prose](tasks/surface-census-feeds-relation-anle6b.md) · M (awaiting: nothing; PR #387 landed `feeds` as routed view keys, which retires this task's interim step)
-- 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
+- 🎫 [Make the cache-to-surface dependency checkable, not prose](tasks/surface-census-feeds-relation-anle6b.md) · M
 
 ## In progress
 - (none)
@@ -89,6 +87,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Singleton fab with toss-render integration](tasks/singleton-fab-toss-render-gticvb.md) (`claude/fab-render-toss-render-ua6p3p`)
 - 🎫 [Route the orphan docs by cause, per the 2026-08-05 classification](tasks/skillify-orphan-docs-izv20p.md) (`claude/web-tools-docs-assessment-dc9bqv`)
 - 🎫 [Speed up show-repo's cold load](tasks/speed-up-show-repo-cold-load-u3846j.md) (`claude/speed-up-show-repo-load-3cdvl0`)
+- 🎫 [Spike the snags log (friction learned the hard way)](tasks/spike-snags-log-gobdyq.md)
 - 🎫 [Split docs/show-repo.md along the app's structure](tasks/split-show-repo-doc-3zh8xw.md) (`claude/web-tools-app-concept-crg8sl`)
 - 🎫 [Split the stage contract out of show-repo.md](tasks/split-stage-contract-74a7vh.md)
 - 🎫 [Fix the stage Diff lens B-select display desync](tasks/stage-diff-b-select-desync-v554kn.md) (`claude/web-tools-diff-review-s0nrq7`)
@@ -98,6 +97,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Converge the stage and surface item schemas](tasks/stage-surface-convergence-kgtosz.md)
 - 🎫 [Stand up the project tracker](tasks/stand-up-project-tracker-3t7h04.md) (`claude/tracker-concept-assessment-yto1m1`)
 - 🎫 [Carry commentary on a stage (prompts= link field, seed of a surface schema)](tasks/surface-schema-commentary-on-stage-hqz0uu.md) (`claude/web-tools-diff-review-s0nrq7`)
+- 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
 - 🎫 [Toggle-only Tailwind classes do generate, and the spinners do spin](tasks/toggle-only-tailwind-classes-gxi5tq.md) (`claude/web-tools-tracker-review-m49yxc`)
 - 🎫 [Pass a trailing fragment through toss-render to the rendered page](tasks/toss-fragment-passthrough-558xcw.md) (`claude/toss-render-data-formats-4t55x7`)
 - 🎫 [Structural response decode + differentiated errors in toss-render](tasks/toss-render-decode-errors-xu3c6d.md)

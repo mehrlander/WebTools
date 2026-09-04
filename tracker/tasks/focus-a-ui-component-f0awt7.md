@@ -3,6 +3,7 @@ id: focus-a-ui-component-f0awt7
 title: Find a way to focus attention on one piece of a page's UI
 status: backlog
 opened: 2026-07-26
+size: ?
 ---
 # Find a way to focus attention on one piece of a page's UI
 

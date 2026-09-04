@@ -4,6 +4,7 @@ title: Integrate the stage with the surfacer's .surface format
 status: done
 depends-on: stage-links-main-area-explorer-7a6gd7
 opened: 2026-07-14
+closed: 2026-08-03
 ---
 # Integrate the stage with the surfacer's .surface format
 

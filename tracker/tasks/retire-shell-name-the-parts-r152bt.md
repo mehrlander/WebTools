@@ -8,8 +8,8 @@ size: M
 ---
 # Retire `shell`, and name the parts instead of the collection
 
-`shell` names six different things in this repo. `docs/showing.md:58` uses three
-of those senses in one paragraph.
+`shell` names six different things in this repo, three of them inside one
+paragraph of `docs/showing.md` (the one on what a nested preview cannot reach).
 
 | Sense | Where |
 | --- | --- |
@@ -23,15 +23,16 @@ of those senses in one paragraph.
 **Renaming it does not fix this**, and that is the finding worth keeping.
 Every collective considered (`chrome`, `app-chrome`, `surround`) fails the same
 way, because which furniture a collective covers depends on the layout:
-`HTML-STYLE.md:51` means a header and a footer, `show-repo.html:319` means a
-header and a sidebar, and both are already in the tree. The parts are stable
+the daisy-alpine skill's "content gets the screen and chrome gets the bars"
+means a header and a footer, while the app's header-plus-sidebar block means
+something else, and both are already in the tree. The parts are stable
 across layouts; the collection is not.
 
 ## The work
 
 **1. Split the parameter.** `?shell=` becomes `?header=` and `?sidebar=`.
-`shellMode` drives exactly two things, header visibility at
-`show-repo.html:202` and the sidebar's initial state at `:4403`, so the enum
+`shellMode` drives exactly two things in `app/index.html`, header visibility
+(`x-show="shellMode !== 'none'"`) and the sidebar's initial state, so the enum
 bundles two independent booleans and the doc's own table has two columns.
 Three things to get right:
 
@@ -50,19 +51,20 @@ three-segment mode bar becomes two toggles.
 
 **2. Replace the other five senses** with words already in the same sentences:
 `window.__app` (the house pattern is `__<componentName>` and the body is
-`x-data="app()"` at `:169`, so `__shell` is the only back-pointer not named for
-its component), the application's name per docs/APP.md's split (**Web Tools**
+the body is `x-data="app()"`, so `__shell` is the only back-pointer not named
+for its component), the application's name per docs/APP.md's split (**Web Tools**
 where a reader is addressed, **show-repo** on files, routes, and internals),
 **native** versus **embedded** views, **the page file** for a page's own inline
 code, and **nested/top-level document** for showing.md's pair.
 
 **3. A handful of definitional `chrome` sentences**, not a sweep of all of them.
-`HTML-STYLE.md:51` and `showing.md:25`/`:58` are *defining* things and should
-name their parts. Everything else stays.
+The defining uses are in `skills/daisy-alpine/SKILL.md` (rules 5 and 7, "the
+page has two tiers, content and chrome") and in `docs/showing.md`'s nesting
+section. Those should name their parts; everything else stays.
 
 **Leave `fab.js` alone.** Its `chrome` is a different concept: words inside
 `BUTTON/A/LABEL/SUMMARY/OPTION/TH/NAV` versus body prose, with an enumerated tag
-set at `:1664`, a derived `chromeShare`, seven assertions in
+set, a derived `chromeShare`, seven assertions in
 `tools/test/fab-text.test.mjs`, and a recorded design decision in
 `docs/text-tools.md`. It is the counterexample: a collective noun is stable when
 something enumerates its extent.
@@ -98,3 +100,11 @@ omission or by a third value.
   was done. Origin was a term-squatting problem in that PR's own writing
   (`docs/SNAGS.md`, `live-term-wider-referent`); auditing it surfaced how many
   things `shell` names. Nothing built yet.
+- 2026-09-04: Addresses repaired in a refinement pass; the finding is unchanged.
+  Every line number in this task had rotted, and `pages/show-repo.html` does not
+  exist at all: the app is `app/index.html`, and `docs/HTML-STYLE.md` became a
+  32-line pointer on 2026-08-31 when the rules moved into
+  `skills/daisy-alpine/SKILL.md`. References are now by content rather than by
+  line, since this task will outlive any line number it cites. Verified still
+  true: `?shell=` and `shellMode` are live in `app/index.html`, and `chrome` is
+  still used definitionally in the skill.

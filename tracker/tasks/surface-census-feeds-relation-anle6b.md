@@ -1,10 +1,9 @@
 ---
-id: surface-registry-feeds-relation-anle6b
+id: surface-census-feeds-relation-anle6b
 title: Make the cache-to-surface dependency checkable, not prose
 status: backlog
 opened: 2026-08-09
 size: M
-awaiting: nothing; PR #387 landed `feeds` as routed view keys, which retires this task's interim step
 ---
 # Make the cache-to-surface dependency checkable, not prose
 
@@ -60,16 +59,13 @@ across many rows, one field's prose does not.
 scope must say so, the way `harness` subtracts `tools/test/`.
 
 ## Scoped list
-- ~~The cheap interim: a locator gate extracting view-name tokens from each
-  `feeds` string.~~ Retired by #387, which made `feeds` an array of routed keys
-  rather than prose, so there are no tokens to extract. The gate it described is
-  now smaller and total rather than partial: assert every `feeds` entry is a
-  routed key. Still worth doing first, still about twenty lines, still the
-  `owners-registry.test.mjs` pattern, but it covers the field completely instead
-  of roughly half.
+- A locator gate asserting every `feeds` entry is a routed key. About twenty
+  lines on the `owners-registry.test.mjs` pattern, and worth doing first. (It
+  was scoped as a partial token-extraction gate before #387 made `feeds` an
+  array of routed keys rather than prose; the array makes the gate total.)
 - The surface registry itself: carrier, `target: a routed view`, the `component`
   field, a scope naming the 22 keys and their disjointness from `pages-catalog`,
-  and a row in `docs/properties.json`.
+  and a row in `docs/properties.csv`.
 - The `cache -> module` scanner, and the composition that replaces `feeds`.
 
 ## Done when
@@ -91,3 +87,9 @@ string.
 - 2026-08-18: prose updated for the vocabulary retirement (web-tools PR #441): what this task
   proposes is a registry, and `census` is no longer a word the estate uses for one. The id keeps
   its original slug, since the board links by filename and a reader's handle is the title.
+- 2026-09-04: Tidied in a refinement pass. The `awaiting: nothing` key is
+  dropped, since a field naming what holds a task should be absent when nothing
+  does. The struck-through interim item is rewritten as the smaller gate it
+  became rather than kept as its own retraction, and `docs/properties.json`
+  corrected to `.csv`. The `id:` field is restored to match the filename, per the
+  frozen-slug rule; the title is the reader's handle and stays as it is.

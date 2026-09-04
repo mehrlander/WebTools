@@ -5,7 +5,6 @@ status: done
 opened: 2026-07-08
 closed: 2026-07-28
 resolution: superseded
-next: closed as superseded; the goal shipped per-repo, not federated
 ---
 # Private-repo landing federation via the home registry
 

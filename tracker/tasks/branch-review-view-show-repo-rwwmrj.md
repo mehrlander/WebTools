@@ -6,7 +6,6 @@ project: show-repo
 opened: 2026-07-16
 closed: 2026-07-17
 session: claude/web-tools-branch-tracking-n1zawm
-next: session refreshes (show-repo thumbnail) at wrap-up, then review via PR #236
 ---
 # Branch-review view in show-repo
 

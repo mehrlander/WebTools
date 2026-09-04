@@ -6,7 +6,6 @@ project: show-repo
 opened: 2026-07-17
 closed: 2026-07-28
 session: claude/tracker-status-cjogjn
-next: done; landing via web-tools PR #302 and web-tools-private PR #8 (merge #302 first)
 ---
 # Collapse quickLinks into a projection of the repos manifest
 

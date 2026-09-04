@@ -21,12 +21,16 @@ The Docs tab is fixed and is the worked example: `@container` on the block, then
 other view that can sit in that pane, plus any framed app view, since the same
 gap opens wherever a pane and a window disagree.
 
+**The rule is already written**, so this task is the sweep and nothing else.
+`skills/daisy-alpine/references/mechanics.md` rule 10 states it: size a pane by
+its container, not the viewport, `@container` on the column and `@md:`/`@xl:` in
+place of `sm:`/`lg:`. (It is no longer in `docs/HTML-STYLE.md`, which became a
+pointer on 2026-08-31 when the rules moved into the skill that fires on page
+work.)
+
 ## Done when
 Every view reachable in the content pane has been opened with the deck docked
-and either reflows or is recorded as deliberately fixed-width. Convert the ones
-that do not, and if the pattern is general enough, state it once in
-[`docs/HTML-STYLE.md`](../../docs/HTML-STYLE.md) beside the form-in-a-split-pane
-rule it repeats.
+and either reflows or is recorded as deliberately fixed-width.
 
 ## Progress log
 - 2026-08-23: Filed from PR #480, which fixed the Docs tab and logged the class
@@ -42,3 +46,17 @@ rule it repeats.
   before and after with a headless probe: 8 overlapping element pairs and 8
   elements past the pane's right edge, both to zero, with the undocked layout
   unchanged at every width. Still unaudited: every other view in the pane.
+- 2026-09-03: The Files view converted, by PR #574, without this task being
+  cited. Two independent width caps, not viewport breakpoints: `max-w-7xl` on
+  the search pane in `app/index.html` and a `mx-auto` 65ch measure in
+  `viewer.js`, composing into a 1280px pane inside a 1920px window with a 506px
+  text column inside that. Both now `!max-w-none`. Worth noting for the sweep
+  that this is a second mechanism: `npm run reading-column` reported "none" over
+  the same screen, because a page-shell size and a standing opt-out are each
+  exempt by design and still compose into a corridor. Recorded here on
+  2026-09-04, during a refinement pass.
+- 2026-09-04: Done-condition trimmed. The clause asking this task to state the
+  rule in `docs/HTML-STYLE.md` is satisfied and then some: the rule exists as
+  daisy-alpine mechanics rule 10, in the file a session loads unprompted on page
+  work. Still unaudited: every view in the pane other than Docs, the Stage bench,
+  and Files.

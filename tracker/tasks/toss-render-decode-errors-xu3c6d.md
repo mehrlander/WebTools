@@ -5,7 +5,6 @@ status: done
 project: show-repo
 opened: 2026-07-17
 closed: 2026-07-17
-next: done; renders survive every media-type labeling and the error panel names the failing stage
 ---
 # Structural response decode + differentiated errors in toss-render
 

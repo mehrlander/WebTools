@@ -3,6 +3,7 @@ id: pdf-inspect-pinch-zoom-5wz3kt
 title: Pinch-zoom and pan for pdf-inspect's page view
 status: backlog
 opened: 2026-07-26
+size: M
 ---
 # Pinch-zoom and pan for pdf-inspect's page view
 

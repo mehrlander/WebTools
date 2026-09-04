@@ -3,7 +3,7 @@ id: own-json-tree-retire-vje-i0lcj2
 title: Build our own JSON tree for display, keep vanilla-jsoneditor for editing
 status: backlog
 opened: 2026-07-25
-next: user was leaning toward replacing it outright; the recommendation is the split below, so confirm the split before building
+size: M
 ---
 # Build our own JSON tree for display, keep vanilla-jsoneditor for editing
 
@@ -14,11 +14,19 @@ things the estate is growing. Filed from the 2026-07-25 `#data=` session.
 
 ## The fact that scopes it
 
-Exactly one consumer edits: [`popups/idb-nav.html`](../../popups/idb-nav.html)
-listens for `viewer:tree-change`, tracks `dirty`/`latestContent`, and writes
-IndexedDB records back. Every other mount (the data route, show-repo's Files
-view, the stage preview, chat-results) is read-only. So this is not "VJE or
-ours"; it is "why is a 1.27 MB editor (373 KB gzipped) the display path."
+Three mounts now load VJE, and only one of them is an editing workflow with a
+consumer behind it. Measured 2026-09-04:
+
+| Mount | Mode | Who edits |
+| --- | --- | --- |
+| `lib/alpineComponents/viewer.js` | editable tree, fires `viewer:tree-change` | [`popups/idb-nav.html`](../../popups/idb-nav.html) alone, which tracks `dirty`/`latestContent` and writes IndexedDB records back |
+| `lib/alpineComponents/console.js` | `readOnly: true` | nobody; it is display |
+| `lib/alpineComponents/transform-workbench.js` | editable tree | the workbench itself |
+
+Every other consumer of `viewer.js`'s tree (the data route, the Files view, the
+stage preview, chat-results) is read-only and reaches it through the one editable
+mount. So this is not "VJE or ours"; it is "why is a 1.27 MB editor (373 KB
+gzipped) the display path for readers who never type."
 
 ## Why build the reader
 
@@ -29,8 +37,9 @@ Four arguments, weakest first:
 - **The offline bundle is not offline.** `dist/web-tools.js` is the library
   frozen into one self-booting offline artifact, and it contains
   `await import('https://cdn.jsdelivr.net/npm/vanilla-jsoneditor/standalone.js')`
-  (three occurrences). The tree mode punches a runtime CDN hole through the one
-  artifact whose purpose is not needing the network.
+  (four occurrences as of 2026-09-04, up from three). The tree mode punches a
+  runtime CDN hole through the one artifact whose purpose is not needing the
+  network, and the hole widens as mounts are added.
 - **It cannot cooperate with the FAB.** VJE owns its viewport, ships its own
   toolbar with its own mode switcher, and has no way to contribute to our FAB.
   The double-switcher problem in `data-view-mobile-chrome-x5plcv` is not
@@ -83,12 +92,25 @@ ones nobody thinks to test. Build the reader, keep the writer.
 - A `tree` module in `lib/alpineComponents/viewer.js` (or a kit it loads) that
   renders JSON with no network call, honors the DaisyUI theme, and caps
   large-array expansion visibly.
-- VJE reachable as an explicitly requested mode; `idb-nav`'s edit round-trip
-  still works, held by a test.
+- VJE reachable as an explicitly requested mode; `idb-nav`'s edit round-trip and
+  the workbench's still work, held by a test.
+- `console.js` moves to the reader, since its mount is already `readOnly`.
 - `dist/web-tools.js` no longer imports vanilla-jsoneditor on the default path.
+
+**Before building, confirm the split with the user.** They were leaning toward
+dropping VJE outright; the recommendation above is the counter-proposal and it
+has never had an answer. That is what has held this task for its whole life, and
+it is a one-line decision rather than work.
 
 ## Progress log
 - 2026-07-25: filed from the `#data=` route session (PR #288). The single-editor
   finding, the bundle sizes, and the three `dist` occurrences were verified by
   grep, not recalled. User was leaning toward dropping VJE entirely; the split
   above is the counter-proposal and needs their call before anything is built.
+- 2026-09-04: Scope facts corrected during a refinement pass. "Exactly one
+  consumer edits" was true when filed and is not now: `transform-workbench.js`
+  mounts VJE editable and `console.js` mounts it read-only, both since filing.
+  The `dist` occurrence count moved three to four. The recommendation is
+  unchanged and slightly stronger, since `console.js` is a second display-only
+  mount paying the CDN cost. Sized M, and the pending decision moved out of a
+  `next:` frontmatter key into the body where TRACKER.md puts it.

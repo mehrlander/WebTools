@@ -6,7 +6,6 @@ project: search-skill
 opened: 2026-07-14
 closed: 2026-07-15
 session: claude/agent-file-retrieval-skill-tv4can
-next: build corpus_search.py (find) with a sources config and a file-per-document default, plus read_doc.py (read) and a SKILL.md that fixes the search-and-present flow; dogfood on this repo's content
 ---
 # Build an agent-assisted file-retrieval skill
 

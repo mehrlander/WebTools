@@ -5,7 +5,6 @@ status: done
 project: show-repo
 opened: 2026-07-17
 closed: 2026-07-17
-next: done; hash-routing pages now switch views inside toss #gh= renders
 ---
 # History-safe shim for toss-render address-mode renders
 

@@ -6,7 +6,6 @@ project: show-repo
 opened: 2026-07-17
 closed: 2026-07-30
 session: claude/github-icon-placement-3d06i7
-next: none; the named views all carry their jump-over
 ---
 # Finish GitHub jump-over coverage across show-repo views
 
