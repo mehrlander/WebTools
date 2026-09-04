@@ -1751,6 +1751,23 @@ centred, since centred puts half the previous section above the heading that was
 asked for; only the nearest scrolling ancestor moves, since scrollIntoView walks
 every one and scrolled the card list out from under the reader. home's copy is
 still inline in its own page and is the adopter, not the source.
+
+**The estate had six landings and they disagreed on both axes.** A survey on
+2026-09-04 found them in five files across two repos, sitting at the centre, at
+28%, at a fixed 80px and at the page top, in three different yellows, two of
+them a hardcoded orange the theme does not carry. Nothing reported it, because
+each one looked right on its own surface. `kits/pdf.js` is the one now brought
+alongside: its find hit lands at the kit's height and its marks read
+`--color-warning` through the same `color-mix` the kit compiles to, held by
+[`tools/test/land-parity.test.mjs`](https://github.com/mehrlander/web-tools/blob/main/tools/test/land-parity.test.mjs)
+rather than by a call, since pdf.js has no kit dependencies and one consumer
+loads it straight from jsDelivr. Three of its lessons went the other way: a set
+has a **current** member and is drawn at two strengths; an overlay mark
+**multiplies** so it sits under the glyphs it covers; and a mark over a rendered
+page needs a stronger percentage than one behind DOM text, because multiplying
+against white washes the same number out. `kits/annotate.js` still lands at its
+own fixed offset, and the two remaining `scrollIntoView({block:'center'})`
+callers in the app are unconverted.
 No correspondence is invented for it: `surfacing.csv`'s `lead` already is that
 bullet's bold lead-in, held both ways by `surfacing-manifest.test.mjs`. What the
 manifest gate cannot say is whether the key survives RENDERING, and it barely

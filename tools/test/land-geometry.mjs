@@ -95,6 +95,52 @@ try {
   ok('and without it the landing re-seats from anywhere',
      near(out.again.at * 1000, out.LAND_AT * 1000, 30), `re-seated at ${out.again.at}`);
 
+  // CLAIM 4, added 2026-09-04 and the reason the kit says 'instant' rather than
+  // 'auto'. 'auto' does not mean "no animation": it means "use the element's
+  // computed scroll-behavior", so on a scroller carrying `scroll-smooth` the
+  // reduced-motion path would animate the scroll of the reader who asked that it
+  // not. Measured by landing on a smooth scroller and reading position on the
+  // very next frame: an animated scroll has barely started, an instant one is
+  // already there.
+  const behaviour = await page.evaluate(async () => {
+    const frame = () => new Promise(r => requestAnimationFrame(r));
+    // The scroll-behavior is set as a STYLE, not as Tailwind's `scroll-smooth`
+    // class. This page loads no stylesheet, so the class compiles to nothing and
+    // the first version of this check passed with behavior:'auto' as happily as
+    // with 'instant': it was measuring two scrollers that both had no CSS
+    // behavior at all. The class is what a caller writes; the computed property
+    // is what the browser reads, and it is the property this claim is about.
+    const mk = (css) => {
+      const box = document.createElement('div');
+      box.style.cssText = 'height:300px;overflow-y:auto;' + css;
+      box.innerHTML = '<div style="height:900px"></div><div id="t" style="height:20px">t</div>'
+                    + '<div style="height:900px"></div>';
+      document.body.appendChild(box);
+      return box;
+    };
+    const at = async (css, opts) => {
+      const box = mk(css);
+      window.Land.mark(box.querySelector('#t'), { ...opts, tint: false });
+      await frame(); await frame();
+      const early = box.scrollTop;
+      await new Promise(r => setTimeout(r, 600));
+      return { early, settled: box.scrollTop };
+    };
+    return { plain: await at('', { smooth: false }),
+             smoothCss: await at('scroll-behavior:smooth', { smooth: false }),
+             asked: await at('', { smooth: true }) };
+  });
+  ok('an instant landing is there on the next frame',
+     near(behaviour.plain.early, behaviour.plain.settled, 2),
+     `${behaviour.plain.early} vs ${behaviour.plain.settled}`);
+  ok('and stays instant on a smooth-scrolling scroller, which is the point',
+     near(behaviour.smoothCss.early, behaviour.smoothCss.settled, 2),
+     `${behaviour.smoothCss.early} vs ${behaviour.smoothCss.settled} ` +
+     `(with behavior:'auto' the CSS wins and the early read lags)`);
+  ok('a landing that asked for smooth does animate',
+     !near(behaviour.asked.early, behaviour.asked.settled, 20),
+     `${behaviour.asked.early} vs ${behaviour.asked.settled}`);
+
   // Claim 1 again from the other end: a target in NO scroller falls through to
   // scrollIntoView, where the page is the scroller and moving it is correct.
   const paged = await page.evaluate(async () => {

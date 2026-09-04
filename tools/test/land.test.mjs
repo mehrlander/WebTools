@@ -120,6 +120,58 @@ test('reduced motion turns the animation off rather than the landing', async () 
   Land.mark(d, { dwell: 20 });
   window.matchMedia = () => ({ matches: true });
   Land.mark(d, { dwell: 20 });
-  assert.deepEqual(seen, ['smooth', 'auto']);
+  // 'instant', not 'auto': 'auto' defers to the element's computed
+  // scroll-behavior, so on a scroller carrying `scroll-smooth` it would animate
+  // the scroll of the reader who asked that it not.
+  assert.deepEqual(seen, ['smooth', 'instant']);
   assert.ok(lit(d), 'and it is still lit either way');
+});
+
+test('a set has a current member, drawn stronger than the rest', () => {
+  // pdf.js draws the active find hit strong and the others weak, so a reader
+  // stepping through seven hits sees both where they are and how many there
+  // are. A set lit identically can only say "these seven".
+  const a = el(), b = el();
+  Land.mark(a, { dwell: 5000 });
+  Land.mark(b, { dwell: 5000, current: false, scroll: false });
+  assert.ok(Land.MARK.every(c => a.classList.contains(c)), 'the current one is strong');
+  assert.ok(Land.MARK_REST.every(c => b.classList.contains(c)), 'and the rest are weak');
+  assert.ok(!Land.MARK.some(c => b.classList.contains(c)), 'a member is one or the other');
+});
+
+test('a member promoted to current drops the weaker mark', () => {
+  // Stepping to the next hit re-marks a row that is already lit. Adding the
+  // strong class without removing the weak one leaves both, which paints the
+  // sum of the two rather than either.
+  const d = el();
+  Land.mark(d, { dwell: 5000, current: false });
+  Land.mark(d, { dwell: 5000 });
+  assert.ok(Land.MARK.every(c => d.classList.contains(c)));
+  assert.ok(!Land.MARK_REST.some(c => d.classList.contains(c)));
+});
+
+test('clear takes down both strengths', () => {
+  const box = el();
+  const a = window.document.createElement('div');
+  const b = window.document.createElement('div');
+  a.scrollIntoView = b.scrollIntoView = () => {};
+  box.append(a, b);
+  Land.mark(a, { dwell: 5000 });
+  Land.mark(b, { dwell: 5000, current: false });
+  Land.clear(box);
+  assert.ok(![...Land.MARK, ...Land.MARK_REST].some(c =>
+    a.classList.contains(c) || b.classList.contains(c)));
+});
+
+test('the overlay palette is stronger than the flow palette', () => {
+  // Not a preference: a rectangle over a rendered page multiplies against
+  // white and reads paler than the same percentage does behind DOM text.
+  assert.ok(Land.PAGE.current > Land.FLOW.current);
+  assert.ok(Land.PAGE.rest > Land.FLOW.rest);
+  assert.ok(Land.FLOW.current > Land.FLOW.rest, 'and current beats rest on both');
+  assert.ok(Land.PAGE.current > Land.PAGE.rest);
+  assert.match(Land.tint(45), /var\(--color-warning\) 45%/,
+    'the tint reads the theme token rather than a hex');
+  assert.match(Land.OVERLAY, /mix-blend-mode:\s*multiply/,
+    'an overlay multiplies, so it sits under the glyphs it covers');
 });
