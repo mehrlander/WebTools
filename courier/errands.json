@@ -1,5 +1,5 @@
 {
- "note": "Read by bookmarklets/courier.js over raw.githubusercontent.com, which is CORS-open and cached five minutes. Public on purpose: an errand names a public page and a script, so reading one needs no token. Contract: courier/README.md.",
+ "note": "Read by courier/run.js over api.github.com, which answers any origin and answers current. Public on purpose: an errand names a public page and a script, so reading one needs no token. Contract: courier/README.md.",
  "errands": [
   {
    "id": "wsl-drs-cafr-index",
