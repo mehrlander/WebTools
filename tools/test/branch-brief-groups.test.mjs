@@ -126,15 +126,50 @@ test('the GitHub exits are labeled menu rows, and the plus aims the stage at thi
   assert.ok(u.pathname.endsWith('/app/'));
 });
 
-// The unframed counterpart to the layout case in branch-brief-embedded: a page
-// is a page and scrolls as one. Pinning its own header would cost a phone the
-// URL-bar collapse and buy nothing, since there is no dialog to keep in view.
-test('standalone: the document is left alone and nothing is pinned', () => {
-  assert.equal(window.document.body.style.overflow, '', 'the page still scrolls as a document');
+// The unframed counterpart to the layout case in branch-brief-hosted, and it
+// is now TWO rules read at two sizes rather than one everywhere.
+//
+// Below `lg` a page is a page and scrolls as one: pinning its own header costs
+// a phone the URL-bar collapse, and splitting an 844px screen between two
+// panes leaves neither readable. At `lg` there is no URL bar to lose and there
+// is height to spend, so the page locks to the viewport and the two sections
+// each take a scrollbar; before that the guide began at y=575 of a 983px
+// document and reading it scrolled every control off the top (2026-09-04, at
+// 1440x900).
+//
+// TOKEN-EXACT, not substring: `lg:h-full` contains `h-full`, so an
+// `includes` check cannot tell the small-screen rule from the large-screen one
+// and would pass while the page was locked at every size. The pixels are in
+// tools/render/scenarios, since a jsdom box has no layout to measure.
+const classes = (el) => new Set(String(el.className || '').split(/\s+/).filter(Boolean));
+
+test('standalone: the document is left alone, and the lock is lg-only', () => {
+  assert.equal(window.document.body.style.overflow, '', 'the component never locks the document itself');
   assert.equal(window.document.body.style.height, '');
+
   const root = window.document.querySelector('#m > div');
-  assert.ok(!root.className.includes('h-full'), 'the view is as tall as its content');
-  assert.ok(!root.lastElementChild.className.includes('overflow-y-auto'), 'and owns no scroller');
+  const sections = root.lastElementChild;
+  const small = classes(root), sectionsSmall = classes(sections);
+
+  // Below lg: as tall as its content, owning no scroller.
+  assert.ok(!small.has('h-full'), 'the view is as tall as its content');
+  assert.ok(!small.has('min-h-0'), 'and does not clamp itself to a box it was not given');
+  assert.ok(!sectionsSmall.has('overflow-y-auto'), 'and owns no scroller');
+
+  // At lg: locked, with the sections dividing the box rather than scrolling it.
+  assert.ok(small.has('lg:h-full') && small.has('lg:min-h-0'),
+    'at lg the view fills the height the page hands it');
+  assert.ok(sectionsSmall.has('lg:flex-1') && sectionsSmall.has('lg:min-h-0'),
+    'the sections are the box the two panes divide');
+  assert.ok(!sectionsSmall.has('lg:overflow-y-auto'),
+    'and it is not itself a scroller, or the two panes would be inside a third');
+
+  const files = root.querySelector('[x-ref="files"]');
+  const guide = root.querySelector('[x-ref="guide"]');
+  assert.ok(classes(files).has('lg:max-h-[45%]') && classes(files).has('lg:min-h-0'),
+    'the file list takes its content height up to a share of the box');
+  assert.ok(classes(guide).has('lg:overflow-y-auto') && classes(guide).has('lg:grow'),
+    'the guide takes what is left and scrolls the prose inside it');
 });
 
 // ── What the file deck pages through ────────────────────────────────────────
