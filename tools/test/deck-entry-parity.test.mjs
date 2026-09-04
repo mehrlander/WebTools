@@ -13,14 +13,14 @@
 // instead. If someone restyles the door in the kit, this fails and names every
 // file that has to follow.
 //
-// There are five copies as of 2026-09-04. branch-brief's is the door into a
+// There are seven copies as of 2026-09-04. branch-brief's is the door into a
 // branch's FILES; session-brief's is the door into a session's CARDS, and it
 // exists because that view was lifted out of pages/session.html to be mounted
 // per slide in the Sessions pane; search-view's is the door into the FILES a
-// search just found. The Map view's two arrived last: the Surfacing tab's pair
-// (the doc and its gated index) and the Docs tab's selected folder. A sixth
-// joins the table below and needs no other change here, which is the point of
-// the table.
+// search just found. The Map view's four arrived last: the Surfacing tab's
+// pair (the doc and its gated index), and the Docs, Tests and Harness tabs over
+// the list each is showing. An eighth joins the table below and needs no other
+// change here, which is the point of the table.
 //
 // `pending` is the one thing a row can decline. Two of the doors render before
 // their collection has been counted (a branch whose compare has not been read,
@@ -63,6 +63,16 @@ const DOORS = [
   { what: 'Map / Docs', file: 'lib/alpineComponents/map.js',
     anchor: 'openDocDeck(docDirFiles[0])', noun: 'file',
     count: "plural(docDirFiles.length, 'file')", pending: false, tone: 'ghost' },
+  // The one door counted in something other than files. `noun` is the kit's
+  // parameter for exactly this: the Tests tab's collection is checks, and
+  // "Read 233 files one at a time" would name the wrong thing on the one tab
+  // whose subject is what each of them protects.
+  { what: 'Map / Tests', file: 'lib/alpineComponents/map.js',
+    anchor: 'openTestDeck(testShown[0])', noun: 'check',
+    count: "plural(testShown.length, 'check')", pending: false, tone: 'ghost' },
+  { what: 'Map / Harness', file: 'lib/alpineComponents/map.js',
+    anchor: 'openHarnessDeck(harnessDirFiles[0])', noun: 'file',
+    count: "plural(harnessDirFiles.length, 'file')", pending: false, tone: 'ghost' },
 ];
 
 const src = (d) => readFileSync(path.join(repoRoot, d.file), 'utf8');

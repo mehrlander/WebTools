@@ -1795,7 +1795,12 @@ carries the source peek for the desktop glance, one details toggle on the
 reach strip shows every row's maintenance at once, and the files view stays
 the route for working on a file rather than reading it. The folder heading
 carries the deck's own door beside its GitHub mark (2026-09-04), since the row
-tap was a gesture nobody was told about. A `.csv` row opens as a TABLE rather
+tap was a gesture nobody was told about. The **Tests** and **Harness** tabs
+answer the same tap the same way from that date: a row title opens the deck
+rather than routing to the Files view, and each carries the door. Tests pages
+the suite as its strip has cut it, counted in checks rather than files, since
+what a check protects is prose at the top of its own file; Harness pages the
+selected folder, the Docs tab's shape exactly. A `.csv` row opens as a TABLE rather
 than as raw text: the deck converts it to a markdown table so md-doc's wide-table
 scroller and prose styling apply, with each cell's markdown escaped, since a
 registry that describes markdown was otherwise rendering its own

@@ -18,6 +18,7 @@
 //   over   docked, then a peek opened from the list, which must sit ABOVE it
 //   docs   the Docs tab's own door, over its selected folder
 //   lead   a card title tapped, which docks the deck and marks its bullet
+//   tests  the Tests tab's door, over the suite as its strip has cut it
 
 export default async (page) => {
   await page.waitForFunction(() => window.__shell && window.Alpine, null, { timeout: 15000 });
@@ -44,6 +45,15 @@ export default async (page) => {
     // be visible at all: a shot of the top of the doc would pass either way.
     await page.locator('button[title^="Show Toss data"]').first().click();
     await page.waitForTimeout(3200);
+    return;
+  }
+  if (mode === 'tests') {
+    await page.locator('[role="tab"]', { hasText: 'Tests' }).click();
+    await page.waitForSelector('.ph-flask', { timeout: 15000 });
+    await page.waitForTimeout(1200);
+    await page.locator('button[title$="checks one at a time"]').first().click();
+    await page.waitForSelector('[data-deck-content]', { timeout: 15000 });
+    await page.waitForTimeout(2200);
     return;
   }
   if (mode === 'docs') {
