@@ -1540,7 +1540,8 @@ html.dk-dragging main{transition:none !important}
                     <div class="flex items-center gap-3 mb-4">
                       <label class="input input-bordered flex items-center gap-1.5 w-64">
                         <i class="ph ph-magnifying-glass opacity-50"></i>
-                        <input type="search" x-model.debounce="projectDocsQ" placeholder="filter by path…" class="grow min-w-0">
+                        <!-- data-find-box: the Docs tab's own filter. -->
+                        <input type="search" x-model.debounce="projectDocsQ" placeholder="filter by path…" data-find-box class="grow min-w-0">
                       </label>
                       <span class="text-base text-base-content/40" x-text="projectDocsCount + ' files'"></span>
                       <span x-show="projectDocsSourced" class="text-base text-base-content/40"
@@ -6234,6 +6235,13 @@ function app(){ return {
       if (window.swipeDeck?.stack?.length) return;
       if (document.querySelector('dialog[open]')) return;
 
+      // WHICH BOX MAY WEAR data-find-box: a VIEW's own primary search, over the
+      // content that view is showing. Only one view is on screen, so at most
+      // one such box is ever visible and `first visible` is not a race. A box
+      // inside something that OVERLAYS a view is disqualified for exactly that
+      // reason: the fab drawer's debug console carries a filter, and marking it
+      // would put two boxes on screen at once with DOM order deciding between
+      // them. The membership is held by app-typeahead.test.mjs.
       const own = Array.from(document.querySelectorAll('[data-find-box]'))
         .find(el => el.getClientRects().length);
       if (own) { own.focus(); return; }
