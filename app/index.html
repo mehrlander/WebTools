@@ -619,10 +619,13 @@ html.dk-dragging main{transition:none !important}
          passes sit behind their own tap gates: "Search file contents" calls the
          code-search API (snippets via text-match; default branches only), and
          "Search sessions" greps the captured records in web-tools-private client-
-         side, hits opening the Sessions pane's paged reader. `/` focuses it; branch
-         and session hits travel the web-tools:open-branch-detail and web-tools:open-
-         session events, consumed in estate.js beside the &detail= deep link they
-         mirror. -->
+         side, hits opening the Sessions pane's paged reader. Any bare printable
+         key reaches it, `/` included, through the shell's own router
+         (wireAppTypeahead) rather than a listener of the component's; a view
+         carrying its own search box (data-find-box) takes the keystroke first.
+         Branch and session hits travel the web-tools:open-branch-detail and
+         web-tools:open-session events, consumed in estate.js beside the &detail=
+         deep link they mirror. -->
     <!-- ── The finder: one input, always ready ─────────────────────────────
          Directly under the crumb bar, above the scroll area so its results
          panel (the crumb menu's anchored idiom) overlays the lists rather
@@ -1188,7 +1191,10 @@ html.dk-dragging main{transition:none !important}
                 <div class="grow"></div>
                 <label class="input input-bordered flex items-center gap-1.5 w-48">
                   <i class="ph ph-magnifying-glass opacity-50"></i>
-                  <input type="search" x-model.debounce="q" placeholder="filter by name…" class="grow min-w-0">
+                  <!-- data-find-box: the Pages view's own filter, so a bare
+                       keystroke narrows this list instead of opening the
+                       sidebar finder (wireAppTypeahead). -->
+                  <input type="search" x-model.debounce="q" placeholder="filter by name…" data-find-box class="grow min-w-0">
                 </label>
               </div>
 
@@ -2233,6 +2239,7 @@ function app(){ return {
 
     this.wireAppDrop();
     this.wireAppPaste();
+    this.wireAppTypeahead();
     // PRELOAD THE CLIPBOARD KIT, because the header's Paste button cannot
     // afford to fetch it. Reading the clipboard needs the tap's own user
     // activation, and an await inside the handler spends it, so a lazy load
@@ -6173,6 +6180,84 @@ function app(){ return {
       // on itself; a block of refs lands and stays listed.
       this.goStage();
       if (added.length === 1) window.StageIntake.focus(added[0]);
+    });
+  },
+
+  // ── TYPING ANYWHERE FINDS ─────────────────────────────────────────────────
+  // The keyboard's version of the paste above, and it was missing for the same
+  // reason: the app had one search box, in the sidebar, reachable by `/` and by
+  // tapping it. On every view that carries no box of its own (Activity is the
+  // one that showed it) a typed character went nowhere and nothing on screen
+  // said where it should have gone.
+  //
+  // ONE OWNER, like the paste. quick-find used to register its own `/` listener
+  // and this rule is a superset of that one, so the component's listener is gone
+  // rather than coordinated with; a page that mounts quickFind without this
+  // shell wires its own. The box declares itself with an id the router names
+  // (`quick-find-box`), and a VIEW's own box declares itself with
+  // `data-find-box`.
+  //
+  // THE VIEW'S BOX WINS WHERE IT IS ON SCREEN. Typing while looking at a list
+  // and its filter means "narrow this", not "search the estate", so a visible
+  // `data-find-box` takes the keystroke and the sidebar never opens. Visibility
+  // is `getClientRects()`, not `offsetParent`, which is null for any fixed
+  // element and so would have reported the phone's sidebar hidden while it was
+  // out.
+  //
+  // WHO CARRIES THE CHARACTER, which is the whole subtlety. Focusing an input
+  // inside a keydown handler and NOT calling preventDefault leaves the browser
+  // to run the default action against whatever is focused when it runs, which
+  // is by then the box: the character lands, fast typing keeps landing, and
+  // dead keys and IME composition are untouched. That only works on a box that
+  // is already there. Where the sidebar has to be revealed first, Alpine's
+  // class change lands a tick later and the default action has nowhere to go,
+  // so that one path preventDefaults and seeds the character by hand, through
+  // an `input` event so x-model writes it back to the component's own `q`.
+  wireAppTypeahead(){
+    window.addEventListener('keydown', (e) => {
+      // A bare printable key, one character wide, so every named key (Tab,
+      // Enter, Escape, the arrows, the function row) passes untouched. Space
+      // goes with them: it scrolls, it activates a focused button, and no
+      // query opens with one.
+      if (e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
+      if (e.key.length !== 1 || e.key === ' ') return;
+      const t = e.target;
+      if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || t.isContentEditable)) return;
+      // A deck or a modal is a screen of its own, and pulling focus to a box
+      // behind it would type into something the reader cannot see. Those are
+      // the app's two overlays that own the screen; the fab's drawer is
+      // deliberately not one, since it passes pointer events through and
+      // leaves the page beneath it live. A third that does own the screen owes
+      // this router a tell of its own: a component whose panel sits in the DOM
+      // at all times and slides cannot be found by its presence, so it has to
+      // say `shown` in an attribute the way the deck says it in a stack.
+      if (window.swipeDeck?.stack?.length) return;
+      if (document.querySelector('dialog[open]')) return;
+
+      const own = Array.from(document.querySelectorAll('[data-find-box]'))
+        .find(el => el.getClientRects().length);
+      if (own) { own.focus(); return; }
+
+      // showSidebar is about CONTENT, not about the viewer's choice: a
+      // signed-out dashboard has no sidebar to open, so the finder is not
+      // somewhere the key can be sent and the keystroke is left where a
+      // reader's eye already is, which is nowhere. Measured 2026-09-04: without
+      // this gate the seeded character landed in a box that stayed
+      // display:none, and focus never moved.
+      const box = document.getElementById('quick-find-box');
+      if (!box || !this.showSidebar) return;
+      if (this.sidebarOpen) { box.focus(); return; }
+      e.preventDefault();
+      this.openSidebar();
+      this.$nextTick(() => {
+        box.focus();
+        // Seed only once focus has actually landed. A reveal that did not take
+        // would otherwise leave a character in a box nobody is looking at, and
+        // the next keystroke would append to it.
+        if (document.activeElement !== box) return;
+        box.value = e.key;
+        box.dispatchEvent(new Event('input', { bubbles: true }));
+      });
     });
   },
 
