@@ -1,7 +1,8 @@
 ---
 id: surface-census-feeds-relation-anle6b
 title: Make the cache-to-surface dependency checkable, not prose
-status: in-progress
+status: done
+closed: 2026-09-04
 session: claude/surface-census-feeds-relation-1v5n23
 opened: 2026-08-09
 size: M
@@ -66,3 +67,14 @@ fails the suite rather than orphaning a string.
   `id:` restored to the filename per the frozen-slug rule, body cut from 839
   words. The derivation-granularity finding is the part worth not rediscovering.
 - 2026-09-04: Claimed on `claude/surface-census-feeds-relation-1v5n23`.
+- 2026-09-04: Done on `claude/surface-census-feeds-relation-1v5n23`, three green
+  commits. `feeds` is gone from state-view.js; the authored side is `reads` on
+  `docs/app-routes.csv`, which is the surface registry the design called for and
+  which already existed (added 2026-08-29, same target, same identity space,
+  gated to VIEWS both ways), so a second carrier would have been the duplication
+  the task's own constraint forbids. The recorded middle hop does not resolve:
+  `component` per view composes to eight chips on the configs row where the
+  prose had one, because estate.js backs seven routes. `reads` is authored at
+  the resolution the chips need and `tools/build/cache-readers.mjs` bounds it
+  from both sides, which leaves 4 of 11 entries genuinely authored. Scope is 20
+  routed keys, not 22: the Guides pill and the Saved pane retired after filing.

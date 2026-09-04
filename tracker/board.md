@@ -28,7 +28,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Decide the remaining stranded title attributes, panel or leave](tasks/stranded-titles-panel-or-drop-o6hqom.md) · M
 
 ## In progress
-- 🎫 [Make the cache-to-surface dependency checkable, not prose](tasks/surface-census-feeds-relation-anle6b.md) · M (`claude/surface-census-feeds-relation-1v5n23`)
+- (none)
 
 ## Blocked
 - (none)
@@ -95,6 +95,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Stage links and the main-area explorer in show-repo](tasks/stage-links-main-area-explorer-7a6gd7.md) (`claude/task-tracker-discussion-wg27xv`)
 - 🎫 [Converge the stage and surface item schemas](tasks/stage-surface-convergence-kgtosz.md)
 - 🎫 [Stand up the project tracker](tasks/stand-up-project-tracker-3t7h04.md) (`claude/tracker-concept-assessment-yto1m1`)
+- 🎫 [Make the cache-to-surface dependency checkable, not prose](tasks/surface-census-feeds-relation-anle6b.md) (`claude/surface-census-feeds-relation-1v5n23`)
 - 🎫 [Carry commentary on a stage (prompts= link field, seed of a surface schema)](tasks/surface-schema-commentary-on-stage-hqz0uu.md) (`claude/web-tools-diff-review-s0nrq7`)
 - 🎫 [Make the take-away menu work inside a toss](tasks/take-away-inside-a-toss-k73cjq.md)
 - 🎫 [Toggle-only Tailwind classes do generate, and the spinners do spin](tasks/toggle-only-tailwind-classes-gxi5tq.md) (`claude/web-tools-tracker-review-m49yxc`)
