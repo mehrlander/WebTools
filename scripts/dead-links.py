@@ -102,12 +102,10 @@ def sibling_root(root, name):
 # Both are checked the same way and reported in the same class, because the
 # failure is the same: a path that moved leaves the URL pointing at nothing.
 #
-# The raw form was uncovered until 2026-08-05, and the gap had a live instance:
-# docs/SHARE.md's copy-paste prompt hard-codes a raw URL for docs/PORTABLE.md,
-# which is exactly the kind of link a rename breaks silently. It is also the
-# form a doc reaches for when the reader is a machine (curl, WebFetch) rather
-# than a browser, so it clusters in the docs most likely to be pasted into
-# another session.
+# The raw form was uncovered until 2026-08-05. It is the form a doc reaches for
+# when the reader is a machine (curl, WebFetch) rather than a browser, so it
+# clusters in the docs most likely to be pasted into another session, and a
+# rename breaks it silently.
 #
 # Only `main` is checked, in both forms. A URL pinned to a tag or a SHA points
 # at history on purpose, and a checkout cannot speak to it.
@@ -187,9 +185,8 @@ def scan(root, owner):
 # Everything else here reads stripped text, because a fenced link is usually an
 # illustration. An owner URL at main is the exception, and not by preference: it
 # is a fetch target, so a fence is where it is most likely to be load-bearing and
-# least likely to be decorative. docs/SHARE.md is the whole argument. Its one job
-# is a copy-paste `curl` of docs/PORTABLE.md, written bare inside a fence, so
-# every rule this file otherwise applies would skip the only line that matters.
+# least likely to be decorative: a copy-paste `curl` written bare inside a fence
+# is the one line that matters, and every other rule here would skip it.
 #
 # Measured 2026-08-05: 4 owner raw URLs written as markdown links (all in shipped
 # skills) plus 5 checkable bare ones. The rest carry ${ref} or <path> templates

@@ -481,10 +481,3 @@ characters wide.
 ### Not portable
 
 Web-tools-specific machinery: `docs/loader.md`, `tools/**`, `CLAUDE.md`, `dist/`.
-
-## Pointing a session here
-
-To send another Claude Code session to this set, [`docs/SHARE.md`](SHARE.md) is a
-ready-to-paste message that hands over the fetch command itself (a session can't
-always reach another repo by git or MCP scope, but a raw HTTP GET of these public
-files works). It's the pointer *to* this set, not a member of it.
