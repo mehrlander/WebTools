@@ -51,6 +51,12 @@ other route here gets:
 | the errand list | [`errands.json`](errands.json) | per errand |
 | the errand script | `sites/<hostname>/courier/<id>.js` | per errand, then frozen when it closes |
 
+**Every part but the pointer is read at `main`, so a change is live when it
+merges and not when it is pushed.** Tapping the bookmark from a branch gets you
+whatever `main` served that minute. There is no ref switch on purpose: a
+bookmark that could be aimed at a branch is a bookmark that can be aimed
+anywhere.
+
 Install the pointer once, as a bookmark whose URL is the whole file. It opens a
 window, fetches `run.js` and runs it. `run.js` reads `location.hostname`, finds
 the open errands for that host, shows what it is about to run in that window,
