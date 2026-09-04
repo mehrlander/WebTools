@@ -45,6 +45,7 @@
     "test:ask-fill": "node tools/test/chat-render-ask-fill.mjs",
     "test:deck-split": "node tools/test/deck-split-drag.mjs",
     "test:peek-link": "node tools/test/peek-head-link.mjs",
+    "test:land": "node tools/test/land-geometry.mjs",
     "test:toss-multiparam": "node tools/test/toss-multiparam.mjs",
     "test:toss-width": "node tools/test/toss-width.mjs",
     "test:toss-paste": "node tools/test/toss-paste.mjs",

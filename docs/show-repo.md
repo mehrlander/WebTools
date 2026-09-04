@@ -1739,7 +1739,18 @@ manifest is its gated index (membership held two-way to the doc's bullet
 lead-ins by `tools/test/surfacing-manifest.test.mjs`; the card summaries are
 paraphrases and stay unchecked, which the Docs registry's claims table states).
 A card's TITLE opens the doc at the bullet it paraphrases (2026-09-04), docking
-the deck so the two sit side by side and tinting the list item for four seconds.
+the deck so the two sit side by side, scrolling smoothly to the bullet and
+tinting it yellow for four seconds. That treatment is
+[`lib/kits/land.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/land.js)'s
+rather than this tab's, and the kit is a SECOND implementation lifted rather
+than a first invented: `mehrlander/home`'s budget-drs submittal view has
+answered the same question for months over two subjects, a block of prose in an
+office document and a rectangle on a page of a PDF, and this tab arrived at a
+near-identical scroller walk independently. A landing sits 28% down rather than
+centred, since centred puts half the previous section above the heading that was
+asked for; only the nearest scrolling ancestor moves, since scrollIntoView walks
+every one and scrolled the card list out from under the reader. home's copy is
+still inline in its own page and is the adopter, not the source.
 No correspondence is invented for it: `surfacing.csv`'s `lead` already is that
 bullet's bold lead-in, held both ways by `surfacing-manifest.test.mjs`. What the
 manifest gate cannot say is whether the key survives RENDERING, and it barely
