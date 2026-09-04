@@ -20,6 +20,8 @@ const { window } = makeWindow({
     <span id="a" data-note="Fetched from the repo when opened.">EXTERNAL</span>
     <table><tbody><tr>
       <td id="b" data-note-bare data-note="First line.&#10;&#10;Second line.">5,000</td>
+      <td id="c" data-note-look="excel" data-note-title="slm4303:"
+          data-note="input the hours anticipated">5,000</td>
     </tr></tbody></table>
   </body></html>`,
 });
@@ -68,4 +70,47 @@ test('an element with nothing to underline opts out of the affordance', () => {
   // and the dotted rule would land on most of its numeric cells.
   assert.match(Note.CSS, /\[data-note\]\{[^}]*text-decoration:underline dotted/s);
   assert.match(Note.CSS, /\[data-note\]\[data-note-bare\]\{text-decoration:none\}/);
+});
+
+test('a lead line is its own bold row above the note, and never markup', () => {
+  // What the note is ABOUT, where data-note is what it says: a comment's
+  // author, a form field's name. Excel formats both this way, which is why the
+  // sheet render stopped joining them into "Fee Code: Enter …" itself.
+  Note.open('#c');
+  const panel = window.document.getElementById('wt-note');
+  const lead = panel.querySelector('.wt-note-title');
+  assert.equal(lead.textContent, 'slm4303:');
+  assert.equal(lead.tagName, 'B');
+  assert.equal(panel.textContent, 'slm4303:input the hours anticipated',
+    'both parts are present; the row break is CSS, not a character');
+  assert.match(Note.CSS, /\.wt-note-title\{display:block;font-weight:600\}/);
+  Note.close();
+});
+
+test('a lead line written as text stays text', () => {
+  const el = $('#c');
+  el.setAttribute('data-note-title', '<img src=x onerror=alert(1)>');
+  Note.open(el);
+  const panel = window.document.getElementById('wt-note');
+  assert.equal(panel.querySelectorAll('img').length, 0, 'the lead line was parsed as markup');
+  assert.equal(panel.querySelector('.wt-note-title').textContent, '<img src=x onerror=alert(1)>');
+  el.setAttribute('data-note-title', 'slm4303:');
+  Note.close();
+});
+
+test('a look token is stamped on the panel and cleared by the next note', () => {
+  // One panel serves every note on the page, so a look that stuck would leak
+  // onto whatever the reader hovered next.
+  const panel = window.document.getElementById('wt-note') || (Note.open('#a'), window.document.getElementById('wt-note'));
+  Note.open('#c');
+  assert.equal(panel.getAttribute('data-look'), 'excel');
+  Note.open('#a');
+  assert.equal(panel.hasAttribute('data-look'), false, 'the token outlived the note that asked for it');
+  Note.close();
+});
+
+test('the kit ships no look of its own beyond the default', () => {
+  // A page reproducing something owns what that looks like; the kit owns the
+  // hook. Excel's box lives in the sheet render, next to the code asking.
+  assert.doesNotMatch(Note.CSS, /data-look/);
 });

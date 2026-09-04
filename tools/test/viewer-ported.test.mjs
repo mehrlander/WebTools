@@ -184,7 +184,10 @@ test('a validation list gets the caret and its options in the note', () => {
 test('an input message gets the corner wedge and the form’s own words', () => {
   const html = drawWith(layoutWith({ note: { kind: 'instruction', title: 'Fee Code', prompt: 'Enter the four digit code.', options: null } }));
   assert.match(html, /class="note"/);
-  assert.match(html, /data-note="Fee Code: Enter the four digit code\."/);
+  // Excel draws the field name bold above the message, so the render does too
+  // rather than inventing "Fee Code: Enter …" for something already formatted.
+  assert.match(html, /data-note-title="Fee Code"/);
+  assert.match(html, /data-note="Enter the four digit code\."/);
 });
 
 test('a long option list is trimmed in the note and says how many it dropped', () => {
@@ -206,7 +209,9 @@ test('a comment wears Excel\'s red corner and names who left it', () => {
   const html = drawWith(commented());
   assert.match(html, /class="note cmt"/, 'cmt recolours the wedge the note class draws');
   assert.match(html, /td\.cmt::before\{border-top-color:#dc2626/);
-  assert.match(html, /data-note="Shields, Sharon \(OFM\): Include sales tax\."/);
+  assert.match(html, /data-note-title="Shields, Sharon \(OFM\):"/,
+    'Excel writes the author with a colon over the comment, and bold');
+  assert.match(html, /data-note="Include sales tax\."/);
 });
 
 test('a comment outranks a list, so one cell wears one mark', () => {
@@ -222,10 +227,11 @@ test('everything a commented cell knows arrives in one note, in reading order', 
   const html = drawWith(commented({ title: 'Rate', prompt: 'Hourly.' }), {});
   // Read back off the DOM, so the &#10; the markup carries is a real newline
   // here; a reader sees the break either way.
-  const note = /data-note="([^"]*)"/.exec(html)[1];
-  assert.equal(note,
-    'Shields, Sharon (OFM): Include sales tax.\n\nRate: Hourly.',
+  const note = /\bdata-note="([^"]*)"/.exec(html)[1];
+  assert.equal(note, 'Include sales tax.\n\nRate: Hourly.',
     'the comment first, the form\'s own instruction after, separated by a blank line');
+  assert.match(html, /data-note-title="Shields, Sharon \(OFM\):"/,
+    'the author took the lead line, so the form\'s own title comes back inline');
 });
 
 test('a sheet cell opts out of the note kit\'s underline', () => {
@@ -234,7 +240,7 @@ test('a sheet cell opts out of the note kit\'s underline', () => {
   // value note lands on most numeric cells, so the underline would be on half
   // the sheet.
   const html = drawWith(commented());
-  assert.match(html, /data-note-bare(="")? data-note=/);
+  assert.match(html, /data-note-bare(="")?[ >]/);
 });
 
 test('a fact never rides in a title attribute', () => {
@@ -394,4 +400,31 @@ test('a sheet names itself once per run, so the column reads as a grouping', () 
     .map(td => td.textContent.trim());
   assert.deepEqual(names, ['EXAMPLE-Tech Pool', 'Fee form', '', 'EXAMPLE-Tech Pool'],
     'the name returns when the sheet does, so a run is never mislabelled by the one above it');
+});
+
+test('a sheet cell asks the note kit for Excel\'s comment box', () => {
+  // The sheet beside it is a reproduction, and a rounded panel in the page's
+  // own theme was the one thing on it that announced it was not Excel.
+  const html = drawWith(commented());
+  assert.match(html, /data-note-look="excel"/);
+  assert.match(html, /#wt-note\[data-look="excel"\]\{[^}]*background:#ffffe1/,
+    "Windows' info-tip yellow, which is what Excel fills a comment with");
+  assert.match(html, /#wt-note\[data-look="excel"\]\{[^}]*border-radius:0/,
+    'square corners: the rounded default is the tell');
+});
+
+test('every cell note wears the same box, not only the comments', () => {
+  // One sheet cannot show two kinds of tooltip. A cell whose only note is the
+  // stored value has no Excel counterpart and still gets Excel's frame.
+  const stored = drawWith(layoutWith({ raw: '0.125' }));
+  assert.match(stored, /data-note-look="excel"/);
+  assert.match(stored, /data-note="Stored as 0\.125"/);
+});
+
+test('the Excel look is asked for per note, so it cannot leak to the page', () => {
+  // The kit owns ONE panel, shared by every note on the page, so the rule has
+  // to be unscoped; what keeps it off the rest of the estate is that the kit
+  // stamps data-look per note and clears it again.
+  const html = drawWith(commented());
+  assert.doesNotMatch(html, /#wt-note\{/, 'the bare panel selector would restyle every note there is');
 });
