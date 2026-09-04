@@ -27,7 +27,7 @@ the answers live in those places rather than here.
 
 | Question | Answer, and where it is stated |
 | --- | --- |
-| Recurrence mechanism | Mechanical since 2026-08-14. `npm run snags-index` generates the index and the commit hook reruns it; `docs/snags.csv` carries `count`, `last_seen`, `seen`. A sighting must be a date, and an unslugged heading is named at the terminal rather than absorbed. |
+| Recurrence mechanism | Mechanical since 2026-08-14. `tools/build/snags-index.mjs` (`npm run snags-index`) generates the index and the commit hook reruns it; `docs/snags.csv` carries `count`, `last_seen`, `seen`. A sighting must be a date, and an unslugged heading is named at the terminal rather than absorbed. |
 | Escalation threshold | The third recurrence earns a tracker task. Stated in `docs/CONVENTIONS.md`, and exercised once: `enforce-house-style-ryz0z5` was filed at the third trip on `house-style-not-consulted`. |
 | Graduation rule | Stated in SNAGS.md's own header: entries stay an index with a `→` to the doc holding the fix, so they cannot drift from it. |
 | Format | A split rather than a schema. The mechanical half is the derived `docs/snags.csv`, gated by `artifacts-lockstep`; the prose stays in the markdown, because the paragraph explaining why a trip was invisible is most of an entry's value. |
