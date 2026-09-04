@@ -108,11 +108,12 @@ not change what any repo was already willing to wait for.
 declaration mechanism rather than sitting beside it, so a repo renames its
 scripts to `session-*.sh` **and drops the `SessionStart` block from its own
 `.claude/settings.json`**. Keeping both means each script runs twice whenever
-that repo is the project root. Parallel execution is the other thing a migration
-has to look at: entries that were an ordered list in `settings.json` no longer
-have an order, so a script depending on an earlier one has to do that work
-itself. home's `session-news-fetch.sh` sets `core.hooksPath` rather than
-assuming `session-git-config.sh` won the race.
+that repo is the project root; keep the `settings.json` entry only where a repo
+disables the plugin and so has no dispatcher at all. Parallel execution is the
+other thing a migration has to look at: entries that were an ordered list in
+`settings.json` no longer have an order, so a script depending on an earlier one
+has to do that work itself. home's `session-news-fetch.sh` sets `core.hooksPath`
+rather than assuming `session-git-config.sh` won the race.
 
 An inline command has no filename, so it cannot be discovered and needs a file
 of its own. That is not a technicality: home's `SessionStart` carried a bare
@@ -133,11 +134,6 @@ The dispatcher bounds what a script costs; it does not police it, any more than
 job**, and the convention is: gate on file reads, and do expensive work only
 when the gate says it is due. A repo whose script genuinely needs minutes should
 background it rather than hold the session open.
-
-One caveat while adopting: a repo that also registers the same script in its own
-`.claude/settings.json` will run it twice in a session rooted at that repo.
-Delete the `settings.json` entry once the dispatcher covers it, keeping one only
-where a repo disables the plugin and so has no dispatcher at all.
 
 Every dispatched script gets **`$WEB_TOOLS_HOOKS`**, the directory the plugin's
 own hooks live in, so a repo can call something the plugin ships without knowing
@@ -207,13 +203,6 @@ Top-level fields, not namespaced by consumer, so any web-tools page can read the
 | `sessions` | the plugin's `Stop` hook | path to the directory holding this repo's session records and their `tools/`, which makes this repo the store the recorder writes to. Declaring it is what turns recording on; at most one checkout in a session should carry it |
 
 Full field semantics for the show-repo fields are in [`docs/show-repo.md`](show-repo.md).
-The file was formerly `.show-repo.json`, and readers fell back to that name
-under a sunset marker (see Sunset markers below) dated 2026-08-15 while repos
-migrated. They did: the config cache showed every configured repo on
-the new name well before the date, so the fallback was removed on it and
-`.web-tools.json` is now the only name read. That is the marker working as
-designed, and the reason this sentence spells the date out rather than writing
-the token: a record of a retired marker would otherwise scan as a live one.
 
 ## Staying current on the fetch fallback: refresh at session start
 
@@ -307,12 +296,8 @@ exit 0
 }
 ```
 
-Why it holds: the hook is committed and the fetched artifacts are gitignored
-(fresh each session, never stale copies in the tree); it's fail-soft (10s cap
-per fetch, errors swallowed, always `exit 0`), so a hiccup or a web-tools outage
-degrades to "no auto-loaded conventions this session," not a blocked start; and
-it fetches over `raw.githubusercontent.com`, on the web allowlist (see "How to
-adopt" above), so no auth. Keep it **synchronous** (the default) so it completes
+Being fail-soft, it degrades to "no auto-loaded conventions this session" rather
+than a blocked start. Keep it **synchronous** (the default) so it completes
 before skill discovery and the freshly-fetched skill is live in the *same*
 session, not the next one. To add a new portable script, add one `fetch` line.
 This is a recipe for *consuming* repos; web-tools is the source and doesn't run
@@ -477,6 +462,10 @@ Generated output is skipped even when it is tracked (`dist/` and the rest of
 `SKIP_DIRS`), since a marker in a build artifact is a copy of the one in its
 source and reporting both doubles the count against a bundled line thousands of
 characters wide.
+
+**Prose about a marker that has already been removed spells the date out rather
+than writing the token**, since a record of a retired marker would otherwise scan
+as a live one.
 
 ### Not portable
 
