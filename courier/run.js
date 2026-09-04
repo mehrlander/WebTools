@@ -60,17 +60,29 @@
       .cx-panel h3{margin:0;font-size:16px}
       .cx-panel p{margin:0;color:#475569;font-size:13px}
       .cx-body,.cx-out{flex:1;min-height:0;overflow:auto;background:#f1f5f9;border:1px solid #cbd5e1;
-        border-radius:8px;padding:10px;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
-        white-space:pre-wrap;word-break:break-word;color:#0f172a;margin:0}
+        border-radius:8px;padding:10px;color:#0f172a;margin:0}
+      .cx-code,.cx-out{font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+        white-space:pre-wrap;word-break:break-word}
       .cx-out{resize:none;width:100%;box-sizing:border-box}
       .cx-row{display:flex;gap:8px;flex-wrap:wrap}
       .cx-row button{flex:1 1 auto;min-width:110px;padding:11px;border:0;border-radius:99px;
         font:600 15px system-ui;color:#fff;background:#0f172a;cursor:pointer}
       .cx-row button.cx-quiet{background:#e2e8f0;color:#0f172a}
       .cx-row button.cx-go{background:#15803d}
+      .cx-list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px;margin:0}
+      .cx-item{display:block;text-decoration:none;color:#0f172a;background:#f1f5f9;
+        border:1px solid #cbd5e1;border-radius:10px;padding:11px 13px}
+      .cx-item:hover{background:#e8eef6;border-color:#94a3b8}
+      .cx-item b{display:block;font-size:15px}
+      .cx-item .cx-host{display:block;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#15803d;margin-top:2px}
+      .cx-item .cx-note{display:block;font-size:12.5px;color:#475569;margin-top:5px}
+      .cx-foot{margin:0;font-size:12px;color:#64748b}
+      .cx-foot a{color:#475569}
     </style>
     <div class="cx-panel">
-      <h3></h3><p></p><pre class="cx-body"></pre><div class="cx-row"></div>
+      <h3></h3><p></p><div class="cx-body"></div><div class="cx-row"></div>
+      <p class="cx-foot"><a href="https://github.com/mehrlander/web-tools/blob/main/courier/README.md"
+        target="_blank" rel="noopener">What the courier is, and what it will not do</a></p>
     </div>`;
 
   let root, close;
@@ -104,6 +116,8 @@
   }
 
   const $ = (sel) => root.querySelector(sel);
+  const esc = (t) => String(t == null ? '' : t)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const say = (title, note) => { $('h3').textContent = title; $('p').textContent = note || ''; };
   const button = (label, cls, fn) => {
     const b = (root.ownerDocument || root).createElement('button');
@@ -113,7 +127,27 @@
     $('.cx-row').appendChild(b);
     return b;
   };
-  const stop = (title, note) => { say(title, note); $('.cx-body').remove(); button('Close', 'cx-quiet', close); };
+  // A dead end is the failure mode that reads as a broken bookmark, so `stop`
+  // offers the way out rather than only naming it: every open errand as a link
+  // to the page it runs on. That makes ANY page the directory, which is why
+  // there is no special case for the Web Tools app and no separate helper page
+  // to remember to visit. The one thing a page on that origin could add is
+  // results already landed, which needs the token the app holds and this does
+  // not; that is a status view, and it is not built.
+  const stop = (title, note, errands) => {
+    say(title, note);
+    const body = $('.cx-body');
+    if (errands && errands.length) {
+      body.className = 'cx-list';
+      body.innerHTML = errands.map(e =>
+        `<a class="cx-item" href="${esc(e.url)}" target="_blank" rel="noopener">`
+        + `<b>${esc(e.title)}</b><span class="cx-host">${esc(e.host)}</span>`
+        + (e.note ? `<span class="cx-note">${esc(e.note)}</span>` : '') + `</a>`).join('');
+    } else {
+      body.remove();
+    }
+    button('Close', 'cx-quiet', close);
+  };
 
   // ---- the errand ----------------------------------------------------------
   let list;
@@ -126,10 +160,13 @@
   // reads as a broken bookmark.
   const open = (list.errands || []).filter(e => e.host === HOST && e.status === 'open');
   if (!open.length) {
-    const elsewhere = (list.errands || []).filter(e => e.status === 'open').map(e => e.host);
+    const elsewhere = (list.errands || []).filter(e => e.status === 'open' && e.url);
     return stop('Nothing open for ' + HOST,
-      elsewhere.length ? 'Open errands are waiting on: ' + elsewhere.join(', ')
-                       : 'No errand is open on any host.');
+      elsewhere.length
+        ? (elsewhere.length === 1 ? 'One errand is open. ' : elsewhere.length + ' errands are open. ')
+          + 'Open one below, then tap the courier again on that page. Links open in a new tab.'
+        : 'No errand is open on any host.',
+      elsewhere);
   }
   const errand = open[0];
 
@@ -141,7 +178,9 @@
   // code rather than to a diff. The script is on screen in full before the
   // button that runs it exists.
   say(errand.title, errand.note || '');
-  $('.cx-body').textContent = src;
+  const body = $('.cx-body');
+  body.className = 'cx-body cx-code';
+  body.textContent = src;
   button('Cancel', 'cx-quiet', close);
   button('Run this script', 0, async () => {
     $('.cx-row').innerHTML = '';

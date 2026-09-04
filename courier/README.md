@@ -84,6 +84,20 @@ inside the popup would hand it a blank document.
 instead: a shadow root, no scrim animation, the same markup and wiring. It is
 the fallback rather than the design, so it is kept simple deliberately.
 
+## Every page is the directory
+
+A host with no open errand does not dead-end. The panel lists **every** open
+errand as a link to the page it runs on, with its host and its note, and every
+state carries a link to this file. So the courier answers "what is waiting, and
+where do I go" from anywhere, which is why there is no special case for the Web
+Tools app and no separate helper page to remember to visit. A rule with one
+member is not a rule.
+
+The one thing a page on the Web Tools origin could add is **results already
+landed**, since it holds the token that reads the private results folder and the
+courier deliberately holds none. That is a status view rather than a directory,
+and it is not built.
+
 **The bookmark is a pointer on purpose, and the trade is worth naming.** The
 mechanism lived in the bookmark first, which put the confirm gate beyond this
 repo's reach: no commit could remove the step that shows you a script before it
