@@ -227,6 +227,23 @@ which no ratio can see. Where a check cannot decide, the honest move is to say s
 here rather than ship a gate that is right twice and wrong twice and therefore
 ignored. A noisy gate is a third way for an unchecked claim to hide.
 
+**Where a check can decide only part of a field, spend it on bounds.** The
+question above is put as though a claim were either checkable or not, and
+`app-routes.reads` is the case that is both. It names the derived caches each
+routed view consumes, and a scan settles less of it than it looks: every cache
+read goes through a kit constant, so `cache → module` derives cleanly, but
+`estate.js` reads three of the four caches and backs seven routed views, so the
+derivation stops one hop short of the answer and a composition through it would
+be coarser than the sentence it replaced. Neither authoring the field nor
+deriving it works. So the field is authored at the resolution the answer needs
+and the scan is spent on **bounds**: no view may claim a read no file of its own
+makes, and where a reading file backs exactly one route the claim is forced
+rather than merely allowed. That leaves 4 of its 11 entries genuinely authored,
+the residue being which of one wide component's views consumes which cache.
+[`cache-readers.mjs`](../tools/build/cache-readers.mjs) derives it,
+[`state-feeds.test.mjs`](../tools/test/state-feeds.test.mjs) holds both bounds,
+and nothing stores the composition.
+
 ### Two limits of the model, neither visible from inside it
 
 *A carrier can be distributed.* A registry names one path. But the authoritative
