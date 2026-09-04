@@ -16,7 +16,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 import { makeShell, page as shellSource } from './shell.mjs';
@@ -179,12 +179,47 @@ test('the id the router names is the id the finder carries', () => {
     'one owner: quick-find must not register a key listener beside the router');
 });
 
-test('the views that own a search box declare it', () => {
-  // Without the attribute the view still works and the keystroke still lands
-  // somewhere, which is why this is a test and not a crash: it goes to the
-  // sidebar finder instead of the filter the reader is looking at.
-  const files = readFileSync(path.join(repoRoot, 'lib/alpineComponents/search-view.js'), 'utf8');
-  assert.match(files, /data-find-box/, 'the Files view claims its own query box');
-  assert.match(shellSource, /placeholder="filter by name…" data-find-box/,
-    'the Pages view claims its own filter');
+// Which boxes wear data-find-box, held BOTH ways: a declared box that lost its
+// attribute fails, and an undeclared file that grew one fails too. The second
+// direction is the one worth having. The attribute is for a VIEW's own primary
+// search, over the content that view is showing, and only one view is on screen
+// at a time, which is what makes "first visible wins" safe. A box inside
+// something that OVERLAYS a view breaks that: the fab drawer's debug console
+// carries a filter, and marking it would put two boxes on screen with DOM order
+// picking between them. So a new declaration has to be argued here first.
+const DECLARED = [
+  ['app/index.html', 'the Pages filter and the project Docs path filter', 2],
+  ['lib/alpineComponents/search-view.js', 'the Files view query', 1],
+  ['lib/alpineComponents/map.js', "the Map's Skills search", 1],
+  ['lib/alpineComponents/config.js', "the Config view's key filter", 1],
+  ['lib/alpineComponents/public-browse.js', 'the public browser file filter', 1],
+];
+
+test('every declared view search box carries the attribute', () => {
+  for (const [rel, what, n] of DECLARED) {
+    const src = readFileSync(path.join(repoRoot, rel), 'utf8');
+    const found = (src.match(/<input\b[^>]*\bdata-find-box\b/g) || []).length;
+    assert.equal(found, n, `${rel} should declare ${n} (${what}), found ${found}`);
+  }
+});
+
+test('and nothing else does', () => {
+  // Undeclared is the failing direction on purpose: a filter inside an overlay
+  // would work in a test of its own and be wrong on screen.
+  const roots = ['app', 'lib'];
+  const hits = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) { if (e.name !== 'node_modules') walk(full); continue; }
+      if (!/\.(js|html)$/.test(e.name)) continue;
+      // The ATTRIBUTE on an input, not the name: the router's own source and
+      // comments say `data-find-box` several times and declare nothing.
+      if (/<input\b[^>]*\bdata-find-box\b/.test(readFileSync(full, 'utf8')))
+        hits.push(path.relative(repoRoot, full));
+    }
+  };
+  roots.forEach(r => walk(path.join(repoRoot, r)));
+  assert.deepEqual(hits.sort(), DECLARED.map(d => d[0]).sort(),
+    'a file grew data-find-box without being declared above; read the rule there first');
 });
