@@ -57,11 +57,19 @@ configured repo already on the new name. Fields:
 ```
 
 A promoted page's `slug` is the one field that is an address rather than a
-description of one. `?app=news` opens it, which is short because a path is most
-of an address and none of the meaning, and a slug is a name. It resolves only
-against the collected app views, so it is meaningful with `appView: true` and
-inert without it, and a slug that no repo declares lands the reader on the
-estate rather than an empty frame.
+description of one, and a slug no repo declares lands the reader on the estate
+rather than an empty frame. The registry row carries the rest of its contract.
+
+**Every promoted page declares one**, which is a rule about the set rather than
+about the field, so it lives here. The shell's `stamp()` rewrites the address on
+every navigation, writing the slug where the open view has one and the five-key
+`appRepo`/`appPath`/`appLabel`/`appIcon` form where it does not. A page without
+a slug therefore cannot hold a short address: the middle form,
+`?app=owner/repo[@ref]:path`, parses and opens, but the first tap inside the app
+replaces it with the long one. That was the state of five of the estate's six
+promoted views until 2026-09-04, when only the budget-drs lens carried a slug,
+because `?app=` was built for it (tracker task `app-view-address-and-icon-tc1a91`)
+and the field was applied once rather than across the set.
 
 A deep link INTO a promoted page rides the fragment, not the query. The shell
 owns the query and the subject owns the fragment, so

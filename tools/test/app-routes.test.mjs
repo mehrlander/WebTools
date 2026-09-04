@@ -276,6 +276,22 @@ test('routesTouched applies the same narrow/wide rule as the forward join', () =
   assert.deepEqual(wide.near.map(x => x.key), ['one', 'two', 'three']);
 });
 
+// The near set gets one slot in both views, so the sentence behind that slot is
+// folded here rather than written twice. It was written twice: branch-brief
+// collapsed the set and the estate's branch rows rendered a ghosted LINK per
+// route, which is the disagreement routesTouched exists to prevent, and the
+// links offered exactly the addresses the near rule says to withhold.
+test('nearNote names the routes, the shared files, and why they do not count', () => {
+  const { near } = R.routesTouched(FIXTURE, ['wide.js']);
+  const note = R.nearNote(near);
+  assert.match(note, /^One, Two, Three: touched only through wide\.js, /);
+  assert.match(note, /cannot be said to change them$/);
+  // Each shared file once, however many routes carry it.
+  assert.equal(note.split('wide.js').length - 1, 1);
+  assert.equal(R.nearNote([]), '', 'no near set, no note to show');
+  assert.equal(R.nearNote(undefined), '');
+});
+
 test('routesTouched never counts the shell, and reports the hits it used', () => {
   assert.deepEqual(R.routesTouched(FIXTURE, ['shell.html']), { on: [], near: [] });
   const r = R.routesTouched(FIXTURE, ['one.js', 'wide.js']);

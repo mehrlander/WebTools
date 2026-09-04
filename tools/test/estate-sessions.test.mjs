@@ -404,7 +404,7 @@ test('copySessionPointer writes the block, with this estate\'s store and the pan
   assert.ok(copied.includes(data.sessionPageUrl(row)));
 });
 
-test('both controls draw on a record row, and a stub gets neither', async () => {
+test('the pointer draws on a record row, a stub gets none, and nothing links the page', async () => {
   shell.view = 'sessions';
   data.sessionLens = 'list';
   data.sessionScope = 'all';
@@ -421,11 +421,17 @@ test('both controls draw on a record row, and a stub gets neither', async () => 
   await Alpine.nextTick();
   const doc = window.document;
   assert.equal(data.sessionNodes.filter(n => n.kind === 'stub').length, 1, 'the stub is on screen');
-  const links = [...doc.querySelectorAll('a[href*="session.html#id="]')];
-  assert.equal(links.length, 1, 'one session page link, on the record row only');
-  assert.equal(links[0].getAttribute('href'),
+  assert.equal(doc.querySelectorAll('i.ph-copy').length, 1,
+    'one copy control, on the record row: a stub has nothing to point at');
+  // The row's ⧉ to pages/session.html went on 2026-09-04. sessionBrief is one
+  // component with two hosts, so the name already opened that view, and the
+  // pointer this copy control writes carries the page address on its Read:
+  // line, which is where a session address is wanted anyway.
+  assert.equal(doc.querySelectorAll('a[href*="session.html#id="]').length, 0,
+    'and no row links the hosted page directly any more');
+  // The helper stays, because the pointer is built from it.
+  assert.equal(data.sessionPageUrl({ id: 'b8fae678' }),
     'https://mehrlander.github.io/web-tools/pages/session.html#id=b8fae678');
-  assert.equal(doc.querySelectorAll('i.ph-copy').length, 1, 'one copy control, likewise');
 });
 
 test("the rail's legend hangs on the day, not on the whole card", async () => {

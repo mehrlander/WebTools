@@ -7,7 +7,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { makeWindow, repoRoot, captureAlpineErrors } from './bootstrap.mjs';
 
@@ -129,21 +129,20 @@ test('the GitHub exits are labeled menu rows, and the plus aims the stage at thi
 // The unframed counterpart to the layout case in branch-brief-hosted, and it
 // is now TWO rules read at two sizes rather than one everywhere.
 //
-// Below `lg` a page is a page and scrolls as one: pinning its own header costs
-// a phone the URL-bar collapse, and splitting an 844px screen between two
-// panes leaves neither readable. At `lg` there is no URL bar to lose and there
-// is height to spend, so the page locks to the viewport and the two sections
-// each take a scrollbar; before that the guide began at y=575 of a 983px
-// document and reading it scrolled every control off the top (2026-09-04, at
-// 1440x900).
+// Outside `roomy` a page is a page and scrolls as one: pinning its own header
+// costs a phone the URL-bar collapse. Inside it the page locks to the viewport
+// and the two sections each take a scrollbar; before that the guide began at
+// y=575 of a 983px document and reading it scrolled every control off the top
+// (2026-09-04, at 1440x900).
 //
-// TOKEN-EXACT, not substring: `lg:h-full` contains `h-full`, so an
+// TOKEN-EXACT, not substring: `roomy:h-full` contains `h-full`, so an
 // `includes` check cannot tell the small-screen rule from the large-screen one
 // and would pass while the page was locked at every size. The pixels are in
 // tools/render/scenarios, since a jsdom box has no layout to measure.
 const classes = (el) => new Set(String(el.className || '').split(/\s+/).filter(Boolean));
+const R = (u) => 'roomy:' + u;
 
-test('standalone: the document is left alone, and the lock is lg-only', () => {
+test('standalone: the document is left alone, and the lock is roomy-only', () => {
   assert.equal(window.document.body.style.overflow, '', 'the component never locks the document itself');
   assert.equal(window.document.body.style.height, '');
 
@@ -151,25 +150,56 @@ test('standalone: the document is left alone, and the lock is lg-only', () => {
   const sections = root.lastElementChild;
   const small = classes(root), sectionsSmall = classes(sections);
 
-  // Below lg: as tall as its content, owning no scroller.
+  // Outside roomy: as tall as its content, owning no scroller.
   assert.ok(!small.has('h-full'), 'the view is as tall as its content');
   assert.ok(!small.has('min-h-0'), 'and does not clamp itself to a box it was not given');
   assert.ok(!sectionsSmall.has('overflow-y-auto'), 'and owns no scroller');
 
-  // At lg: locked, with the sections dividing the box rather than scrolling it.
-  assert.ok(small.has('lg:h-full') && small.has('lg:min-h-0'),
-    'at lg the view fills the height the page hands it');
-  assert.ok(sectionsSmall.has('lg:flex-1') && sectionsSmall.has('lg:min-h-0'),
+  // Inside it: locked, with the sections dividing the box rather than scrolling it.
+  assert.ok(small.has(R('h-full')) && small.has(R('min-h-0')),
+    'roomy, the view fills the height the page hands it');
+  assert.ok(sectionsSmall.has(R('flex-1')) && sectionsSmall.has(R('min-h-0')),
     'the sections are the box the two panes divide');
-  assert.ok(!sectionsSmall.has('lg:overflow-y-auto'),
+  assert.ok(!sectionsSmall.has(R('overflow-y-auto')),
     'and it is not itself a scroller, or the two panes would be inside a third');
 
   const files = root.querySelector('[x-ref="files"]');
   const guide = root.querySelector('[x-ref="guide"]');
-  assert.ok(classes(files).has('lg:max-h-[45%]') && classes(files).has('lg:min-h-0'),
+  assert.ok(classes(files).has(R('max-h-[45%]')) && classes(files).has(R('min-h-0')),
     'the file list takes its content height up to a share of the box');
-  assert.ok(classes(guide).has('lg:overflow-y-auto') && classes(guide).has('lg:grow'),
+  assert.ok(classes(guide).has(R('overflow-y-auto')) && classes(guide).has(R('grow')),
     'the guide takes what is left and scrolls the prose inside it');
+});
+
+// `roomy` IS NOT A TAILWIND BREAKPOINT. It is declared per page, so a host that
+// mounts this component standalone without the declaration gets classes that
+// compile to nothing and a page that silently reverts to document scroll: the
+// exact failure mode the house style names for the whole stack. Nothing else
+// would report it, since the classes are still in the DOM and the suite would
+// still be green.
+//
+// So the gate is two-way. Every page that mounts branchBrief WITHOUT framed:true
+// must declare the variant, and the floors are asserted here rather than only
+// commented, because a floor moved by accident is a layout that quietly stops
+// applying on somebody's window.
+test('every standalone host of this component declares the roomy variant', () => {
+  const dir = path.join(repoRoot, 'pages');
+  const hosts = readdirSync(dir).filter(f => f.endsWith('.html'))
+    .map(f => [f, readFileSync(path.join(dir, f), 'utf8')])
+    .filter(([, src]) => /branchBrief\(/.test(src) && !/framed:\s*true/.test(src));
+  assert.ok(hosts.length, 'at least one page mounts the component standalone');
+
+  for (const [name, src] of hosts) {
+    // Non-greedy to the `)` that a `;` follows: the condition nests parens
+    // (`@media (min-width: …) and (min-height: …)`), so a `[^)]*` class stops
+    // at the first inner one and reads half the rule as the whole of it.
+    const decl = src.match(/@custom-variant\s+roomy\s*\(([\s\S]*?)\)\s*;/);
+    assert.ok(decl, `${name} uses roomy: classes but never declares the variant`);
+    assert.match(decl[1], /min-width:\s*640px/,
+      `${name}: the width floor keeps a phone in portrait on document scroll`);
+    assert.match(decl[1], /min-height:\s*700px/,
+      `${name}: the height floor is what decides whether two panes fit at all`);
+  }
 });
 
 // ── What the file deck pages through ────────────────────────────────────────
