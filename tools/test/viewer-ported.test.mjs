@@ -175,22 +175,73 @@ test('a cell with no conditional format carries no class for one', () => {
   assert.doesNotMatch(drawWith(layoutWith({})), /class="cf/);
 });
 
-test('a validation list gets the caret and its options in the tooltip', () => {
-  const html = drawWith(layoutWith({ note: { title: '', prompt: '', options: ['Bill', 'Budget'] } }));
+test('a validation list gets the caret and its options in the note', () => {
+  const html = drawWith(layoutWith({ note: { kind: 'list', title: '', prompt: '', options: ['Bill', 'Budget'] } }));
   assert.match(html, /class="dv"/);
-  assert.match(html, /title="One of: Bill, Budget"/);
+  assert.match(html, /data-note="One of: Bill, Budget"/);
 });
 
 test('an input message gets the corner wedge and the form’s own words', () => {
-  const html = drawWith(layoutWith({ note: { title: 'Fee Code', prompt: 'Enter the four digit code.', options: null } }));
+  const html = drawWith(layoutWith({ note: { kind: 'instruction', title: 'Fee Code', prompt: 'Enter the four digit code.', options: null } }));
   assert.match(html, /class="note"/);
-  assert.match(html, /title="Fee Code: Enter the four digit code\."/);
+  assert.match(html, /data-note="Fee Code: Enter the four digit code\."/);
 });
 
-test('a long option list is trimmed in the tooltip and says how many it dropped', () => {
+test('a long option list is trimmed in the note and says how many it dropped', () => {
   const options = Array.from({ length: 55 }, (_, i) => 'opt' + i);
-  const html = drawWith(layoutWith({ note: { title: '', prompt: '', options } }));
+  const html = drawWith(layoutWith({ note: { kind: 'list', title: '', prompt: '', options } }));
   assert.match(html, /and 15 more/);
+});
+
+// ── comments ─────────────────────────────────────────────────────────────────
+//
+// The one annotation a person wrote by hand, and the one mark on the sheet that
+// is not this render's invention: Excel draws the red corner itself.
+
+const commented = (over = {}) => layoutWith({ note: {
+  kind: 'comment', title: '', prompt: '', options: null,
+  comment: { author: 'Shields, Sharon (OFM)', text: 'Include sales tax.' }, ...over } });
+
+test('a comment wears Excel\'s red corner and names who left it', () => {
+  const html = drawWith(commented());
+  assert.match(html, /class="note cmt"/, 'cmt recolours the wedge the note class draws');
+  assert.match(html, /td\.cmt::before\{border-top-color:#dc2626/);
+  assert.match(html, /data-note="Shields, Sharon \(OFM\): Include sales tax\."/);
+});
+
+test('a comment outranks a list, so one cell wears one mark', () => {
+  // The kit already decided this by setting `kind`; what is held here is that
+  // the render obeys it rather than re-deciding from whichever field is set.
+  const html = drawWith(commented({ options: ['Yes', 'No'] }));
+  assert.match(html, /class="note cmt"/);
+  assert.doesNotMatch(html, /class="[^"]*\bdv\b/, 'the caret would be a second mark on one cell');
+  assert.match(html, /One of: Yes, No/, 'and the choices are still in the note');
+});
+
+test('everything a commented cell knows arrives in one note, in reading order', () => {
+  const html = drawWith(commented({ title: 'Rate', prompt: 'Hourly.' }), {});
+  // Read back off the DOM, so the &#10; the markup carries is a real newline
+  // here; a reader sees the break either way.
+  const note = /data-note="([^"]*)"/.exec(html)[1];
+  assert.equal(note,
+    'Shields, Sharon (OFM): Include sales tax.\n\nRate: Hourly.',
+    'the comment first, the form\'s own instruction after, separated by a blank line');
+});
+
+test('a sheet cell opts out of the note kit\'s underline', () => {
+  // The kit underlines a `data-note` element by default. Excel underlines
+  // nothing, the render\'s claim is that it looks like Excel, and the stored-
+  // value note lands on most numeric cells, so the underline would be on half
+  // the sheet.
+  const html = drawWith(commented());
+  assert.match(html, /data-note-bare(="")? data-note=/);
+});
+
+test('a fact never rides in a title attribute', () => {
+  // House style rule 11: a title reaches no touch screen and cannot be captured
+  // in a screenshot, so a fact parked in one is invisible to a pixel review.
+  const html = drawWith(commented({ title: 'Rate', prompt: 'Hourly.', options: ['Yes'] }));
+  assert.doesNotMatch(html, /\stitle="/, 'the cell markup carries a title attribute');
 });
 
 test('a picture is drawn inside its own cell, positioned by its offsets', () => {
@@ -268,4 +319,68 @@ test('both sheet modes publish a locate, so a cite survives a mode switch', () =
     assert.match(src, /const locate = async \(address\)/, `${id} publishes no locate`);
     assert.match(src, /publishSheets\(host, sheets, show, stale, locate\)/, `${id} does not publish it`);
   }
+});
+
+// ── the notes panel ──────────────────────────────────────────────────────────
+//
+// The other reading of a workbook's annotations: all of them at once, which is
+// the thing Excel makes hard. A row is a cite, so the list is only useful
+// because tapping one lands on the cell.
+
+const notesPanel = (notes) => {
+  const prev = window.xlsxKit;
+  window.xlsxKit = { workbookNotes: () => notes };
+  const root = window.document.createElement('div');
+  root.innerHTML = '<div data-sheet="stage"></div>';
+  const controls = window.document.createElement('div');
+  const landed = [];
+  try {
+    const panel = R.mountNotesPanel({ controls }, {}, root, (p) => { landed.push({ ...p }); });
+    return { panel, controls, root, landed };
+  } finally { window.xlsxKit = prev; }
+};
+
+const NOTES = [
+  { sheet: 'EXAMPLE-Tech Pool', cell: 'G37', kind: 'comment',
+    author: 'Shields, Sharon (OFM)', title: '', text: 'Include sales tax.', options: null },
+  { sheet: 'Fee form', cell: 'D1', span: 'D1:D50', kind: 'list',
+    author: '', title: 'Code', text: '', options: ['Bill', 'Budget'] },
+];
+
+test('the panel lists every note in the workbook, whatever sheet it is on', () => {
+  const { panel } = notesPanel(NOTES);
+  const rows = panel.querySelectorAll('[data-note-row]');
+  assert.equal(rows.length, 2);
+  assert.match(rows[0].textContent, /EXAMPLE-Tech Pool/);
+  assert.match(rows[0].textContent, /Shields, Sharon \(OFM\)/);
+  assert.match(rows[0].textContent, /Include sales tax\./);
+  assert.match(rows[1].textContent, /D1:D50/, 'a rule says the whole range it covers');
+  assert.match(rows[1].textContent, /One of: Bill, Budget/);
+});
+
+test('the panel opens from a control in the header, not from the pane', () => {
+  // The sheet keeps the whole of the pane's height; the drawer is over it.
+  const { panel, controls } = notesPanel(NOTES);
+  assert.equal(controls.children.length, 1);
+  assert.ok(panel.classList.contains('hidden'), 'a workbook opens on its sheet, not on its notes');
+  controls.firstElementChild.click();
+  assert.equal(panel.classList.contains('hidden'), false);
+  controls.firstElementChild.click();
+  assert.ok(panel.classList.contains('hidden'), 'the same control closes it');
+});
+
+test('a row is a cite: tapping one lands on the cell and closes the drawer', async () => {
+  const { panel, controls, landed } = notesPanel(NOTES);
+  controls.firstElementChild.click();
+  panel.querySelector('[data-note-row="1"]').click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.deepEqual(landed, [{ sheet: 'Fee form', cell: 'D1' }]);
+  assert.ok(panel.classList.contains('hidden'),
+    'a drawer left open covers the cell the reader just asked to see');
+});
+
+test('a workbook with no notes grows no control', () => {
+  const { panel, controls } = notesPanel([]);
+  assert.equal(panel, null);
+  assert.equal(controls.children.length, 0);
 });

@@ -969,3 +969,126 @@ test('a picture whose media the workbook does not carry is skipped, not drawn br
   const { xl } = xlsxKit.analyze(picParts());   // no media attached
   assert.deepEqual(xlsxKit.sheetLayout(xl.sheets.sheet1, xl).images, []);
 });
+
+// ---------------------------------------------------------------------------
+// Comments: the fourth thing a sheet carries, and the only one a reader wrote
+// by hand. Legacy (non-threaded) comments, which is what OFM's templates use.
+// ---------------------------------------------------------------------------
+
+// Two authors, and the text run Excel actually writes: the author's name, a
+// colon and a newline, then the comment. authorId indexes the <authors> list.
+const COMMENTS = `<?xml version="1.0"?>
+<comments xmlns="c">
+  <authors><author>slm4303</author><author>Shields, Sharon (OFM)</author></authors>
+  <commentList>
+    <comment ref="B2" authorId="0"><text>
+      <r><rPr><b/></rPr><t xml:space="preserve">slm4303:</t></r>
+      <r><t xml:space="preserve">
+input the hours anticipated</t></r>
+    </text></comment>
+    <comment ref="C3" authorId="1"><text>
+      <r><t>Hint: include sales tax</t></r>
+    </text></comment>
+  </commentList>
+</comments>`;
+
+// The comments part rides a relationship with NOTHING in the sheet XML naming
+// it: <legacyDrawing> points at the VML that draws Excel's red corner, and the
+// comments themselves are reached by walking the sheet's rels.
+const COMMENT_RELS = `<?xml version="1.0"?>
+<Relationships xmlns="rel">
+  <Relationship Id="rIdV" Type=".../vmlDrawing" Target="../drawings/vmlDrawing1.vml"/>
+  <Relationship Id="rIdC" Type=".../comments" Target="../comments3.xml"/>
+</Relationships>`;
+
+const COMMENT_SHEET = `<?xml version="1.0"?>
+<worksheet xmlns="ws" xmlns:r="rel">
+  <sheetData>
+    <row r="2"><c r="B2"><v>5000</v></c></row>
+    <row r="3"><c r="C3" t="inlineStr"><is><t>220</t></is></c></row>
+  </sheetData>
+  <legacyDrawing r:id="rIdV"/>
+</worksheet>`;
+
+const commentParts = (extra = []) => [
+  ...formParts().filter(([p]) => p !== 'xl/worksheets/sheet1.xml'),
+  ['xl/worksheets/sheet1.xml', COMMENT_SHEET],
+  ['xl/worksheets/_rels/sheet1.xml.rels', COMMENT_RELS],
+  ['xl/comments3.xml', COMMENTS],
+  ...extra,
+];
+
+test('a comments part is found by walking the rels, not by matching sheet numbers', () => {
+  // comments3.xml on sheet1 is the case that breaks a numbering assumption, and
+  // it is what the OneWA template does: the parts are numbered by creation
+  // order, not by the sheet they belong to.
+  const { xl } = xlsxKit.analyze(commentParts());
+  const cs = xl.sheets.sheet1.comments;
+  assert.equal(cs.length, 2);
+  assert.deepEqual(cs.map(c => c.ref), ['B2', 'C3']);
+  assert.equal(cs[0].author, 'slm4303');
+  assert.equal(cs[1].author, 'Shields, Sharon (OFM)', 'authorId indexes the authors list');
+});
+
+test('the author prefix Excel writes into the text is not repeated in it', () => {
+  const { xl } = xlsxKit.analyze(commentParts());
+  const [first, second] = xl.sheets.sheet1.comments;
+  assert.equal(first.text, 'input the hours anticipated',
+    'Excel writes "Name:\\n" as the first run, and the author field already says it');
+  assert.equal(second.text, 'Hint: include sales tax',
+    'a comment typed without the prefix keeps every word, colon included');
+});
+
+test('a comment reaches the cell it sits on, and outranks the form\'s own note', () => {
+  const dv = '<dataValidations><dataValidation sqref="B2" promptTitle="Hours" prompt="Enter hours."/></dataValidations>';
+  const parts = commentParts().map(([p, x]) =>
+    p === 'xl/worksheets/sheet1.xml' ? [p, x.replace('<legacyDrawing', dv + '<legacyDrawing')] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  // A row carries only the cells it has, so B2 is that row's first cell.
+  const b2 = out.rows.find(r => r.row === 2).cells.find(c => c.col === 1);
+  assert.equal(b2.note.kind, 'comment', 'one marker per cell, and a comment is the strongest');
+  assert.equal(b2.note.comment.author, 'slm4303');
+  assert.equal(b2.note.title, 'Hours', 'the instruction is still carried, just not the kind');
+  assert.equal(b2.note.prompt, 'Enter hours.');
+});
+
+test('workbookNotes: one row per comment, one row per validation RULE', () => {
+  // A validation covering ninety-seven cells is one thing a reader wants to
+  // see, not ninety-seven; a comment is genuinely per-cell.
+  const dv = '<dataValidations><dataValidation sqref="D1:D50 F1" promptTitle="Code" prompt="Four digits."/></dataValidations>';
+  const parts = commentParts().map(([p, x]) =>
+    p === 'xl/worksheets/sheet1.xml' ? [p, x.replace('<legacyDrawing', dv + '<legacyDrawing')] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const notes = xlsxKit.workbookNotes(xl);
+  assert.equal(notes.length, 3, 'two comments and one rule');
+  assert.deepEqual(notes.map(n => n.kind), ['comment', 'comment', 'instruction']);
+  const rule = notes[2];
+  assert.equal(rule.cell, 'D1', 'addressed at the first cell of the range, so the cite lands');
+  assert.equal(rule.span, 'D1:D50 F1', 'and says the whole reach');
+  assert.equal(rule.text, 'Four digits.');
+});
+
+test('workbookNotes: sheets come in workbook order and cost nothing to ask for', () => {
+  const { xl } = xlsxKit.analyze(commentParts());
+  const notes = xlsxKit.workbookNotes(xl);
+  assert.deepEqual(notes.map(n => [n.sheet, n.cell]), [['Form', 'B2'], ['Form', 'C3']]);
+  // Read off the sheets, not off a layout, so a workbook past the draw cap
+  // still reports every note it carries.
+  assert.equal(xl.sheets.sheet1.rows.length, 2);
+});
+
+test('a workbook with nothing annotated returns an empty list, not a header row', () => {
+  assert.deepEqual(xlsxKit.workbookNotes(formXl()), []);
+  assert.deepEqual(xlsxKit.workbookNotes(null), []);
+});
+
+test('a threaded comment part is not read as a legacy one', () => {
+  // Modern Excel writes threadedComments/*.xml AND a legacy comments part that
+  // carries the same text with a machine-generated author. Reading both would
+  // list every comment twice.
+  const threaded = ['xl/threadedComments/threadedComment1.xml',
+    `<?xml version="1.0"?><ThreadedComments xmlns="tc"><threadedComment ref="B2" personId="{1}"><text>a reply</text></threadedComment></ThreadedComments>`];
+  const { xl } = xlsxKit.analyze(commentParts([threaded]));
+  assert.equal(xl.sheets.sheet1.comments.length, 2, 'the threaded part contributed nothing');
+});
