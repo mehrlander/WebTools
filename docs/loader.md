@@ -181,8 +181,8 @@ itself; a page that instantiates `GH` by hand gets only what it loads.
 | `proof` | `kits/proof.js` | sandboxed proof documents (srcdoc builders); vanilla-demo and chat-render sit on it |
 | `chatRender` | `chat-render.js` | chat transcript renderer; fenced blocks become live artifacts. Loads after `swipe-deck.js` |
 | `sessionRender` | `session-render.js` | a session record (web-tools-private `sessions/**.json`) as a paged conversation: merges the record's three parallel turn lists on `at`, groups a card per exchange, folding the work behind one summary line (a run of calls plus the sentence that introduced it is a step; a run of steps folds together), and names what the record could not capture. Loads after `chat-render.js` |
-| `swipeDeck` | `swipe-deck.js` | the house swipe format: a snap track of slides, and the fullscreen takeover that frames it. Self-contained, so another repo's page can load it with a plain `<script src>` |
-| `TransformWorkbench` | `alpineComponents/transform-workbench.js` | the multi-tab transform workbench: `panelHTML()` markup plus the `transformWorkbench` / `tfViewer` Alpine components. Not boot-chain: page-loaded (a plain `<script src>` or `gh.load`); `pages/transform.html` and the budget-drs app both mount it |
+| `swipeDeck` | `swipe-deck.js` | the house swipe format: a snap track of slides, and the fullscreen takeover that frames it. Self-contained (no Alpine, no boot dependency), so a consumer page can load it first in its chain; see [Consumers in other repos](#consumers-in-other-repos) for why not a plain `<script src>` at `@main` |
+| `TransformWorkbench` | `alpineComponents/transform-workbench.js` | the multi-tab transform workbench: `panelHTML()` markup plus the `transformWorkbench` / `tfViewer` Alpine components. Not boot-chain: page-loaded through `gh.load`; `pages/transform.html` and the budget-drs app both mount it |
 | Alpine stores `browser`, `toasts`; magics `$clip`, `$paste`, `$toast` | `alpine-bundle.js` | exist only after `alpine:init` |
 | `Annotate` | `kits/annotate.js` | notes pinned to selections/elements/regions of a target document, or to the page as a whole; the set (or one note of it) serializes to markdown/JSON, and saves as a jot. The card reads its own set behind an expander; the FAB drawer no longer carries a Notes tab, only the two ways of starting the annotator. FAB take "Annotate" and `pages/annotate.html` drive it. Chain `kits/dictate.js` before it for the voice composer |
 | `Dictate` | `kits/dictate.js` | voice input as a text buffer over `SpeechRecognition`, with the punctuation and casing rules that make stitched utterances read as prose. Soft dependency of `annotate.js`: absent, the composer simply shows no microphone |
@@ -408,6 +408,47 @@ the mechanism:
 The operational side — the four verbs `load → build → bake → export`, the
 commands, and the byte-identical `verify-build` guarantee — lives in
 [`tools/README.md`](../tools/README.md).
+
+## Consumers in other repos
+
+A page in another repository that uses a `lib/` file takes the same two
+routes this repo's own pages take, and no third:
+
+- **The chain**, for a page that wants a few files: import `gh-api.js` from
+  jsDelivr at `@main`, then `gh.load()` each file, then `alpine-bundle.js`
+  last when a loaded file registers an Alpine component. `gh-api.js` is the
+  one file that comes through the CDN's branch cache (the purge rule in
+  `CLAUDE.md` covers it, and `gh-boot.js` is split out so it rarely changes);
+  every file after it is fetched at main's tip through the contents API, on
+  the token the browser holds, and is current on the next load.
+- **The pre-build**, for a page that wants the library whole: resolve `main`
+  to its commit through the commits API, fetch `dist/web-tools.js` from
+  raw.githubusercontent at that SHA, and blob-import it, which is the app's
+  own `?use=` boot in `app/index.html`. A SHA is an address no cache can hold
+  stale.
+
+**Not a plain `<script src>` at `@main`.** jsDelivr caches a branch URL
+twelve hours at the edge and tells the browser to keep it seven days, and a
+purge reaches only the edge. Measured 2026-09-04: PR #584 merged at 09:35 and
+the budget-drs submittal page in `mehrlander/home`, loading `viewer.js` that
+way, showed the old render all day. A plain tag is for a demo or a throwaway
+page, and for third-party libraries, which keep their CDN tags on both routes.
+
+Two things differ from a page in this repo:
+
+- **`?use=` is not the library's ref.** Under the toss shell and the
+  budget-drs app's frame, `?use=` and `window.__ref` name the ref of the repo
+  the page lives in. A consumer pins the library with `?lib=<branch|sha>`
+  instead, by the same raw + blob import as the `?use=` boot, and a frame
+  hands its answer down as `window.__lib`.
+- **The page brings no Alpine tag.** A deferred CDN tag starts Alpine before
+  the chain has registered anything; `alpine-bundle.js` starts it after. A
+  framed page sets `data-no-fab` on `<html>`, since the FAB belongs to the
+  shell.
+
+Worked examples in `mehrlander/home`: `projects/budget-drs/submittal/submittal.html`
+and `projects/budget-drs/app/view/app.html` (the chain),
+`projects/surfacer/app/surfacer.html` (the pre-build).
 
 ## Options for adding new capability
 
