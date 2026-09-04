@@ -17,6 +17,7 @@
 //   csv    docked, then swiped to the index slide, for the table rendition
 //   over   docked, then a peek opened from the list, which must sit ABOVE it
 //   docs   the Docs tab's own door, over its selected folder
+//   lead   a card title tapped, which docks the deck and marks its bullet
 
 export default async (page) => {
   await page.waitForFunction(() => window.__shell && window.Alpine, null, { timeout: 15000 });
@@ -38,6 +39,13 @@ export default async (page) => {
     return;
   }
 
+  if (mode === 'lead') {
+    // A card well down the list, so the mark has to have scrolled the slide to
+    // be visible at all: a shot of the top of the doc would pass either way.
+    await page.locator('button[title^="Show Toss data"]').first().click();
+    await page.waitForTimeout(3200);
+    return;
+  }
   if (mode === 'docs') {
     // The Surfacing tab's own door is already in the DOM and hidden behind its
     // section, and waitForSelector waits for the FIRST match to become visible,

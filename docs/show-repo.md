@@ -1723,6 +1723,16 @@ authoritative carrier, since it is what sessions load and follow, and the
 manifest is its gated index (membership held two-way to the doc's bullet
 lead-ins by `tools/test/surfacing-manifest.test.mjs`; the card summaries are
 paraphrases and stay unchecked, which the Docs registry's claims table states).
+A card's TITLE opens the doc at the bullet it paraphrases (2026-09-04), docking
+the deck so the two sit side by side and tinting the list item for four seconds.
+No correspondence is invented for it: `surfacing.csv`'s `lead` already is that
+bullet's bold lead-in, held both ways by `surfacing-manifest.test.mjs`. What the
+manifest gate cannot say is whether the key survives RENDERING, and it barely
+does: the primitives are a loose list, so marked wraps each item in a `<p>` and
+the lead-in is `li > p > strong:first-child`. The tight `li > strong` matched
+none of the twenty-two. [`tools/test/surfacing-lead-anchor.test.mjs`](https://github.com/mehrlander/web-tools/blob/main/tools/test/surfacing-lead-anchor.test.mjs)
+renders the real doc and holds both facts.
+
 The header's deck door opens that carrier and its index as two slides of the
 house swipe deck rather than routing to the Files view (2026-09-04): docked, the
 prose sits beside the cards it is authoritative for, where the route change put

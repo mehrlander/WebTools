@@ -760,3 +760,46 @@ test('what is not a table declines rather than rendering as one', () => {
   assert.equal(data.csvToMarkdown('one\ncolumn\n'), null, 'one column is a list');
   assert.equal(data.csvToMarkdown(''), null);
 });
+
+// ── A card and its bullet ────────────────────────────────────────────────
+// The corpus half (does every card resolve against the rendered doc) is
+// surfacing-lead-anchor.test.mjs, which renders SURFACING.md for real. This is
+// the component half: the normalization and the selector the card actually
+// calls, plus the one failure mode that matters, which is a hit on the wrong
+// bullet rather than a miss.
+
+test('the lead key is normalized the way the manifest gate normalizes it', () => {
+  assert.equal(data.leadKey('Reference is a link.'), 'Reference is a link');
+  assert.equal(data.leadKey('Boundary:'), 'Boundary');
+  assert.equal(data.leadKey('  Show pixels.  '), 'Show pixels');
+  assert.equal(data.leadKey(''), '');
+  assert.equal(data.leadKey(undefined), '');
+});
+
+test('findLead reaches a loose list item, which is the shape marked emits', () => {
+  const box = window.document.createElement('div');
+  box.innerHTML = '<ul>' +
+    '<li><p><strong>Show pixels.</strong> body one</p></li>' +
+    '<li><p><strong>Hand over the artifact.</strong> body two</p></li></ul>';
+  assert.match(data.findLead(box, 'Show pixels').textContent, /body one/);
+  assert.match(data.findLead(box, 'Hand over the artifact').textContent, /body two/);
+  assert.equal(data.findLead(box, 'Not a primitive'), null);
+});
+
+test('and a tight list item too, so the doc may drop its blank lines', () => {
+  const box = window.document.createElement('div');
+  box.innerHTML = '<ul><li><strong>Branch anchor.</strong> body</li></ul>';
+  assert.match(data.findLead(box, 'Branch anchor').textContent, /body/);
+});
+
+test('a bold run that is not the item lead-in is not the anchor', () => {
+  // Every primitive carries a **Boundary:** run inside its own paragraph, and
+  // several carry **Form**. Matching one of those would scroll the reader to
+  // the middle of the right bullet or the wrong one; :first-child is what
+  // keeps the anchor the lead-in.
+  const box = window.document.createElement('div');
+  box.innerHTML = '<ul><li><p><strong>Show pixels.</strong> body ' +
+    '<strong>Boundary:</strong> a viewport shot</p></li></ul>';
+  assert.equal(data.findLead(box, 'Boundary'), null, 'a mid-paragraph run is not a lead-in');
+  assert.ok(data.findLead(box, 'Show pixels'), 'the lead-in still resolves');
+});
