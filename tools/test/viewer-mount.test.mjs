@@ -123,8 +123,17 @@ test('a module that gives up does not reject show()', async () => {
 const wbData = Alpine.$data(doc.getElementById('wb'));
 const wbRoot = doc.getElementById('wb');
 
-// Tabulator is a CDN asset; the grid only ever constructs and destroys it.
-window.Tabulator = class { constructor() {} destroy() {} };
+// Tabulator is a CDN asset. The double carries exactly what the grid module
+// asks of it, which is now four things: a table is constructed, destroyed,
+// says when it has BUILT (the rows do not exist at construction, and a host
+// citing a row the moment show() resolves asked an empty table before this),
+// and can be asked for its rows.
+window.Tabulator = class {
+  constructor() { this._handlers = {}; }
+  destroy() {}
+  on(event, fn) { (this._handlers[event] ||= []).push(fn); setTimeout(() => fn(), 0); }
+  getRows() { return []; }
+};
 R.loadAsset = () => Promise.resolve();
 window.xlsxKit = {
   readZip: async () => ({ xl: { sheets: {

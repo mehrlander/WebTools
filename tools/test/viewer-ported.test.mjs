@@ -201,3 +201,71 @@ test('a picture is drawn inside its own cell, positioned by its offsets', () => 
   assert.match(html, /class="img"/, 'the host cell is the positioning context');
   assert.match(html, /<img src="data:image\/png;base64,AAAA" alt="Logo"[^>]*left:4px;top:6px;width:120px;height:40px/);
 });
+
+// ── addressing a place inside a workbook ─────────────────────────────────────
+//
+// The grammar and its resolution are separate on purpose: parsePlace reads a
+// string, readPlace decides what it means against the sheets that exist. A
+// bare word is genuinely ambiguous, and only the workbook settles it.
+
+// Spread into a node-realm literal: these are built inside jsdom and
+// assert/strict compares prototypes, the same trap the sheet list carries.
+const place = (s) => ({ ...R.parsePlace(s) });
+const read = (s, sheets) => ({ ...R.readPlace(s, sheets) });
+
+test('parsePlace reads the three shapes a cite is written in', () => {
+  assert.deepEqual(place('DP Addendum!H11'), { sheet: 'DP Addendum', cell: 'H11' });
+  assert.deepEqual(place('H11'), { sheet: null, cell: 'H11' });
+  assert.deepEqual(place('$H$11'), { sheet: null, cell: 'H11' }, 'absolute refs are still refs');
+  assert.deepEqual(place('A1:C3'), { sheet: null, cell: 'A1' }, 'a range lands on its corner');
+  assert.deepEqual(place("'Fed Funding'!Total"), { sheet: 'Fed Funding', text: 'Total' });
+  assert.deepEqual(place('Reductions - Adds Prioritized'),
+    { sheet: 'Reductions - Adds Prioritized' });
+  assert.deepEqual(place(''), {});
+});
+
+test('a sheet name is split on the LAST bang, since a name may carry one', () => {
+  assert.deepEqual(place('Is it done!?!B4'), { sheet: 'Is it done!?', cell: 'B4' });
+});
+
+test('readPlace: a bare word that names no sheet is text, not a miss', () => {
+  const sheets = [{ key: 'sheet1', s: { name: 'DP Addendum' } },
+                  { key: 'sheet2', s: { name: 'Reference Tables' } }];
+  assert.deepEqual(read('Reference Tables', sheets), { sheet: 'Reference Tables' });
+  // "Externally Mobile" is a plausible sheet name and is in fact a column
+  // heading. The workbook is the only thing that can tell them apart.
+  assert.deepEqual(read('Externally Mobile', sheets), { sheet: null, text: 'Externally Mobile' });
+  // An explicit sheet keeps its meaning even where no sheet matches, so the
+  // caller gets a clean miss rather than a search of the wrong document.
+  assert.deepEqual(read('Nope!A1', sheets), { sheet: 'Nope', cell: 'A1' });
+});
+
+test('sheetIndex matches on alphanumerics, so a cite survives a stray dash', () => {
+  const sheets = [{ key: 'sheet1', s: { name: 'Reductions - Adds Prioritized' } },
+                  { key: 'sheet2', s: { name: null } }];
+  assert.equal(R.sheetIndex(sheets, 'Reductions – Adds Prioritized'), 0, 'an en dash still matches');
+  assert.equal(R.sheetIndex(sheets, 'sheet2'), 1, 'a sheet the workbook never named keeps its part name');
+  assert.equal(R.sheetIndex(sheets, 'Nope'), -1);
+});
+
+test('landOnCell marks one cell at a time and lets the mark expire', async () => {
+  const doc = window.document;
+  const pane = doc.createElement('div');
+  const a = doc.createElement('td'), b = doc.createElement('td');
+  pane.append(a, b);
+  doc.body.append(pane);
+  a.classList.add('landed');
+  R.landOnCell(pane, b);
+  assert.ok(!a.classList.contains('landed'), 'the previous cite is cleared, not stacked');
+  assert.ok(b.classList.contains('landed'));
+  assert.equal(R.landOnCell(pane, null), false, 'nothing to mark is not a mark');
+  pane.remove();
+});
+
+test('both sheet modes publish a locate, so a cite survives a mode switch', () => {
+  for (const id of ['sheet', 'xlsx']) {
+    const src = R.modules.find(m => m.id === id).after.toString();
+    assert.match(src, /const locate = async \(address\)/, `${id} publishes no locate`);
+    assert.match(src, /publishSheets\(host, sheets, show, stale, locate\)/, `${id} does not publish it`);
+  }
+});

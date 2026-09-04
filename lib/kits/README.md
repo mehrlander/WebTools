@@ -1121,6 +1121,13 @@ xlsxKit.cfApplies(rule, cell)       // true / false / null, where null is "not
 xlsxKit.colLetter(26)               // 'AA'
 ```
 
+**Addressing a place inside a workbook** is the viewer's, not the kit's:
+`ViewRegistry.parsePlace` reads `Sheet!H11`, `H11`, `A1:C3` or a bare name, and
+a mounted sheet publishes `locate({ sheet, cell, text })` on its root's
+`__sheets`, which switches sheets, resolves a covered cell to the merge that
+draws it, scrolls and marks. What makes it possible here is that `sheetLayout`
+gives every cell its A1 address, so the render can carry one.
+
 **Three boundaries worth knowing, each a case where the kit declines rather
 than guesses.** A conditional rule of type `expression` is a formula, and
 evaluating one means a formula engine; those are skipped and counted in
