@@ -130,3 +130,74 @@ test('show() drops what the last file published', () => {
   assert.match(showBody.slice(0, 700), /this\.\$root\.__sheets = null/,
     'a host can read the previous workbook between show() and the next mount');
 });
+
+// ── the sheet render's three overlays ────────────────────────────────────────
+//
+// drawSheet turns a layout into markup. The layout itself is the kit's, and
+// tools/test/xlsx.test.mjs holds it; what is checked here is that each of the
+// three things a sheet carries beside its cells reaches the page.
+
+const layoutWith = (cell, extra = {}) => ({
+  cols: [{ index: 0, width: 60 }, { index: 1, width: 60 }],
+  rows: [{ row: 1, height: 20, cells: [
+    { col: 0, text: 'A', numeric: false, style: null, raw: null, cf: null,
+      colSpan: 1, rowSpan: 1, spillLeft: 0, spillRight: 0 },
+    { col: 1, text: 'B', numeric: false, style: null, raw: null, cf: null,
+      colSpan: 1, rowSpan: 1, spillLeft: 0, spillRight: 0, ...cell },
+  ] }],
+  maxCol: 1, freeze: null, truncated: null, images: [], cfSkipped: 0, empty: false,
+  ...extra,
+});
+
+const drawWith = (layout, kit = {}) => {
+  const prev = window.xlsxKit;
+  window.xlsxKit = {
+    sheetLayout: () => layout,
+    colLetter: (n) => String.fromCharCode(65 + n),
+    cellStyle: () => null,
+    dxfStyle: () => ({ bold: true, color: '#ffffff', fill: '#ff0000' }),
+    ...kit,
+  };
+  try { return R.drawSheet({ name: 'S', merges: [] }, {}, 'sheet1').innerHTML; }
+  finally { window.xlsxKit = prev; }
+};
+
+test('a conditional format reaches the page as its own rule, not an inline style', () => {
+  const html = drawWith(layoutWith({ cf: 3 }));
+  assert.match(html, /td\.cf3\{[^}]*background:#ff0000/, 'the dxf became a rule');
+  assert.match(html, /class="cf3"/, 'and the cell claims it');
+  // After the cell's own style rules, so a conditional format wins on what it
+  // sets and leaves the rest of the cell standing.
+  assert.ok(html.indexOf('td.cf3{') > html.indexOf('td.n{'), 'rule order decides the cascade');
+});
+
+test('a cell with no conditional format carries no class for one', () => {
+  assert.doesNotMatch(drawWith(layoutWith({})), /class="cf/);
+});
+
+test('a validation list gets the caret and its options in the tooltip', () => {
+  const html = drawWith(layoutWith({ note: { title: '', prompt: '', options: ['Bill', 'Budget'] } }));
+  assert.match(html, /class="dv"/);
+  assert.match(html, /title="One of: Bill, Budget"/);
+});
+
+test('an input message gets the corner wedge and the form’s own words', () => {
+  const html = drawWith(layoutWith({ note: { title: 'Fee Code', prompt: 'Enter the four digit code.', options: null } }));
+  assert.match(html, /class="note"/);
+  assert.match(html, /title="Fee Code: Enter the four digit code\."/);
+});
+
+test('a long option list is trimmed in the tooltip and says how many it dropped', () => {
+  const options = Array.from({ length: 55 }, (_, i) => 'opt' + i);
+  const html = drawWith(layoutWith({ note: { title: '', prompt: '', options } }));
+  assert.match(html, /and 15 more/);
+});
+
+test('a picture is drawn inside its own cell, positioned by its offsets', () => {
+  const html = drawWith(layoutWith({}, {
+    images: [{ row: 1, col: 1, dx: 4, dy: 6, width: 120, height: 40,
+               src: 'data:image/png;base64,AAAA', name: 'Logo' }],
+  }));
+  assert.match(html, /class="img"/, 'the host cell is the positioning context');
+  assert.match(html, /<img src="data:image\/png;base64,AAAA" alt="Logo"[^>]*left:4px;top:6px;width:120px;height:40px/);
+});

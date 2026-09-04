@@ -1106,12 +1106,29 @@ xlsxKit.sheetRows(result.xl.sheets.sheet1, result.xl)
 xlsxKit.sheetLayout(sheet, xl, opts) // the same sheet AS A PAGE: cells in place,
                                     //   merges as spans, column widths and row
                                     //   heights in px, spill runs, a style
-                                    //   index per cell, and `truncated` where
-                                    //   opts.maxRows/maxCells cut it short
+                                    //   index per cell, anchored `images`, and
+                                    //   `truncated` where opts.maxRows/maxCells
+                                    //   cut it short. Each cell may carry `cf`
+                                    //   (the dxf a conditional rule applies)
+                                    //   and `note` (the form's input message
+                                    //   and the choices a list allows)
 xlsxKit.cellStyle(xl, styleIndex)   // { bold, size, color, fill, border, align,
                                     //   valign, wrap, indent, format }
+xlsxKit.dxfStyle(xl, dxfId)         // the same record for a conditional format,
+                                    //   with every field optional
+xlsxKit.cfApplies(rule, cell)       // true / false / null, where null is "not
+                                    //   decidable here"
 xlsxKit.colLetter(26)               // 'AA'
 ```
+
+**Three boundaries worth knowing, each a case where the kit declines rather
+than guesses.** A conditional rule of type `expression` is a formula, and
+evaluating one means a formula engine; those are skipped and counted in
+`sheetLayout`'s `cfSkipped`, so a caller can say how much of Excel's painting
+it is not showing. A picture is read from DrawingML anchors; the legacy VML
+drawings Excel uses for comments and form controls are not. And a list
+validation resolves an inline `"a,b,c"` or a cell range on any sheet, but a
+defined name returns null and the cell then carries only its prompt.
 
 **Two readings, and the second is why the style records exist.** `sheetRows`
 answers "what values are in this sheet" and feeds a data grid. `sheetLayout`

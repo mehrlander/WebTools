@@ -746,3 +746,226 @@ test('shared strings: a phonetic hint is not part of the value', () => {
   const { xl } = xlsxKit.analyze(parts);
   assert.deepEqual(xlsxKit.sheetRows(xl.sheets.sheet1), [{ Row: 1, A: '東京' }]);
 });
+
+// ---------------------------------------------------------------------------
+// The three things a sheet carries beside its cells: pictures anchored over
+// the grid, rules that repaint a cell, and the form's own notes on its inputs.
+// ---------------------------------------------------------------------------
+
+const CF_DV_STYLES = `<?xml version="1.0"?>
+<styleSheet xmlns="s">
+  <fonts count="1"><font><sz val="11"/></font></fonts>
+  <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+  <borders count="1"><border/></borders>
+  <cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellXfs>
+  <dxfs count="2">
+    <dxf>
+      <font><b/><i val="0"/><color rgb="FFFFFFFF"/></font>
+      <fill><patternFill><bgColor rgb="FFFF0000"/></patternFill></fill>
+    </dxf>
+    <dxf><font><color rgb="FF006100"/></font></dxf>
+  </dxfs>
+</styleSheet>`;
+
+test('a dxf reads its fill from bgColor, and val="0" turns a font switch off', () => {
+  const parts = formParts().map(([p, x]) => p === 'xl/styles.xml' ? [p, CF_DV_STYLES] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const red = xlsxKit.dxfStyle(xl, 0);
+  assert.equal(red.fill, '#ff0000', 'a differential fill is bgColor, the opposite of a cell fill');
+  assert.equal(red.bold, true);
+  assert.equal(red.italic, undefined, '<i val="0"/> is italic OFF, not italic present');
+  assert.equal(red.color, '#ffffff');
+  // A dxf that sets only a colour must not carry a fill, or it would paint the
+  // cell's own background away.
+  assert.deepEqual(xlsxKit.dxfStyle(xl, 1), { color: '#006100' });
+  assert.equal(xlsxKit.dxfStyle(xl, 9), null, 'an id the workbook does not have');
+});
+
+test('cfApplies: the rule types that are decidable from the cell alone', () => {
+  const cell = (text, raw) => ({ text, raw: raw ?? text });
+  const rule = (o) => ({ type: 'cellIs', operator: '', formulas: [], text: '', ...o });
+
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'lessThan', formulas: ['0'] }), cell('-4', '-4')), true);
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'lessThan', formulas: ['0'] }), cell('0', '0')), false,
+    'zero is not less than zero, which is why the OFM addendum draws no red on a blank form');
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'greaterThanOrEqual', formulas: ['10'] }), cell('10', '10')), true);
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'between', formulas: ['5', '1'] }), cell('3', '3')), true,
+    'a reversed pair is still a range');
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'equal', formulas: ['"Yes"'] }), cell('Yes')), true);
+
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'containsBlanks' }), cell('')), true);
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'containsText', text: 'fee' }), cell('Docket fee')), true);
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'beginsWith', text: 'RCW' }), cell('RCW 2.32.070')), true);
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'endsWith', text: 'x' }), cell('RCW 2.32.070')), false);
+
+  // NOT DECIDABLE, and null rather than false: a formula needs an engine, and a
+  // rule silently treated as not firing is a rule reported as evaluated.
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'expression', formulas: ['$A1=""'] }), cell('x')), null);
+  assert.equal(xlsxKit.cfApplies(rule({ type: 'colorScale' }), cell('5')), null);
+  assert.equal(xlsxKit.cfApplies(rule({ operator: 'lessThan', formulas: ['$B$2'] }), cell('1', '1')), null,
+    'a reference is not a constant this can compare against');
+});
+
+const cfSheet = (cf, cells) => `<?xml version="1.0"?>
+<worksheet xmlns="ws"><sheetData><row r="1">${cells}</row></sheetData>${cf}</worksheet>`;
+
+test('the highest-priority rule that fires wins, and skipped rules are counted once', () => {
+  const cf = `<conditionalFormatting sqref="A1:C1">
+      <cfRule type="expression" dxfId="1" priority="1"><formula>$A1&gt;0</formula></cfRule>
+      <cfRule type="cellIs" dxfId="0" priority="2" operator="lessThan"><formula>0</formula></cfRule>
+    </conditionalFormatting>`;
+  const parts = formParts().map(([p, x]) =>
+    p === 'xl/styles.xml' ? [p, CF_DV_STYLES]
+      : p === 'xl/worksheets/sheet1.xml'
+        ? [p, cfSheet(cf, '<c r="A1"><v>-5</v></c><c r="B1"><v>5</v></c><c r="C1"><v>-1</v></c>')]
+        : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  const [a, b, c] = out.rows[0].cells;
+  assert.equal(a.cf, 0, 'the expression above it is undecidable, so the cellIs rule decides');
+  assert.equal(b.cf, null, '5 is not less than 0');
+  assert.equal(c.cf, 0);
+  assert.equal(out.cfSkipped, 1, 'one expression rule over three cells is one gap, not three');
+});
+
+test('validation notes: an inline list, a range list, and an input message', () => {
+  const dv = `<dataValidations count="3">
+      <dataValidation type="list" sqref="A1" ><formula1>"Bill,Budget,None"</formula1></dataValidation>
+      <dataValidation type="list" sqref="B1"><formula1>$D$1:$D$3</formula1></dataValidation>
+      <dataValidation sqref="C1" promptTitle="Fee Code" prompt="Enter the four digit code._x000a_See the inventory."/>
+    </dataValidations>`;
+  const sheet = `<?xml version="1.0"?>
+<worksheet xmlns="ws"><sheetData>
+  <row r="1"><c r="A1"/><c r="B1"/><c r="C1"/><c r="D1" t="inlineStr"><is><t>Alpha</t></is></c></row>
+  <row r="2"><c r="D2" t="inlineStr"><is><t>Beta</t></is></c></row>
+  <row r="3"><c r="D3" t="inlineStr"><is><t>Gamma</t></is></c></row>
+</sheetData>${dv}</worksheet>`;
+  const parts = formParts().map(([p, x]) => p === 'xl/worksheets/sheet1.xml' ? [p, sheet] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  const [a, b, c] = xlsxKit.sheetLayout(xl.sheets.sheet1, xl).rows[0].cells;
+  assert.deepEqual(a.note.options, ['Bill', 'Budget', 'None']);
+  assert.deepEqual(b.note.options, ['Alpha', 'Beta', 'Gamma'], 'a range list is read out of the sheet');
+  assert.equal(c.note.options, null);
+  assert.equal(c.note.title, 'Fee Code');
+  assert.equal(c.note.prompt, 'Enter the four digit code.\nSee the inventory.',
+    '_x000a_ is a newline Excel could not write literally, not text');
+});
+
+test('a validation that says nothing leaves no note', () => {
+  const dv = `<dataValidations><dataValidation type="textLength" operator="lessThan" sqref="A1"><formula1>50</formula1></dataValidation></dataValidations>`;
+  const sheet = `<?xml version="1.0"?>
+<worksheet xmlns="ws"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>x</t></is></c></row></sheetData>${dv}</worksheet>`;
+  const parts = formParts().map(([p, x]) => p === 'xl/worksheets/sheet1.xml' ? [p, sheet] : [p, x]);
+  const { xl } = xlsxKit.analyze(parts);
+  assert.equal(xlsxKit.sheetLayout(xl.sheets.sheet1, xl).rows[0].cells[0].note, undefined);
+});
+
+// A picture anchored from B2 to D4, wrapped the way Excel writes it: the same
+// anchor in mc:Choice and again in mc:Fallback.
+const DRAWING = `<?xml version="1.0"?>
+<xdr:wsDr xmlns:xdr="xdr" xmlns:a="a" xmlns:mc="mc" xmlns:r="rel">
+  <mc:AlternateContent>
+    <mc:Choice Requires="a14">
+      <xdr:twoCellAnchor>
+        <xdr:from><xdr:col>1</xdr:col><xdr:colOff>19050</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>9525</xdr:rowOff></xdr:from>
+        <xdr:to><xdr:col>3</xdr:col><xdr:colOff>28575</xdr:colOff><xdr:row>3</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+        <xdr:pic><xdr:nvPicPr><xdr:cNvPr id="2" name="Logo"/></xdr:nvPicPr>
+          <xdr:blipFill><a:blip r:embed="rId1"/></xdr:blipFill></xdr:pic>
+      </xdr:twoCellAnchor>
+    </mc:Choice>
+    <mc:Fallback>
+      <xdr:twoCellAnchor>
+        <xdr:from><xdr:col>1</xdr:col><xdr:colOff>19050</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>9525</xdr:rowOff></xdr:from>
+        <xdr:to><xdr:col>3</xdr:col><xdr:colOff>28575</xdr:colOff><xdr:row>3</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+        <xdr:pic><xdr:nvPicPr><xdr:cNvPr id="3" name="Logo fallback"/></xdr:nvPicPr>
+          <xdr:blipFill><a:blip r:embed="rId1"/></xdr:blipFill></xdr:pic>
+      </xdr:twoCellAnchor>
+    </mc:Fallback>
+  </mc:AlternateContent>
+</xdr:wsDr>`;
+
+const DRAWING_RELS = `<?xml version="1.0"?>
+<Relationships xmlns="rel">
+  <Relationship Id="rId1" Type=".../image" Target="../media/image1.png"/>
+</Relationships>`;
+
+const SHEET_RELS = `<?xml version="1.0"?>
+<Relationships xmlns="rel">
+  <Relationship Id="rIdD" Type=".../drawing" Target="../drawings/drawing1.xml"/>
+</Relationships>`;
+
+// 12 columns of 10 chars and a bare grid, so the arithmetic below is legible.
+const PIC_SHEET = `<?xml version="1.0"?>
+<worksheet xmlns="ws" xmlns:r="rel">
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols><col min="1" max="12" width="10"/></cols>
+  <sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>top</t></is></c></row></sheetData>
+  <drawing r:id="rIdD"/>
+</worksheet>`;
+
+const picParts = (sheetXml = PIC_SHEET) => [
+  ...formParts().filter(([p]) => p !== 'xl/worksheets/sheet1.xml'),
+  ['xl/worksheets/sheet1.xml', sheetXml],
+  ['xl/worksheets/_rels/sheet1.xml.rels', SHEET_RELS],
+  ['xl/drawings/drawing1.xml', DRAWING],
+  ['xl/drawings/_rels/drawing1.xml.rels', DRAWING_RELS],
+];
+
+const withMedia = (xl) => { xl.media['xl/media/image1.png'] = 'data:image/png;base64,AAAA'; return xl; };
+
+test('a picture is read once, from mc:Choice, and joined to its media two hops out', () => {
+  const { xl } = xlsxKit.analyze(picParts());
+  const sheet = xl.sheets.sheet1;
+  assert.equal(sheet.images.length, 1,
+    'Excel writes the same anchor in Choice and Fallback; taking both draws the logo twice');
+  assert.equal(sheet.images[0].part, 'xl/media/image1.png',
+    "a blip's r:embed resolves through the DRAWING's rels, not the sheet's");
+  assert.equal(sheet.images[0].name, 'Logo');
+});
+
+test('a picture is placed as an offset from a cell, not from the sheet', () => {
+  const { xl } = xlsxKit.analyze(picParts());
+  withMedia(xl);
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  assert.equal(out.images.length, 1);
+  const img = out.images[0];
+  assert.equal(img.row, 2, 'the anchor row is zero-based in the file and one-based here');
+  assert.equal(img.col, 1);
+  assert.equal(img.dx, 2, '19050 EMU is two pixels at 9525 to the pixel');
+  assert.equal(img.dy, 1);
+  // Columns are 10 chars wide -> 75px; the picture spans B and C, less its own
+  // offset, plus the far corner's.
+  assert.equal(img.width, 75 * 2 - 2 + 3);
+  assert.equal(img.height, 20 * 2 - 1 + 0, 'rows are 15pt -> 20px');
+  assert.equal(img.src, 'data:image/png;base64,AAAA');
+});
+
+test('a picture below the last row of data still draws', () => {
+  // The capital Major Project report keeps its photographs on a tab with one
+  // text cell and the pictures below it. Stopping the layout at the last row
+  // holding a value dropped every one of them.
+  const { xl } = xlsxKit.analyze(picParts());
+  withMedia(xl);
+  const out = xlsxKit.sheetLayout(xl.sheets.sheet1, xl);
+  assert.ok(out.rows.length >= 4, 'the drawn range reaches the anchor, not just the data');
+  assert.equal(out.images.length, 1);
+});
+
+test('a picture anchored inside a merge moves to the cell that is drawn', () => {
+  const merged = PIC_SHEET.replace('</sheetData>',
+    '</sheetData><mergeCells count="1"><mergeCell ref="A1:C3"/></mergeCells>');
+  const { xl } = xlsxKit.analyze(picParts(merged));
+  withMedia(xl);
+  const img = xlsxKit.sheetLayout(xl.sheets.sheet1, xl).images[0];
+  // B2 is covered by A1:C3 and is never emitted, so the picture rides on A1
+  // with the distance to B2 added to its offset.
+  assert.equal(img.row, 1);
+  assert.equal(img.col, 0);
+  assert.equal(img.dx, 2 + 75, 'one column across');
+  assert.equal(img.dy, 1 + 20, 'one row down');
+});
+
+test('a picture whose media the workbook does not carry is skipped, not drawn broken', () => {
+  const { xl } = xlsxKit.analyze(picParts());   // no media attached
+  assert.deepEqual(xlsxKit.sheetLayout(xl.sheets.sheet1, xl).images, []);
+});
