@@ -3,6 +3,7 @@ id: stage-partial-file-selection-k8mtou
 title: Give the stage a way to carry part of a file
 status: backlog
 opened: 2026-07-26
+size: M
 ---
 # Give the stage a way to carry part of a file
 

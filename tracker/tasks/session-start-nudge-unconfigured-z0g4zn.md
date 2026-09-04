@@ -1,13 +1,12 @@
 ---
 id: session-start-nudge-unconfigured-z0g4zn
-title: Session-start nudge for unconfigured or legacy-manifest repos
+title: Session-start nudge for repos that never opted in
 status: backlog
 project: conventions
 opened: 2026-07-15
-session: claude/skills-portable-conventions-8x1lua
-next: write a global SessionStart hook that checks repo state and injects a nudge; wire its install into the Claude Code web account setup script
+size: S
 ---
-# Session-start nudge for unconfigured or legacy-manifest repos
+# Session-start nudge for repos that never opted in
 
 A global `SessionStart` hook (in `~/.claude/settings.json`, installed by the
 Claude Code web account setup script) that, each session, checks the current repo
@@ -23,16 +22,12 @@ hook, not the setup script.
 2. **Opted out** (`.web-tools.json` has `"conventions": "optout"`) -> silent.
 3. **Neither** -> nudge: "this repo is not set up for the conventions and has not
    opted out; offer to install the plugin or add an opt-out."
-4. **Legacy manifest** (`.show-repo.json` present, `.web-tools.json` absent) ->
-   nudge: "the web-tools manifest uses the old name; offer to rename it." A
-   session has git, so it can do the `git mv` (and remove the old file), which the
-   show-repo shell alone cannot (see task 0013). **No repo carries the old name
-   as of 2026-08-15**: the config cache found every configured repo already on
-   `.web-tools.json`, and the readers' legacy fallback was removed on its
-   sunset date. Such a repo now reads as unconfigured and gets check 3, which
-   nudges anyway, so check 4 is optional and buys only a more precise fix
-   ("rename it" rather than "set one up"). Build it only if a repo on the old
-   name actually turns up.
+
+A fourth check, for a repo still on the legacy `.show-repo.json` name, was
+carried here and is dropped. No repo has used that name since 2026-08-15, the
+shell's read fallback went with the sunset, and `estate.js`'s account-wide
+`liveScanConfigs` still probes both names, so such a repo would surface on its
+own. Check 3 nudges it anyway.
 
 ## Notes
 
@@ -53,3 +48,8 @@ hook, not the setup script.
   now optional rather than required. The wording here previously said the
   check's "population" went to zero, which borrowed a registry term for
   something it does not name.
+- 2026-09-04: Check 4 (legacy manifest) deleted rather than kept optional. It had
+  already been annotated down to "build it only if a repo on the old name turns
+  up", and `liveScanConfigs` is the detector that would say so, which leaves the
+  check nothing to add. The remaining work is unchanged: a global `SessionStart`
+  hook running checks 1 to 3, plus its install in the account setup script.

@@ -6,7 +6,6 @@ closed: 2026-08-02
 resolution: dropped
 opened: 2026-07-22
 priority: someday
-next: Build only when a real composite page (multiple interactive embeds) exists; nothing schedules this.
 ---
 # Generalize FAB embed handling to declared embeds
 

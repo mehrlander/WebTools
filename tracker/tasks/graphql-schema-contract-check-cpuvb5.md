@@ -6,7 +6,6 @@ project: show-repo
 opened: 2026-07-26
 closed: 2026-07-30
 session: claude/web-tools-tracker-review-bw48ga
-next: done on claude/web-tools-tracker-review-bw48ga; the live-confirm task is unchanged and still open
 ---
 # Check GraphQL query shape offline against GitHub's published schema
 

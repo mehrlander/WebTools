@@ -8,63 +8,47 @@ size: M
 # Make the PR bodies' open threads readable as one list
 
 The guide PR body's **Next steps / open threads** block is already the estate's
-informal backlog, and the convention says so: SURFACING.md calls it "the heart"
-of the body, and the wrap-up sequence routes leftovers there explicitly ("a next
-step the branch will not reach either rides forward in the guide body or becomes
-a task"). The tracker is the formal, policed axis; this is the unpoliced one, and
-it is doing more work.
-
-Measured on web-tools, 2026-08-09:
+informal backlog. SURFACING.md calls it "the heart" of the body and the wrap-up
+routes leftovers there explicitly. The tracker is the formal, policed axis; this
+is the unpoliced one, and it is doing more work.
 
 | | Count |
 | --- | --- |
-| Tracker tasks, all time | 72 (16 backlog, 56 done) |
-| Last 100 closed PRs carrying Next steps | 82 |
-| Bullet items in those 82 bodies | ~185 |
+| Tracker tasks, all time | 72 at filing; 94 on 2026-09-04 |
+| Last 100 closed PRs carrying Next steps | 82 (2026-08-09) |
+| Bullet items in those 82 bodies | ~185 (2026-08-09) |
 
-So the informal ledger is an order of magnitude larger than the formal one and
-has no read surface at all. Nothing collects the items, and nothing can say
-whether one was done, dropped, or forgotten. The point of the task is the read
-side and a way to retire an item, NOT to move any of this into the tracker: the
-whole value is that filing there costs nothing and clutters nothing.
+Nothing collects the items and nothing can say whether one was done, dropped or
+forgotten. **The point is the read side and a way to retire an item, not moving
+any of this into the tracker**: the value is that filing there costs nothing.
 
 ## Scope
-
-- **A third state in the template.** Change the template's Next steps bullets in
-  `docs/SURFACING.md` from `- ` to `- [ ] `, so they are GitHub task-list items.
-  This alone is most of the value and needs no tooling: checkboxes in a PR body
-  are tappable on a phone. `~~strikethrough~~` carries "turned out irrelevant,"
-  which a checkbox cannot say and which reads correctly with no reader.
-- **A reader kit,** `lib/kits/guide-threads.js`, folding open PRs plus recent
-  merged ones into one list of unchecked items. Pure fold, crawl in the shell,
-  the split `kits/guide-index.js` and `kits/repo-activity-cache.js` already use;
-  `kits/guide-render.js` already parses a guide body and is the parsing
-  precedent. Cross-repo, like guide-index. The corpus is merged PRs rather than
-  open ones, so it needs pagination and caching that guide-index did not.
-- **A surface** in show-repo's estate view, beside Lists (To-do over Jot). An
-  open thread is a fourth point on that gradient of commitment, and the pane is
-  where the other two already live.
-- **Write-back** for ticking an item from that surface. Through a plain API
-  PATCH, not the GitHub MCP: SURFACING.md records that the MCP write path
-  backtick-wraps link shapes it distrusts, so round-tripping a whole body risks
-  mangling prose unrelated to the checkbox.
-
-The template change is portable and belongs in `docs/SURFACING.md`, not in
-web-tools' `CLAUDE.md`: home and chat-histories run the same guide-PR form and
-would carry the same ledger.
+- **A third state in the template.** `docs/SURFACING.md`'s Next steps bullets
+  become `- [ ] `, so they are GitHub task-list items, tappable on a phone. Most
+  of the value, no tooling. `~~strikethrough~~` carries "turned out irrelevant,"
+  which a checkbox cannot say and which reads correctly with no reader. Portable,
+  so it belongs in SURFACING.md: home and chat-histories run the same form.
+- **A reader kit**, `lib/kits/guide-threads.js`, folding open plus recent merged
+  PRs into one list of unchecked items. Pure fold, crawl in the shell, the split
+  `guide-index.js` and `repo-activity-cache.js` use; `guide-render.js` is the
+  parsing precedent. Merged PRs mean pagination and caching guide-index did not.
+- **A surface** in the estate view beside Lists (To-do over Jot). An open thread
+  is a fourth point on that gradient of commitment.
+- **Write-back** through a plain API PATCH, not the GitHub MCP, whose write path
+  backtick-wraps link shapes it distrusts and would mangle unrelated prose.
 
 ## Not in scope
-
-Triaging the existing ~185 items. Build the reader, look at the list, then
-decide whether to triage or declare everything before a cutoff date expired.
-Committing to the triage before seeing the corpus is how this becomes an XL.
+Triaging the existing ~185 items. Build the reader, look at the list, then decide
+whether to triage or declare everything before a cutoff expired. Committing to
+the triage first is how this becomes an XL.
 
 ## Done when
-
-An unchecked open thread from any repo's PR bodies appears in one list without
-walking GitHub by hand, and ticking it there marks it in the body it came from.
+An unchecked thread from any repo's PR bodies appears in one list without walking
+GitHub by hand, and ticking it there marks it in the body it came from.
 
 ## Progress log
-- 2026-08-09: Filed from a session working on the dictation extraction, which is
-  itself one of PR #377's open threads and the observation that started this. The
-  counts above are from that session's read of the last 100 closed PRs.
+- 2026-08-09: Filed from the dictation-extraction session, itself one of PR
+  #377's open threads. Counts are that session's read of the last 100 closed PRs.
+- 2026-09-04: Tracker side restamped, 72 to 94. The PR figures stand at their
+  2026-08-09 reading; note which way the gap moved, since the repo was near
+  PR #440 then and is at #581 now. The order-of-magnitude finding widened.

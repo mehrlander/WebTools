@@ -3,6 +3,7 @@ id: stage-surface-convergence-kgtosz
 title: Converge the stage and surface item schemas
 status: done
 opened: 2026-07-18
+closed: 2026-08-03
 ---
 # Converge the stage and surface item schemas
 

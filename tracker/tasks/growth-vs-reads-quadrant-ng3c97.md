@@ -17,9 +17,10 @@ A quadrant does it directly. Growth on one axis, recorded reads on the other,
 each registered doc a point, the four corners named. The one that matters is
 high growth and no reads: a document accreting with no reader is the cheapest
 kind of rot to find and the easiest to miss in a table sorted by either column
-alone. 42 of 70 registered docs have zero recorded reads as of 2026-08-28, so
-the empty quadrant is most of the corpus and the figure is worth showing rather
-than describing.
+alone. 42 of 70 registered docs had zero recorded reads on 2026-08-28, so the empty
+quadrant is most of the corpus and the figure is worth showing rather than
+describing. The registry has since grown to 76 rows, so read the zero-read count
+live when building rather than quoting this one.
 
 ## Where it goes, and why not on Growth
 
@@ -55,3 +56,6 @@ opens its document in the deck the table's rows already use.
 - 2026-08-28: filed out of the doc-growth deduplication branch
   (`claude/doc-growth-duplicate-sidebar-4bg2or`, PR #534), which made Growth a
   federated tab and settled that this belongs on Docs instead. Not claimed.
+- 2026-09-04: `docs/docs.csv` now holds 76 rows against the 70 this was written
+  on. The zero-read figure is not restamped on purpose: it joins the sessions
+  cache rather than the registry, and rendering it live is the point of the task.
