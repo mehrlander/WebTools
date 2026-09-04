@@ -94,3 +94,17 @@ task is a convenience rather than a fix. Worth knowing before claiming it.
   One thing genuinely open, carried in the PR rather than here: whether iOS
   honours a JS-injected `apple-touch-icon` at "Add to Home Screen" time. Only a
   phone can answer it, and the fallback if not is a static link in the head.
+- 2026-09-04: the field this task added was live on ONE page for ten days.
+  `slug` was written into home's budget-drs entry while the address half was
+  being built and never applied to the other five promoted views, so they kept
+  stamping the five-key form at 151 to 166 characters while budget-drs sat at
+  58. Marcus noticed it in the header nav and asked why. Swept in PR #593 here
+  plus home #582, chat-histories #86 and shortcut-tools #31: every promoted page
+  now declares one. Two things the sweep turned up. `manifest-fields.csv` still
+  claimed slug uniqueness was not enforced, which stopped being true when the
+  collision gate landed after the 2026-08-26 doc-growth clash. And that gate's
+  `SIBLINGS` list named three repos while five declare promoted pages, so
+  `shortcut-tools` and `fun` were outside every check; both are named now.
+  The general lesson, which is why this is worth a line on a closed task: a
+  task that adds an optional field to a shared schema is not done when the
+  mechanism works, only when the set it applies to has been swept.

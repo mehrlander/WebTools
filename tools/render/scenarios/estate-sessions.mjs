@@ -324,6 +324,37 @@ export default async function (page) {
   }, { SESSIONS, ATTENTION, ACTIVITY, TODOS, JOTS });
   await page.waitForTimeout(600);
 
+  // The ROUTE CHIPS on the nested branch tiles, seeded the way activity-fake
+  // seeds them for the Branches pane: the join is the same one, and the pane
+  // would otherwise fetch it (no token here). Without this the tiles render
+  // with the one item on their control line whose width is a branch's data,
+  // missing, which is the half of the row worth shooting.
+  //
+  // The two branches cover the two cases. show-repo-docs-surfacing touches
+  // lib/alpineComponents/estate.js, which nine routes declare, so it draws one
+  // solid chip for the narrow carrier beside it and a ghosted chip per shared
+  // route: the widest a tile ever gets, and the one that wraps. Board
+  // determinism touches a single narrow carrier and draws one chip.
+  await page.evaluate(async () => {
+    const st = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
+    try {
+      if (!window.routeActivity) await window.gh.load('kits/route-activity.js');
+      const split = (v) => String(v || '').split(';').map(x => x.trim()).filter(Boolean);
+      const rows = window.Csv.rows(await (await fetch('/docs/app-routes.csv')).text());
+      const vocab = window.Csv.rows(await (await fetch('/docs/vocabularies.csv')).text());
+      st.routeManifest = window.routeActivity.manifest(
+        rows.map(r => ({ ...r, files: split(r.files), tabs: split(r.tabs) })), vocab);
+    } catch (e) { console.warn('route chips unavailable:', e.message); }
+    st.routeJoinTried = true;
+    st.routeBranchFiles = [
+      { repo: 'mehrlander/web-tools', name: 'claude/show-repo-docs-surfacing-3sr7ab', pr: 271,
+        files: ['lib/alpineComponents/estate.js', 'lib/kits/route-activity.js', 'docs/showing.md'] },
+      { repo: 'mehrlander/web-tools', name: 'claude/board-determinism-k2p1x', pr: 262,
+        files: ['lib/alpineComponents/stage.js', 'tools/build/tracker-board.mjs'] },
+    ];
+  });
+  await page.waitForTimeout(300);
+
   // DECK=1 opens the session swiper on the first row: the brief mounted as a
   // slide, which is the whole reason the view left pages/session.html. The
   // record lives in a private store this sandbox has no token for, so GH is
