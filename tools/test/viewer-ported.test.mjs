@@ -78,18 +78,48 @@ test('a Word table and a spreadsheet table are styled opposite, deliberately', (
 
 // ── the sheet list ───────────────────────────────────────────────────────────
 
-test('the xlsx module publishes its sheets and a way to switch them', () => {
-  const src = R.modules.find(m => m.id === 'xlsx').after.toString();
-  assert.match(src, /host\.root\.__sheets\s*=/, 'the sheets are not published');
-  assert.match(src, /list:/, 'the published shape has no list');
-  assert.match(src, /show:/, 'the published shape offers no switch');
-  // Names, because a deck labels its slides; a bare count would not do.
-  assert.match(src, /name:/, 'the list carries no sheet names');
+// The publication is a shared helper rather than a line inside one module,
+// because BOTH sheet modes have to publish it: home's submittal page reads
+// __sheets to build its swipe deck, and a reader who switched to the grid must
+// not lose the deck. Called directly here rather than matched in source.
+const fakeHost = () => ({ root: {} });
+
+test('the sheet publication carries a list and a way to switch', () => {
+  const host = fakeHost();
+  const sheets = [{ key: 'sheet1', s: { name: 'Form', cellCount: 12 } },
+                  { key: 'sheet2', s: { name: null, cellCount: 0 } }];
+  R.publishSheets(host, sheets, () => {}, () => false);
+  // Names, because a deck labels its slides; a bare count would not do. A
+  // sheet the workbook never claimed keeps its part name.
+  // Spread into a node-realm literal, and each entry too: the helper builds
+  // them inside jsdom and assert/strict compares prototypes.
+  assert.deepEqual([...host.root.__sheets.list].map(o => ({ ...o })),
+    [{ name: 'Form', cellCount: 12 }, { name: 'sheet2', cellCount: 0 }]);
+  assert.equal(typeof host.root.__sheets.show, 'function');
 });
 
 test('the switch is guarded by the mount still being alive and in range', () => {
-  const src = R.modules.find(m => m.id === 'xlsx').after.toString();
-  assert.match(src, /!stale\(\)\s*&&\s*i\s*>=\s*0\s*&&\s*i\s*<\s*sheets\.length/);
+  const seen = [];
+  const host = fakeHost();
+  const sheets = [{ key: 's1', s: {} }, { key: 's2', s: {} }];
+  R.publishSheets(host, sheets, (i) => seen.push(i), () => false);
+  host.root.__sheets.show(1);
+  host.root.__sheets.show(-1);
+  host.root.__sheets.show(2);
+  assert.deepEqual(seen, [1], 'out of range is ignored, not clamped');
+
+  const dead = fakeHost();
+  R.publishSheets(dead, sheets, (i) => seen.push(i), () => true);
+  dead.root.__sheets.show(0);
+  assert.deepEqual(seen, [1], 'a superseded mount does not paint over the current file');
+});
+
+test('both sheet modes publish, so switching mode does not cost the host its deck', () => {
+  for (const id of ['sheet', 'xlsx']) {
+    const src = R.modules.find(m => m.id === id).after.toString();
+    assert.match(src, /ViewRegistry\.publishSheets\(/, `${id} does not publish its sheets`);
+    assert.match(src, /ViewRegistry\.mountSheetTabs\(/, `${id} does not mount the tab strip`);
+  }
 });
 
 test('show() drops what the last file published', () => {

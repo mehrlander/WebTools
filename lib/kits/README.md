@@ -1086,8 +1086,9 @@ same pattern as `io.js`).
 
 ```js
 const result = await window.xlsxKit.readZip(fileOrArrayBuffer);
-// result: { el, connectedPaths, conns, xl: { sheets, strings, styles,
-//           comments, relationships, definedNames, calcChain } }
+// result: { el, connectedPaths, conns, xl: { sheets, strings, styles, theme,
+//           fonts, fills, borders, xfs, comments, relationships,
+//           definedNames, calcChain } }
 
 xlsxKit.summary(result)             // { total, connected, unconnected, connectedPct }
 xlsxKit.views.paths(result)         // one row per distinct XML element path
@@ -1097,24 +1098,38 @@ xlsxKit.views.connections(result)   // one row per sheet: cells/strings/styles/
 xlsxKit.views.unconnected(result)   // paths with no recognized structure
 xlsxKit.views.files(result)         // one row per XML part: category, paths,
                                     //   connected count, sheets touched
-xlsxKit.sheetRows(result.xl.sheets.sheet1)
+xlsxKit.sheetRows(result.xl.sheets.sheet1, result.xl)
                                     // -> [{ Row, A, B, C, ... }], sparse rows/
-                                    //   columns left as gaps, not compacted
+                                    //   columns left as gaps, not compacted.
+                                    //   Pass `xl` to read values through their
+                                    //   number format; omit it for raw strings
+xlsxKit.sheetLayout(sheet, xl, opts) // the same sheet AS A PAGE: cells in place,
+                                    //   merges as spans, column widths and row
+                                    //   heights in px, spill runs, a style
+                                    //   index per cell, and `truncated` where
+                                    //   opts.maxRows/maxCells cut it short
+xlsxKit.cellStyle(xl, styleIndex)   // { bold, size, color, fill, border, align,
+                                    //   valign, wrap, indent, format }
 xlsxKit.colLetter(26)               // 'AA'
 ```
+
+**Two readings, and the second is why the style records exist.** `sheetRows`
+answers "what values are in this sheet" and feeds a data grid. `sheetLayout`
+answers "what does this sheet look like" and feeds a render that reproduces the
+document: it is what the viewer's `sheet` mode draws, and what makes an OFM
+budget form arrive as a form rather than as a list of strings. Neither touches
+the DOM; a caller turns a style record into whatever it draws with.
 
 `analyze(parts)` — the pure entry point — takes `[[path, xmlString], ...]` or
 `{path: xmlString}` for already-extracted `.xml`/`.rels` parts, so it's
 testable with plain fixture strings (`tools/test/xlsx.test.mjs`) and needs no
-real `.xlsx` file or JSZip. Two known limitations inherited from the source
-prototypes (not fixed, since a real fix needs cross-referencing
-`workbook.xml`'s `<sheets>` order, a nontrivial addition): named-range and
-calc-chain sheet association assumes `sheetN.xml`'s file number matches
-workbook sheet order, which can drift after a sheet reorder or rename; and
-cell-to-column mapping trusts each `<c>`'s `r` attribute (falling back to
-positional order only when `r` is absent), which is standard but not
-universal among third-party writers. See `kits/demos/xlsx.html` for live
-examples.
+real `.xlsx` file or JSZip. One known limitation remains: cell-to-column
+mapping trusts each `<c>`'s `r` attribute, falling back to positional order
+only when `r` is absent, which is standard but not universal among third-party
+writers. The sheet-order limitation this paragraph used to carry alongside it
+is gone: named ranges and calc-chain entries resolve through `workbook.xml`'s
+`<sheets>` and its rels, so they survive a reorder or a rename. See
+`kits/demos/xlsx.html` for live examples.
 
 ## Salvage status
 

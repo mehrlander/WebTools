@@ -123,7 +123,7 @@ test('a module that gives up does not reject show()', async () => {
 const wbData = Alpine.$data(doc.getElementById('wb'));
 const wbRoot = doc.getElementById('wb');
 
-// Tabulator is a CDN asset; the module only ever constructs and destroys it.
+// Tabulator is a CDN asset; the grid only ever constructs and destroys it.
 window.Tabulator = class { constructor() {} destroy() {} };
 R.loadAsset = () => Promise.resolve();
 window.xlsxKit = {
@@ -133,14 +133,27 @@ window.xlsxKit = {
     s3: { name: 'Gamma', index: 2, cellCount: 1 },
   } } }),
   sheetRows: (s) => [{ sheet: s.name }],
+  // Enough shape for drawSheet to build a one-cell table; the kit's own tests
+  // hold the layout itself.
+  sheetLayout: (s) => ({
+    cols: [{ index: 0, width: 64 }],
+    rows: [{ row: 1, height: 20, cells: [{ col: 0, text: s.name, numeric: false,
+      style: null, raw: null, colSpan: 1, rowSpan: 1, spillLeft: 0, spillRight: 0 }] }],
+    maxCol: 0, freeze: null, truncated: null, empty: false,
+  }),
+  cellStyle: () => null,
+  colLetter: () => 'A',
 };
 
 const XLSX_URI = 'data:application/vnd.openxmlformats;base64,' + window.btoa('PK');
-const tabs = () => [...wbRoot.querySelectorAll('[data-xlsx="tabs"] button')];
+// Either mode's strip: the sheet render and the grid publish the same contract
+// and wear the same tab row under different data attributes.
+const tabs = () => [...wbRoot.querySelectorAll('[data-sheet="tabs"] button, [data-xlsx="tabs"] button')];
 const activeTab = () => tabs().findIndex(b => b.classList.contains('btn-active'));
 
-test('the workbook has drawn its first sheet by the time show() resolves', async () => {
+test('a workbook opens on the sheet render with its first sheet drawn', async () => {
   await wbData.show('book.xlsx', XLSX_URI, { local: true });
+  assert.equal(wbData.mode, 'sheet', 'the exclusive mode is the one that opened');
   assert.deepEqual(tabs().map(b => b.textContent), ['Alpha', 'Beta', 'Gamma']);
   // Array.from, because `list` is built inside the jsdom realm and .map() on
   // it yields that realm's Array, which deepStrictEqual reports as a prototype
@@ -149,17 +162,30 @@ test('the workbook has drawn its first sheet by the time show() resolves', async
   assert.equal(activeTab(), 0, 'the first sheet was left to a frame running after the mount');
 });
 
+test('the grid publishes the same sheets when a reader switches to it', async () => {
+  await wbData.show('book.xlsx', XLSX_URI, { local: true });
+  await wbData.switchMode('xlsx');
+  await tick(6);
+  assert.deepEqual(tabs().map(b => b.textContent), ['Alpha', 'Beta', 'Gamma']);
+  assert.deepEqual(Array.from(wbRoot.__sheets.list, s => s.name), ['Alpha', 'Beta', 'Gamma'],
+    "a host's deck must survive the reader changing mode");
+});
+
 test('a sheet chosen the moment show() resolves is not overwritten', async () => {
   // THE REGRESSION THIS FILE EXISTS FOR. The module opens sheet 0 on a frame;
   // while that frame ran after after() returned, a host acting on show()
   // selected its sheet first and the frame put sheet 0 back underneath the
   // heading the host had already written. Nothing in home was waiting for a
   // frame on purpose: a poll on a 100ms interval was the only thing sequencing
-  // these two, by accident.
-  await wbData.show('book.xlsx', XLSX_URI, { local: true });
-  wbRoot.__sheets.show(2);
-  await tick(6);
-  assert.equal(activeTab(), 2, 'the mount drew over the sheet the host asked for');
+  // these two, by accident. Held for both modes, since the grid is the one
+  // that still opens its first sheet on a frame.
+  for (const mode of ['sheet', 'xlsx']) {
+    await wbData.show('book.xlsx', XLSX_URI, { local: true });
+    if (wbData.mode !== mode) { await wbData.switchMode(mode); await tick(6); }
+    wbRoot.__sheets.show(2);
+    await tick(6);
+    assert.equal(activeTab(), 2, `${mode}: the mount drew over the sheet the host asked for`);
+  }
 });
 
 test('mounting stayed quiet apart from the failure it was told to report', () => {
