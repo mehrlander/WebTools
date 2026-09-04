@@ -78,18 +78,48 @@ test('a Word table and a spreadsheet table are styled opposite, deliberately', (
 
 // ── the sheet list ───────────────────────────────────────────────────────────
 
-test('the xlsx module publishes its sheets and a way to switch them', () => {
-  const src = R.modules.find(m => m.id === 'xlsx').after.toString();
-  assert.match(src, /host\.root\.__sheets\s*=/, 'the sheets are not published');
-  assert.match(src, /list:/, 'the published shape has no list');
-  assert.match(src, /show:/, 'the published shape offers no switch');
-  // Names, because a deck labels its slides; a bare count would not do.
-  assert.match(src, /name:/, 'the list carries no sheet names');
+// The publication is a shared helper rather than a line inside one module,
+// because BOTH sheet modes have to publish it: home's submittal page reads
+// __sheets to build its swipe deck, and a reader who switched to the grid must
+// not lose the deck. Called directly here rather than matched in source.
+const fakeHost = () => ({ root: {} });
+
+test('the sheet publication carries a list and a way to switch', () => {
+  const host = fakeHost();
+  const sheets = [{ key: 'sheet1', s: { name: 'Form', cellCount: 12 } },
+                  { key: 'sheet2', s: { name: null, cellCount: 0 } }];
+  R.publishSheets(host, sheets, () => {}, () => false);
+  // Names, because a deck labels its slides; a bare count would not do. A
+  // sheet the workbook never claimed keeps its part name.
+  // Spread into a node-realm literal, and each entry too: the helper builds
+  // them inside jsdom and assert/strict compares prototypes.
+  assert.deepEqual([...host.root.__sheets.list].map(o => ({ ...o })),
+    [{ name: 'Form', cellCount: 12 }, { name: 'sheet2', cellCount: 0 }]);
+  assert.equal(typeof host.root.__sheets.show, 'function');
 });
 
 test('the switch is guarded by the mount still being alive and in range', () => {
-  const src = R.modules.find(m => m.id === 'xlsx').after.toString();
-  assert.match(src, /!stale\(\)\s*&&\s*i\s*>=\s*0\s*&&\s*i\s*<\s*sheets\.length/);
+  const seen = [];
+  const host = fakeHost();
+  const sheets = [{ key: 's1', s: {} }, { key: 's2', s: {} }];
+  R.publishSheets(host, sheets, (i) => seen.push(i), () => false);
+  host.root.__sheets.show(1);
+  host.root.__sheets.show(-1);
+  host.root.__sheets.show(2);
+  assert.deepEqual(seen, [1], 'out of range is ignored, not clamped');
+
+  const dead = fakeHost();
+  R.publishSheets(dead, sheets, (i) => seen.push(i), () => true);
+  dead.root.__sheets.show(0);
+  assert.deepEqual(seen, [1], 'a superseded mount does not paint over the current file');
+});
+
+test('both sheet modes publish, so switching mode does not cost the host its deck', () => {
+  for (const id of ['sheet', 'xlsx']) {
+    const src = R.modules.find(m => m.id === id).after.toString();
+    assert.match(src, /ViewRegistry\.publishSheets\(/, `${id} does not publish its sheets`);
+    assert.match(src, /ViewRegistry\.mountSheetTabs\(/, `${id} does not mount the tab strip`);
+  }
 });
 
 test('show() drops what the last file published', () => {
@@ -99,4 +129,302 @@ test('show() drops what the last file published', () => {
   const showBody = src.slice(src.indexOf('async show(file, content, origin)'));
   assert.match(showBody.slice(0, 700), /this\.\$root\.__sheets = null/,
     'a host can read the previous workbook between show() and the next mount');
+});
+
+// ── the sheet render's three overlays ────────────────────────────────────────
+//
+// drawSheet turns a layout into markup. The layout itself is the kit's, and
+// tools/test/xlsx.test.mjs holds it; what is checked here is that each of the
+// three things a sheet carries beside its cells reaches the page.
+
+const layoutWith = (cell, extra = {}) => ({
+  cols: [{ index: 0, width: 60 }, { index: 1, width: 60 }],
+  rows: [{ row: 1, height: 20, cells: [
+    { col: 0, text: 'A', numeric: false, style: null, raw: null, cf: null,
+      colSpan: 1, rowSpan: 1, spillLeft: 0, spillRight: 0 },
+    { col: 1, text: 'B', numeric: false, style: null, raw: null, cf: null,
+      colSpan: 1, rowSpan: 1, spillLeft: 0, spillRight: 0, ...cell },
+  ] }],
+  maxCol: 1, freeze: null, truncated: null, images: [], cfSkipped: 0, empty: false,
+  ...extra,
+});
+
+const drawWith = (layout, kit = {}) => {
+  const prev = window.xlsxKit;
+  window.xlsxKit = {
+    sheetLayout: () => layout,
+    colLetter: (n) => String.fromCharCode(65 + n),
+    cellStyle: () => null,
+    dxfStyle: () => ({ bold: true, color: '#ffffff', fill: '#ff0000' }),
+    ...kit,
+  };
+  try { return R.drawSheet({ name: 'S', merges: [] }, {}, 'sheet1').innerHTML; }
+  finally { window.xlsxKit = prev; }
+};
+
+test('a conditional format reaches the page as its own rule, not an inline style', () => {
+  const html = drawWith(layoutWith({ cf: 3 }));
+  assert.match(html, /td\.cf3\{[^}]*background:#ff0000/, 'the dxf became a rule');
+  assert.match(html, /class="cf3"/, 'and the cell claims it');
+  // After the cell's own style rules, so a conditional format wins on what it
+  // sets and leaves the rest of the cell standing.
+  assert.ok(html.indexOf('td.cf3{') > html.indexOf('td.n{'), 'rule order decides the cascade');
+});
+
+test('a cell with no conditional format carries no class for one', () => {
+  assert.doesNotMatch(drawWith(layoutWith({})), /class="cf/);
+});
+
+test('a validation list gets the caret and its options in the note', () => {
+  const html = drawWith(layoutWith({ note: { kind: 'list', title: '', prompt: '', options: ['Bill', 'Budget'] } }));
+  assert.match(html, /class="dv"/);
+  assert.match(html, /data-note="One of: Bill, Budget"/);
+});
+
+test('an input message gets the corner wedge and the form’s own words', () => {
+  const html = drawWith(layoutWith({ note: { kind: 'instruction', title: 'Fee Code', prompt: 'Enter the four digit code.', options: null } }));
+  assert.match(html, /class="note"/);
+  // Excel draws the field name bold above the message, so the render does too
+  // rather than inventing "Fee Code: Enter …" for something already formatted.
+  assert.match(html, /data-note-title="Fee Code"/);
+  assert.match(html, /data-note="Enter the four digit code\."/);
+});
+
+test('a long option list is trimmed in the note and says how many it dropped', () => {
+  const options = Array.from({ length: 55 }, (_, i) => 'opt' + i);
+  const html = drawWith(layoutWith({ note: { kind: 'list', title: '', prompt: '', options } }));
+  assert.match(html, /and 15 more/);
+});
+
+// ── comments ─────────────────────────────────────────────────────────────────
+//
+// The one annotation a person wrote by hand, and the one mark on the sheet that
+// is not this render's invention: Excel draws the red corner itself.
+
+const commented = (over = {}) => layoutWith({ note: {
+  kind: 'comment', title: '', prompt: '', options: null,
+  comment: { author: 'Shields, Sharon (OFM)', text: 'Include sales tax.' }, ...over } });
+
+test('a comment wears Excel\'s red corner and names who left it', () => {
+  const html = drawWith(commented());
+  assert.match(html, /class="note cmt"/, 'cmt recolours the wedge the note class draws');
+  assert.match(html, /td\.cmt::before\{border-top-color:#dc2626/);
+  assert.match(html, /data-note-title="Shields, Sharon \(OFM\):"/,
+    'Excel writes the author with a colon over the comment, and bold');
+  assert.match(html, /data-note="Include sales tax\."/);
+});
+
+test('a comment outranks a list, so one cell wears one mark', () => {
+  // The kit already decided this by setting `kind`; what is held here is that
+  // the render obeys it rather than re-deciding from whichever field is set.
+  const html = drawWith(commented({ options: ['Yes', 'No'] }));
+  assert.match(html, /class="note cmt"/);
+  assert.doesNotMatch(html, /class="[^"]*\bdv\b/, 'the caret would be a second mark on one cell');
+  assert.match(html, /One of: Yes, No/, 'and the choices are still in the note');
+});
+
+test('everything a commented cell knows arrives in one note, in reading order', () => {
+  const html = drawWith(commented({ title: 'Rate', prompt: 'Hourly.' }), {});
+  // Read back off the DOM, so the &#10; the markup carries is a real newline
+  // here; a reader sees the break either way.
+  const note = /\bdata-note="([^"]*)"/.exec(html)[1];
+  assert.equal(note, 'Include sales tax.\n\nRate: Hourly.',
+    'the comment first, the form\'s own instruction after, separated by a blank line');
+  assert.match(html, /data-note-title="Shields, Sharon \(OFM\):"/,
+    'the author took the lead line, so the form\'s own title comes back inline');
+});
+
+test('a sheet cell opts out of the note kit\'s underline', () => {
+  // The kit underlines a `data-note` element by default. Excel underlines
+  // nothing, the render\'s claim is that it looks like Excel, and the stored-
+  // value note lands on most numeric cells, so the underline would be on half
+  // the sheet.
+  const html = drawWith(commented());
+  assert.match(html, /data-note-bare(="")?[ >]/);
+});
+
+test('a fact never rides in a title attribute', () => {
+  // House style rule 11: a title reaches no touch screen and cannot be captured
+  // in a screenshot, so a fact parked in one is invisible to a pixel review.
+  const html = drawWith(commented({ title: 'Rate', prompt: 'Hourly.', options: ['Yes'] }));
+  assert.doesNotMatch(html, /\stitle="/, 'the cell markup carries a title attribute');
+});
+
+test('a picture is drawn inside its own cell, positioned by its offsets', () => {
+  const html = drawWith(layoutWith({}, {
+    images: [{ row: 1, col: 1, dx: 4, dy: 6, width: 120, height: 40,
+               src: 'data:image/png;base64,AAAA', name: 'Logo' }],
+  }));
+  assert.match(html, /class="img"/, 'the host cell is the positioning context');
+  assert.match(html, /<img src="data:image\/png;base64,AAAA" alt="Logo"[^>]*left:4px;top:6px;width:120px;height:40px/);
+});
+
+// ── addressing a place inside a workbook ─────────────────────────────────────
+//
+// The grammar and its resolution are separate on purpose: parsePlace reads a
+// string, readPlace decides what it means against the sheets that exist. A
+// bare word is genuinely ambiguous, and only the workbook settles it.
+
+// Spread into a node-realm literal: these are built inside jsdom and
+// assert/strict compares prototypes, the same trap the sheet list carries.
+const place = (s) => ({ ...R.parsePlace(s) });
+const read = (s, sheets) => ({ ...R.readPlace(s, sheets) });
+
+test('parsePlace reads the three shapes a cite is written in', () => {
+  assert.deepEqual(place('DP Addendum!H11'), { sheet: 'DP Addendum', cell: 'H11' });
+  assert.deepEqual(place('H11'), { sheet: null, cell: 'H11' });
+  assert.deepEqual(place('$H$11'), { sheet: null, cell: 'H11' }, 'absolute refs are still refs');
+  assert.deepEqual(place('A1:C3'), { sheet: null, cell: 'A1' }, 'a range lands on its corner');
+  assert.deepEqual(place("'Fed Funding'!Total"), { sheet: 'Fed Funding', text: 'Total' });
+  assert.deepEqual(place('Reductions - Adds Prioritized'),
+    { sheet: 'Reductions - Adds Prioritized' });
+  assert.deepEqual(place(''), {});
+});
+
+test('a sheet name is split on the LAST bang, since a name may carry one', () => {
+  assert.deepEqual(place('Is it done!?!B4'), { sheet: 'Is it done!?', cell: 'B4' });
+});
+
+test('readPlace: a bare word that names no sheet is text, not a miss', () => {
+  const sheets = [{ key: 'sheet1', s: { name: 'DP Addendum' } },
+                  { key: 'sheet2', s: { name: 'Reference Tables' } }];
+  assert.deepEqual(read('Reference Tables', sheets), { sheet: 'Reference Tables' });
+  // "Externally Mobile" is a plausible sheet name and is in fact a column
+  // heading. The workbook is the only thing that can tell them apart.
+  assert.deepEqual(read('Externally Mobile', sheets), { sheet: null, text: 'Externally Mobile' });
+  // An explicit sheet keeps its meaning even where no sheet matches, so the
+  // caller gets a clean miss rather than a search of the wrong document.
+  assert.deepEqual(read('Nope!A1', sheets), { sheet: 'Nope', cell: 'A1' });
+});
+
+test('sheetIndex matches on alphanumerics, so a cite survives a stray dash', () => {
+  const sheets = [{ key: 'sheet1', s: { name: 'Reductions - Adds Prioritized' } },
+                  { key: 'sheet2', s: { name: null } }];
+  assert.equal(R.sheetIndex(sheets, 'Reductions – Adds Prioritized'), 0, 'an en dash still matches');
+  assert.equal(R.sheetIndex(sheets, 'sheet2'), 1, 'a sheet the workbook never named keeps its part name');
+  assert.equal(R.sheetIndex(sheets, 'Nope'), -1);
+});
+
+test('landOnCell marks one cell at a time and lets the mark expire', async () => {
+  const doc = window.document;
+  const pane = doc.createElement('div');
+  const a = doc.createElement('td'), b = doc.createElement('td');
+  pane.append(a, b);
+  doc.body.append(pane);
+  a.classList.add('landed');
+  R.landOnCell(pane, b);
+  assert.ok(!a.classList.contains('landed'), 'the previous cite is cleared, not stacked');
+  assert.ok(b.classList.contains('landed'));
+  assert.equal(R.landOnCell(pane, null), false, 'nothing to mark is not a mark');
+  pane.remove();
+});
+
+test('both sheet modes publish a locate, so a cite survives a mode switch', () => {
+  for (const id of ['sheet', 'xlsx']) {
+    const src = R.modules.find(m => m.id === id).after.toString();
+    assert.match(src, /const locate = async \(address\)/, `${id} publishes no locate`);
+    assert.match(src, /publishSheets\(host, sheets, show, stale, locate\)/, `${id} does not publish it`);
+  }
+});
+
+// ── the notes panel ──────────────────────────────────────────────────────────
+//
+// The other reading of a workbook's annotations: all of them at once, which is
+// the thing Excel makes hard. A row is a cite, so the list is only useful
+// because tapping one lands on the cell.
+
+const notesPanel = (notes) => {
+  const prev = window.xlsxKit;
+  window.xlsxKit = { workbookNotes: () => notes };
+  const root = window.document.createElement('div');
+  root.innerHTML = '<div data-sheet="stage"></div>';
+  const controls = window.document.createElement('div');
+  const landed = [];
+  try {
+    const panel = R.mountNotesPanel({ controls }, {}, root, (p) => { landed.push({ ...p }); });
+    return { panel, controls, root, landed };
+  } finally { window.xlsxKit = prev; }
+};
+
+const NOTES = [
+  { sheet: 'EXAMPLE-Tech Pool', cell: 'G37', kind: 'comment',
+    author: 'Shields, Sharon (OFM)', title: '', text: 'Include sales tax.', options: null },
+  { sheet: 'Fee form', cell: 'D1', span: 'D1:D50', kind: 'list',
+    author: '', title: 'Code', text: '', options: ['Bill', 'Budget'] },
+];
+
+test('the panel lists every note in the workbook, whatever sheet it is on', () => {
+  const { panel } = notesPanel(NOTES);
+  const rows = panel.querySelectorAll('[data-note-row]');
+  assert.equal(rows.length, 2);
+  assert.match(rows[0].textContent, /EXAMPLE-Tech Pool/);
+  assert.match(rows[0].textContent, /Shields, Sharon \(OFM\)/);
+  assert.match(rows[0].textContent, /Include sales tax\./);
+  assert.match(rows[1].textContent, /D1:D50/, 'a rule says the whole range it covers');
+  assert.match(rows[1].textContent, /One of: Bill, Budget/);
+});
+
+test('the panel opens from a control in the header, not from the pane', () => {
+  // The sheet keeps the whole of the pane's height; the drawer is over it.
+  const { panel, controls } = notesPanel(NOTES);
+  assert.equal(controls.children.length, 1);
+  assert.ok(panel.classList.contains('hidden'), 'a workbook opens on its sheet, not on its notes');
+  controls.firstElementChild.click();
+  assert.equal(panel.classList.contains('hidden'), false);
+  controls.firstElementChild.click();
+  assert.ok(panel.classList.contains('hidden'), 'the same control closes it');
+});
+
+test('a row is a cite: tapping one lands on the cell and closes the drawer', async () => {
+  const { panel, controls, landed } = notesPanel(NOTES);
+  controls.firstElementChild.click();
+  panel.querySelector('[data-note-row="1"]').click();
+  await new Promise(r => setTimeout(r, 0));
+  assert.deepEqual(landed, [{ sheet: 'Fee form', cell: 'D1' }]);
+  assert.ok(panel.classList.contains('hidden'),
+    'a drawer left open covers the cell the reader just asked to see');
+});
+
+test('a workbook with no notes grows no control', () => {
+  const { panel, controls } = notesPanel([]);
+  assert.equal(panel, null);
+  assert.equal(controls.children.length, 0);
+});
+
+test('a sheet names itself once per run, so the column reads as a grouping', () => {
+  // The fee form's whole instruction set is thirteen rules on one sheet, and
+  // repeating its name down the list was the loudest thing on the panel.
+  const same = (cell) => ({ ...NOTES[1], sheet: 'Fee form', cell });
+  const { panel } = notesPanel([NOTES[0], same('D1'), same('E1'), { ...NOTES[0], cell: 'H2' }]);
+  const names = [...panel.querySelectorAll('[data-note-row] td:first-child')]
+    .map(td => td.textContent.trim());
+  assert.deepEqual(names, ['EXAMPLE-Tech Pool', 'Fee form', '', 'EXAMPLE-Tech Pool'],
+    'the name returns when the sheet does, so a run is never mislabelled by the one above it');
+});
+
+test('a sheet cell asks the note kit for Excel\'s comment box', () => {
+  // The sheet beside it is a reproduction, and a rounded panel in the page's
+  // own theme was the one thing on it that announced it was not Excel.
+  const html = drawWith(commented());
+  assert.match(html, /data-note-look="excel"/);
+  assert.match(html, /#wt-note\[data-look="excel"\]\{[^}]*background:#ffffe1/,
+    "Windows' info-tip yellow, which is what Excel fills a comment with");
+  assert.match(html, /#wt-note\[data-look="excel"\]\{[^}]*border-radius:0/,
+    'square corners: the rounded default is the tell');
+});
+
+test('every cell note wears the same box, not only the comments', () => {
+  // One sheet cannot show two kinds of tooltip. A cell whose only note is the
+  // stored value has no Excel counterpart and still gets Excel's frame.
+  const stored = drawWith(layoutWith({ raw: '0.125' }));
+  assert.match(stored, /data-note-look="excel"/);
+  assert.match(stored, /data-note="Stored as 0\.125"/);
+});
+
+test('the Excel look is asked for per note, so it cannot leak to the page', () => {
+  // The kit owns ONE panel, shared by every note on the page, so the rule has
+  // to be unscoped; what keeps it off the rest of the estate is that the kit
+  // stamps data-look per note and clears it again.
+  const html = drawWith(commented());
+  assert.doesNotMatch(html, /#wt-note\{/, 'the bare panel selector would restyle every note there is');
 });
