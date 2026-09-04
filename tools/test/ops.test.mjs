@@ -57,7 +57,13 @@ const plainText = (s) => Array.from(s).map(ch => {
   return ch;
 }).join('').replace(/^[\u{1F33F}\u{1F558}] /u, '').replace(/ {2}/g, ' · ');
 
-const stamp = (minsAgo) => new Date(Date.now() - minsAgo * 60000).toISOString();
+// ONE CLOCK for every row. Read per call, two rows meant to tie ("the repeat
+// earns its id" below) landed a millisecond apart whenever the runner was slow
+// between the two calls, the later one sorted first, and the check on which
+// row carries the id failed on CI while passing here. Fixed once at load, the
+// tie is a tie.
+const NOW = Date.now();
+const stamp = (minsAgo) => new Date(NOW - minsAgo * 60000).toISOString();
 // `endedMinsAgo` is omitted by most callers on purpose: a row without `ended` is
 // exactly what the op's fallback is for, so leaving it off keeps that path under
 // test everywhere the ordering itself is not the subject.
