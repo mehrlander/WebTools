@@ -8,55 +8,42 @@ size: S
 ---
 # Audit the app's views for viewport breakpoints inside the content pane
 
-Docking the swipe deck narrows the app's content pane through `--deck-dock-left`
-and leaves the window where it was, so any `sm:`/`lg:`/`xl:` rule inside that
-pane keeps answering a question nobody asked: how wide is the WINDOW. The Docs
-tab was found this way (PR #480): its folder rail held a 20rem side column at
-`lg:` while the pane was under 400px, the files column was pushed under the deck
-and clipped, and the pane offered sideways scrolling to reach content it could
-have stacked. Nothing was wrong at any window size, which is why it survived.
+Docking the swipe deck narrows the content pane through `--deck-dock-left` and
+leaves the window where it was, so any `sm:`/`lg:`/`xl:` rule inside that pane
+keeps answering a question nobody asked: how wide is the WINDOW. Nothing is
+wrong at any window size, which is why these survive.
 
-The Docs tab is fixed and is the worked example: `@container` on the block, then
-`@2xl:`/`@5xl:` where the viewport variants were. What is unaudited is every
-other view that can sit in that pane, plus any framed app view, since the same
-gap opens wherever a pane and a window disagree.
+**The rule is already written**, so this task is the sweep and nothing else:
+`skills/daisy-alpine/references/mechanics.md` rule 10 says to size a pane by its
+container, `@container` on the column and `@md:`/`@xl:` in place of `sm:`/`lg:`.
+(No longer in `docs/HTML-STYLE.md`, a pointer since 2026-08-31.)
 
-**The rule is already written**, so this task is the sweep and nothing else.
-`skills/daisy-alpine/references/mechanics.md` rule 10 states it: size a pane by
-its container, not the viewport, `@container` on the column and `@md:`/`@xl:` in
-place of `sm:`/`lg:`. (It is no longer in `docs/HTML-STYLE.md`, which became a
-pointer on 2026-08-31 when the rules moved into the skill that fires on page
-work.)
+## Three converted, and what each taught
+
+| View | Found | Fix |
+| --- | --- | --- |
+| Docs (PR #480) | a 20rem side column at `lg:` inside a sub-400px pane, files pushed under the deck and clipped | `@container`, `@2xl:`/`@5xl:` |
+| Stage bench | an `xl:` 26rem aside laid out in a 368px pane, overflowing by 24px onto the deposit column | `@container`, `@2xl:`/`@5xl:`/`@7xl:` |
+| Files (PR #574) | not a breakpoint at all: `max-w-7xl` on the pane and a `mx-auto` 65ch measure in `viewer.js`, composing into two nested corridors | `!max-w-none` on both |
+
+The Stage bench was measured before and after with a headless probe: 8
+overlapping element pairs and 8 elements past the pane's right edge, both to
+zero, with the undocked layout unchanged at every width.
+
+**Files is why the sweep cannot be a grep.** `npm run reading-column` reported
+"none" over that screen, because a page-shell size and a standing opt-out are
+each exempt by design and still compose into a corridor. Look for the second
+mechanism, not just the first.
 
 ## Done when
-Every view reachable in the content pane has been opened with the deck docked
-and either reflows or is recorded as deliberately fixed-width.
+Every view reachable in the content pane has been opened with the deck docked and
+either reflows or is recorded as deliberately fixed-width.
 
 ## Progress log
-- 2026-08-23: Filed from PR #480, which fixed the Docs tab and logged the class
-  as `viewport-rule-blind-to-a-docked-pane` in SNAGS. `docs/HTML-STYLE.md`
-  already carries the same lesson for a form in a split pane, so the rule exists
-  and the sweep does not.
-- 2026-08-23: The Stage bench converted, found the same way: a reader opened a
-  stage of eight PDFs with the deck docked and the aside's `xl:` 26rem column
-  laid itself out inside a 368px pane, overflowing it by 24px and painting over
-  the deposit column. `@container` on the bench root, and the grid's three
-  `lg:`/`xl:`/`2xl:` templates became `@2xl:`/`@5xl:`/`@7xl:`, each threshold the
-  aside's own width plus the gap plus a lens column worth having. Measured
-  before and after with a headless probe: 8 overlapping element pairs and 8
-  elements past the pane's right edge, both to zero, with the undocked layout
-  unchanged at every width. Still unaudited: every other view in the pane.
-- 2026-09-03: The Files view converted, by PR #574, without this task being
-  cited. Two independent width caps, not viewport breakpoints: `max-w-7xl` on
-  the search pane in `app/index.html` and a `mx-auto` 65ch measure in
-  `viewer.js`, composing into a 1280px pane inside a 1920px window with a 506px
-  text column inside that. Both now `!max-w-none`. Worth noting for the sweep
-  that this is a second mechanism: `npm run reading-column` reported "none" over
-  the same screen, because a page-shell size and a standing opt-out are each
-  exempt by design and still compose into a corridor. Recorded here on
-  2026-09-04, during a refinement pass.
-- 2026-09-04: Done-condition trimmed. The clause asking this task to state the
-  rule in `docs/HTML-STYLE.md` is satisfied and then some: the rule exists as
-  daisy-alpine mechanics rule 10, in the file a session loads unprompted on page
-  work. Still unaudited: every view in the pane other than Docs, the Stage bench,
-  and Files.
+- 2026-08-23: Filed from PR #480 and logged as
+  `viewport-rule-blind-to-a-docked-pane` in SNAGS. The Stage bench converted the
+  same day, found the same way.
+- 2026-09-03: Files converted by PR #574 without this task being cited.
+- 2026-09-04: Recorded that conversion, trimmed the done-condition (the clause
+  asking this task to write its own rule is satisfied), and cut the body from
+  581 words. Still unaudited: every view but those three.
