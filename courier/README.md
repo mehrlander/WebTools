@@ -42,13 +42,29 @@ minutes. Two things follow that no other route here gets:
 
 | Part | Where | Changes |
 | --- | --- | --- |
-| the courier | [`bookmarklets/courier.js`](../bookmarklets/courier.js) | never, once installed |
+| the pointer | [`bookmarklets/courier.js`](../bookmarklets/courier.js) | never; it is 286 bytes and names one URL |
+| the body | [`run.js`](run.js) | freely: routing, panel, gate, delivery |
 | the errand list | [`errands.json`](errands.json) | per errand |
-| the errand script | `sites/<hostname>/courier/<id>.js` | per errand |
+| the errand script | `sites/<hostname>/courier/<id>.js` | per errand, then frozen when it closes |
 
-Install the courier once, as a bookmark whose URL is the whole file. It reads
-`location.hostname`, finds the open errands for that host, shows what it is about
-to run, and runs it on your tap.
+Install the pointer once, as a bookmark whose URL is the whole file. It fetches
+`run.js` and runs it. `run.js` reads `location.hostname`, finds the open errands
+for that host, shows what it is about to run, and runs it on your tap.
+
+**The bookmark is a pointer on purpose, and the trade is worth naming.** The
+mechanism lived in the bookmark first, which put the confirm gate beyond this
+repo's reach: no commit could remove the step that shows you a script before it
+runs. Moving it out makes every part revisable without a reinstall, and moves
+the trust anchor from "this bookmark's own code" to "whatever
+`mehrlander/web-tools` main serves at `courier/run.js`". That is a smaller
+guarantee, stated rather than quietly lost, and it buys two things: you install
+once and never again, and the mechanism becomes readable source instead of the
+single line a bookmarklet is obliged to be.
+
+It adds no new capability requirement. `run.js` reaches the page through
+`new Function`, which is how an errand script already ran, so a page whose
+Content-Security-Policy would refuse the loader would have refused the errand
+too.
 
 ## An errand
 
