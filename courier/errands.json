@@ -1,0 +1,21 @@
+{
+ "note": "Read by bookmarklets/courier.js over raw.githubusercontent.com, which is CORS-open and cached five minutes. Public on purpose: an errand names a public page and a script, so reading one needs no token. Contract: courier/README.md.",
+ "errands": [
+  {
+   "id": "wsl-drs-cafr-index",
+   "host": "wsldocs.sos.wa.gov",
+   "status": "open",
+   "opened": "2026-09-04",
+   "title": "List the DRS financial reports",
+   "note": "Collects every document link on the DRS CAFR index, so the pre-FY2019 reports can be addressed. A Claude Code web session gets a Cloudflare 403 on this host; your browser does not.",
+   "url": "http://wsldocs.sos.wa.gov/library/docs/drs/cafr_home.aspx",
+   "script": "sites/wsldocs.sos.wa.gov/courier/list-cafr.js",
+   "result": {
+    "repo": "mehrlander/web-tools-private",
+    "branch": "main",
+    "path": "courier/results/wsl-drs-cafr-index.md"
+   },
+   "for": "mehrlander/home projects/budget-drs: the Benefits view's assets basis before FY2019"
+  }
+ ]
+}
