@@ -1765,9 +1765,13 @@ loads it straight from jsDelivr. Three of its lessons went the other way: a set
 has a **current** member and is drawn at two strengths; an overlay mark
 **multiplies** so it sits under the glyphs it covers; and a mark over a rendered
 page needs a stronger percentage than one behind DOM text, because multiplying
-against white washes the same number out. `kits/annotate.js` still lands at its
-own fixed offset, and the two remaining `scrollIntoView({block:'center'})`
-callers in the app are unconverted.
+against white washes the same number out. `state-view.js`'s `aim` takes the kit's
+scroll and keeps its own tint, since `item` already drives a reactive class
+there and two owners for one mark leaves one behind. Two stay put on purpose:
+`fab.js`'s highlight has no dwell and a clear button, which makes it a
+highlighter rather than a landing, and `annotate.js` lands on a foreign page
+where its 80px is a gap above a drawn rectangle rather than a fraction of a
+pane.
 No correspondence is invented for it: `surfacing.csv`'s `lead` already is that
 bullet's bold lead-in, held both ways by `surfacing-manifest.test.mjs`. What the
 manifest gate cannot say is whether the key survives RENDERING, and it barely
