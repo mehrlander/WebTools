@@ -483,6 +483,21 @@ It opens on hover where the pointer can hover, and on focus for a keyboard
 reader. On a touch screen it never opens: the icon keeps its single meaning,
 which is a tap that jumps to GitHub.
 
+**One address, one destination**, since 2026-09-04. The mark was four
+attributes, `:href="hubUrl(p)" :data-peek="peek(p)" target="_blank"
+rel="noopener"`, and nothing held the first two to the same file: a site could
+open one path and preview another, silently, because both halves render fine
+when they disagree. The `x-blob` directive
+([`lib/alpine-bundle.js`](https://github.com/mehrlander/web-tools/blob/main/lib/alpine-bundle.js))
+takes the address once and derives the href from it through `SourcePeek.blobUrl`,
+the same builder the card's own head uses. The GLYPH stays at the call site,
+because it is not invariant: a github mark says "the file on GitHub" and a
+`ph-function` mark says "the builder that stamps this", which is a different
+claim about the same kind of link. Nineteen sites in the Map view are converted;
+`estate.js`, `stage.js`, `state-view.js` and `tools.js` still spell the pair by
+hand. [`tools/test/x-blob.test.mjs`](https://github.com/mehrlander/web-tools/blob/main/tools/test/x-blob.test.mjs)
+holds the directive and keeps the Map view's count from going back up.
+
 The card's head carries a mark of its own (2026-09-04), inline after the
 filename, and it is the same destination the trigger has: the card is enterable,
 so a reader who has moved onto it to read the excerpt has left a 16 px glyph
