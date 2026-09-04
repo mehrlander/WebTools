@@ -47,8 +47,16 @@ const CONSUMERS = new Set(
 const MANIFEST = '.web-tools.json';
 
 // The estate as it sits on disk beside this checkout. Names rather than a glob,
-// so a stray directory cannot quietly join the corpus.
-const SIBLINGS = ['home', 'chat-histories', 'web-tools-private'];
+// so a stray directory cannot quietly join the corpus. The list is every repo
+// that declares a promoted page, which is wider than the repos a session
+// usually clones: `shortcut-tools` and `fun` join it because the slug namespace
+// below is estate-wide, and a name absent from here is a name nothing checks.
+// `fun` is HIDDEN in the registry, so its two promoted views contribute nothing
+// to the collected app views while the hide holds; hiding is a viewer's display
+// choice and reversible from the Repos view, so its slugs are dormant rather
+// than out of scope. Absent siblings are skipped, so listing one costs nothing
+// in a session that did not clone it.
+const SIBLINGS = ['home', 'chat-histories', 'web-tools-private', 'shortcut-tools', 'fun'];
 
 function manifests() {
   const found = [];
