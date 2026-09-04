@@ -384,6 +384,63 @@ test('with nothing lending the head, the compare is not deferred', async () => {
   assert.equal(d.verdict.lent, false, 'measured here, not handed down');
 });
 
+// The other thing only a host could answer, until it wasn't. A branch sharing
+// no ancestor with the base 404s the compare, so there is no file list at all;
+// the crawl reads one anyway through BranchStatus.recentHistory and lends its
+// slides the missing paths. A cold page had nobody to lend it one and said
+// "No file differs from main", which is not a smaller answer but a false one.
+test('no merge base: the page reads the fallback the crawl would have lent it', async () => {
+  window.BranchBrief.forget();
+  reset();
+  let first = true;
+  const realCompare = FakeGH.prototype.compare;
+  FakeGH.prototype.compare = async function (base, head) {
+    // The default compare 404s; the fallback's (parent...tip) answers.
+    if (first) { first = false; throw Object.assign(new Error('no merge base'), { status: 404 }); }
+    calls.compare.push(this.repo + '@' + head);
+    return { files: [{ filename: 'feat/a.js', status: 'modified', additions: 1, deletions: 0 }] };
+  };
+  const realReq = FakeGH.prototype.req;
+  FakeGH.prototype.req = async function (p) {
+    if (/^commits\?/.test(p)) {
+      calls.pulls.push('commits');
+      return [{ sha: 'tip', commit: { message: 'tip', committer: { date: '2026-08-02T00:00:00Z' } }, parents: [{ sha: 'p1' }] },
+              { sha: 'old', commit: { message: 'old', committer: { date: '2026-08-01T00:00:00Z' } }, parents: [{ sha: 'p0' }] }];
+    }
+    // The path is on the tip and NOT on the base, so it classifies missing,
+    // which is the class this pane lists by name. The shared tree fixture puts
+    // every path on both sides, which would make it merely differ.
+    if (/^git\/trees\//.test(p)) {
+      calls.trees.push(p);
+      const onTip = !/trees\/main/.test(p);
+      return { truncated: false, tree: onTip ? [{ path: 'feat/a.js', type: 'blob', sha: 'only' }] : [] };
+    }
+    return realReq.call(this, p);
+  };
+  try {
+    window.__opts = { repo: 'me/tools', base: 'main', branch: 'feat/a', onMeta: (m) => meta.push(m) };
+    const host = window.document.getElementById('m');
+    host.innerHTML = '';
+    const el = window.document.createElement('div');
+    el.setAttribute('x-data', 'branchBrief(window.__opts)');
+    host.append(el);
+    Alpine.initTree(el);
+    await tick(14);
+    const d = Alpine.$data(el);
+    assert.equal(d.brief.noBase, true, 'the 404 is an answer, and the brief carries it');
+    assert.equal(d.brief.files.length, 0, 'there is no diff, so the file list stays empty');
+    assert.ok(calls.pulls.includes('commits'), 'the fallback walked the branch history');
+    assert.equal(d.fallbackFiles.length, 1, 'and found what the recent history changed');
+    // feat/a.js is on the tip tree and not on the base tree in this fixture,
+    // so the one path classifies missing, which is the actionable half.
+    assert.deepEqual([...d.lentMissing], ['feat/a.js'],
+      'so the page lists the paths the base does not have, as the takeover does');
+  } finally {
+    FakeGH.prototype.compare = realCompare;
+    FakeGH.prototype.req = realReq;
+  }
+});
+
 test('a compare that lands after a step does not overwrite the newer branch', async () => {
   window.BranchBrief.forget();
   await mount('feat/a');
