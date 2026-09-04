@@ -384,3 +384,14 @@ test('a workbook with no notes grows no control', () => {
   assert.equal(panel, null);
   assert.equal(controls.children.length, 0);
 });
+
+test('a sheet names itself once per run, so the column reads as a grouping', () => {
+  // The fee form's whole instruction set is thirteen rules on one sheet, and
+  // repeating its name down the list was the loudest thing on the panel.
+  const same = (cell) => ({ ...NOTES[1], sheet: 'Fee form', cell });
+  const { panel } = notesPanel([NOTES[0], same('D1'), same('E1'), { ...NOTES[0], cell: 'H2' }]);
+  const names = [...panel.querySelectorAll('[data-note-row] td:first-child')]
+    .map(td => td.textContent.trim());
+  assert.deepEqual(names, ['EXAMPLE-Tech Pool', 'Fee form', '', 'EXAMPLE-Tech Pool'],
+    'the name returns when the sheet does, so a run is never mislabelled by the one above it');
+});
