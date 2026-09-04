@@ -269,9 +269,13 @@ test('a row title opens the doc deck: full folder, tapped row first, rendered by
   const mdBox = into();
   await data.docDeckRead(mdBox, 'docs/CONVENTIONS.md');
   assert.match(mdBox.innerHTML, /prose/, 'markdown renders as prose');
+  // A CSV renders as a TABLE since 2026-09-04, not as the <pre> this used to
+  // assert: docs/ holds a dozen registries and the deck showed every one of
+  // them as wrapped raw text. It reaches prose by conversion, so the marked
+  // stub above is what proves the markdown path ran.
   const csvBox = into();
   await data.docDeckRead(csvBox, 'docs/docs.csv');
-  assert.ok(csvBox.innerHTML.startsWith('<pre'), 'a CSV doc renders as source, not prose');
+  assert.match(csvBox.innerHTML, /prose/, 'a CSV doc renders as a table, not raw source');
   const fetchesAfter = asked.length;
   await data.docDeckRead(into(), 'docs/CONVENTIONS.md');
   assert.equal(asked.length, fetchesAfter, 're-reading hits the cache, not the network');
@@ -712,3 +716,47 @@ test('every field the Registries markup reads exists on a registry row', async (
   assert.equal(missing.join(', '), '', 'markup reads fields the row does not carry: ' + missing.join(', '));
 });
 
+
+// ── The CSV rendition ────────────────────────────────────────────────────
+// The deck's markdown path renders a registry as a table, and the risk in that
+// conversion is not layout: it is a cell being READ as markdown. docs/ holds a
+// dozen registries and several of them describe markdown, so the first pass
+// turned surfacing.csv's own `[caption](url)` into a link labelled "caption",
+// which is a file misreporting itself in the one view meant to show it whole.
+
+test('a registry converts to a table with a delimiter row', () => {
+  const md = data.csvToMarkdown('a,b\nx,y\n');
+  assert.deepEqual(md.split('\n'), ['| a | b |', '| --- | --- |', '| x | y |']);
+});
+
+test('a cell is data, so its markdown is escaped rather than run', () => {
+  const md = data.csvToMarkdown('key,use\nk,"Explicit [caption](url), **bold**, a_b and `code`"\n');
+  assert.match(md, /\\\[caption\\\]\(url\)/, 'brackets survive as brackets');
+  assert.match(md, /\\\*\\\*bold\\\*\\\*/, 'asterisks are not emphasis');
+  assert.match(md, /a\\_b/, 'an underscore in an identifier is not emphasis');
+  assert.match(md, /\\`code\\`/, 'a backtick is not a code span');
+});
+
+test('a pipe inside a cell does not split the row', () => {
+  // surfacing.csv carries `#gz= | #gh=` in one field; unescaped it would read
+  // as two columns and shift every cell after it.
+  const md = data.csvToMarkdown('key,form\nk,"#gz= | #gh="\n');
+  const row = md.split('\n')[2];
+  assert.equal(row, '| k | #gz= \\| #gh= |');
+  assert.equal(row.split(/(?<!\\)\|/).length - 2, 2, 'two columns, not three');
+});
+
+test('a ragged row is padded to the widest, never truncated to the header', () => {
+  // A row with a field the header does not name is a file that has drifted, and
+  // dropping the field would hide the drift.
+  const md = data.csvToMarkdown('a,b\nx,y,z\n');
+  assert.deepEqual(md.split('\n'), ['| a | b |   |', '| --- | --- | --- |', '| x | y | z |']);
+});
+
+test('what is not a table declines rather than rendering as one', () => {
+  // The caller falls back to the source rendition on null, so a one-column or
+  // header-only file stays what it is.
+  assert.equal(data.csvToMarkdown('just a header\n'), null, 'no rows');
+  assert.equal(data.csvToMarkdown('one\ncolumn\n'), null, 'one column is a list');
+  assert.equal(data.csvToMarkdown(''), null);
+});

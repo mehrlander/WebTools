@@ -1723,9 +1723,11 @@ authoritative carrier, since it is what sessions load and follow, and the
 manifest is its gated index (membership held two-way to the doc's bullet
 lead-ins by `tools/test/surfacing-manifest.test.mjs`; the card summaries are
 paraphrases and stay unchecked, which the Docs registry's claims table states).
-The header's **Read** opens that carrier in the house swipe deck rather than
-routing to the Files view (2026-09-04): docked, the prose sits beside the cards
-it is authoritative for, where the route change put them off screen. Surfacing
+The header's deck door opens that carrier and its index as two slides of the
+house swipe deck rather than routing to the Files view (2026-09-04): docked, the
+prose sits beside the cards it is authoritative for, where the route change put
+them off screen. It wears `swipeDeck.entry`'s glyph and wording like every other
+door in the estate, ghost-toned because the cards are the subject. Surfacing
 decides what to hand over; Showing is what makes it openable.
 
 *Showing* (named Transport until 2026-08-04; renamed because
@@ -1781,7 +1783,14 @@ cannot drift, paging through the selected folder's files as filtered, opened
 on the tapped row; its GitHub icon, inline with the badges and always visible,
 carries the source peek for the desktop glance, one details toggle on the
 reach strip shows every row's maintenance at once, and the files view stays
-the route for working on a file rather than reading it. The file list runs two
+the route for working on a file rather than reading it. The folder heading
+carries the deck's own door beside its GitHub mark (2026-09-04), since the row
+tap was a gesture nobody was told about. A `.csv` row opens as a TABLE rather
+than as raw text: the deck converts it to a markdown table so md-doc's wide-table
+scroller and prose styling apply, with each cell's markdown escaped, since a
+registry that describes markdown was otherwise rendering its own
+`[caption](url)` as a link. The peek keeps the raw excerpt, which is what a
+glance at the head of a file wants. The file list runs two
 columns above `xl` so a wide screen is used rather than left as a gutter. And the **shared claims**: statements that live in
 more than one place, each with its one authoritative carrier and its typed
 repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by

@@ -13,18 +13,28 @@
 // instead. If someone restyles the door in the kit, this fails and names every
 // file that has to follow.
 //
-// There are three copies as of 2026-08-31. branch-brief's is the door into a
+// There are five copies as of 2026-09-04. branch-brief's is the door into a
 // branch's FILES; session-brief's is the door into a session's CARDS, and it
 // exists because that view was lifted out of pages/session.html to be mounted
 // per slide in the Sessions pane; search-view's is the door into the FILES a
-// search just found. A fourth joins the table below and needs no other change
-// here, which is the point of the table.
+// search just found. The Map view's two arrived last: the Surfacing tab's pair
+// (the doc and its gated index) and the Docs tab's selected folder. A sixth
+// joins the table below and needs no other change here, which is the point of
+// the table.
 //
 // `pending` is the one thing a row can decline. Two of the doors render before
 // their collection has been counted (a branch whose compare has not been read,
 // a session whose cards have not been fetched) and so need the uncounted
-// wording as well; search-view's only ever renders over a list already in hand,
-// so requiring that string would be requiring a literal nothing can display.
+// wording as well; the other three only ever render over a list already in
+// hand, so requiring that string would be requiring a literal nothing can
+// display.
+//
+// `tone` is the second. It is the host's judgment, not the kit's, and the kit
+// says so: primary where the deck is what most readers came to do, ghost where
+// it is one lens among several. The Map view's headers are strips of quiet
+// chips over cards that are the subject, so both of its doors are ghost. The
+// column exists so the check reads each door against the tone it declares
+// rather than against the default.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -47,6 +57,12 @@ const DOORS = [
   { what: 'Files search', file: 'lib/alpineComponents/search-view.js',
     anchor: 'openDeck()', noun: 'file', count: "plural(fileHits.length, 'file')",
     pending: false },
+  { what: 'Map / Surfacing', file: 'lib/alpineComponents/map.js',
+    anchor: 'openSurfDeck()', noun: 'file', count: "plural(surfDeckFiles.length, 'file')",
+    pending: false, tone: 'ghost' },
+  { what: 'Map / Docs', file: 'lib/alpineComponents/map.js',
+    anchor: 'openDocDeck(docDirFiles[0])', noun: 'file',
+    count: "plural(docDirFiles.length, 'file')", pending: false, tone: 'ghost' },
 ];
 
 const src = (d) => readFileSync(path.join(repoRoot, d.file), 'utf8');
@@ -68,7 +84,7 @@ for (const d of DOORS) {
     // As a SET, not a string. Class order does not reach CSS, so pinning it
     // would fail on a reordering that changes nothing and teach people to
     // ignore this.
-    const want = entry.cls().split(/\s+/).filter(Boolean).sort().join(' ');
+    const want = entry.cls(d.tone).split(/\s+/).filter(Boolean).sort().join(' ');
     assert.equal(deckBtnClasses(d), want,
       `${d.file}'s deck button must carry the same classes as swipeDeck.entry.cls()`);
   });
