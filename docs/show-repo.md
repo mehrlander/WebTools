@@ -483,6 +483,19 @@ It opens on hover where the pointer can hover, and on focus for a keyboard
 reader. On a touch screen it never opens: the icon keeps its single meaning,
 which is a tap that jumps to GitHub.
 
+The card's head carries a mark of its own (2026-09-04), inline after the
+filename, and it is the same destination the trigger has: the card is enterable,
+so a reader who has moved onto it to read the excerpt has left a 16 px glyph
+behind, and going to GitHub meant travelling back to it. The URL is derived from
+the address the head displays rather than read off the trigger's `href`, so a
+card cannot name one commit and open another; a key that is not an address (the
+stage's pasted flavors) names no repo and gets no mark. It is one anchor, not a
+control: nothing at the call site changes, and the narrow rule above is
+unaltered. Whether it can be pressed at all is a claim a browser has to make,
+since mousedown focuses an anchor before the click resolves and the focus
+handler used to dismiss on that, so [`tools/test/peek-head-link.mjs`](https://github.com/mehrlander/web-tools/blob/main/tools/test/peek-head-link.mjs)
+(`npm run test:peek-link`) drives a real press.
+
 ## The estate: the all-repo view
 
 The estate (`lib/alpineComponents/estate.js`) is the central dashboard over the
@@ -1710,7 +1723,10 @@ authoritative carrier, since it is what sessions load and follow, and the
 manifest is its gated index (membership held two-way to the doc's bullet
 lead-ins by `tools/test/surfacing-manifest.test.mjs`; the card summaries are
 paraphrases and stay unchecked, which the Docs registry's claims table states).
-Surfacing decides what to hand over; Showing is what makes it openable.
+The header's **Read** opens that carrier in the house swipe deck rather than
+routing to the Files view (2026-09-04): docked, the prose sits beside the cards
+it is authoritative for, where the route change put them off screen. Surfacing
+decides what to hand over; Showing is what makes it openable.
 
 *Showing* (named Transport until 2026-08-04; renamed because
 [`SURFACING.md`](SURFACING.md) already uses "transport" for the stage link, and
