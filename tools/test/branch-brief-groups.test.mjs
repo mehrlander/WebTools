@@ -171,6 +171,45 @@ test('standalone: the document is left alone, and the lock is roomy-only', () =>
     'the guide takes what is left and scrolls the prose inside it');
 });
 
+// WHICH COPY OF THE PAGE IS RUNNING, stated on the page itself.
+//
+// Every other fact in the head describes the BRANCH; this one describes the
+// code doing the describing, and until 2026-09-04 it was reachable only through
+// the FAB drawer. A reader whose FAB will not open on their device then has no
+// way at all to tell a branch preview from the deployed page, which cost three
+// rounds of this session before anyone noticed the reader and the session were
+// looking at different code.
+//
+// The SOURCE is the half worth gating. window.gh.ref is what the loader is
+// pinned to; the address bar's ?use= is what was ASKED for, and a page whose
+// boot block ignores it would report a preview it is not running. The FAB
+// reasons the same way at loaderRef, and this must not drift to the easier
+// reading.
+test('the head says which copy of the page is running, from the loader', () => {
+  const line = [...window.document.querySelectorAll('span')]
+    .find(e => /^running /.test(e.textContent.trim()));
+  assert.ok(line, 'the identity line carries the marker');
+  assert.equal(line.textContent.trim(), 'running main',
+    'with no loader pinned it reads the default branch, never blank');
+
+  // A SHA is trimmed to 7, which tells two commits apart in a screenshot; a
+  // branch name is left whole, since truncating one is how two branches come
+  // to read the same.
+  window.gh = { ref: '5985c9cb7b69a1212d18901655b4f7462ac95b3b' };
+  assert.equal(data.codeRef, '5985c9c');
+  window.gh = { ref: 'claude/session-detail-mobile-scroll-nwd66p' };
+  assert.equal(data.codeRef, 'claude/session-detail-mobile-scroll-nwd66p');
+  delete window.gh;
+  assert.equal(data.codeRef, 'main');
+
+  const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/branch-brief.js'), 'utf8');
+  const body = src.slice(src.indexOf('get codeRef()'), src.indexOf('get codeRefTitle()'));
+  assert.match(body, /window\.gh && window\.gh\.ref/,
+    'the marker reads what the loader booted, not what the address asked for');
+  assert.doesNotMatch(body, /location\.(search|href)|URLSearchParams/,
+    'the address bar is a different question and reporting it would be a lie on a page that ignores it');
+});
+
 // ONE FLAG, TWO FACTS, and the layout above is worth nothing while they are
 // confused. `framed` on a PAGE means it sits in an iframe, which is why its
 // masthead stands down. `framed` on the BRIEF means a host draws the branch
