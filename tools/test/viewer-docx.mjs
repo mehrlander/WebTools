@@ -8,7 +8,7 @@
 // to the viewer OPENS on the page render, that the painter draws it as pages
 // with the header and footer on them, and that a content control inside a
 // table cell, which the painter alone drops, reaches the page because the kit
-// unwrapped it first. Six claims:
+// unwrapped it first. Seven claims:
 //
 //   1. a .docx opens in the page mode over the host's blanket defaultMode,
 //      and the reading view is still in the strip
@@ -22,6 +22,9 @@
 //   6. a two-finger touch is taken from the browser and scales the page as a
 //      transform while the fingers move, a ctrl-wheel zooms about the pointer,
 //      the pill shows the level off fit width, and tapping it returns to fit
+//   7. the viewer cuts a long section into pages of page height, at blocks and
+//      at table rows, each with the header and footer and its own number,
+//      and loses nothing on the way
 //
 // The fixture is built here with jszip rather than committed, so no binary
 // enters the tree and the document's internals are exactly what the
@@ -92,6 +95,14 @@ const DOCUMENT = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>Informative tables</w:t></w:r></w:p>
   <w:p><w:r><w:t>What is the problem, opportunity, or priority you are addressing with the request?</w:t></w:r></w:p>
   <w:p><w:r><w:t xml:space="preserve">Link: </w:t></w:r><w:hyperlink r:id="rId9"><w:r><w:t>bad link</w:t></w:r></w:hyperlink></w:p>
+  ${Array.from({ length: 40 }, (_, i) => `<w:p><w:r><w:t>Filler paragraph ${i + 1} runs long enough to take a line of the page and push what follows down toward the foot.</w:t></w:r></w:p>`).join('\n  ')}
+  <w:p><w:r><w:t>Before the long table</w:t></w:r></w:p>
+  <w:tbl>
+    <w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders><w:insideH w:val="single" w:sz="4" w:color="auto"/></w:tblBorders></w:tblPr>
+    <w:tblGrid><w:gridCol w:w="8000"/></w:tblGrid>
+    ${Array.from({ length: 40 }, (_, i) => `<w:tr><w:tc><w:p><w:r><w:t>Row ${i + 1}</w:t></w:r></w:p></w:tc></w:tr>`).join('\n    ')}
+  </w:tbl>
+  <w:p><w:r><w:t>After the long table</w:t></w:r></w:p>
   <w:sectPr>
     <w:headerReference w:type="default" r:id="rId7"/>
     <w:footerReference w:type="default" r:id="rId8"/>
@@ -102,7 +113,7 @@ const DOCUMENT = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 const HEADER = `<?xml version="1.0"?><w:hdr ${NS}><w:p><w:pPr><w:jc w:val="center"/></w:pPr>
   <w:sdt><w:sdtPr/><w:sdtContent><w:r><w:t>Agency Code – Agency Name</w:t></w:r></w:sdtContent></w:sdt></w:p></w:hdr>`;
-const FOOTER = `<?xml version="1.0"?><w:ftr ${NS}><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>Page 1 of 1</w:t></w:r></w:p></w:ftr>`;
+const FOOTER = `<?xml version="1.0"?><w:ftr ${NS}><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t xml:space="preserve">Page </w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>1</w:t></w:r></w:fldSimple><w:r><w:t xml:space="preserve"> of </w:t></w:r><w:fldSimple w:instr=" NUMPAGES "><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p></w:ftr>`;
 
 const NUMBERING = `<?xml version="1.0"?><w:numbering ${NS}>
   <w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="bullet"/>
@@ -254,7 +265,7 @@ try {
 
   if (!real) {
     ok('the header text is on the first page', s.header.includes('Agency Code'), s.header);
-    ok('and the footer', s.footer.includes('Page 1 of 1'), s.footer);
+    ok('and the footer, its PAGE and NUMPAGES fields filled in', /^Page 1 of \d+$/.test(s.footer.trim()), s.footer);
     // Claim 3, the whole reason for the kit.
     ok('a cell-level control\'s label is drawn', s.body.includes('Staffing'), s.body);
     ok('a second cell-level control too', s.body.includes('FTEs'), s.body);
@@ -268,6 +279,39 @@ try {
     ok('and no private-use glyph is left', !s.numRules.some(r => /[\uF000-\uF0FF]/.test(r)), JSON.stringify(s.numRules));
     // The link scrub.
     ok('a javascript: link lost its href', s.links.some(([t, h]) => t === 'bad link' && h === null), JSON.stringify(s.links));
+
+    // Claim 7: pages are page-sized. The fixture runs to several pages, the
+    // cut falling once inside the 40-row table, so every page but the last is
+    // full, none clips, the footer counts them, and every word is still there
+    // exactly once.
+    const paged = await page.evaluate(() => {
+      const root = document.querySelector('[data-page="root"]');
+      const secs = [...root.querySelectorAll('section[class^="wd"]')];
+      const text = (el) => (el?.innerText || '').replace(/\s+/g, ' ').trim();
+      const pageH = parseFloat(getComputedStyle(secs[0]).minHeight);
+      return {
+        pages: secs.length,
+        heights: secs.map(s => Math.round(s.getBoundingClientRect().height)),
+        pageH: Math.round(pageH),
+        clipped: secs.filter(s => s.scrollHeight > s.clientHeight + 1).length,
+        footers: secs.map(s => text(s.querySelector('footer'))),
+        headers: secs.map(s => text(s.querySelector('header'))),
+        // The long table's rows per page; the fiscal table above it has its own.
+        rows: secs.map(s => (text(s.querySelector('article')).match(/\bRow \d+\b/g) || []).length),
+        rowText: (text(root).match(/\bRow \d+\b/g) || []).length,
+        fillers: (text(root).match(/Filler paragraph \d+/g) || []).length,
+        lastEnds: text(secs[secs.length - 1].querySelector('article')).endsWith('After the long table'),
+      };
+    });
+    ok('the fixture paginates into several pages', paged.pages >= 3, JSON.stringify(paged));
+    ok('every page but the last is exactly page height, and none clips',
+       paged.heights.slice(0, -1).every(h => Math.abs(h - paged.pageH) <= 1) && paged.clipped === 0, JSON.stringify(paged));
+    ok('the footer counts the pages it is on', paged.footers.every((f, i) => f === `Page ${i + 1} of ${paged.pages}`), JSON.stringify(paged.footers));
+    ok('every page carries the header', paged.headers.every(h => h.includes('Agency Code')), JSON.stringify(paged.headers));
+    ok('the table was cut at a row and every row is still there once',
+       paged.rows.filter(Boolean).length >= 2 && paged.rowText === 40, JSON.stringify(paged.rows));
+    ok('every filler paragraph is still there once, and the tail is on the last page',
+       paged.fillers === 40 && paged.lastEnds, JSON.stringify({ fillers: paged.fillers, lastEnds: paged.lastEnds }));
 
     // Claim 5.
     console.log('a cite lands:');

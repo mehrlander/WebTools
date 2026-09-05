@@ -171,59 +171,30 @@ test('mapBullets: the bare byte form and the private-use form name the same glyp
 
 // ── page breaks ──────────────────────────────────────────────────────────────
 
-// A body the shape of the IT Addendum: a title paragraph ending a section with
-// no break type (next page), the form after it; then the other shapes the
-// pass has to answer: a continuous break, a break followed by a table, a next
-// paragraph that already carries Word's saved break, a paragraph's own
-// pageBreakBefore, and the body's final sectPr.
-const SECTIONS = `<w:document ${NS}><w:body>
-  <w:p><w:pPr><w:pStyle w:val="Heading1"/><w:sectPr><w:pgSz w:w="12240" w:h="15840"/></w:sectPr></w:pPr><w:r><w:t>Title</w:t></w:r></w:p>
-  <w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>Form starts</w:t></w:r></w:p>
-  <w:p><w:pPr><w:sectPr><w:type w:val="continuous"/></w:sectPr></w:pPr></w:p>
-  <w:p><w:r><w:t>Same page</w:t></w:r></w:p>
-  <w:p><w:pPr><w:sectPr><w:type w:val="nextPage"/></w:sectPr></w:pPr></w:p>
-  <w:tbl><w:tr><w:tc><w:p><w:r><w:t>Table first</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
-  <w:p><w:pPr><w:sectPr/></w:pPr></w:p>
-  <w:p><w:r><w:lastRenderedPageBreak/><w:t>Already broken</w:t></w:r></w:p>
-  <w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>Break before me</w:t></w:r></w:p>
-  <w:p><w:pPr><w:pageBreakBefore w:val="0"/></w:pPr><w:r><w:t>Not me</w:t></w:r></w:p>
+const BREAKS = `<w:document ${NS}><w:body>
+  <w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>Breaks before</w:t></w:r></w:p>
+  <w:p><w:pPr><w:pageBreakBefore w:val="0"/></w:pPr><w:r><w:t>Switched off</w:t></w:r></w:p>
+  <w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:lastRenderedPageBreak/><w:t>Already broken</w:t></w:r></w:p>
+  <w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:br w:type="page"/></w:r><w:r><w:t>Explicit already</w:t></w:r></w:p>
+  <w:p><w:pPr><w:sectPr><w:pgSz w:w="12240" w:h="15840"/></w:sectPr></w:pPr><w:r><w:t>Section end</w:t></w:r></w:p>
+  <w:p><w:r><w:t>After the section</w:t></w:r></w:p>
   <w:sectPr><w:pgSz w:w="12240" w:h="15840"/></w:sectPr>
 </w:body></w:document>`;
 
-const breakRuns = (p) => [...p.getElementsByTagNameNS(W, 'br')].filter(b => b.getAttributeNS(W, 'type') === 'page').length;
+const opensWith = (p) => [...p.getElementsByTagNameNS(W, 'r')][0]?.firstElementChild?.localName;
 
-test('markPageBreaks: a next-page section break becomes a page break at the start of the paragraph that opens the page', () => {
-  const doc = parse(SECTIONS);
-  const n = docxKit.markPageBreaks(doc);
-  assert.equal(n, 3, 'the untyped break, the nextPage break before the table, and the pageBreakBefore');
+test('markPageBreaks: a paragraph\'s own pageBreakBefore becomes the break run the painter reads, once', () => {
+  const doc = parse(BREAKS);
+  assert.equal(docxKit.markPageBreaks(doc), 1);
   const ps = [...doc.getElementsByTagNameNS(W, 'p')];
-  assert.equal(breakRuns(ps[0]), 0, 'the title itself is untouched');
-  assert.equal(breakRuns(ps[1]), 1, 'the form\'s first paragraph opens with the break');
-  assert.deepEqual([...ps[1].children].map(c => c.localName), ['pPr', 'r', 'r'], 'after pPr, before the text run');
-  assert.equal(ps[1].children[1].firstElementChild.localName, 'br');
-  assert.equal(breakRuns(ps[2]) + breakRuns(ps[3]), 0, 'a continuous break is not a page');
-  assert.equal(breakRuns(ps[4]), 1, 'a break followed by a table is written on the breaking paragraph');
-  assert.equal(breakRuns(ps[6]) + breakRuns(ps[7]), 0, 'a saved break already there is not doubled');
-  assert.equal(breakRuns(ps[8]), 1, 'pageBreakBefore');
-  assert.deepEqual([...ps[8].children].map(c => c.localName), ['pPr', 'r', 'r']);
-  assert.equal(breakRuns(ps[9]), 0, 'pageBreakBefore w:val="0" is off');
-  assert.deepEqual(texts(doc), texts(parse(SECTIONS)), 'no text moved');
-});
-
-test('markPageBreaks: idempotent, and the body\'s final sectPr is not a break', () => {
-  const doc = parse(SECTIONS);
-  docxKit.markPageBreaks(doc);
-  assert.equal(docxKit.markPageBreaks(doc), 0);
-  const solo = parse(`<w:document ${NS}><w:body><w:p><w:r><w:t>only</w:t></w:r></w:p><w:sectPr/></w:body></w:document>`);
-  assert.equal(docxKit.markPageBreaks(solo), 0);
-});
-
-test('normalize: page breaks ride the main document and are reported', () => {
-  const { parts, report } = docxKit.normalize({ 'word/document.xml': SECTIONS, 'word/header1.xml': SECTIONS });
-  assert.equal(report.breaks, 3);
-  assert.equal(report.byPart['word/document.xml'], 3);
-  assert.equal(report.byPart['word/header1.xml'], undefined, 'a header does not paginate');
-  assert.equal(count(parse(parts['word/document.xml']), 'br'), 3);
+  assert.equal(opensWith(ps[0]), 'br', 'the break run leads the paragraph');
+  assert.equal(ps[0].firstElementChild.localName, 'pPr', 'after its properties');
+  assert.equal(opensWith(ps[1]), 't', 'val="0" is off');
+  assert.equal(opensWith(ps[2]), 'lastRenderedPageBreak', 'a saved break already there is enough');
+  assert.equal(opensWith(ps[3]), 'br', 'an explicit break already there is left as it was');
+  assert.equal(ps[3].getElementsByTagNameNS(W, 'br').length, 1);
+  assert.equal(opensWith(ps[5]), 't', 'a section break writes nothing: the painter pages sections itself');
+  assert.equal(docxKit.markPageBreaks(doc), 0, 'idempotent');
 });
 
 // ── headers and footers ──────────────────────────────────────────────────────
@@ -313,10 +284,29 @@ test('markPageFields: the sentinel keeps the first result run and its formatting
   assert.ok(carrier.getElementsByTagNameNS(W, 'b').length, 'the bold on the result run survives');
 });
 
-test('normalize: fields are marked in every content part, headers and footers included', () => {
+test('expandSimpleFields: a simple field becomes the complex run form, its result runs kept in place', () => {
+  const doc = parse(FOOTER);
+  assert.equal(docxKit.expandSimpleFields(doc), 2);
+  assert.equal(doc.getElementsByTagNameNS(W, 'fldSimple').length, 0);
+  const runs = [...doc.getElementsByTagNameNS(W, 'p')[0].children].filter(c => c.localName === 'r');
+  const shape = runs.map(r => {
+    const fc = r.getElementsByTagNameNS(W, 'fldChar')[0];
+    if (fc) return fc.getAttributeNS(W, 'fldCharType');
+    if (r.getElementsByTagNameNS(W, 'instrText').length) return 'instr:' + r.textContent.trim();
+    return 't:' + r.textContent;
+  });
+  assert.deepEqual(shape.slice(8, 18), ['begin', 'instr:NUMPAGES  \\* MERGEFORMAT', 'separate', 't:2', 'end',
+                                        'begin', 'instr:DATE', 'separate', 't:2026', 'end']);
+  assert.equal(docxKit.expandSimpleFields(doc), 0, 'idempotent: nothing left to expand');
+});
+
+test('normalize: fields are expanded then marked in every content part, headers and footers included', () => {
   const { parts, report } = docxKit.normalize({ 'word/footer1.xml': FOOTER, 'word/document.xml': `<w:document ${NS}><w:body><w:p/></w:body></w:document>` });
+  assert.equal(report.simpleFields, 2);
   assert.equal(report.fields, 2);
   assert.ok(parts['word/footer1.xml'].includes(docxKit.PAGE_FIELD));
+  assert.ok(parts['word/footer1.xml'].includes(docxKit.NUMPAGES_FIELD));
+  assert.ok(!parts['word/footer1.xml'].includes('fldSimple'));
 });
 
 // ── normalize, the pure entry point ──────────────────────────────────────────
