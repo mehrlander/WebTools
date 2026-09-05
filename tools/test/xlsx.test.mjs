@@ -1092,3 +1092,37 @@ test('a threaded comment part is not read as a legacy one', () => {
   const { xl } = xlsxKit.analyze(commentParts([threaded]));
   assert.equal(xl.sheets.sheet1.comments.length, 2, 'the threaded part contributed nothing');
 });
+
+// ── hyperlinks ───────────────────────────────────────────────────────────────
+// One external link through the sheet's rels, one into the workbook by place,
+// and one whose r:id resolves to nothing, which must mark no cell.
+
+// `r:` must be bound or the part does not parse and the sheet vanishes.
+const SHEET1_LINKED = SHEET1.replace('<worksheet xmlns="ws">', '<worksheet xmlns="ws" xmlns:r="r">').replace('</worksheet>', `
+  <hyperlinks>
+    <hyperlink ref="A1" r:id="rId7" tooltip="OFM contacts"/>
+    <hyperlink ref="C1" location="'Data'!A1"/>
+    <hyperlink ref="A2:B2" r:id="rId99"/>
+  </hyperlinks>
+</worksheet>`);
+const SHEET1_RELS = `<?xml version="1.0"?>
+<Relationships xmlns="rel">
+  <Relationship Id="rId7" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://ofm.wa.gov/budget/contacts" TargetMode="External"/>
+</Relationships>`;
+
+test('a hyperlink resolves through the sheet rels and lands on the cells it covers', () => {
+  const parts = buildParts().map(([k, v]) => [k, k === 'xl/worksheets/sheet1.xml' ? SHEET1_LINKED : v]);
+  parts.push(['xl/worksheets/_rels/sheet1.xml.rels', SHEET1_RELS]);
+  const { xl } = xlsxKit.analyze(parts);
+  const s = xl.sheets.sheet1;
+  assert.equal(s.hyperlinks.length, 3);
+  assert.equal(s.hyperlinks[0].href, 'https://ofm.wa.gov/budget/contacts');
+  assert.equal(s.hyperlinks[0].tooltip, 'OFM contacts');
+  assert.equal(s.hyperlinks[1].location, "'Data'!A1");
+  assert.equal(s.hyperlinks[2].href, null, 'an r:id the rels do not carry resolves to nothing');
+  const layout = xlsxKit.sheetLayout(s, xl);
+  const cell = (r, c) => layout.rows.find(x => x.row === r)?.cells.find(x => x.col === c);
+  assert.deepEqual(cell(1, 0).link, { href: 'https://ofm.wa.gov/budget/contacts', location: null, tooltip: 'OFM contacts' });
+  assert.equal(cell(1, 2).link.location, "'Data'!A1");
+  assert.equal(cell(1, 1)?.link, undefined, 'a cell no link covers carries none');
+});
