@@ -87,10 +87,10 @@ new bookmark.
   whatever page you're on (see [Popups → Launcher](#popups)). The
   [launcher setup page](https://mehrlander.github.io/web-tools/pages/launcher.html)
   generates a token-filled copy for you — handy on mobile.
-- [`probe-bar`](bookmarklets/probe-bar.js): loads
-  [`userscripts/lib/probe-bar.js`](userscripts/lib/probe-bar.js) from jsDelivr
-  and shows a bar naming the route and commit, the bookmarklet half of the
-  [userscripts](userscripts/README.md) probe.
+- [`launcher`](bookmarklets/launcher.js): the Web Tools launcher on whatever
+  page you run it on, the bookmarklet half of
+  [`userscripts/launcher.user.js`](userscripts/README.md); both load one body
+  from jsDelivr at a pinned commit.
 - [`toss-render`](bookmarklets/toss-render.js): from any github.com file (blob)
   page, renders that file as live HTML 🥏. Reads the file text from the page
   itself (so private repos work), stamps a `<base>` so relative assets resolve
