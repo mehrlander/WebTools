@@ -341,15 +341,65 @@ test('a reading card puts its name, its layouts and one menu on a single row', (
     'the text tab strip is not drawn on a reading card');
 
   // And the utilities fold into the menu rather than sitting beside it.
-  // One copy control, not one copy ELEMENT: the standalone button is still in
-  // the DOM behind an x-show, which is what the list needs it for. What has to
-  // be true is that exactly one of them is on screen, and that it is the one in
-  // the menu.
+  // Copy stays a button on the row rather than a row in the menu: it is the
+  // one utility used often enough to be worth a tap instead of two.
   const copies = [...card.querySelectorAll('.ph-copy')]
     .filter(i => i.closest('button').style.display !== 'none');
   assert.equal(copies.length, 1, 'one copy control on screen');
-  assert.ok(copies[0].closest('li'), 'and it is a row in the menu, not a button beside it');
-  assert.ok(card.querySelector('.ph-dots-three-outline'), 'behind an overflow, not a github logo');
+  assert.ok(!copies[0].closest('li'), 'and it is a button on the row, not a menu row');
+  assert.ok(card.querySelector('.ph-dots-three-vertical'), 'the overflow is plain vertical dots');
+  assert.ok(!card.querySelector('.ph-github-logo'), 'not a github logo, since it holds more than links');
+});
+
+// ── The comparison, as a control ────────────────────────────────────────────
+//
+// A reading card carried a caption reading "against main" under its tabs:
+// true, and inert, since the pair is chosen in a sidebar that is closed on a
+// phone. The fact the reader met in the one place they could do nothing about
+// it is a dropdown now, and the row it took is back.
+test('what a file is compared against is a control, not a caption', () => {
+  const card = window.document.getElementById('page');
+  const d = data('page');
+  assert.ok(!/against\s*<span/.test(card.innerHTML), 'the caption line is gone');
+  assert.ok(d.comparePicker, 'and the picker is offered in its place');
+  assert.ok(card.querySelector('details[x-ref="cmpMenu"]'), 'as a dropdown on the row');
+
+  const choices = JSON.parse(JSON.stringify(d.compareChoices));
+  assert.ok(choices.some(c => c.base === 'main' && c.on), 'the base it was mounted with, and it is the one on');
+  assert.ok(choices.some(c => c.off), 'and a way to turn the comparison off');
+});
+
+// The picker publishes rather than deciding: adoptCompare is what hears it,
+// here and in every other card on the page, so a choice made on one moves all
+// of them and the sidebar with them.
+test('picking a comparison goes out on the channel the sidebar already speaks', () => {
+  const d = data('page');
+  const heard = [];
+  const listen = (e) => heard.push(e.detail);
+  window.addEventListener('web-tools:compare-ref', listen);
+  try {
+    d.pickCompare({ key: 'off', off: true });
+    assert.equal(heard.length, 1);
+    assert.equal(heard[0].off, true);
+    assert.equal(heard[0].repo, 'mehrlander/web-tools', 'addressed, so a sibling deck does not adopt it');
+    assert.equal(window.__compareRef.off, true, 'and left where a card mounting later will find it');
+  } finally {
+    window.removeEventListener('web-tools:compare-ref', listen);
+  }
+});
+
+// The one that would have been a dead end: turning the comparison off empties
+// viewModes, since there is nothing left to lay out, so a picker that appeared
+// only alongside the layouts would be the way out of a state with no way back.
+test('the picker survives the comparison being off', async () => {
+  const d = data('page');
+  d.compareOff = true;
+  await tick(2);
+  try {
+    assert.equal(d.viewModes.length, 0, 'no layouts, there being nothing to lay out');
+    assert.ok(d.comparePicker, 'but the picker is still there to turn it back on');
+    assert.ok(d.compareChoices.some(c => c.off && c.on), 'and says which state it is in');
+  } finally { d.compareOff = false; await tick(2); }
 });
 
 // The list is untouched by all of that: there the top row is the LIST ROW,
