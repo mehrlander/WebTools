@@ -36,12 +36,22 @@ reason the launcher exists as a userscript and the reason its styles are a
 constructed stylesheet rather than a `<style>` element, which `style-src` would
 refuse the same way.
 
-- [`launcher.user.js`](launcher.user.js): the Web Tools launcher on any page,
-  from [`lib/launcher.js`](lib/launcher.js). Drag it anywhere, tap for a menu:
-  capture the page to the repo, open the app, hide it. It is not the app's own
-  FAB and cannot be: that stack is CDN-loaded and a strict `script-src` refuses
-  it, so this is the launcher's menu gesture alone, in a shadow root with a
-  constructed stylesheet.
+- [`launcher.user.js`](launcher.user.js): the app's own launcher, carried onto
+  pages that have none, from [`lib/launcher.js`](lib/launcher.js). Same square,
+  same mark, same drag, and a menu in the fab's row shape: capture the page to
+  the repo, open the app, hide it.
+
+  **It yields.** On a page that already has a fab it must not mount, or every
+  web-tools page grows a second launcher beside the real one. Five tells stand
+  it down: a mounted `[aria-label="Web-tools panel"]`, `window.gh`,
+  `window.__fabHosted`, `data-no-fab`, and an observer that removes it if the
+  real launcher boots after `document-end`.
+
+  **What does not travel is the drawer**, and that is the destination's limit
+  rather than an unfinished job. Render reads the GitHub API through a token
+  held in localStorage on the web-tools origin, which a foreign origin does not
+  have and must not be given; Inspect lists what `gh.load()` fetched, which on a
+  foreign page is nothing. Traffic and the annotator could travel later.
 
 ## What the probe settled (2026-09-05)
 
