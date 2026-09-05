@@ -9,7 +9,8 @@
  "growth": "data/doc-growth/web-tools.json",
  "checking": {
   "files": "data/checks-reading/2026-09-05-reading.csv",
-  "comparisons": "data/checks-reading/explanations.csv"
+  "comparisons": "data/checks-reading/explanations.csv",
+  "as_of": "2026-09-05"
  },
  "pins": [
   "pages",
@@ -37,6 +38,24 @@
    "path": "tracker/board.csv",
    "staleAfterDays": 45,
    "label": "tracker"
+  },
+  {
+   "kind": "newer-than",
+   "path": "data/checks-reading/explanations.csv",
+   "sources": [
+    "tools/test/app-routes.test.mjs",
+    "tools/test/derived-artifacts.test.mjs",
+    "tools/test/diff-tool-engine.test.mjs",
+    "tools/test/docs-registry.test.mjs",
+    "tools/test/gh-boot-pageboot.test.mjs",
+    "tools/test/graphql-schema.test.mjs",
+    "tools/test/one-escape-helper.test.mjs",
+    "tools/test/properties-registry.test.mjs",
+    "tools/test/render-copy.mjs",
+    "tools/test/surfacing-manifest.test.mjs",
+    "tools/test/tests-registry.test.mjs"
+   ],
+   "label": "checks reading"
   }
  ]
 }

@@ -500,6 +500,18 @@ test('a deep-linked tab opens on that tab and fetches its manifest', async () =>
     ['mehrlander/third', 'main', 'f.csv', 'c.csv', 'query'],
   ]), 'the hub is excluded, an undeclared repo contributes nothing, the override wins');
   assert.equal(JSON.stringify(d3.checkingSources(cache, '').map(x => x.repo)), JSON.stringify(['mehrlander/home']));
+  // The drift signal: a script whose blob hash moved since its rows were
+  // written is named; an unchanged one and an unstamped one are not, and a
+  // script the tree no longer carries is not called changed either.
+  const byPath = new Map([
+    ['a.mjs', [{ script_sha: 'aaa' }]], ['b.mjs', [{ script_sha: 'bbb' }]],
+    ['c.mjs', [{ script_sha: '' }]], ['gone.mjs', [{ script_sha: 'ggg' }]],
+  ]);
+  const now = new Map([['a.mjs', 'aaa'], ['b.mjs', 'b2b'], ['c.mjs', 'ccc']]);
+  assert.equal(JSON.stringify([...d3.changedSet(byPath, now)]), JSON.stringify(['b.mjs']));
+  // Every committed row carries the hash it was read at.
+  const stamped = window.Csv.rows(explainCsv).filter(r => r.script && /^[0-9a-f]{40}$/.test(r.script_sha)).length;
+  assert.equal(stamped, rowsInCarrier, 'every row is stamped with its script blob hash');
   window.__shell = undefined;
 });
 
