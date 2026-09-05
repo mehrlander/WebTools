@@ -7,15 +7,14 @@
 // moved +0.1% since. These two had none and moved +25% and +27% over the same
 // window, then needed a hand cut. Same gate, same remedy, two more files.
 //
-// The remedy when any of these fires is EXTRACTION, never shaving. Move the
-// material into a doc that is not injected, or into data the app renders, the
-// way the showing section went to docs/showing-mechanisms.csv. Trimming
-// adjectives buys a few words, teaches the next session that the number is the
-// goal, and leaves the file just as long.
+// When one fires, see docs/CONVENTIONS.md ("Prose that describes state is
+// unimplemented"). Cut derived facts, enforced rules, or duplicated content.
+// What survives the cut and is not a rule can go to a doc that is not injected,
+// which costs nothing at startup. These files are loaded every turn in every
+// repo, so use the skills/state-the-rule pass.
 //
-// Raising a number is a real option, and it is a decision about how much every
-// session in the estate reads before it starts. Make it deliberately, in its
-// own commit, not in the one that tripped the check.
+// Raising a limit is an option, but it costs every session in the estate
+// context before it starts. Ask the user first, and change it in its own commit.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -52,9 +51,9 @@ for (const [file, limit] of Object.entries(LIMITS)) {
     const n = words(read(file));
     assert.ok(n < limit,
       `${file} is ${n} words, over its ${limit}-word ceiling. It is injected ` +
-      'into every session in every repo, so the fix is extraction: move the ' +
-      'material to a doc that is not injected, or to data the app renders. ' +
-      'Raising the ceiling is a deliberate decision, taken on its own.');
+      'into every session in every repo. See docs/CONVENTIONS.md ("Prose that ' +
+      'describes state is unimplemented"): cut derived facts, enforced rules, ' +
+      'or duplicated content. Ask the user before raising the limit.');
   });
 }
 

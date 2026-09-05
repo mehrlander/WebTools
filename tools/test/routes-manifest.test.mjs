@@ -192,11 +192,10 @@ test('the picker only routes to mechanisms that exist', () => {
 //
 // So showing.md gets the same instrument CLAUDE.md has, for the same reason.
 // The ceiling is set with room above the 2026-08-19 chop and well under what
-// the file was; the remedy when it fires is extraction, never shaving. If the
-// material is a mechanism, a boundary, or an address, it is a row in
-// showing-mechanisms.csv or a field of the routes.json showing block. What
-// belongs in prose is what no row can hold: a relation between two rows, or a
-// record of what a boundary cost to find.
+// the file was. When it fires: a mechanism, a boundary or an address is a row
+// in showing-mechanisms.csv or a field of the routes.json showing block. Prose
+// keeps what no row can hold: a relation between two rows, or a record of what
+// a boundary cost to find. Ask the user before raising the limit.
 const SHOWING_LIMIT = 1500;
 
 test('docs/showing.md delegates the mechanisms rather than restating them', () => {
@@ -210,9 +209,9 @@ test('docs/showing.md delegates the mechanisms rather than restating them', () =
   const words = doc.split(/\s+/).length;
   assert.ok(words < SHOWING_LIMIT,
     `docs/showing.md is ${words} words, over its ${SHOWING_LIMIT}-word ceiling. ` +
-    'The fix is extraction, not shaving: a mechanism, a boundary or an address ' +
-    'is a row in showing-mechanisms.csv or a field of the routes.json showing ' +
-    'block. Prose keeps only what no row can hold.');
+    'A mechanism, a boundary or an address is a row in showing-mechanisms.csv ' +
+    'or a field of the routes.json showing block. Prose keeps only what no row ' +
+    'can hold. Ask the user before raising the limit.');
 });
 
 // The one duplicate a word cap cannot see, because it is inside the budget:
