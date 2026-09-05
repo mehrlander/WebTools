@@ -38,19 +38,18 @@ test('CLAUDE.md delegates the showing material to its carrier and frame', () => 
 // threshold is deliberate rather than derived: 1600 was set when the file fell
 // to 1,117 words, leaving room to grow but not to sprawl.
 //
-// When this check fails, see docs/CONVENTIONS.md ("Prose that describes state
-// is unimplemented"). Cut derived facts, enforced rules, or duplicated content.
-// A session loads this file every turn, so use the skills/state-the-rule pass.
+// If this fails, see docs/CONVENTIONS.md ("Prose that describes state is
+// unimplemented"). Look to trim redundant state details, enforced rules, or
+// duplicated content. Material could also be moved. Sessions load this every
+// turn, so use the skills/state-the-rule pass.
 //
-// Raising the limit is an option, but it costs every session context before it
-// starts. Ask the user first, and change it in its own commit.
+// Raising the limit requires user approval.
 const LIMIT = 1600;
 
 test('CLAUDE.md stays short', () => {
   const words = claude.split(/\s+/).length;
   assert.ok(words < LIMIT,
     `CLAUDE.md is ${words} words, over its ${LIMIT}-word ceiling. ` +
-    'See docs/CONVENTIONS.md ("Prose that describes state is unimplemented"): ' +
-    'cut derived facts, enforced rules, or duplicated content. ' +
-    'Ask the user before raising the limit.');
+    'See docs/CONVENTIONS.md ("Prose that describes state is unimplemented"). ' +
+    'Raising the limit requires user approval.');
 });

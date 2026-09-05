@@ -192,10 +192,10 @@ test('the picker only routes to mechanisms that exist', () => {
 //
 // So showing.md gets the same instrument CLAUDE.md has, for the same reason.
 // The ceiling is set with room above the 2026-08-19 chop and well under what
-// the file was. When it fires: a mechanism, a boundary or an address is a row
-// in showing-mechanisms.csv or a field of the routes.json showing block. Prose
+// the file was. If it fails, a mechanism, a boundary or an address is a row in
+// showing-mechanisms.csv or a field of the routes.json showing block. Prose
 // keeps what no row can hold: a relation between two rows, or a record of what
-// a boundary cost to find. Ask the user before raising the limit.
+// a boundary cost to find. Raising the limit requires user approval.
 const SHOWING_LIMIT = 1500;
 
 test('docs/showing.md delegates the mechanisms rather than restating them', () => {
@@ -211,7 +211,7 @@ test('docs/showing.md delegates the mechanisms rather than restating them', () =
     `docs/showing.md is ${words} words, over its ${SHOWING_LIMIT}-word ceiling. ` +
     'A mechanism, a boundary or an address is a row in showing-mechanisms.csv ' +
     'or a field of the routes.json showing block. Prose keeps only what no row ' +
-    'can hold. Ask the user before raising the limit.');
+    'can hold. Raising the limit requires user approval.');
 });
 
 // The one duplicate a word cap cannot see, because it is inside the budget:

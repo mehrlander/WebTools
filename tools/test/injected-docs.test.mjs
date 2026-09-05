@@ -7,14 +7,13 @@
 // moved +0.1% since. These two had none and moved +25% and +27% over the same
 // window, then needed a hand cut. Same gate, same remedy, two more files.
 //
-// When one fires, see docs/CONVENTIONS.md ("Prose that describes state is
-// unimplemented"). Cut derived facts, enforced rules, or duplicated content.
-// What survives the cut and is not a rule can go to a doc that is not injected,
-// which costs nothing at startup. These files are loaded every turn in every
-// repo, so use the skills/state-the-rule pass.
+// If one fails, see docs/CONVENTIONS.md ("Prose that describes state is
+// unimplemented"). Look to trim redundant state details, enforced rules, or
+// duplicated content. Material could also be moved, to a doc that is not
+// injected or to data the app renders. Sessions load these every turn, in
+// every repo, so use the skills/state-the-rule pass.
 //
-// Raising a limit is an option, but it costs every session in the estate
-// context before it starts. Ask the user first, and change it in its own commit.
+// Raising a limit requires user approval.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -52,8 +51,7 @@ for (const [file, limit] of Object.entries(LIMITS)) {
     assert.ok(n < limit,
       `${file} is ${n} words, over its ${limit}-word ceiling. It is injected ` +
       'into every session in every repo. See docs/CONVENTIONS.md ("Prose that ' +
-      'describes state is unimplemented"): cut derived facts, enforced rules, ' +
-      'or duplicated content. Ask the user before raising the limit.');
+      'describes state is unimplemented"). Raising the limit requires user approval.');
   });
 }
 
