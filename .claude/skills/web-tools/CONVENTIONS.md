@@ -4,8 +4,8 @@ Remote-sandbox conventions for Claude Code web sessions; output is strictly via 
 
 This hub holds behavior that applies whether or not anything is being surfaced. Two companions load as one set with it:
 
-- **[SURFACING.md](SURFACING.md)** — the surfacing system: the primitives that make session work visible in chat (no setup), plus the surfacing course (the guide-PR lifecycle, idle until you open a PR).
-- **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)** — installation, the plugin, and the full catalog of what travels from the hub to any repo.
+- **[SURFACING.md](SURFACING.md)**: the surfacing system, the primitives that make session work visible in chat (no setup) plus the surfacing course (the guide-PR lifecycle, idle until you open a PR).
+- **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)**: installation, the plugin, and the full catalog of what travels from the hub to any repo.
 
 **Prose style:** zero em dashes. Use colons, commas, semicolons, parentheses, or new sentences.
 
@@ -17,13 +17,13 @@ This hub holds behavior that applies whether or not anything is being surfaced. 
 - A **workstream** is one repository plus its branch and the PR that tracks it. A single session may run several at once (three repos on one branch name, say).
 - The **branch anchor**, **guide PR**, and **wrap-up** in [SURFACING.md](SURFACING.md) are per-workstream: "the branch" and "the PR" always mean this workstream's.
 
+**Two settings are per repository, and these are their defaults.** *Render path:* ⭐ for a page already deployed, the toss otherwise; there is no per-repo preview mechanism. *Per-session refreshes:* normally none; a local `CLAUDE.md` names only a generated artifact too slow or too non-deterministic to ride a commit hook.
+
 ## Standing decisions: write the answer down, not just the question
 
 **A consistency ask is not a fork.** When a treatment is approved in one place and the instruction is to apply it elsewhere ("do the same on X so it's consistent"), apply it to every surface it plausibly covers, show the pixels, and name what was assumed. Do not ask which surface was meant.
 
-A recurring fork becomes a standing decision the moment a doc states it as a default. Name it in `CLAUDE.md` or the relevant portable doc (this file, [SURFACING.md](SURFACING.md), [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)), and a session that hits it takes the default and notes the assumption rather than raising it fresh.
-
-**A repo fielding the same question has a missing standing decision, not a tool to disable.** Asking is a model choice, not a gated call, so a `permissions.deny` cannot reach it.
+A recurring fork becomes a standing decision the moment a doc states it as a default: `CLAUDE.md`, or the relevant portable doc (this file, [SURFACING.md](SURFACING.md), [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)). A session that hits it takes the default and notes the assumption rather than raising it fresh. A repo fielding the same question twice is missing a default, not a permission rule: asking is a model choice, not a gated call, so a `permissions.deny` cannot reach it.
 
 ## Status: frozen, stale, wrong
 
@@ -55,15 +55,13 @@ A document that restates what an app derives, or what a check enforces, is carry
 2. **Is this a rule the suite enforces?** Delete the description, keep a pointer to the gate. The test is the statement.
 3. **Does another document already own it?** Delete it and link there.
 
-**There is no fourth question that saves a passage, and a reason is not exempt because it is a reason.** Nearly every sentence in a bloated document is a reason somebody chose something, which is how it got bloated. What earns its place is the **criterion** inside a reason: the condition, threshold, or named exception that changes how the rule applies at an edge. Lift that into the rule and the rest goes to the PR body or the dated record that owns the decision. Operated by [`state-the-rule`](https://github.com/mehrlander/web-tools/blob/main/skills/state-the-rule/SKILL.md), which carries the labels and the checks.
-
-Two habits: **Render before you cut**, since a definition that exists only in a tooltip is not rendered. And **look inside the file**: a paragraph repeated verbatim within one document is invisible to a cross-file duplicate scanner by construction, and to a word cap because it fits inside the budget.
+**There is no fourth question that saves a passage, and a reason is not exempt because it is a reason.** What earns its place inside a reason is the **criterion**: the condition, threshold, or named exception that changes how the rule applies at an edge. Lift that into the rule; the rest goes to the PR body or the dated record that owns the decision. Operated by [`state-the-rule`](https://github.com/mehrlander/web-tools/blob/main/skills/state-the-rule/SKILL.md), which carries the labels and the checks.
 
 The cut is only safe when something will notice it being undone, so leave a gate behind: a pointer the doc must keep, and a ceiling it must stay under.
 
 ## Keep focus
 
-When asked to look for improvements, be wary of ideas that address a hypothetical problem. A simple, clear fix is worth making; the trap is speculative work that goes off course. The test points only at tasks you conceive, not a specific user request.
+When asked to look for improvements, be wary of ideas that address a hypothetical problem. A simple, clear fix is worth making; the trap is speculative work that goes off course. The test applies to work the session conceives, not to a specific user request.
 
 The `tasks` skill owns the filing rules; load `/tasks` before writing a task file. A friction observation goes to the repo's snags log (web-tools: [`SNAGS.md`](https://github.com/mehrlander/web-tools/blob/main/docs/SNAGS.md)), one line with a `→` to the fixing doc; the third recurrence earns a task.
 

@@ -85,7 +85,7 @@ A branch is a workbench, not a second home.
 
 ---
 
-In this repo, this is the "why" behind the **Post-merge handoff** section of
-[CLAUDE.md](../../CLAUDE.md): when a session continues editing after a merge
-(Option 2), the follow-up commits go out as a *new* PR from the branch rather
-than reopening the merged one.
+In this repo, this is the "why" behind the surfacing course's rule that
+post-merge edits need a new PR ([SURFACING.md](../SURFACING.md)): when a session
+continues editing after a merge (Option 2), the follow-up commits go out as a
+*new* PR from the branch rather than reopening the merged one.

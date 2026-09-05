@@ -171,6 +171,13 @@ Advisory, and roughly a third of what it reports is fine.
 `REWRITE` and say why. Do not leave the contract to pass quietly on a unit you
 decided to remove after signing it.
 
+**Two checks the scripts cannot run.** Render before you cut: a definition that
+exists only in a tooltip or a `title` attribute is not rendered, and a pass over
+the source counts it as prose. And look inside the file: a paragraph repeated
+verbatim within one document is invisible to a cross-file duplicate scanner by
+construction, and fits inside a word cap. Both are checks, so they are this
+skill's; CONVENTIONS.md carried them until 2026-09-05.
+
 **The check does not replace the repo's own gates.** Run them too: a lost pointer
 has twice passed `check.py` and been caught by the repo's own derivation.
 

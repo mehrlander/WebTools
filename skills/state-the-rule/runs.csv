@@ -9,3 +9,4 @@ date,target,units,words_before,words_after,floor_pct,achieved_pct,real_losses,ca
 2026-08-27,web-tools docs/CONVENTIONS.md (re-run without the fourth question),83,1422,1339,1,6,0,-
 2026-08-29,web-tools docs/SURFACING.md (Surfacing caption + Closing state),63,1232,983,12,20,0,-
 2026-08-30,web-tools docs/CONVENTIONS.md (grain patch: 10 splits + 10 relabels; no rewrite),91,1339,1339,,,0,-
+2026-09-05,web-tools docs/CONVENTIONS.md (per-repo settings folded in from SURFACING.md; two checks moved to this skill; re-segmented and re-split),62,1014,988,,3,0,-
