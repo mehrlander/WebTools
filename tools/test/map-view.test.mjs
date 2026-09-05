@@ -61,6 +61,7 @@ const propsVocabCsv = readFileSync(path.join(repoRoot, 'docs', 'vocabularies.csv
 const skillsCsv = readFileSync(path.join(repoRoot, 'skills', 'manifest.csv'), 'utf8');
 const textFieldsCsv = readFileSync(path.join(repoRoot, 'docs', 'text-fields.csv'), 'utf8');
 const testsCsv = readFileSync(path.join(repoRoot, 'docs', 'tests.csv'), 'utf8');
+const explainCsv = readFileSync(path.join(repoRoot, 'data', 'checks-reading', 'explanations.csv'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
 // is the join the readership column has to get right.
@@ -93,6 +94,7 @@ window.GH = class {
     if (p === 'skills/manifest.csv') return { text: skillsCsv };
     if (p === 'docs/text-fields.csv') return { text: textFieldsCsv };
     if (p === 'docs/tests.csv') return { text: testsCsv };
+    if (p === 'data/checks-reading/explanations.csv') return { text: explainCsv };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: toCsv(manifest.items) };
   }
@@ -464,6 +466,14 @@ test('a deep-linked tab opens on that tab and fetches its manifest', async () =>
   const d3 = Alpine.$data(el3);
   assert.equal(d3.mapTab, 'tests');
   assert.ok(d3.testsReg, 'the deep-linked tab loaded without a tap');
+  // The comparison-grain reading rides the same load, non-fatally, and joins
+  // on the test file named first in each row's `check`.
+  assert.ok(d3.testExplain, 'the explanations carrier loaded beside the registry');
+  assert.ok(d3.explainOf({ path: 'tools/test/tests-registry.test.mjs' }).length >= 2,
+    'the registry test carries its two comparisons (membership, drift)');
+  assert.equal(d3.explainOf({ path: 'tools/test/no-such.test.mjs' }).length, 0);
+  assert.equal(d3.testExplainCount, explainCsv.trim().split('\n').length - 1,
+    'every row of the carrier is attached to some file');
   window.__shell = undefined;
 });
 
