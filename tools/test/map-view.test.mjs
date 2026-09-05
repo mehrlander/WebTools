@@ -472,8 +472,34 @@ test('a deep-linked tab opens on that tab and fetches its manifest', async () =>
   assert.ok(d3.explainOf({ path: 'tools/test/tests-registry.test.mjs' }).length >= 2,
     'the registry test carries its two comparisons (membership, drift)');
   assert.equal(d3.explainOf({ path: 'tools/test/no-such.test.mjs' }).length, 0);
-  assert.equal(d3.testExplainCount, explainCsv.trim().split('\n').length - 1,
-    'every row of the carrier is attached to some file');
+  // Attachment is asserted, not counted: every row's script must be a registry
+  // path. The first cut counted rows and called them attached, and a trailing
+  // comma in one row's join column made the count true and the claim false.
+  const tot = d3.testExplainTotals;
+  const rowsInCarrier = window.Csv.rows(explainCsv).filter(r => r.script && r.kind).length;
+  assert.equal(tot.rows, rowsInCarrier, 'every carrier row is folded');
+  assert.equal(tot.attached, tot.rows, 'every row names a registry file: ' +
+    [...d3.testExplain.keys()].filter(k => !d3.testsReg.tests.some(t => t.path === k)).join(', '));
+  assert.equal(tot.files + tot.unexplained, d3.testsReg.tests.length, 'explained plus unexplained is the registry');
+  // Grouping keeps every comparison: the sum over kinds is the row count.
+  const grouped = d3.groupsOf(d3.explainOf({ path: 'tools/test/derived-artifacts.test.mjs' }));
+  assert.equal(grouped.reduce((n, g) => n + g.rows.length, 0),
+    d3.explainOf({ path: 'tools/test/derived-artifacts.test.mjs' }).length);
+  // The estate sources: the crawl's declared key, then the address override,
+  // which replaces a crawl entry for the same repo rather than duplicating it.
+  const cache = { repos: {
+    'mehrlander/web-tools': { config: { checking: { files: 'x', comparisons: 'y' } } },
+    'mehrlander/home': { config: { checking: { files: 'r.csv', comparisons: 'e.csv' } } },
+    'mehrlander/other': { config: {} },
+  } };
+  const srcs = d3.checkingSources(cache, 'mehrlander/home@abc123:r2.csv,e2.csv;mehrlander/third:f.csv,c.csv');
+  // Compared as JSON: the arrays are built in the jsdom realm, whose Array
+  // prototype is not node's, and strict deep-equality checks prototypes.
+  assert.equal(JSON.stringify(srcs.map(x => [x.repo, x.ref, x.files, x.comparisons, x.from])), JSON.stringify([
+    ['mehrlander/home', 'abc123', 'r2.csv', 'e2.csv', 'query'],
+    ['mehrlander/third', 'main', 'f.csv', 'c.csv', 'query'],
+  ]), 'the hub is excluded, an undeclared repo contributes nothing, the override wins');
+  assert.equal(JSON.stringify(d3.checkingSources(cache, '').map(x => x.repo)), JSON.stringify(['mehrlander/home']));
   window.__shell = undefined;
 });
 

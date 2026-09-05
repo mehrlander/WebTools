@@ -7,6 +7,10 @@
  "scope": "The public hub: the Web Tools app (the show-repo shell), the browser tools and kits, and the portable conventions every repo pulls. Public on purpose, since conventions are not secret and a public hub is what lets private repos fetch them with no credentials at session start.",
  "tracker": "tracker/board.md",
  "growth": "data/doc-growth/web-tools.json",
+ "checking": {
+  "files": "data/checks-reading/2026-09-05-reading.csv",
+  "comparisons": "data/checks-reading/explanations.csv"
+ },
  "pins": [
   "pages",
   "console",
