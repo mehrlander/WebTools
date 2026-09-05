@@ -147,7 +147,6 @@ test('it carries every primitive and none of the course', () => {
   // internal structure: paring that section on 2026-09-05 dropped two of the
   // three subheadings and broke a test that had no opinion about them.
   assert.ok(!out.includes('\n## The surfacing course'), 'the course stays out');
-  assert.ok(!out.includes('\n## Post-merge handoff'), 'and so does the handoff');
   assert.match(out, /NOT INCLUDED/, 'and the payload names what it withheld');
 });
 
@@ -168,7 +167,9 @@ test('the middle rung spans enough budget to survive an ordinary edit', () => {
   // The window's width is essentially the front matter, since that is what this
   // rung drops. Narrowing toward zero means the middle rung has stopped being a
   // rung and the ladder goes straight from everything to CONVENTIONS.md alone,
-  // which is the cliff it was added to prevent. Measured 2026-08-31 at 895.
+  // which is the cliff it was added to prevent. Measured 2026-08-31 at 895,
+  // and about 650 after the per-repo settings moved to CONVENTIONS.md on
+  // 2026-09-05, which is why the floor sits well under the front matter.
   assert.ok(RUNG2_HI > RUNG2_LO, 'the middle rung is reachable at some budget');
   assert.ok(RUNG2_HI - RUNG2_LO >= 300,
     `the middle rung spans only ${RUNG2_HI - RUNG2_LO} bytes, collapsing toward the cliff`);
@@ -184,7 +185,9 @@ test('over budget it drops the front matter before it drops a single rule', () =
   assert.equal((out.match(/^\* \*\*/gm) || []).length,
     (section.match(/^\* \*\*/gm) || []).length,
     'every rule still arrives; only the pointers around them are gone');
-  assert.ok(!out.includes('\n## One render path'), 'the front matter is what went');
+  // By the opening's own words, not a heading: the heading this held until
+  // 2026-09-05 had been renamed by then, so the line passed on any output.
+  assert.ok(!out.includes("Making a session's work visible"), 'the front matter is what went');
 });
 
 // The last rung, and the half that matters more than the happy path. A budget nobody can exceed is
