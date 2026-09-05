@@ -1,0 +1,1 @@
+javascript:(s=>{s.src='https://cdn.jsdelivr.net/gh/mehrlander/web-tools@03b527a4796b48bb5e960cb72d42c0111f31b9dd/userscripts/lib/probe-bar.js';s.onload=()=>wtProbeBar({route:'bookmarklet',ref:'03b527a4796b48bb5e960cb72d42c0111f31b9dd'});document.body.appendChild(s)})(document.createElement('script'))
