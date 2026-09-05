@@ -1114,7 +1114,10 @@ xlsxKit.sheetLayout(sheet, xl, opts) // the same sheet AS A PAGE: cells in place
                                     //   the form's input message, the choices
                                     //   a list allows; `note.kind` is the
                                     //   strongest of the three, for a caller
-                                    //   drawing one mark per cell)
+                                    //   drawing one mark per cell) and `link`
+                                    //   ({ href, location, tooltip }: the
+                                    //   hyperlink on the cell, external by
+                                    //   URL or into the workbook by place)
 xlsxKit.workbookNotes(xl)           // every annotation in the workbook as one
                                     //   list: { sheet, cell, span, kind,
                                     //   author, title, text, options }. One row

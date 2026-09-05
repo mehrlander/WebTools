@@ -201,3 +201,31 @@ test('mounting stayed quiet apart from the failure it was told to report', () =>
   const noise = problems.filter(([, m]) => !/probe module failed to mount/.test(String(m)));
   assert.deepEqual(noise, []);
 });
+
+// ── links on the page render ─────────────────────────────────────────────────
+
+test('drawSheet draws an external link as an anchor and an internal one for locate', () => {
+  const kit = window.xlsxKit, was = kit.sheetLayout;
+  kit.sheetLayout = () => ({
+    cols: [{ index: 0, width: 64 }, { index: 1, width: 64 }, { index: 2, width: 64 }],
+    rows: [{ row: 1, height: 20, cells: [
+      { col: 0, text: 'OFM', numeric: false, style: null, raw: null, colSpan: 1, rowSpan: 1, spillLeft: 0, spillRight: 0,
+        link: { href: 'https://ofm.wa.gov/', location: null, tooltip: 'contacts' } },
+      { col: 1, text: 'Data', numeric: false, style: null, raw: null, colSpan: 1, rowSpan: 1, spillLeft: 0, spillRight: 0,
+        link: { href: null, location: "'Data'!A1", tooltip: null } },
+      { col: 2, text: 'x', numeric: false, style: null, raw: null, colSpan: 1, rowSpan: 1, spillLeft: 0, spillRight: 0,
+        link: { href: 'javascript:alert(1)', location: null, tooltip: null } },
+    ] }],
+    maxCol: 2, freeze: null, truncated: null, empty: false,
+  });
+  try {
+    const el = R.drawSheet({ merges: [] }, {}, 'k');
+    const a = el.querySelectorAll('td a');
+    assert.equal(a.length, 2, 'the javascript: scheme draws no anchor');
+    assert.equal(a[0].getAttribute('href'), 'https://ofm.wa.gov/');
+    assert.equal(a[0].getAttribute('target'), '_blank');
+    assert.equal(a[0].getAttribute('title'), 'contacts');
+    assert.equal(a[1].getAttribute('data-goto'), "'Data'!A1");
+    assert.equal(a[1].textContent, 'Data');
+  } finally { kit.sheetLayout = was; }
+});
