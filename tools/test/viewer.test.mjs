@@ -351,6 +351,34 @@ test('one exclusive mode per file, which is what resolveDefaultMode assumes', ()
   }
 });
 
+test('a Word document opens on the page render, and the reading view is still offered', () => {
+  const R = window.ViewRegistry;
+  const modes = R.getModes({ name: 'form.docx', ext: 'docx', content: '' });
+  const ids = modes.map(m => m.id);
+  assert.ok(ids.includes('page'), `page missing from ${ids}`);
+  assert.ok(ids.includes('docx'), `docx missing from ${ids}`);
+  assert.equal(modes.find(m => m.exclusive)?.id, 'page');
+  assert.equal(resolve('form.docx', '', 'raw'), 'page', 'a host\'s blanket raw cannot mean "the ZIP as text"');
+  // And a workbook is untouched by the document pair.
+  assert.ok(!R.getModes({ name: 'f.xlsx', ext: 'xlsx', content: '' }).some(m => m.id === 'page'));
+});
+
+test('the page render scrubs a link it cannot vouch for and opens the rest in a new tab', () => {
+  const R = window.ViewRegistry;
+  const box = window.document.createElement('div');
+  box.innerHTML = '<a href="https://ofm.wa.gov/x">web</a><a href="mailto:a@b.gov">mail</a>' +
+    '<a href="#_Toc123">anchor</a><a href="javascript:alert(1)">bad</a><a href="file:///etc/passwd">worse</a>';
+  R.scrubLinks(box);
+  const links = [...box.querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href'), a.target]);
+  assert.deepEqual(links, [
+    ['web', 'https://ofm.wa.gov/x', '_blank'],
+    ['mail', 'mailto:a@b.gov', '_blank'],
+    ['anchor', '#_Toc123', ''],
+    ['bad', null, ''],
+    ['worse', null, ''],
+  ]);
+});
+
 test('a narrowed workbook reference is claimed by the grid', () => {
   const R = window.ViewRegistry;
   const grid = R.modules.find(m => m.id === 'xlsx');

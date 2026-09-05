@@ -53,6 +53,7 @@ const routesKindsCsv = readFileSync(path.join(repoRoot, 'docs', 'routes-kinds.cs
 const mechanismsCsv = readFileSync(path.join(repoRoot, 'docs', 'showing-mechanisms.csv'), 'utf8');
 const docsCsv = readFileSync(path.join(repoRoot, 'docs', 'docs.csv'), 'utf8');
 const surfCsv = readFileSync(path.join(repoRoot, 'docs', 'surfacing.csv'), 'utf8');
+const surfDoc = readFileSync(path.join(repoRoot, 'docs', 'SURFACING.md'), 'utf8');
 const ownersCsv = readFileSync(path.join(repoRoot, 'docs', 'owners.csv'), 'utf8');
 const repsCsv = readFileSync(path.join(repoRoot, 'docs', 'repetitions.csv'), 'utf8');
 const propsRegCsv = readFileSync(path.join(repoRoot, 'docs', 'registries.csv'), 'utf8');
@@ -85,6 +86,7 @@ window.GH = class {
     if (p === 'docs/showing-mechanisms.csv') return { text: mechanismsCsv };
     if (p === 'docs/docs.csv') return { text: docsCsv };
     if (p === 'docs/surfacing.csv') return { text: surfCsv };
+    if (p === 'docs/SURFACING.md') return { text: surfDoc };
     if (p === 'docs/owners.csv') return { text: ownersCsv };
     if (p === 'docs/repetitions.csv') return { text: repsCsv };
     if (p === 'docs/registries.csv') return { text: propsRegCsv };
@@ -205,6 +207,24 @@ test('Surfacing loads on demand and names its authoritative doc', async () => {
   assert.equal(data.surfErr, '');
   assert.ok(data.surf.primitives.length > 10);
   assert.equal(data.SURF_DOC, 'docs/SURFACING.md');
+});
+
+// The cards index one region of the doc, and the tab says so with a door to
+// each of the others. The doors are read off the doc's h2 headings, so this
+// holds two things: the list IS the doc's headings minus the primitives, and
+// every gloss the tab keeps about WHEN a region arrives names a heading that
+// exists. A renamed heading fails here rather than leaving a gloss orphaned.
+test('Surfacing derives its region doors from the doc, and every gloss names a real heading', async () => {
+  await data.loadSurf();
+  const headings = [...surfDoc.matchAll(/^## (.+?)\s*$/gm)].map(m => m[1]);
+  // Serialized, since the component's arrays come back through Alpine's proxy
+  // and deepEqual reads the prototype before it reads the strings.
+  assert.equal(JSON.stringify(Array.from(data.surf.regions, r => r.heading)),
+    JSON.stringify(headings.filter(h => h !== 'Surfacing primitives')),
+    'one door per region of the doc, the primitives excepted');
+  for (const h of Object.keys(data.SURF_REGION_GLOSS))
+    assert.ok(headings.includes(h), 'gloss for a heading the doc does not carry: ' + h);
+  assert.ok(data.surf.regions.some(r => r.gloss), 'at least one door says when its region arrives');
 });
 
 test('Docs loads on demand and carries the registry', async () => {

@@ -24,7 +24,7 @@ files in the public repo `mehrlander/web-tools`, loaded together as one set:
 - `docs/SURFACING.md` — the **surfacing system**: the primitives (explicit-markdown
   links, reference-is-a-link, the per-file `[new]/[main]/[diff]` list, show-pixels,
   the render forms, branch anchor, the caption) and the surfacing course (guide PR
-  body as the durable account, wrap-up, post-merge handoff).
+  body as the durable account, wrap-up).
 
 This skill fetches both fresh so any session in any repo follows the same
 conventions without keeping a stale copy.
@@ -111,8 +111,8 @@ the **surfacing primitives** (universal, no setup) and the **surfacing course**
 (the guide-PR lifecycle, wrap-up, and handoff), which does nothing
 until the repo opens a PR. Two per-repo settings carry defaults and rarely move:
 pages render one way, the 🥏 toss, so there is no preview mechanism to
-configure, and per-session refreshes are normally none (`SURFACING.md`
-states both). Where the current repo's
+configure, and per-session refreshes are normally none (`CONVENTIONS.md`
+states both, under Scope and precedence). Where the current repo's
 own CLAUDE.md conflicts on a point, the current repo wins.
 
 ## Fallbacks

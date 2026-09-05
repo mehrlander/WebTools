@@ -4,10 +4,6 @@ Making a session's work visible, reviewable, and durable when chat is the only o
 
 The installed set includes the universal **surfacing primitives** and the **surfacing course**, the guide-PR lifecycle that begins when a PR opens. See [PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md).
 
-## Per-repo settings
-
-Two, and these are the defaults. **Render path:** ⭐ for a page already deployed, the 🥏 toss otherwise; there is no per-repo preview mechanism. **Per-session refreshes:** normally none, and a local `CLAUDE.md` names only a generated artifact too slow or too non-deterministic to ride a commit hook.
-
 ---
 
 ## Surfacing primitives
@@ -155,16 +151,6 @@ Omit where the opener already says it.>
 - **"Wrap up" means green, not merged:** preflight `git merge-tree` against main, run per-session refreshes, finalize the guide, mark ready. **"Merge" means merge,** so run that sequence and merge without asking twice. Never merge red, and never by any route but the PR.
 - **Abandon by closing the draft,** with a comment saying why.
 - **Before the container goes,** route anything costly that exists only in session context into the guide or a PR comment, never a tracker task.
-- **Post-merge edits need a new PR.** `git log main..HEAD` shows what is waiting.
+- **Post-merge edits need a new PR.** Merge terminates the branch ([why](https://github.com/mehrlander/web-tools/blob/main/docs/github/post-merge-branch-mutation.md)); `git log main..HEAD` shows what is waiting.
 
 Delivery history is the merged PRs themselves: do not commit a projection of them, and do not run a second history beside [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)'s task axis.
-
----
-
-## Post-merge handoff
-
-Merge terminates the session branch; the argument is [post-merge-branch-mutation.md](https://github.com/mehrlander/web-tools/blob/main/docs/github/post-merge-branch-mutation.md). Continue only on explicit instruction, and then in a new PR. Until then close every reply with:
-
-`*Branch <branch> merged in PR #<n>; no further edits will be made here.*`
-
-Where the repo runs a [tracker](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md), a follow-up worth keeping goes through `/tasks` and the handoff collapses to "check the tracker and assess how to proceed." A one-off not worth a task gets a **handoff prompt** instead: one fenced block (four backticks if it contains three), the merged PR or SHA, and each issue as symptom, then cause (*suspected* or *confirmed*), then fixes (*possible* or *likely*). Point at files and functions rather than dumping code. Where a diagnostic test would move a cause from suspected to confirmed, propose it. Close with: "Look through the relevant files, assess, and propose how to proceed."

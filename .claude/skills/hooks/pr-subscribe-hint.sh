@@ -67,10 +67,9 @@ def course():
     head, sep, tail = text.partition("## The surfacing course")
     if not sep:
         return ""
-    body = (sep + tail).split("\n## Post-merge handoff")[0]
-    # Post-merge handoff belongs to the same lifecycle, so keep it.
-    rest = (sep + tail)[len(body):]
-    return (body + rest).strip()
+    # The course runs to the end of the file (the post-merge handoff that
+    # followed it was cut on 2026-09-05; its rule lives in the course now).
+    return (sep + tail).strip()
 
 COURSE = course()
 

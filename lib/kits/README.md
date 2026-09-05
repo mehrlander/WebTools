@@ -1178,6 +1178,110 @@ is gone: named ranges and calc-chain entries resolve through `workbook.xml`'s
 `<sheets>` and its rels, so they survive a reorder or a rename. See
 `kits/demos/xlsx.html` for live examples.
 
+### docx.js
+
+WordprocessingML (`.docx`) preparation: what a Word file has to have done to
+it before a browser renderer draws it faithfully, and what it knows about
+itself that a render cannot show. The viewer's `page` mode paints a `.docx`
+with [docx-preview](https://github.com/VolodymyrBaydalka/docxjs) (Apache-2.0,
+pinned at 0.4.0, one dependency: JSZip), which reads page geometry, headers and
+footers, shading, fonts, tab stops and list numbering off the file. Measured on
+the 30 committed `.docx` in `mehrlander/home` (2026-09-04) it had six gaps, and
+this kit closes them **before the bytes reach the painter**, so the estate
+depends on a pinned upstream build and nothing patched inside it.
+
+```js
+const { bytes, report } = await window.docxKit.prepare(fileBytes);
+// bytes:  the same package, rewritten where normalize() changed a part
+// report: { controls, bullets, breaks, headerRefs, simpleFields, fields, byPart, skipped, survey }
+
+docxKit.normalize(parts)            // the pure entry point: [[path, xml], ...]
+                                    //   or { path: xml } for the body parts and
+                                    //   word/numbering.xml -> { parts: changed
+                                    //   only, report }. Idempotent.
+docxKit.unwrapControls(xmlDoc)      // every w:sdt replaced by its content,
+                                    //   deepest first; returns the count
+docxKit.mapBullets(numberingDoc)    // a Symbol/Wingdings byte in a bullet
+                                    //   level -> its Unicode glyph, font hint
+                                    //   dropped; returns the count
+docxKit.survey(documentDoc)         // { paragraphs, tables, headings: [{ id,
+                                    //   style, text }], controls: [{ kind,
+                                    //   level, parent, alias, tag,
+                                    //   placeholder, checked, text }] }
+docxKit.listControls(xmlDoc)        // the controls half of survey, any part
+docxKit.markPageBreaks(documentDoc) // a paragraph's pageBreakBefore ->
+                                    //   w:br type="page" (the painter reads
+                                    //   only the style-level one)
+docxKit.fixHeaderRefs(documentDoc, settingsXml)
+                                    // inherit missing header/footer refs;
+                                    //   drop even-page refs unless enabled
+docxKit.expandSimpleFields(xmlDoc)  // w:fldSimple -> the complex run form
+docxKit.markPageFields(xmlDoc)      // PAGE / NUMPAGES results -> sentinels
+docxKit.BULLET_GLYPHS               // the glyph table, by font and byte
+```
+
+**Six gaps, each a fact about docx-preview 0.4.0, each closed in the file
+before it is painted.** A content control (`w:sdt`) inside a table row or cell
+is dropped: its row and cell parsers have no case for one, while its body and
+paragraph parsers do. That was 45 controls across the corpus, including every
+section label in OFM's Decision Package Template fiscal table, which rendered
+as empty grey bands. A bullet set in Symbol or Wingdings is a private-use
+character in that font (U+F0B7 for the Symbol dot); where the font is absent it
+draws as nothing. The glyph table is mammoth's `dingbat-to-unicode`, cut to
+the codes Word's bullet library uses; the corpus pairs `F0B7` with Symbol and
+`F0A7` with Wingdings, and a Courier New `o` is a letter and is left alone.
+A paragraph's own `pageBreakBefore` is ignored (the property is read off the
+style only), so it is written as the explicit page break the painter does
+honour. A section naming no header or footer does not inherit the previous
+section's as the spec says, and an even-page reference is applied to every
+second page whether or not `settings.xml` enabled even and odd headers (no file
+in the corpus does), so the references are copied forward and the even ones
+dropped. And a PAGE or NUMPAGES field is drawn as its cached result, so the
+result is replaced with a sentinel (`PAGE_FIELD`, `NUMPAGES_FIELD`) the page
+mode swaps for the real numbers once the pages exist. And a field in its simple
+form (`w:fldSimple`) is parsed with no children, so its result is not drawn at
+all; each is rewritten as the complex form (begin, instruction, separate,
+result, end) the painter does draw. The corpus writes every field in the
+complex form, so the gap showed only on a fixture.
+
+**The survey is taken before the unwrap**, because a control's kind, its
+checkbox state and whether it still shows its placeholder are facts the
+rendered page no longer carries. Headings come with their `w14:paraId`, on
+2,713 of the corpus's 3,713 paragraphs: the Word analogue of a cell address,
+and the unit an aim would be built on. `KIND` is the kit's copy of its
+`docs/routes-kinds.csv` row, held to the registry by
+`tools/test/routes-manifest.test.mjs`.
+
+**Boundaries, each a case where the kit declines rather than guesses.** A
+`w:sym` run (a symbol typed into the text rather than a list level) is not
+mapped; none occur in the corpus. A bullet byte the table lacks stays as
+written. A part that does not parse is skipped and named in `report.skipped`,
+so one malformed header cannot stop the document. Tracked changes, footnotes
+and comments are the painter's to draw and are not prepared here; the corpus
+has none of the first two and one of the third. `SECTIONPAGES` and every other
+field keep their cached result. Word's saved page-break markers
+(`lastRenderedPageBreak`) are not honoured and not repaired: measured across the
+corpus they reproduce Word's own page count in 14 files of 30, missing where a
+break fell inside a table and stale where the file was edited after its last
+full save. The painter draws each section as one tall box and the page mode
+cuts it into pages of the section's page height, at block boundaries and at
+table rows (`ViewRegistry.paginate`), so the count NUMPAGES reports is the
+viewer's, which for the two OFM forms matches Word's (6 and 5) and elsewhere
+can differ by a line's worth of font metrics. Header geometry is the painter's: header at the file's header
+margin, body at its top margin, a floating logo where its anchor puts it, so a
+logo that overlaps body text in the render most likely overlaps in Word.
+
+**Held two ways.** `tools/test/docx.test.mjs` exercises `normalize()` on
+fixture XML with a control at every level and a bullet in each font.
+`npm run test:viewer-docx` drives the real viewer in a browser: the fixture
+document opens on the page render, a cell-level label is drawn, the bullet is a
+list marker, a `javascript:` link has lost its `href`, the fixture's 40 filler
+paragraphs and 40-row table cut into pages of page height with every word still
+there once and the footer counting them, `__doc.locate` lands on
+a phrase, and a pinch or a ctrl-wheel zooms the page about the fingers with the
+pdf column's pill as the way back to fit width. `--docx <file> --shot out.png` renders a real file and writes the
+pane, which is how the two OFM forms in the PR were pictured.
+
 ## Salvage status
 
 Every kit is in active use. The custom-element wrapper that used to live
@@ -1205,4 +1309,5 @@ examples.
 | `wsl-core.js` | `pages/wsl-sync/` + Node fetch | dependency-free; libs injected |
 | `wsl.js` | `pages/wsl-sync/` | browser wrapper; lazy XML libs |
 | `xlsx.js` | `kits/demos/xlsx.html` | OOXML structural walk; pure/testable, lazy JSZip |
+| `docx.js` | `npm run test:viewer-docx` | WordprocessingML preparation for the page render; pure/testable, lazy JSZip |
 | `pdf.js` | `pages/pdf-inspect.html` + `npm run test:pdf` | pure geom/stream/lattice/view; lazy pdf.js + pdf-lib |
