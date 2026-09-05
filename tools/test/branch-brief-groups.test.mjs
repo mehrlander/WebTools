@@ -68,75 +68,78 @@ await tick(6);
 const data = Alpine.$data(window.document.getElementById('m'));
 const j = (x) => JSON.parse(JSON.stringify(x));
 
-test('reviewable leads, the creation modes follow, and everything but reviewable is shut', () => {
-  // Two axes, and the order says which is which: the registry groups by WHO
-  // MADE IT, and the page lifts by WHETHER YOU READ IT. Before 2026-09-05 the
-  // list was creation mode alone and the pages and docs sat wherever their
-  // paths put them, which on a 23-file branch was mid-list.
-  assert.deepEqual(j(data.fileGroups.map(g => g.mode)),
-    ['reviewable', 'hybrid-authored', 'mechanical']);
-  const rev = data.fileGroups.find(g => g.mode === 'reviewable');
-  assert.deepEqual(j(rev.files.map(f => f.path)), ['docs/b.md']);
-  assert.equal(data.groupOpen(rev), true, 'the one group open on load');
-  for (const g of data.fileGroups.filter(g => g.mode !== 'reviewable')) {
-    assert.equal(data.groupOpen(g), false, g.mode + ' starts shut');
-  }
+test('the pages and the prose are a section, and the list is what is left', () => {
+  // Two SECTIONS, not two axes in one list. The registry groups by WHO MADE IT
+  // and keeps doing only that; whether a reader reads a file is the page's
+  // question and it answers it above the list. Before 2026-09-05 the pages and
+  // docs sat wherever their paths put them, which on a 23-file branch was
+  // mid-list.
+  assert.deepEqual(j(data.reviewableFiles.map(f => f.path)), ['docs/b.md']);
+  assert.deepEqual(j(data.listFiles.map(f => f.path)), ['lib/a.js', 'dist/web-tools.js']);
+  assert.deepEqual(j(data.fileGroups.map(g => g.mode)), ['hybrid-authored', 'mechanical'],
+    'the list groups exactly as it did, over what is left');
   const mech = data.fileGroups.find(g => g.mode === 'mechanical');
-  assert.equal(mech.note, 'The pre-build', 'the registry note survives the lift');
+  assert.equal(mech.note, 'The pre-build', 'the registry note is untouched');
+  assert.equal(data.filesShown, false, 'and the list starts shut behind its heading');
 });
 
 // THE COUNT MUST NOT LIE, which is what killed the first version of this idea:
-// dropping the pages and docs out of the list left `Files 18` over sixteen
-// rows. Every file is in exactly one group and the heading reads the branch's
-// own total, so the two can be checked against each other.
-test('every file lands in exactly one group, and they sum to the heading', () => {
-  const sum = data.fileGroups.reduce((n, g) => n + g.files.length, 0);
-  assert.equal(sum, data.brief.files.length);
-  assert.equal(data.fileCount, data.brief.files.length);
-  const paths = data.fileGroups.flatMap(g => g.files.map(f => f.path));
+// dropping the pages and docs OUT of the list left `Files 18` over sixteen
+// rows. The two sections partition the branch and each heading counts its own,
+// so the sum is checkable.
+test('the two sections partition the branch, and each heading counts its own', () => {
+  assert.equal(data.reviewableFiles.length + data.listFiles.length, data.brief.files.length);
+  assert.equal(data.fileCount, data.listFiles.length, 'the Files heading names its list');
+  const paths = [...data.reviewableFiles, ...data.listFiles].map(f => f.path);
   assert.equal(new Set(paths).size, paths.length, 'and none of them twice');
 });
 
-// A generated .md is machine output whatever its extension, so lifting one
+// A generated .md is machine output whatever its extension, so promoting one
 // would put a generator's docs above the work someone did.
-test('mechanical is never lifted from, whatever the extension', async () => {
+test('a mechanical file is never reviewable, whatever the extension', async () => {
   const keep = data.brief.files;
   data.brief = { ...data.brief, files: [...keep,
     { path: 'dist/notes.md', status: 'modified', additions: 1, deletions: 0 }] };
   await tick(2);
   try {
-    const rev = data.fileGroups.find(g => g.mode === 'reviewable');
-    assert.ok(!rev.files.some(f => f.path === 'dist/notes.md'));
+    assert.ok(!data.reviewableFiles.some(f => f.path === 'dist/notes.md'));
     const mech = data.fileGroups.find(g => g.mode === 'mechanical');
     assert.ok(mech.files.some(f => f.path === 'dist/notes.md'));
   } finally { data.brief = { ...data.brief, files: keep }; await tick(2); }
 });
 
-// The stand-down. A branch with no page and no doc has nothing to open in
-// their place, so collapsing the rest would leave headers over an empty deck.
-// Not defensive: over 20 merged branches sampled 2026-09-05, twelve changed no
-// .html at all and two changed neither .html nor .md.
-test('with no page and no doc the lift stands down whole', async () => {
+// A branch with no page and no doc has no section to stand in the list's
+// place, so the list has to open itself. Not defensive: over 20 merged
+// branches sampled 2026-09-05, twelve changed no .html at all and two changed
+// neither .html nor .md.
+test('with no page and no doc the list opens itself', async () => {
   const keep = data.brief.files;
   data.brief = { ...data.brief, files: keep.filter(f => !/\.md$/.test(f.path)) };
   await tick(2);
   try {
-    assert.deepEqual(j(data.fileGroups.map(g => g.mode)), ['hybrid-authored', 'mechanical']);
-    assert.equal(data.groupOpen(data.fileGroups[0]), true, 'the authored group is open again');
+    assert.equal(data.reviewableFiles.length, 0);
+    assert.equal(data.filesShown, true, 'or the page would be a caret over nothing');
     assert.ok(data.deckFiles.length > 0, 'so the deck still has something to page');
   } finally { data.brief = { ...data.brief, files: keep }; await tick(2); }
 });
 
-test('a collapsed group mounts no cards until its header is toggled', async () => {
+test('a shut list and a collapsed group both mount nothing until opened', async () => {
+  // SHUT MEANS UNMOUNTED at both levels, and x-show is not enough for either:
+  // it leaves the rows in the DOM, so a collapsed list still built a
+  // fileReview component per row and paid for every one (measured 2026-09-05,
+  // 23 cards on a page drawing three). The list answers with displayGroups
+  // returning nothing; a group inside it answers with x-if, as it always did.
   const cards = () => [...window.document.querySelectorAll('[x-data^="fileReview"]')].length;
-  assert.equal(cards(), 1);                 // docs/b.md; the other two shut
-  data.toggleGroup('hybrid-authored');
+  assert.equal(cards(), 1);                 // the reviewable section alone
+  data.toggleFiles();
   await tick(3);
-  assert.equal(cards(), 2);
+  assert.equal(cards(), 2, 'the list opens on its authored group; mechanical stays shut');
   data.toggleGroup('mechanical');
   await tick(3);
   assert.equal(cards(), 3);
   data.groupState = {};   // not toggle-back: that leaves an explicit false behind
+  data.filesOpen = null;
+  await tick(2);
 });
 
 // The registry read is memoized per repo@ref for the swiper's sake (stepping
@@ -144,20 +147,21 @@ test('a collapsed group mounts no cards until its header is toggled', async () =
 // repo declaring none that is eight 404s). No reader can make a ref's registry
 // change under them inside the memo's life, so the transition this case needs
 // is one only a test can stage: drop the memo, then re-read.
-test('without a registry the split still happens, over a remainder named nothing', async () => {
-  // The lift does not depend on the registry: a repo declaring none still has
-  // pages and docs worth reading first. What it cannot do is NAME the
-  // remainder, since creation mode is the registry's to say, so that group is
-  // `other`, which claims nothing about what is in it. Before 2026-09-05 this
-  // case was one flat unlabeled list.
+test('without a registry the section still splits, over the flat list it always was', async () => {
+  // The split does not depend on the registry: a repo declaring none still has
+  // pages and docs worth reading first, and the section sits outside the list
+  // rather than needing a group label the registry alone could supply. What
+  // the list itself does without a registry is exactly what it always did, one
+  // flat unlabeled panel, only shorter.
   SERVE_CSV = false;
   data.forgetRegistry();
   await data.load();
   await tick(3);
   assert.equal(data.registry, null);
-  assert.deepEqual(j(data.fileGroups.map(g => g.mode)), ['reviewable', 'other']);
-  assert.deepEqual(j(data.fileGroups.map(g => g.files.length)), [1, 2]);
-  assert.ok(data.fileGroups.every(g => g.labeled), 'both carry a header, or neither can be opened');
+  assert.deepEqual(j(data.reviewableFiles.map(f => f.path)), ['docs/b.md']);
+  assert.equal(data.fileGroups.length, 1);
+  assert.equal(data.fileGroups[0].labeled, false);
+  assert.equal(data.fileGroups[0].files.length, 2);
 });
 
 test('the GitHub exits are labeled menu rows, and the plus aims the stage at this branch', async () => {
@@ -344,30 +348,43 @@ test('the deck pages what the pane is showing, in the order it shows it', async 
   await data.load();
   await tick(3);
 
-  // Only the reviewable group is open, so the deck holds the doc and nothing
-  // else. It is NEVER empty on load, which is the constraint that decided the
-  // shape: the deck button keys x-show on deckFiles.length, so a list that
-  // collapsed everything would take the page's one accented control with it.
+  // The reviewable section is always in: it is a section, not a group, and has
+  // no toggle to be out by. That is the constraint that decided the shape,
+  // since the deck button keys x-show on deckFiles.length and a page that
+  // collapsed everything would take its one accented control off the screen.
   assert.deepEqual(j(data.deckFiles.map(f => f.path)), ['docs/b.md']);
-  assert.ok(data.deckFiles.length > 0);
 
-  data.toggleGroup('hybrid-authored');
+  data.toggleFiles();
   await tick(2);
   assert.deepEqual(j(data.deckFiles.map(f => f.path)), ['docs/b.md', 'lib/a.js'],
-    'opening a group puts its files in reach of the deck too');
+    'opening the list puts its open groups in reach of the deck too');
   data.toggleGroup('mechanical');
   await tick(2);
   assert.deepEqual(j(data.deckFiles.map(f => f.path)),
     ['docs/b.md', 'lib/a.js', 'dist/web-tools.js']);
   data.groupState = {};
+  data.filesOpen = null;
+  await tick(2);
 });
 
-test('with every group shut there is nothing to read, and no control offering to', async () => {
-  data.toggleGroup('reviewable');           // the other two are already collapsed
+test('with nothing reviewable and every group shut there is nothing to read', async () => {
+  // The old shape of this case: shut everything and the deck is empty and its
+  // control is gone. It needs a branch with no reviewable section now, since
+  // that section cannot be shut, which is the whole reason the deck is never
+  // empty on the branches that have one.
+  const keep = data.brief.files;
+  data.brief = { ...data.brief, files: keep.filter(f => !/\.md$/.test(f.path)) };
   await tick(2);
-  assert.equal(data.deckFiles.length, 0);
-  assert.equal(await data.openFileDeck(0), undefined, 'and asking for it does nothing');
-  data.groupState = {};
+  try {
+    data.toggleGroup('hybrid-authored');    // mechanical is already collapsed
+    await tick(2);
+    assert.equal(data.deckFiles.length, 0);
+    assert.equal(await data.openFileDeck(0), undefined, 'and asking for it does nothing');
+  } finally {
+    data.groupState = {};
+    data.brief = { ...data.brief, files: keep };
+    await tick(2);
+  }
 });
 
 test('a card carries the deck action, aimed at its own path', async () => {
@@ -444,7 +461,11 @@ test('past the cap the list draws its budget and offers the rest', async () => {
 test('a modest branch is drawn whole, so the cap is invisible where it costs nothing', () => {
   assert.equal(data.brief.files.length, 3);
   assert.equal(data.hiddenFileCount, 0);
-  assert.deepEqual(j(data.displayGroups.map(g => g.files.length)), [1, 1, 1]);
+  assert.equal(data.filesShown, false, 'shut, so the list draws nothing at all');
+  assert.deepEqual(j(data.displayGroups.map(g => g.files.length)), []);
+  data.filesOpen = true;
+  assert.deepEqual(j(data.displayGroups.map(g => g.files.length)), [1, 1]);
+  data.filesOpen = null;
 });
 
 // The marker on the heading row is the only thing at the top saying the guide

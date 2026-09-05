@@ -148,6 +148,18 @@ test('&file= opens the deck on that file, and asks for the compare itself', asyn
   assert.equal(opened[0].ref, 'claude/thing');
 });
 
+// The other half of the same rule: a reviewable file needs no list opened,
+// since its section has no toggle. Worth its own case because the address path
+// forks on exactly that and the two branches fail differently, one by opening
+// nothing and one by opening the list for no reason.
+test('&file= on a reviewable file opens the deck and leaves the list shut', async () => {
+  reset();
+  await mount({ file: 'docs/SURFACING.md' });
+  assert.equal(opened.length, 1);
+  assert.equal(opened[0].files[opened[0].start].path, 'docs/SURFACING.md');
+  assert.equal(data.filesShown, false, 'the list was not opened to reach a file above it');
+});
+
 test('&file= naming a path this branch does not touch opens nothing', async () => {
   reset();
   await mount({ file: 'docs/NOT-ON-THIS-BRANCH.md' });
