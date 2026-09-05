@@ -4,6 +4,7 @@
     python3 scripts/showing.py                  # against origin/main, HEAD
     python3 scripts/showing.py --json           # the same decision as data
     python3 scripts/showing.py --files a.js,b   # a stated file set, no git
+    python3 scripts/showing.py --at 'gh=o/r&pr=1'   # the page's own address too
 
 The rules this executes are not new. They are `showing.picker` in
 docs/routes.json, whose own note says the mechanism "is derivable rather than
@@ -37,6 +38,15 @@ WHAT IT CANNOT DO, and says so rather than implying otherwise:
   * It reports every page a shared lib file reaches and does not choose among
     them, since which one is worth looking at is about the change, not the
     graph.
+  * It cannot know WHAT to show, only where. A page that routes on its own hash
+    (branch.html, session.html, the app's views) needs an address of its own or
+    it opens on its default, which for a form-first page is the empty form. That
+    link resolves and renders, which is this script's own failure shape one
+    level down, and it happened on 2026-09-05: the reader opened an empty branch
+    page twice. So `--at` puts the address on the link and, absent one, a
+    warning names every subject that reads its own hash. The detection is
+    advisory, not exact: it greps for location.hash, so a page reading it for an
+    optional deep link is named too.
 """
 
 import argparse
@@ -263,7 +273,7 @@ def top_level_hits(text):
     return found
 
 
-def pick(paths, base, ref, use_git=True, diff=None):
+def pick(paths, base, ref, use_git=True, diff=None, at=""):
     slug = repo_slug()
     hosted = hosted_ok()
     facts = ref_facts(ref) if use_git else {"sha": ref, "branch": "", "pushed": True}
@@ -280,7 +290,7 @@ def pick(paths, base, ref, use_git=True, diff=None):
     # the reader to the deployed renderer to look at itself.
     if b["renderer"]:
         why.append("pages/toss-render.html changed, so the deployed renderer cannot show it: address the branch's own renderer and hand it a page as a trailing fragment.")
-        return decision("toss-nested", [("pages/toss-render.html", None)], sha, slug, hosted, why, warn, facts)
+        return decision("toss-nested", [("pages/toss-render.html", None)], sha, slug, hosted, why, warn, facts, at)
 
     # A page's own file. ?use= cannot reach it: Pages serves the page FILE from
     # the default branch, so the old shell would wrap the new lib, silently.
@@ -290,10 +300,10 @@ def pick(paths, base, ref, use_git=True, diff=None):
         if hits:
             why.append("a page shell changed AND the diff touches " + ", ".join(hits)
                        + ": a framed page runs correctly and shows nothing, because the tab belongs to the top-level document.")
-            return decision("none", [(p, None) for p in b["shell"]], sha, slug, hosted, why, warn, facts)
+            return decision("none", [(p, None) for p in b["shell"]], sha, slug, hosted, why, warn, facts, at)
         why.append("a page's own file changed, which ?use= never swaps: Pages serves the page file from the default branch.")
         subjects = [(p, None) for p in b["shell"]]
-        return decision("toss-gh", subjects, sha, slug, hosted, why, warn, facts)
+        return decision("toss-gh", subjects, sha, slug, hosted, why, warn, facts, at)
 
     # Lib, which is the case that gets called wrong.
     if b["lib"] or b["dist"]:
@@ -325,7 +335,7 @@ def pick(paths, base, ref, use_git=True, diff=None):
         if not subjects and carried:
             subjects = [(p, None, "pre-build") for p in carried]
             carried = []
-        d = decision("use", [(p, v) for p, v, _ in subjects], sha, slug, hosted, why, warn, facts)
+        d = decision("use", [(p, v) for p, v, _ in subjects], sha, slug, hosted, why, warn, facts, at)
         for l, s3 in zip(d["links"], subjects):
             l["via"] = s3[2]
         if carried:
@@ -340,33 +350,64 @@ def pick(paths, base, ref, use_git=True, diff=None):
                         + ", ".join(waiting[:4]) + ("…" if len(waiting) > 4 else "")
                         + "): this reads COMMITS, so commit and re-run, or pass --files.")
             why.append("no committed change to show yet.")
-            return decision("none-yet", [], sha, slug, hosted, why, warn, facts)
+            return decision("none-yet", [], sha, slug, hosted, why, warn, facts, at)
     why.append("nothing that renders changed.")
-    return decision("none-needed", [], sha, slug, hosted, why, warn, facts)
+    return decision("none-needed", [], sha, slug, hosted, why, warn, facts, at)
 
 
-def address(mech, page, sha, slug, view=None):
+# A page that routes on its own hash opens on its EMPTY FORM without an
+# address, and the link still resolves and renders, which is this script's own
+# failure shape one level down. The `at` below is that address: on a toss it
+# rides as a trailing #frag, which toss-render hands to the framed page as a
+# real location.hash; on a deployed page it is just the fragment.
+#
+# Measured 2026-09-05, when this script emitted a branch-page toss with nothing
+# on it and the reader opened an empty form twice. Which pages need one is not
+# knowable from the file list, so the script warns rather than guessing: see
+# routes_on_hash below.
+def address(mech, page, sha, slug, view=None, at=""):
     base = f"https://{slug.split('/')[0]}.github.io/{slug.split('/')[1]}/"
     pretty = page[:-len("index.html")] if page.endswith("/index.html") else page
+    frag = "#" + at.lstrip("#") if at else ""
     if mech == "use":
         q = f"?use={sha}" + (f"&view={view}" if view else "")
-        return base + pretty + q
+        return base + pretty + q + frag
     if mech == "toss-gh":
-        return f"{base}pages/toss-render.html?use={sha}#gh={slug}@{sha}:{page}"
+        return f"{base}pages/toss-render.html?use={sha}#gh={slug}@{sha}:{page}{frag}"
     if mech == "toss-nested":
         return (f"{base}pages/toss-render.html#gh={slug}@{sha}:pages/toss-render.html"
                 f"#gh={slug}@{sha}:pages/<the page to render>.html")
     return ""
 
 
+# Does this page read its own location.hash? A mechanical stand-in for "does it
+# need an address", and an advisory one: a page reading the hash for an optional
+# deep link trips it too. Being told to check costs a glance; a link onto an
+# empty form costs a round trip.
+def routes_on_hash(page):
+    f = ROOT / page
+    try:
+        return "location.hash" in f.read_text(errors="ignore")
+    except OSError:
+        return False
+
+
 GLYPH = {"use": "⭐", "toss-gh": "🥏", "toss-nested": "🥏"}
 
 
-def decision(mech, subjects, sha, slug, hosted, why, warn, facts):
+def decision(mech, subjects, sha, slug, hosted, why, warn, facts, at=""):
     if not hosted and mech in ("use",):
         warn.append("this repo serves no pages, so ?use= has nothing to pin: use the toss instead.")
         mech = "toss-gh"
-    links = [{"page": p, "view": v, "url": address(mech, p, sha, slug, v)} for p, v in subjects]
+    if not at:
+        needs = [p for p, _ in subjects if routes_on_hash(p)]
+        if needs:
+            warn.append("these route on their own location.hash, so a link with no address opens "
+                        "whatever they default to, which for a form-first page is the empty form ("
+                        + ", ".join(needs[:4]) + ("…" if len(needs) > 4 else "")
+                        + "): pass --at '<fragment>' to put an address on the link, e.g. "
+                        "--at 'gh=owner/repo&pr=12' or --at 'id=2bf8fcae'.")
+    links = [{"page": p, "view": v, "url": address(mech, p, sha, slug, v, at)} for p, v in subjects]
     return {"mechanism": mech, "sha": sha, "branch": facts["branch"], "pushed": facts["pushed"],
             "repo": slug, "links": links, "why": why, "warnings": warn}
 
@@ -411,6 +452,10 @@ def main():
     ap.add_argument("--files", help="comma-separated paths instead of a git diff (for tests)")
     ap.add_argument("--diff", help="a file holding diff text to scan for top-level-document calls, "
                                    "instead of reading git (for tests)")
+    ap.add_argument("--at", default="", metavar="FRAG",
+                    help="the page's own address, put on the link as a trailing #fragment "
+                         "(e.g. --at 'gh=owner/repo&pr=12'). A page that routes on its own "
+                         "hash opens on its empty form without one.")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     diff = Path(a.diff).read_text() if a.diff else None
@@ -418,10 +463,10 @@ def main():
         # A stated file set pins the SHA too, so a test's expected output does
         # not move with the branch.
         paths = [p for p in a.files.split(",") if p]
-        d = pick(paths, a.base, "0" * 40, use_git=False, diff=diff)
+        d = pick(paths, a.base, "0" * 40, use_git=False, diff=diff, at=a.at)
     else:
         try:
-            d = pick(changed(a.base, a.ref), a.base, a.ref, diff=diff)
+            d = pick(changed(a.base, a.ref), a.base, a.ref, diff=diff, at=a.at)
         except GitFailed as e:
             facts = ref_facts(a.ref)
             d = decision("unknown", [], facts["sha"], repo_slug(), hosted_ok(),
