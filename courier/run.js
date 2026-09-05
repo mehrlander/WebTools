@@ -43,20 +43,36 @@
 // lives here rather than in the bookmark, which makes it revisable by a commit
 // to this repo; that is a smaller guarantee than the first cut had, stated
 // rather than quietly lost.
+//
+// REPO AND REF ARE CONSTANTS, NOT SETTINGS. A courier you could aim at another
+// repo is a courier somebody else can aim, and the whole trust story here is
+// that the code and the errand list come from one public place you can read.
+// The header names that place so it is checkable rather than assumed.
 
 (async (popup, home) => {
   const HOST = location.hostname;
   const REPO = 'mehrlander/web-tools';
   const REF = 'main';
+  const FORM_CAP = 7500;
 
   // Through the GitHub API, not the raw CDN. raw.githubusercontent caches five
   // minutes at the edge and `cache: no-store` defeats only the browser's copy,
   // so an errand added a moment ago could be invisible. The API answers current.
   // The cost is the unauthenticated rate limit, 60 an hour per address, which is
-  // about twenty courier runs; a 403 says so rather than reading as a bug.
+  // about twenty courier runs.
+  //
+  // `budget` is that allowance read back off the response. Whether it arrives is
+  // the server's call: a cross-origin reader sees only the headers GitHub names
+  // in Access-Control-Expose-Headers, so this is a read that either works or
+  // yields null, and the header shows it only when it is there. Unverified from
+  // the sandbox, which reaches api.github.com through a credential-injecting
+  // proxy and so cannot see what a browser would.
+  let budget = null;
   const api = async (path) => {
     const url = `https://api.github.com/repos/${REPO}/contents/${path}?ref=${REF}`;
     const r = await fetch(url, { headers: { Accept: 'application/vnd.github.raw' }, cache: 'no-store' });
+    const left = r.headers.get('x-ratelimit-remaining');
+    if (left !== null && left !== '') budget = Number(left);
     if (r.status === 403) throw new Error('HTTP 403, likely GitHub\'s hourly rate limit for unauthenticated reads');
     if (!r.ok) throw new Error(path + ' -> HTTP ' + r.status);
     return r.text();
@@ -75,6 +91,9 @@
         border-bottom:1px solid #e2e8f0;padding-bottom:10px}
       .cx-head h3{margin:0;font-size:15px}
       .cx-head .cx-here{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#15803d}
+      .cx-head .cx-src{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#64748b;
+        text-decoration:none;border-bottom:1px dotted #94a3b8}
+      .cx-head .cx-src:hover{color:#0f172a}
       .cx-head .cx-state{margin-left:auto;font-size:12px;color:#64748b}
       .cx-lab{font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.05em;
         text-transform:uppercase;color:#64748b}
@@ -91,6 +110,9 @@
         text-transform:uppercase;color:#64748b}
       .cx-meta dd{margin:0;word-break:break-word}
       .cx-meta dd.cx-mono{font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+      .cx-meta a{color:inherit;text-decoration:none;border-bottom:1px solid #cbd5e1}
+      .cx-meta a:hover{border-bottom-color:#15803d}
+      .cx-meta .cx-dim{color:#64748b}
       .cx-body,.cx-out{flex:1;min-height:120px;overflow:auto;background:#f1f5f9;border:1px solid #cbd5e1;
         border-radius:8px;padding:11px 12px;color:#0f172a;margin:0;
         font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -101,11 +123,13 @@
         font:600 15px system-ui;color:#fff;background:#0f172a;cursor:pointer}
       .cx-row button.cx-quiet{background:#e2e8f0;color:#0f172a}
       .cx-row button.cx-go{background:#15803d}
+      .cx-row button[disabled]{opacity:.45;cursor:not-allowed}
       .cx-fields{display:flex;flex-direction:column;gap:12px;margin:0}
       .cx-msg{margin:0;color:#475569;text-wrap:pretty}
     </style>
     <div class="cx-panel">
-      <header class="cx-head"><h3>Courier</h3><span class="cx-here"></span><span class="cx-state"></span></header>
+      <header class="cx-head"><h3>Courier</h3><span class="cx-here"></span>
+        <a class="cx-src" target="_blank" rel="noopener"></a><span class="cx-state"></span></header>
       <div class="cx-fields"></div>
       <div class="cx-body"></div>
       <div class="cx-row"></div>
@@ -116,6 +140,7 @@
   let root, close;
   const mount = () => {
     if (root) return;
+    let drop;
     if (popup && popup.document) {
       // A named window is reused across runs, so the document is reopened rather
       // than appended to; otherwise a second run stacks on the first.
@@ -126,7 +151,7 @@
         </head><body>${SHELL}</body></html>`);
       d.close();
       root = d;
-      close = () => popup.close();
+      drop = () => popup.close();
       try { popup.focus(); } catch (e) { /* some browsers refuse; harmless */ }
     } else {
       // In the page: our own pages by design, somebody else's only when the
@@ -142,15 +167,31 @@
          .cx-panel{position:absolute;inset:5%;max-width:900px;margin:auto;border-radius:12px;
            box-shadow:0 10px 40px rgba(0,0,0,.35)}</style>` + SHELL;
       root = el.shadowRoot;
-      close = () => el.remove();
+      drop = () => el.remove();
     }
+    // Escape closes, on whichever document is carrying the panel.
+    const doc = (popup && popup.document) || document;
+    const key = (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); close(); } };
+    doc.addEventListener('keydown', key);
+    close = () => { doc.removeEventListener('keydown', key); drop(); };
+
     $('.cx-here').textContent = HOST;
+    const src = $('.cx-src');
+    src.textContent = REPO + '@' + REF;
+    src.href = 'https://github.com/' + REPO + '/tree/' + REF + '/courier';
   };
 
   const $ = (sel) => root.querySelector(sel);
   const esc = (t) => String(t == null ? '' : t)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const state = (t) => { $('.cx-state').textContent = t || ''; };
+  const link = (href, text) =>
+    `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(text)}</a>`;
+  // The allowance rides along only as it runs out, and never displaces what the
+  // panel was saying. A 403 with no warning ahead of it reads as a bug.
+  const state = (t) => {
+    const low = budget !== null && budget <= 10 ? budget + ' GitHub reads left this hour' : '';
+    $('.cx-state').textContent = [t, low].filter(Boolean).join(' · ');
+  };
   const button = (label, cls, fn) => {
     const b = (root.ownerDocument || root).createElement('button');
     b.textContent = label;
@@ -168,7 +209,8 @@
   // comment, which is what makes this safe where a general comment stripper is
   // not: it cannot remove code. Comments beside code stay, since those are read
   // with the line they explain. The gate loses nothing either way, because what
-  // it exists to show is what will execute, and a comment never does.
+  // it exists to show is what will execute, and a comment never does, and the
+  // Script row links the file whole.
   const trimBanner = (t) => {
     const lines = t.split('\n');
     let i = 0;
@@ -179,13 +221,19 @@
 
   // The errand record's own fields, shown as a form rather than described in a
   // sentence: where it runs, what it runs, where the answer goes, who is
-  // waiting. Adding a field to errands.json means adding a row here.
+  // waiting. Each returns HTML so a value can carry a link over the part that
+  // exists: the script blob does, the result path does not until you commit it,
+  // so Result links its repo and leaves the path plain.
+  let shown = null;
   const FIELDS = [
-    ['Page', e => e.url, 1],
-    ['Script', e => e.script, 1],
-    ['Result', e => e.result && (e.result.repo + ' · ' + e.result.path), 1],
-    ['For', e => e.for, 0],
-    ['Opened', e => e.opened, 1],
+    ['Page', 1, e => e.url ? link(e.url, e.url) : ''],
+    ['Script', 1, e => !e.script ? '' :
+      link(`https://github.com/${REPO}/blob/${REF}/${e.script}`, e.script)
+      + (shown ? ` <span class="cx-dim">· ${shown.split('\n').length} lines</span>` : '')],
+    ['Result', 1, e => !e.result ? '' :
+      link('https://github.com/' + e.result.repo, e.result.repo) + ' · ' + esc(e.result.path)],
+    ['For', 0, e => esc(e.for || '')],
+    ['Opened', 1, e => esc(e.opened || '')],
   ];
 
   // ---- one form, two verbs -------------------------------------------------
@@ -194,6 +242,7 @@
   // shape of the thing is "one of the open errands", and a panel that hid the
   // choice when there was one left the reader guessing whether there could be
   // more. Errands here run; errands elsewhere open.
+  let redraw = () => {};
   const form = (errands, verb, onPick) => {
     mount();
     state(errands.length + (errands.length === 1 ? ' errand' : ' errands')
@@ -210,19 +259,21 @@
        <dl class="cx-meta"></dl>`;
 
     const meta = $('.cx-meta');
-    const draw = (e) => {
+    let current = errands[0];
+    redraw = () => {
       meta.innerHTML = FIELDS
-        .map(([label, read, mono]) => [label, read(e), mono])
-        .filter(([, v]) => v)
-        .map(([label, v, mono]) =>
-          `<dt>${esc(label)}</dt><dd${mono ? ' class="cx-mono"' : ''}>${esc(v)}</dd>`).join('');
+        .map(([label, mono, read]) => [label, mono, read(current)])
+        .filter(([, , v]) => v)
+        .map(([label, mono, v]) => `<dt>${esc(label)}</dt><dd${mono ? ' class="cx-mono"' : ''}>${v}</dd>`)
+        .join('');
     };
-    draw(errands[0]);
+    redraw();
 
     fields.querySelectorAll('.cx-opt').forEach((opt, i) => {
       opt.querySelector('input').onchange = () => {
         fields.querySelectorAll('.cx-opt').forEach((o, j) => o.classList.toggle('on', i === j));
-        draw(errands[i]);
+        current = errands[i];
+        redraw();
         onPick(errands[i], i);
       };
     });
@@ -263,12 +314,13 @@
   // code rather than to a diff. The script is on screen in full before the
   // button that runs it exists.
   let errand = mine[0], src = null;
-  const body = () => $('.cx-body') || $('.cx-out');
   const load = async (e) => {
-    errand = e; src = null;
-    body().textContent = 'Reading ' + e.script + '…';
-    try { src = await api(e.script); body().textContent = trimBanner(src); }
-    catch (err) { body().textContent = 'Could not read the script. ' + err.message; }
+    errand = e; src = null; shown = null;
+    $('.cx-body').textContent = 'Reading ' + e.script + '…';
+    redraw();
+    try { src = await api(e.script); shown = trimBanner(src); $('.cx-body').textContent = shown; }
+    catch (err) { $('.cx-body').textContent = 'Could not read the script. ' + err.message; }
+    redraw();
   };
   form(mine, 'run', load);
   await load(errand);
@@ -290,24 +342,29 @@
     box.value = out;
     $('.cx-body').replaceWith(box);
     $('.cx-pick').parentElement.remove();
-    state(out.length.toLocaleString() + ' characters');
+
+    // GitHub's new-file form takes the content prefilled, on your signed-in
+    // session, so nothing here needs a token. The cap is where the prefill stops
+    // being reliable, not where the form stops accepting, and it is known before
+    // the tap, so it is a disabled button rather than an error after one.
+    const commitUrl = 'https://github.com/' + errand.result.repo + '/new/' + errand.result.branch
+      + '?filename=' + encodeURIComponent(errand.result.path)
+      + '&value=' + encodeURIComponent(out);
+    const over = commitUrl.length > FORM_CAP;
+    state(out.length.toLocaleString() + ' characters'
+      + (over ? ', over the ' + FORM_CAP.toLocaleString() + ' the GitHub form takes' : ''));
 
     button('Copy', 'cx-quiet', () => {
       box.select();
       const nav = (popup && popup.navigator) || navigator;
-      if (nav.clipboard) nav.clipboard.writeText(out).then(() => state('copied'), () => state('copy by hand'));
-      else state('copy by hand');
+      if (nav.clipboard) nav.clipboard.writeText(out).then(() => state('copied'), () => state('copy it by hand'));
+      else state('copy it by hand');
     });
-    // GitHub's new-file form takes the content prefilled, on your signed-in
-    // session, so nothing here needs a token. The cap is where the prefill stops
-    // being reliable, not where the form stops accepting.
-    button('Commit', 'cx-go', () => {
-      const url = 'https://github.com/' + errand.result.repo + '/new/' + errand.result.branch
-        + '?filename=' + encodeURIComponent(errand.result.path)
-        + '&value=' + encodeURIComponent(out);
-      if (url.length > 7500) return state('too long for the form, ' + url.length + ' encoded; use Copy');
-      (popup || window).open(url, '_blank');
+    const commit = button(over ? 'Too long to commit' : 'Commit', over ? 'cx-quiet' : 'cx-go', () => {
+      (popup || window).open(commitUrl, '_blank');
+      state('finish in the GitHub tab');
     });
+    commit.disabled = over;
     button('Close', 'cx-quiet', () => close());
   });
 })(typeof w !== 'undefined' ? w : null, typeof home !== 'undefined' ? home : false);

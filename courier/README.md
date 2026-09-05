@@ -51,6 +51,15 @@ other route here gets:
 | the errand list | [`errands.json`](errands.json) | per errand |
 | the errand script | `sites/<hostname>/courier/<id>.js` | per errand, then frozen when it closes |
 
+**The panel names what it is connected to**, in its header: `mehrlander/web-tools@main`,
+linked to this folder. That is a constant, not a setting. A courier you could
+aim at another repo is a courier somebody else can aim, and the trust story here
+is that the code and the errand list come from one public place you can read
+before you tap. The unauthenticated allowance, 60 GitHub reads an hour against
+two per run, appears beside it once it is down to ten, so a 403 arrives as a
+countdown rather than as a bug. Whether it appears at all is GitHub's call: a
+cross-origin reader sees only the headers the server exposes.
+
 **Every part but the pointer is read at `main`, so a change is live when it
 merges and not when it is pushed.** Tapping the bookmark from a branch gets you
 whatever `main` served that minute. There is no ref switch on purpose: a
@@ -183,9 +192,16 @@ than as silence.
 ## Getting the result back
 
 The panel offers Copy and Commit. Commit opens GitHub's new-file form with the
-content prefilled, on your signed-in session, and you tap Commit changes; the
-courier refuses past 7,500 characters, where the prefill gets unreliable, and
-tells you to copy instead. Neither route needs a token in the bookmark.
+content prefilled, on your signed-in session, and you tap Commit changes there.
+The 7,500-character prefill limit is known before the tap rather than after it,
+so past that Commit arrives disabled and reading Too long to commit, with the
+count in the header and Copy the route. Neither route needs a token in the
+bookmark.
+
+**Nothing tells the courier the result landed.** The errand stays `open` until
+someone edits `errands.json`, which is the session's job on reading the result,
+not yours. Closing that loop from the browser would need a token to check the
+private results folder, and the courier holds none by design.
 
 ## What it is not for
 
