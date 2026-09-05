@@ -370,6 +370,9 @@ try {
                  paras: [...h.querySelectorAll('p')].map(p => { const pr = p.getBoundingClientRect(); return Math.round(pr.height) + '@' + Math.round(pr.top - sr.top); }) }; })(),
       footer: (s.querySelector('footer')?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60),
       body: (s.querySelector('article')?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 50),
+      bodyEnd: (s.querySelector('article')?.innerText || '').replace(/\s+/g, ' ').trim().slice(-60),
+      box: { h: Math.round(s.getBoundingClientRect().height), content: s.scrollHeight, clipped: s.scrollHeight > s.clientHeight + 1,
+             article: s.querySelector('article')?.scrollHeight, minH: getComputedStyle(s).minHeight, height: getComputedStyle(s).height },
     })));
     for (const p of pages) console.log('  page', JSON.stringify(p));
   }
