@@ -301,3 +301,32 @@ test('render: the reading\'s copy is the wrapped fragment, and enable() can open
   assert.equal(frame.getAttribute('srcdoc'), text);
   w.Peek.disable();
 });
+
+// ── The panel's frame ────────────────────────────────────────────────────────
+// jsdom has no layout, so this asserts the DECLARATION rather than the pixels:
+// one height rather than a maximum, and no shadow. Both were asked for by the
+// reader they were annoying. A max-height made the band as tall as whichever
+// reading was open, so every tab tap resized the window the page was being
+// read through; the shadow claimed the panel floats over the page when it is
+// docked to an edge. The measured heights are in tools/render, this is the
+// gate that keeps them from drifting back.
+test('panel: one declared height, no shadow, and the readings share the frame', () => {
+  const w = boot();
+  const panel = [...w.document.querySelectorAll('[data-peek-ui]')]
+    .find(n => /PEEK|Tap anything/.test(n.textContent || ''));
+  assert.ok(panel, 'the panel mounts');
+  assert.match(panel.style.cssText, /height:\s*\d+vh/, 'a height, not a max-height');
+  assert.doesNotMatch(panel.style.cssText, /max-height/, 'a maximum would size the panel by its content');
+  assert.equal(panel.style.boxShadow, '', 'a docked edge separates with its border alone');
+  assert.match(panel.style.cssText, /border-top:\s*1px solid/, 'and that border is there');
+  // The render reading's frame fills the pane rather than carrying a height of
+  // its own, which is what stops a second scrollbar inside the reading area.
+  w.Peek.select(w.document.querySelector('li'));
+  w.Peek.enable({ view: 'render' });
+  w.Peek.select(w.document.querySelector('li'));
+  const frame = w.document.querySelector('iframe[data-peek-frame]');
+  assert.ok(frame, 'the render reading mounts its frame');
+  assert.match(frame.getAttribute('style'), /flex:\s*1/, 'the frame fills the reading area');
+  assert.doesNotMatch(frame.getAttribute('style'), /height:\s*\d+vh/, 'and carries no height of its own');
+  w.Peek.disable();
+});

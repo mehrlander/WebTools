@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cm6 — a CodeMirror 6 editor, framework free</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script type="module">
+  // The chain boot, so the FAB arrives and the kit is fetched at the previewed ref.
+  const ref = new URLSearchParams(location.search).get('use') || 'main';
+  const base = `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@${ref}/lib`;
+  await import(`${base}/gh-api.js`);
+  await gh.load('kits/cm6.js');
+
+  const $ = id => document.getElementById(id);
+
+  const JS_SRC = `// Cmd/Ctrl-Enter runs this, and the result lands below.
+const rows = [
+  { fund: 600, lane: 'appropriated',     amount: 1204 },
+  { fund: 600, lane: 'non-appropriated', amount: 318 },
+  { fund: 722, lane: 'appropriated',     amount: 87 },
+];
+const byFund = {};
+for (const r of rows) byFund[r.fund] = (byFund[r.fund] || 0) + r.amount;
+return JSON.stringify(byFund, null, 2);
+`;
+
+  const HTML_SRC = `<div class="card bg-base-200 border border-base-300">
+  <div class="card-body gap-2">
+    <h3 class="card-title text-base">Recordkeeping</h3>
+    <span class="badge badge-info badge-sm">3 open</span>
+    <p class="text-[14px]">Fund 600, appropriated lane only.</p>
+    <div class="card-actions justify-end">
+      <button class="btn btn-sm btn-primary">Submit</button>
+    </div>
+  </div>
+</div>
+`;
+
+  const stamp = () => {
+    const s = cm6.loadStatus();
+    const im = Object.entries(s.imports);
+    const ok = im.filter(([, v]) => v.state === 'fulfilled');
+    const slowest = ok.reduce((a, [, v]) => Math.max(a, v.ms || 0), 0);
+    $('load-status').textContent = ok.length === im.length && im.length
+      ? `${ok.length}/${im.length} modules, ${slowest}ms`
+      : im.map(([k, v]) => `${k}:${v.state}`).join(' ');
+  };
+  $('recheck').onclick = stamp;
+
+  try {
+    const js = await cm6.create($('host-js'), {
+      value: JS_SRC, language: 'js', setup: 'basic', wrap: false, fontSize: 13,
+      onRun: () => window.runIt(),
+      onChange: t => { $('js-chars').textContent = `${t.length} chars`; },
+    });
+
+    const page = await cm6.create($('host-page'), {
+      value: HTML_SRC, language: 'html', lineNumbers: true, wrap: true, fontSize: 13,
+      onSelection: sel => {
+        $('page-sel').textContent = sel ? `${sel.end - sel.start} selected` : 'no selection';
+      },
+    });
+
+    const out = await cm6.create($('host-out'), {
+      value: 'Run the JavaScript above, or copy the markup in.',
+      readOnly: true, wrap: true, fontSize: 13,
+    });
+
+    window.ed = { js, page, out };
+    $('js-chars').textContent = `${js.getValue().length} chars`;
+    stamp();
+
+    window.runIt = () => {
+      let result;
+      try { result = String(new Function(ed.js.getValue())()); }
+      catch (e) { result = `${e.name}: ${e.message}`; }
+      ed.out.setLanguage('plain');
+      ed.out.setValue(result);
+    };
+    window.copyMarkup = () => {
+      ed.out.setLanguage('html');
+      ed.out.setValue(ed.page.getValue());
+    };
+    window.setLang = l => { ed.page.setLanguage(l); $('page-lang').textContent = l; };
+    window.flip = (b, key, fn) => {
+      const on = b.dataset.on !== '1';
+      b.dataset.on = on ? '1' : '0';
+      b.classList.toggle('btn-active', on);
+      fn(on);
+      b.textContent = `${key}: ${on ? 'on' : 'off'}`;
+    };
+    window.size = d => {
+      const px = Math.min(20, Math.max(10, (+$('page-size').dataset.px || 13) + d));
+      $('page-size').dataset.px = px;
+      $('page-size').textContent = `${px}px`;
+      ed.page.setFontSize(px);
+    };
+  } catch (e) {
+    // Two failures read differently: imports that rejected name their URLs, and
+    // imports that resolved to nothing (a proxy, an offline render) leave the
+    // namespace empty and only surface here, as a missing export.
+    const im = Object.values(cm6.loadStatus().imports);
+    const bad = im.filter(v => v.state !== 'fulfilled');
+    const why = (e.failedImports || []).length
+      ? (e.failedImports.map(f => f.url).join(', '))
+      : bad.length
+        ? bad.map(v => `${v.url} ${v.state}`).join(', ')
+        : `every import resolved but the modules are empty (${e.message})`;
+    for (const id of ['host-js', 'host-page', 'host-out']) {
+      $(id).innerHTML =
+        '<div class="p-3 text-[13px] text-error font-mono break-all">CodeMirror did not load: '
+        + window.esc(why) + '</div>';   // the repo's one escape helper, from vanilla-bundle
+    }
+    stamp();
+  }
+
+  document.body.dataset.ready = '1';
+</script>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-8">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">cm6</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">await cm6.create(host, opts)</code>
+    <span class="text-[13px] text-base-content/50">no Alpine on this page, no framework in the kit</span>
+    <span class="ml-auto flex items-center gap-2">
+      <span id="load-status" class="text-[13px] font-mono text-base-content/50">loading</span>
+      <button id="recheck" class="btn btn-sm btn-ghost">cm6.loadStatus()</button>
+    </span>
+  </header>
+
+  <div class="grid gap-8 lg:grid-cols-2">
+
+    <section class="space-y-2">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">JavaScript, setup: 'basic', onRun</h2>
+      <div class="flex flex-wrap items-center gap-2">
+        <button class="btn btn-sm btn-primary" onclick="runIt()"><i class="ph ph-play"></i> Run</button>
+        <span class="text-[13px] text-base-content/50">or Cmd/Ctrl-Enter in the editor</span>
+        <span id="js-chars" class="ml-auto text-[13px] font-mono text-base-content/50"></span>
+      </div>
+      <div id="host-js" class="h-64 border border-base-300 rounded bg-base-200/40 overflow-hidden
+                               [&_.cm-editor]:h-full [&_.cm-editor]:outline-none [&_.cm-scroller]:overflow-auto"></div>
+    </section>
+
+    <section class="space-y-2">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">HTML, setup: 'minimal', reconfigured live</h2>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="join">
+          <button class="btn btn-xs join-item" onclick="setLang('plain')">plain</button>
+          <button class="btn btn-xs join-item btn-active" onclick="setLang('html')">html</button>
+          <button class="btn btn-xs join-item" onclick="setLang('js')">js</button>
+        </span>
+        <button class="btn btn-xs btn-active" data-on="1" onclick="flip(this,'wrap',v=>ed.page.setWrap(v))">wrap: on</button>
+        <button class="btn btn-xs btn-active" data-on="1" onclick="flip(this,'nums',v=>ed.page.setLineNumbers(v))">nums: on</button>
+        <span class="join">
+          <button class="btn btn-xs join-item" onclick="size(-1)">A-</button>
+          <button id="page-size" class="btn btn-xs join-item no-animation font-mono" data-px="13">13px</button>
+          <button class="btn btn-xs join-item" onclick="size(1)">A+</button>
+        </span>
+        <span class="ml-auto text-[13px] font-mono text-base-content/50">
+          <span id="page-lang">html</span> · <span id="page-sel">no selection</span>
+        </span>
+      </div>
+      <div id="host-page" class="h-64 border border-base-300 rounded bg-base-200/40 overflow-hidden
+                                 [&_.cm-editor]:h-full [&_.cm-editor]:outline-none [&_.cm-scroller]:overflow-auto"></div>
+    </section>
+  </div>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A third handle, read-only, written from the other two</h2>
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="btn btn-sm" onclick="runIt()">Write the result in</button>
+      <button class="btn btn-sm" onclick="copyMarkup()">Copy the markup in</button>
+      <button class="btn btn-sm btn-active" data-on="1" onclick="flip(this,'readOnly',v=>ed.out.setReadOnly(v))">readOnly: on</button>
+      <button class="btn btn-sm btn-ghost" onclick="ed.out.focus()">focus()</button>
+    </div>
+    <div id="host-out" class="h-40 border border-base-300 rounded bg-base-200/40 overflow-hidden
+                              [&_.cm-editor]:h-full [&_.cm-editor]:outline-none [&_.cm-scroller]:overflow-auto"></div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">The same factory, wrapped elsewhere</h2>
+    <table class="text-[13.5px] border border-base-300">
+      <tbody>
+        <tr class="border-b border-base-300">
+          <td class="px-3 py-2 font-medium align-top w-64"><code class="font-mono text-[0.9em]">kits/cm6.js</code></td>
+          <td class="px-3 py-2">This page: a host element in, a handle out, nothing else assumed.</td>
+        </tr>
+        <tr class="border-b border-base-300">
+          <td class="px-3 py-2 font-medium align-top"><code class="font-mono text-[0.9em]">alpineComponents/cm-editor.js</code></td>
+          <td class="px-3 py-2">The Alpine shell over the same <code class="font-mono text-[0.9em]">create()</code>, at <code class="font-mono text-[0.9em]">setup:'basic'</code>, with <code class="font-mono text-[0.9em]">$watch</code> on value, language, wrap and readonly.</td>
+        </tr>
+        <tr>
+          <td class="px-3 py-2 font-medium align-top"><code class="font-mono text-[0.9em]">kits/vanilla-demo.js</code></td>
+          <td class="px-3 py-2">Calls it directly for each demo block, and reads <code class="font-mono text-[0.9em]">cm6.loadStatus()</code> to report a stalled import by URL.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">From a script</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>await gh.load('kits/cm6.js');
+const ed = await cm6.create(host, { value, language: 'js', setup: 'basic', onRun: run });
+ed.getValue()                // the doc, as a string
+ed.setValue(next)            // replaces it, without firing onChange
+ed.setLanguage('html'); ed.setWrap(false); ed.setLineNumbers(true); ed.setFontSize(15)
+ed.destroy()                 // on host teardown, or the view leaks</code></pre>
+  </section>
+
+</main>
+</body>
+</html>

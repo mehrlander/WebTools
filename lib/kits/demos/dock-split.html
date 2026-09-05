@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dock-split — the drag handle between two panes</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script type="module">
+  // The chain boot, so the FAB arrives and the kit is fetched at the previewed ref.
+  const ref = new URLSearchParams(location.search).get('use') || 'main';
+  const base = `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@${ref}/lib`;
+  await import(`${base}/gh-api.js`);
+  await gh.load('kits/dock-split.js');
+
+  const $ = id => document.getElementById(id);
+  const colPanes = $('col-panes'), colLeft = $('col-left'), colRight = $('col-right'), colHandle = $('col-handle');
+  const rowPanes = $('row-panes'), rowTop = $('row-top'), rowBottom = $('row-bottom'), rowHandle = $('row-handle');
+
+  const KEY = 'dk-demo-col';
+  const store = {
+    read() { try { return localStorage.getItem(KEY); } catch { return undefined; } },
+    write(v) { try { localStorage.setItem(KEY, v); return true; } catch { return false; } },
+  };
+
+  const state = { col: 38, row: 30, stop: 'pct', step: 2, from: 'end', readout: 'centre', persist: false };
+
+  // min and max take a number or a function, and the third stop is why the
+  // function form exists: 240px is a different percentage of every container.
+  const STOPS = {
+    pct:  { min: 20, max: 80 },
+    wide: { min: 10, max: 90 },
+    px:   { min: () => Math.round(240 / (colPanes.getBoundingClientRect().width || 1) * 100), max: 80 },
+  };
+
+  let colSplit = null, rowSplit = null;
+
+  function log(what, pct) {
+    const line = document.createElement('div');
+    line.className = 'flex gap-3 border-b border-base-300/60 py-1';
+    line.innerHTML = `<span class="text-base-content/40 w-20 shrink-0">onCommit</span>
+      <span class="w-24 shrink-0 whitespace-nowrap">${what}</span><span class="font-semibold">${pct}%</span>`;
+    const box = $('log');
+    if (box.firstElementChild?.hasAttribute('data-placeholder')) box.textContent = '';
+    box.prepend(line);
+    while (box.children.length > 40) box.lastElementChild.remove();
+  }
+
+  function reportAria() {
+    const a = n => colHandle.getAttribute(n);
+    $('aria').textContent =
+      `separator · ${a('aria-orientation')} · now ${a('aria-valuenow')} · min ${a('aria-valuemin')} · max ${a('aria-valuemax')}`;
+  }
+
+  function applyCol() {
+    const grow = { flex: '1 1 0%', width: 'auto' }, fixed = { flex: '0 0 auto', width: state.col + '%' };
+    Object.assign(colLeft.style, state.from === 'end' ? grow : fixed);
+    Object.assign(colRight.style, state.from === 'end' ? fixed : grow);
+    $('col-now').textContent = state.col + '%';
+    reportAria();
+  }
+
+  function applyRow() {
+    rowBottom.style.height = state.row + '%';
+    $('row-now').textContent = state.row + '%';
+  }
+
+  function mountCol() {
+    colSplit?.destroy();
+    const stop = STOPS[state.stop];
+    colSplit = dockSplit.attach(colHandle, {
+      axis: 'col',
+      from: state.from,
+      label: 'Resize the detail pane',
+      readout: state.readout === 'after' ? 'after' : 'centre',
+      bounds: () => colPanes.getBoundingClientRect(),
+      value: () => state.col,
+      min: stop.min, max: stop.max, step: state.step,
+      onChange: pct => { state.col = pct; applyCol(); },
+      onCommit: pct => {
+        state.col = pct; applyCol(); log(state.from === 'end' ? 'right pane' : 'left pane', pct);
+        if (state.persist) $('persist-note').textContent = store.write(String(pct)) ? `stored ${pct}%` : 'storage refused';
+      },
+    });
+    applyCol();
+    $('attach').textContent = 'Detach';
+    reportAria();
+  }
+
+  function mountRow() {
+    rowSplit = dockSplit.attach(rowHandle, {
+      axis: 'row', from: 'end', step: 5, readout: 'after',
+      label: 'Resize the log pane',
+      bounds: () => rowPanes.getBoundingClientRect(),
+      value: () => state.row,
+      min: 15, max: 70,
+      onChange: pct => { state.row = pct; applyRow(); },
+      onCommit: pct => { state.row = pct; applyRow(); log('bottom pane', pct); },
+    });
+    applyRow();
+  }
+
+  // The kit fires a synthetic resize on every applied frame, which is the only
+  // signal a child that measured itself once will hear. This is that child.
+  const remeasure = () => {
+    $('measured').textContent = Math.round(colRight.getBoundingClientRect().width) + 'px';
+    $('measured-count').textContent = ++remeasure.n;
+  };
+  remeasure.n = 0;
+  window.addEventListener('resize', remeasure);
+
+  $('stop').onchange = e => { state.stop = e.target.value; mountCol(); };
+  $('step').onchange = e => { state.step = Number(e.target.value); mountCol(); };
+  $('from').onchange = e => { state.from = e.target.value; mountCol(); };
+  $('readout').onchange = e => { state.readout = e.target.value; mountCol(); };
+  $('persist').onchange = e => {
+    state.persist = e.target.checked;
+    $('persist-note').textContent = state.persist ? 'writing on commit' : 'off';
+  };
+  $('even').onclick = () => { state.col = 50; colSplit ? colSplit.refresh() : null; applyCol(); };
+  $('attach').onclick = () => {
+    if (colSplit) { colSplit.destroy(); colSplit = null; $('attach').textContent = 'Attach'; $('aria').textContent = 'detached'; }
+    else mountCol();
+  };
+
+  const saved = store.read();
+  if (saved === undefined) $('persist-note').textContent = 'storage unavailable in this frame';
+  else if (saved != null) { state.col = Number(saved); $('persist').checked = state.persist = true; $('persist-note').textContent = `restored ${saved}%`; }
+
+  mountCol();
+  mountRow();
+  remeasure();
+</script>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-8">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">dock-split</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">dockSplit.attach(handle, opts)</code>
+    <span class="text-[13px] text-base-content/50">drag · focus it, then ← → · PageUp/PageDown · Home/End</span>
+    <span class="ml-auto flex gap-2">
+      <button id="even" class="btn btn-sm">Even</button>
+      <button id="attach" class="btn btn-sm btn-primary">Detach</button>
+    </span>
+  </header>
+
+  <section class="space-y-2">
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A vertical seam</h2>
+      <label class="flex items-center gap-1.5 text-[11px] text-base-content/60">min/max
+        <select id="stop" class="select select-xs w-36">
+          <option value="pct">20 to 80</option>
+          <option value="wide">10 to 90</option>
+          <option value="px">240px floor</option>
+        </select>
+      </label>
+      <label class="flex items-center gap-1.5 text-[11px] text-base-content/60">step
+        <select id="step" class="select select-xs w-16">
+          <option>1</option><option selected>2</option><option>5</option>
+        </select>
+      </label>
+      <label class="flex items-center gap-1.5 text-[11px] text-base-content/60">from
+        <select id="from" class="select select-xs w-20">
+          <option value="end">end</option><option value="start">start</option>
+        </select>
+      </label>
+      <label class="flex items-center gap-1.5 text-[11px] text-base-content/60">readout
+        <select id="readout" class="select select-xs w-24">
+          <option value="centre">centre</option><option value="after">after</option>
+        </select>
+      </label>
+      <label class="flex items-center gap-1.5 text-[11px] text-base-content/60">
+        <input id="persist" type="checkbox" class="checkbox checkbox-xs"> remember
+        <span id="persist-note" class="font-mono text-base-content/40">off</span>
+      </label>
+      <span class="ml-auto font-mono text-[11px] text-base-content/50">value <span id="col-now" class="text-base-content font-semibold">38%</span></span>
+    </div>
+
+    <div id="col-panes" class="flex h-72 border border-base-300 rounded overflow-hidden bg-base-100">
+      <div id="col-left" class="overflow-auto">
+        <ul class="menu menu-sm w-full text-[14px]">
+          <li class="menu-title text-[11px] uppercase tracking-widest">lib/kits</li>
+          <li><a class="active">dock-split.js</a></li>
+          <li><a>swipe-deck.js</a></li>
+          <li><a>chat-render.js</a></li>
+          <li><a>note.js</a></li>
+          <li><a>peek.js</a></li>
+          <li><a>text-diff.js</a></li>
+          <li><a>repo-address.js</a></li>
+          <li><a>estate-search.js</a></li>
+        </ul>
+      </div>
+      <div id="col-handle" class="w-1.5 shrink-0 self-stretch"></div>
+      <div id="col-right" class="overflow-auto bg-base-200/40" style="width:38%">
+        <div class="px-4 py-3 space-y-3">
+          <div class="flex items-baseline gap-2">
+            <span class="font-medium text-[15px]">dock-split.js</span>
+            <span class="font-mono text-[11px] text-base-content/50" id="measured">0px</span>
+            <span class="font-mono text-[11px] text-base-content/40">remeasured <span id="measured-count">0</span>×</span>
+          </div>
+          <p class="text-[15px] leading-relaxed text-pretty">The kit owns the gesture. This pane's width is the number it hands back, applied here.</p>
+          <pre class="text-[12.5px] bg-base-100 border border-base-300 rounded p-2 overflow-x-auto"><code>.dk-split.is-col::before{width:8px;height:40px}
+.dk-split.is-col::after{left:-15px;right:-15px}
+.dk-split.is-dragging::before{background:var(--color-primary)}</code></pre>
+        </div>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-x-4 text-[11px] text-base-content/50">
+      <span class="font-mono" id="aria">separator</span>
+      <span>Touch: the handle swallows touchstart and touchmove, which a desktop pointer never reaches.</span>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A horizontal seam</h2>
+      <code class="font-mono text-[11px] text-base-content/50">axis:'row'</code>
+      <code class="font-mono text-[11px] text-base-content/50">from:'end'</code>
+      <code class="font-mono text-[11px] text-base-content/50">step:5</code>
+      <code class="font-mono text-[11px] text-base-content/50">readout:'after'</code>
+      <code class="font-mono text-[11px] text-base-content/50">min:15 max:70</code>
+      <span class="ml-auto font-mono text-[11px] text-base-content/50">value <span id="row-now" class="text-base-content font-semibold">30%</span></span>
+    </div>
+
+    <div id="row-panes" class="flex flex-col h-72 border border-base-300 rounded overflow-hidden">
+      <div id="row-top" class="flex-1 overflow-auto">
+        <table class="table table-sm text-[14px]">
+          <thead><tr><th>Caller</th><th>Axis</th><th>What the number means</th></tr></thead>
+          <tbody>
+            <tr><td>swipe-deck, docked</td><td class="font-mono">col</td><td>a custom property two rules read</td></tr>
+            <tr><td>budget-drs, Funding</td><td class="font-mono">col</td><td>a grid track</td></tr>
+            <tr><td>this page, above</td><td class="font-mono">col</td><td>the right pane's width</td></tr>
+            <tr class="bg-base-200"><td>this page, here</td><td class="font-mono">row</td><td>the bottom pane's height</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="row-handle" class="h-1.5 shrink-0 self-stretch"></div>
+      <div id="row-bottom" class="overflow-auto bg-base-200/40" style="height:30%">
+        <div id="log" class="px-4 py-2 font-mono text-[12.5px]">
+          <div data-placeholder class="text-base-content/40 py-1">Drag either seam, or press an arrow key on one.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">From a script</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>const split = dockSplit.attach(handle, {
+  axis: 'col', from: 'end', step: 2,
+  bounds: () =&gt; panes.getBoundingClientRect(),   // what the percentage is of
+  value: () =&gt; state.col,                        // where it is now
+  min: () =&gt; 240 / panes.offsetWidth * 100,      // a pixel floor, read on every clamp
+  onChange: pct =&gt; pane.style.width = pct + '%',
+  onCommit: pct =&gt; localStorage.setItem('col', pct),
+});
+split.refresh();   // repaint the readout after the layout settles
+split.destroy();   // listeners, readout and classes off</code></pre>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Capturing a drag</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>// drag-seam.mjs: the readout and the grown grip only exist mid-drag
+export default async (page) =&gt; {
+  const box = await page.locator('#col-handle').boundingBox();
+  await page.mouse.move(box.x + 3, box.y + 140);
+  await page.mouse.down();
+  await page.mouse.move(box.x - 120, box.y + 140, { steps: 12 });
+};
+
+npm run shot -- lib/kits/demos/dock-split.html --script drag-seam.mjs</code></pre>
+  </section>
+
+</main>
+</body>
+</html>

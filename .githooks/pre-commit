@@ -131,7 +131,11 @@ if [ -n "$changed_pages" ]; then
   # its arguments the same way. Get this wrong and the nudge points at a
   # thumbnail that does not exist and hands over a command that shoots nothing.
   while IFS= read -r p; do
-    case "$p" in pages/index.html|pages/thumbs/*) continue ;; esac
+    # The two folder indexes are generated listings, not catalogued pages, so
+    # neither has a thumbnail to nag about. lib/kits/demos/index.html was
+    # nagged on every touch until 2026-09-05: pages-shots is handed a name the
+    # catalog does not carry and silently shoots nothing.
+    case "$p" in pages/index.html|lib/kits/demos/index.html|pages/thumbs/*) continue ;; esac
     case "$p" in
       lib/kits/demos/*) virt="kit-demos/${p#lib/kits/demos/}" ;;
       *)                virt="${p#pages/}" ;;
