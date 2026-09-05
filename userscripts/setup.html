@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Userscripts probe: setup</title>
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4"></script>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script defer src="https://unpkg.com/alpinejs"></script>
+</head>
+<body class="min-h-dvh bg-base-100 text-base-content" x-data="{ bm: `javascript:(s=>{s.src='https://cdn.jsdelivr.net/gh/mehrlander/web-tools@03b527a4796b48bb5e960cb72d42c0111f31b9dd/userscripts/lib/probe-bar.js';s.onload=()=>wtProbeBar({route:'bookmarklet',ref:'03b527a4796b48bb5e960cb72d42c0111f31b9dd'});document.body.appendChild(s)})(document.createElement('script'))`, copied: false }">
+<header class="sticky top-0 bg-base-100 border-b border-base-300 px-4 py-3 flex items-baseline gap-3">
+  <span class="text-xl font-semibold">Userscripts probe</span>
+  <span class="text-xs font-mono opacity-60">03b527a</span>
+</header>
+<ol class="p-4 space-y-6 text-xl leading-8">
+  <li class="flex flex-col gap-2">
+    <a class="btn btn-primary btn-lg" href="https://raw.githubusercontent.com/mehrlander/web-tools/claude/bookmarklets-shortcuts-iphone-safari-rjakex/userscripts/probe-require.user.js">1 · Install the userscript</a>
+    <span class="text-pretty">The file opens as text. Tap the puzzle icon in the address bar, then Userscripts, then Install.</span>
+  </li>
+  <li class="flex flex-col gap-2">
+    <a class="btn btn-primary btn-lg" href="https://github.com/mehrlander/web-tools">2 · Open the test page</a>
+    <span class="text-pretty">A dark bar at the top reading <b>userscript @ 03b527a</b> is the yes. Tap <b>Log</b> in it and let Log-Repo run. No bar is also an answer.</span>
+  </li>
+  <li class="flex flex-col gap-2">
+    <button class="btn btn-lg" @click="navigator.clipboard.writeText(bm).then(()=>copied=true)" x-text="copied ? '3 · Copied' : '3 · Copy the bookmarklet'"></button>
+    <span class="text-pretty">Then in Safari: Bookmarks, Edit, pick any bookmark, paste over its address. Run it on the same test page and tap <b>Log</b> in the second bar.</span>
+  </li>
+  <li class="flex flex-col gap-2">
+    <a class="btn btn-lg" href="https://mehrlander.github.io/web-tools/pages/shortcut-log.html">4 · See the log rows</a>
+    <span class="text-pretty">Two rows, <b>userscript</b> and <b>bookmarklet</b>, is the full result.</span>
+  </li>
+</ol>
+<footer class="sticky bottom-0 bg-base-100 border-t border-base-300 px-4 py-2 text-xs opacity-60">If no puzzle icon appears in step 1: Settings, Apps, Safari, Extensions, turn Userscripts on.</footer>
+</body>
+</html>
