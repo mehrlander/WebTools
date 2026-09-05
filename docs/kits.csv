@@ -2,7 +2,7 @@ path,namespace,gloss,lines,boot,demo,users,tested
 lib/kits/annotate.js,Annotate,"notes pinned to pieces of a page: select text (or pick an element, or drag a rectangle), write a note, and carry the set out as markdown for a chat model, as…",4834,no,no,10,yes
 lib/kits/branch-brief.js,BranchBrief,"a branch as a subject, not a row.",377,no,no,7,yes
 lib/kits/branch-status.js,BranchStatus,"Branch-scan math: the content-level landed/stranded signal, ported from home's tools/unmerged-branches.sh (the CLI reference instrument).",532,no,no,5,yes
-lib/kits/brief.js,brief,"assemble a page into a review brief: one markdown document holding the page source plus the source of the modules the page itself loaded, sized for pasting…",226,no,no,3,yes
+lib/kits/brief.js,brief,"assemble a page into a review brief: one markdown document holding the page source plus the source of the modules the page itself loaded, sized for pasting…",238,no,no,3,yes
 lib/kits/chat-archive.js,chatArchive,"the chat archive as a venue of activity, read one month at a time.",268,no,no,1,yes
 lib/kits/chat-render.js,chatRender,"chat transcript renderer: markdown in, readable conversation out, with fenced code blocks promoted to live artifacts.",1149,no,no,7,yes
 lib/kits/claude-mark.js,claudeMark,"the Claude logomark, from one path.",62,yes,no,5,yes
@@ -21,7 +21,7 @@ lib/kits/dictate.js,Dictate,"voice input as a plain text buffer: start the engin
 lib/kits/dock-split.js,dockSplit,the drag handle between two panes.,264,no,no,2,yes
 lib/kits/docx.js,docxKit,"WordprocessingML (.docx) preparation: what a Word file has to have done to it before a browser renderer draws it faithfully, and what it knows about itself…",497,no,no,1,yes
 lib/kits/estate-search.js,EstateSearch,"The estate's search calls, in one place, with one cache.",354,no,no,5,yes
-lib/kits/export.js,exporter,"export a page to a portable, self-resolving copy: ""download this page plus the data it read()s"" as one zip, optionally with its code inlined.",187,no,yes,8,yes
+lib/kits/export.js,exporter,"export a page to a portable, self-resolving copy: ""download this page plus the data it read()s"" as one zip, optionally with its code inlined.",199,no,yes,8,yes
 lib/kits/file-deck.js,fileDeck,"a changeset's files, read one at a time.",371,no,no,10,yes
 lib/kits/github-links.js,GithubLinks,"the GitHub destinations for one repo, as menu rows.",98,no,no,3,yes
 lib/kits/guide-render.js,GuideRender,"a guide PR body, rendered as something you can walk.",289,no,no,7,yes
@@ -32,7 +32,7 @@ lib/kits/md-doc.js,mdDoc,a markdown document rendered as something you can read 
 lib/kits/messaging.js,messaging,string-path pub/sub.,68,no,yes,4,yes
 lib/kits/note.js,Note,"the small tooltip: `data-note=""…""` in place of `title=""…""`.",289,no,yes,3,yes
 lib/kits/pdf.js,pdf,"browser PDF extraction: text, geometry, and table structure.",2029,no,no,5,yes
-lib/kits/peek.js,Peek,"what is under the pointer, and what contains it.",627,no,no,8,yes
+lib/kits/peek.js,Peek,"what is under the pointer, and what contains it.",730,no,yes,10,yes
 lib/kits/persistence.js,persistence,idb-keyval-backed key/value persistence.,343,no,yes,6,yes
 lib/kits/portable-align.js,PortableAlign,Pure assessment of a repo's alignment with the web-tools coordination surface: which of the environmental hooks that spread the portable set (the…,68,no,no,2,yes
 lib/kits/proof.js,proof,"sandboxed proof documents: code in, self-contained srcdoc HTML out.",83,no,no,16,yes

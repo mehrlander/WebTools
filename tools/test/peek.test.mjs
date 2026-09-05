@@ -227,3 +227,77 @@ test('disable: removes every node it added', () => {
   assert.equal(w.document.querySelectorAll('[data-peek-ui]').length, 0);
   assert.equal(w.Peek.enabled, false);
 });
+
+// ── The standalone fragment ──────────────────────────────────────────────────
+// wrap() is what makes the Render reading honest: the frame shows the exact
+// string Copy takes. These hold what rides along (theme, vendor tags, small
+// styles, the body's classes) and what is stripped (framework attributes, the
+// kit's own furniture, this repo's code, a compiled sheet).
+const STYLED = `<!doctype html><html lang="en" data-theme="winter"><head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js"></script>
+  <script type="module" src="https://example.com/mod.js"></script>
+  <script src="../local.js"></script>
+  <style>.kit-outline{outline:1px solid red}</style>
+  <style>${'.x{}'.repeat(3000)}</style>
+</head><body class="bg-base-100 text-base-content">
+  <div id="card" class="card" x-data="{ open: true }" :class="open && 'open'" @click="open = !open" x-cloak>
+    <span class="badge" x-text="label">Live</span>
+  </div>
+</body></html>`;
+
+const bootStyled = () => {
+  const { window } = makeWindow({ html: STYLED });
+  window.eval(readFileSync(path.join(repoRoot, 'lib/vanilla-bundle.js'), 'utf8'));
+  window.eval(readFileSync(path.join(repoRoot, 'lib/kits/peek.js'), 'utf8'));
+  return window;
+};
+
+test('wrap: carries the theme, the vendor tags, the small style and the body classes', () => {
+  const w = bootStyled();
+  const info = w.Peek.wrapInfo(w.document.getElementById('card'));
+  assert.match(info.html, /<html lang="en" data-theme="winter">/);
+  assert.match(info.html, /<link rel="stylesheet" href="https:\/\/cdn\.jsdelivr\.net\/npm\/daisyui@5">/);
+  assert.match(info.html, /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@tailwindcss\/browser@4"><\/script>/);
+  assert.match(info.html, /<style>\.kit-outline\{outline:1px solid red\}<\/style>/);
+  assert.match(info.html, /<body class="bg-base-100 text-base-content">/);
+  assert.equal(info.tags, 3, 'two vendor tags and one small style');
+  assert.equal(info.theme, 'winter');
+});
+
+test('wrap: leaves behind this repo\'s code, modules, relative scripts and a compiled sheet, and says so', () => {
+  const w = bootStyled();
+  const info = w.Peek.wrapInfo(w.document.getElementById('card'));
+  assert.doesNotMatch(info.html, /gh-api\.js/, 'own code is the repo, not a vendor');
+  assert.doesNotMatch(info.html, /example\.com\/mod\.js/, 'a module script is a boot chain');
+  assert.doesNotMatch(info.html, /local\.js/, 'a relative script resolves nowhere else');
+  assert.doesNotMatch(info.html, /\.x\{\}\.x\{\}/, 'a compiled sheet is recompiled by the vendor tag');
+  assert.ok(info.skipped.some(s => s.includes('gh-api.js')));
+  assert.ok(info.skipped.some(s => /compiled <style>/.test(s)));
+});
+
+test('wrap: strips framework attributes and the kit\'s own furniture, keeps the rendered markup', () => {
+  const w = bootStyled();
+  w.Peek.enable();                 // adds [data-peek-ui] furniture to the body
+  const card = w.document.getElementById('card');
+  const html = w.Peek.wrap(card);
+  assert.match(html, /<div id="card" class="card">/, 'x-data, :class, @click and x-cloak are gone');
+  assert.match(html, /<span class="badge">Live<\/span>/, 'x-text is gone, the rendered text stays');
+  assert.doesNotMatch(html, /data-peek-ui/);
+  assert.match(html, /<!-- A picked region of .* \(#card\)/, 'the comment names the selector');
+  w.Peek.disable();
+});
+
+test('render: the reading\'s copy is the wrapped fragment, and enable() can open on it', async () => {
+  const w = bootStyled();
+  w.Peek.enable({ view: 'render' });
+  w.Peek.select(w.document.getElementById('card'));
+  const text = await w.Peek.copy('render');
+  assert.equal(text, w.Peek.wrap(w.document.getElementById('card')));
+  // The panel holds the proof frame, fed the same string.
+  const frame = w.document.querySelector('iframe[data-peek-frame]');
+  assert.ok(frame, 'the render reading mounts a frame');
+  assert.equal(frame.getAttribute('srcdoc'), text);
+  w.Peek.disable();
+});
