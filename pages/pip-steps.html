@@ -22,11 +22,21 @@
   step and encodes them at a fixed seconds-per-step, which turns the player's
   own scrubber into a step navigator.
 
-  This page is the launcher. It plays the card video and asks for PiP inside the
-  click handler, since iOS grants that only on a user gesture, and it uses
-  webkitSetPresentationMode where present because that is the iOS spelling.
-  Where neither API exists the same steps render as a list, from the same JSON
-  the video was built from, so the page is never a dead end.
+  This page is the launcher, and it exists to remove the taps a bare video URL
+  cannot. `autopictureinpicture` floats the window on its own when the app is
+  backgrounded, so the reader opens the link, switches to the app they are
+  actually working in, and the steps follow them: no PiP button to find. The
+  Float button stays for the explicit route, and asks inside the click handler
+  because iOS grants PiP only on a live user gesture, preferring
+  webkitSetPresentationMode as the iOS spelling.
+
+  Media Session gives the PiP transport real card boundaries, so a tap lands on
+  the start of a card instead of wherever a fixed skip interval falls. The card
+  duration is set to the skip interval anyway, which makes the bare video behave
+  too, but only the page can be exact.
+
+  Where no PiP API exists the same steps render as a list, from the same JSON the
+  video was built from, so the page is never a dead end.
 
   IT MUST BE OPENED IN A BROWSER, not in a web view. Whether a Shortcuts or
   in-app web view permits PiP is unmeasured; Safari is the known-good venue, so
@@ -53,7 +63,7 @@
 
   <main class="overflow-y-auto p-4">
     <video x-ref="v" :src="video" class="w-full max-h-[60dvh] mx-auto object-contain rounded-box bg-black"
-           playsinline muted loop controls preload="auto"></video>
+           playsinline muted loop controls autoplay autopictureinpicture preload="auto"></video>
 
     <ol x-show="!canFloat || listed" class="mt-4 space-y-6">
       <template x-for="(c, i) in cards" :key="i">
@@ -94,9 +104,33 @@ function pip() {
       // Feature-detect on the element, since iOS ships the webkit spelling only.
       this.canFloat = typeof v.webkitSetPresentationMode === 'function'
         || (document.pictureInPictureEnabled && typeof v.requestPictureInPicture === 'function');
+      // The property, not just the attribute: Safari reads the IDL attribute, and
+      // this is what floats the window on its own when the app is backgrounded.
+      v.autoPictureInPicture = true;
       const doc = await fetch(this.source).then(r => r.json());
       this.title = doc.title || this.title;
       this.cards = doc.cards || [];
+      this.wireCardControls();
+    },
+
+    // Card boundaries are exact, so the transport buttons land on a card start
+    // rather than wherever a fixed skip interval happens to fall.
+    wireCardControls() {
+      if (!('mediaSession' in navigator) || !this.cards.length) return;
+      const v = this.$refs.v, s = this.seconds;
+      const jump = n => () => {
+        const here = Math.floor(v.currentTime / s);
+        const next = Math.min(Math.max(here + n, 0), this.cards.length - 1);
+        v.currentTime = next * s;
+        v.play();
+      };
+      navigator.mediaSession.metadata = new MediaMetadata({ title: this.title });
+      for (const [action, handler] of [
+        ['nexttrack', jump(1)], ['previoustrack', jump(-1)],
+        ['seekforward', jump(1)], ['seekbackward', jump(-1)],
+      ]) {
+        try { navigator.mediaSession.setActionHandler(action, handler); } catch {}
+      }
     },
 
     // Both calls stay synchronous inside the click: iOS drops the PiP request

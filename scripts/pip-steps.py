@@ -24,8 +24,14 @@ screen width, which puts a 59px card font at 17.8pt on screen. Lines are then
 distributed down the card, because a top-aligned pair leaves two thirds of a
 4:3 window empty.
 
-Position is shown by a segment bar rather than the words "STEP 2 OF 10", which
-cost a line of the space they were reporting on.
+Position is shown twice over, and both are load-bearing: a segment bar for where
+you are in the whole, and "2 of 6" in words, because two adjacent segments look
+alike at a glance and cannot confirm that a tap on skip actually moved you on.
+
+SECONDS PER CARD IS NOT A PACING CHOICE. It should equal the player's skip
+interval, which is 10s in Safari's own controls, so the forward button advances
+exactly one card. Any other value makes skipping drift: at 10s cards under a 15s
+skip, the second tap silently passes a card.
 
 Needs Pillow and an ffmpeg binary. Neither is a repo dependency, since nothing
 else here encodes video:
@@ -76,7 +82,10 @@ def card(entry, index, total, size):
     pad = round(w * 0.06)
     inner = w - 2 * pad
     bar = round(h * 0.022)
-    top, bottom = pad, h - bar - round(h * 0.05)
+    count_size = round(h * 0.072)
+    count_f = font("DejaVuSans-Bold.ttf", count_size)
+    footer = bar + count_size + round(h * 0.055)
+    top, bottom = pad, h - footer
 
     lines = entry["lines"]
     note = entry.get("note")
@@ -105,6 +114,11 @@ def card(entry, index, total, size):
         for text in note_lines:
             d.text((pad, y), text, font=note_f, fill=DIM)
             y += round(body_size * 0.62 * 1.35)
+
+    # "2 of 6" in words, because the bar alone cannot confirm that a tap on skip
+    # actually moved you on: two adjacent segments look alike at a glance.
+    d.text((pad, h - bar - count_size - round(h * 0.028)),
+           f"{index + 1} of {total}", font=count_f, fill=DIM)
 
     # Position as segments, one per card: filled behind, accent here, dim ahead.
     gap = round(w * 0.008)
@@ -167,7 +181,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("source", type=Path, help="cards JSON")
     ap.add_argument("out", type=Path, help="MP4 to write")
-    ap.add_argument("--seconds", type=int, default=6, help="seconds per card")
+    ap.add_argument("--seconds", type=int, default=10,
+                    help="seconds per card; match the player's skip button so one "
+                         "tap advances exactly one card")
     ap.add_argument("--fps", type=int, default=12)
     ap.add_argument("--width", type=int, default=800)
     ap.add_argument("--height", type=int, default=600)
