@@ -14,7 +14,6 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Stop storing the conventions twice](tasks/one-copy-of-the-conventions-i9i931.md) · S (awaiting: a decision on whether to depend on the marketplace clone's path (stage 2 only; stage 1 is startable now))
 - 🎫 [Build our own JSON tree for display, keep vanilla-jsoneditor for editing](tasks/own-json-tree-retire-vje-i0lcj2.md) · M
 - 🎫 [Audit the app's views for viewport breakpoints inside the content pane](tasks/pane-width-not-window-width-wnabwo.md) · S
-- 🎫 [pdf.flow's `start` does not survive the column's own layout](tasks/pdf-flow-start-does-not-hold-461ldz.md) · S
 - 🎫 [Pinch-zoom and pan for pdf-inspect's page view](tasks/pdf-inspect-pinch-zoom-5wz3kt.md) · M
 - 🎫 [Close open table perimeters in the pdf kit's lattice](tasks/pdf-lattice-open-perimeter-h4kx9r.md) · M
 - 🎫 [Draggable column boundaries with live reassignment, in pdf-inspect](tasks/pdf-table-splitter-page-q7vm2d.md) · S
@@ -73,6 +72,7 @@ _Generated from tasks/. Do not hand-edit._
 - 🎫 [Guard every lib-booting page against the Alpine load race](tasks/lib-load-race-on-slow-connections-9kx2mv.md) (`claude/web-tools-project-tracker-reo5qo`)
 - 🎫 [One logic shelf: move every window-namespace module into lib/kits/](tasks/lib-root-kit-migration-dind5t.md) (`claude/lib-kits-migration-review-ouipa1`)
 - 🎫 [One parser for the owner/repo\[@ref\]:path address](tasks/one-repo-address-parser-5gtv92.md) (`claude/web-tools-tracker-review-bw48ga`)
+- 🎫 [pdf.flow's `start` does not survive the column's own layout](tasks/pdf-flow-start-does-not-hold-461ldz.md) (`claude/budget-drs-kits-analysis-krcugt`)
 - 🎫 [Private-repo landing federation via the home registry](tasks/private-repo-landing-federation-u50nns.md)
 - 🎫 [Two gaps the proposal channel showed on first use](tasks/proposals-diff-and-removal-w1y9lk.md) (`claude/web-tools-project-tracker-reo5qo`)
 - 🎫 [Render files over 1 MB in toss-render and the shell viewers](tasks/render-large-files-toss-render-xm9ex7.md)

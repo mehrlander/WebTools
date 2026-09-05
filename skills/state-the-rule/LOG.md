@@ -419,3 +419,26 @@ markup was already there and already right, so it now runs for this case too.
 The hole was in the page, not in the split: `openSplit`'s own regex takes the
 whitespace with the first half, so the page could always produce this and the
 payload had simply never carried one.
+
+## 2026-09-05, an edited document under a stored run (web-tools, the followups after #600)
+
+**A document edit is a reset of its run, and the reset is reproducible.** The
+digest gate on `docs/CONVENTIONS.md` fired on an ordinary edit (two settings
+folded in, one paragraph moved out). The sanctioned route is re-segment and
+re-label, which discards the 2026-08-30 grain patch. Matching each new unit's
+text against the old standoff carried 43 of 57 labels; the four seams that
+pass had split still joined cleanly, so a patch of four splits re-cut them at
+the same offsets; ten units were new and labelled by hand; one new sentence
+was split where its halves take different labels. The whole rebuild is one
+script, so the next edit costs a run of it and a look at what it could not
+match.
+
+**Offsets are code points, and the gates that read them raw find out the day
+the document gains its first astral character.** The moved sentence carried
+🥏, the one such character CONVENTIONS.md has ever held, and every unit after
+it reported a one-unit gap in `audit-standoff.test.mjs` and the kit's
+invariant check, both of which slice in UTF-16 without `adopt`. Fixed in the
+document (the toss named in words), not in the gates: SURFACING.md carries 49
+of these and its run is not gated the same way, so the gates were never wrong
+about the file they read. The trap is worth knowing before a glyph is moved
+into an annotated document.
