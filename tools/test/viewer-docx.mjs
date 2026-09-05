@@ -19,8 +19,9 @@
 //   4. a Symbol-font bullet reaches the page as a Unicode dot
 //   5. the header line states pages and bytes, and `__doc.locate` lands on a
 //      cited phrase
-//   6. a pinch and a ctrl-wheel zoom the page about the fingers, the pill
-//      shows the level off fit width, and tapping it returns to fit
+//   6. a pinch previews as a transform and commits as a zoom when the fingers
+//      lift, a ctrl-wheel zooms about the pointer, the pill shows the level
+//      off fit width, and tapping it returns to fit
 //
 // The fixture is built here with jszip rather than committed, so no binary
 // enters the tree and the document's internals are exactly what the
@@ -294,8 +295,10 @@ try {
     const zoomed = await page.evaluate(async () => {
       const root = document.querySelector('[data-page="root"]');
       const pane = root.querySelector('[data-page="stage"] > div');
-      const body = pane.children[1];
+      const shell = pane.children[1];
+      const body = shell.firstElementChild;
       const pill = root.querySelector('.viewer-page-zoom');
+      const frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       const level = () => root.querySelector('[data-page="zoomlevel"]')?.textContent;
       const before = { zoom: body.style.zoom, pill: pill.classList.contains('hidden') };
       const r = pane.getBoundingClientRect();
@@ -304,20 +307,29 @@ try {
         pointerId: id, pointerType: 'touch', clientX: x, clientY: y, bubbles: true }));
       touch('pointerdown', 1, cx - 40, cy); touch('pointerdown', 2, cx + 40, cy);
       touch('pointermove', 1, cx - 80, cy); touch('pointermove', 2, cx + 80, cy);
+      await frame();
+      // Mid-gesture: the scale is a transform on the shell and the zoom has
+      // not moved, which is the whole reason the pinch is smooth.
+      const during = { zoom: body.style.zoom, transform: shell.style.transform, level: level() };
       touch('pointerup', 1, cx - 80, cy); touch('pointerup', 2, cx + 80, cy);
-      const pinched = { zoom: body.style.zoom, pill: pill.classList.contains('hidden'), level: level(),
+      const pinched = { zoom: body.style.zoom, transform: shell.style.transform, pill: pill.classList.contains('hidden'), level: level(),
                         scrollWidth: pane.scrollWidth, clientWidth: pane.clientWidth };
       pane.dispatchEvent(new WheelEvent('wheel', { deltaY: 400, deltaMode: 0, ctrlKey: true, clientX: cx, clientY: cy, bubbles: true, cancelable: true }));
+      await new Promise(r => setTimeout(r, 300));
       const wheeled = { zoom: body.style.zoom, level: level() };
       root.querySelector('[data-page="zoomreset"]').click();
       const reset = { zoom: body.style.zoom, pill: pill.classList.contains('hidden'), api: root.closest('#dv-viewer') ? null : null };
       const api = [...document.querySelectorAll('*')].map(e => e.__doc).find(Boolean);
-      return { before, pinched, wheeled, reset, apiZoom: api?.zoom?.() };
+      return { before, during, pinched, wheeled, reset, apiZoom: api?.zoom?.() };
     });
     const num = (v) => Number(v) || 0;
     ok('the pill is hidden at fit width', zoomed.before.pill === true, JSON.stringify(zoomed.before));
-    ok('a pinch doubles the scale, about', Math.abs(num(zoomed.pinched.zoom) / num(zoomed.before.zoom) - 2) < 0.05,
-       JSON.stringify({ before: zoomed.before.zoom, after: zoomed.pinched.zoom }));
+    ok('mid-pinch the scale is a transform and the layout is untouched',
+       /scale\(2/.test(zoomed.during.transform) && zoomed.during.zoom === zoomed.before.zoom && zoomed.during.level === '200%',
+       JSON.stringify(zoomed.during));
+    ok('lifting the fingers commits: the zoom doubles and the transform is gone',
+       Math.abs(num(zoomed.pinched.zoom) / num(zoomed.before.zoom) - 2) < 0.05 && zoomed.pinched.transform === '',
+       JSON.stringify({ before: zoomed.before.zoom, after: zoomed.pinched }));
     ok('and shows the pill with the level', zoomed.pinched.pill === false && zoomed.pinched.level === '200%', JSON.stringify(zoomed.pinched));
     ok('the zoomed page scrolls sideways rather than being clipped', zoomed.pinched.scrollWidth > zoomed.pinched.clientWidth,
        JSON.stringify(zoomed.pinched));
