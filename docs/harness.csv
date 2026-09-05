@@ -146,7 +146,7 @@ tools/render/scenarios/map-showing-peek.mjs,the Showing tab with a pointer held 
 tools/render/scenarios/map-showing.mjs,"the Map's Showing tab: how content moves, renders, and gets looked at",tools/render/scenarios,60,driver,no,no,no
 tools/render/scenarios/map-skill-uses.mjs,"the Map's Skills tab with the invocation column: which skills actually fire, and which have never fired at all",tools/render/scenarios,80,driver,no,no,no
 tools/render/scenarios/map-skills.mjs,"the Map's Skills tab with all three sets live: the committed library and plugin manifests served through a stubbed GH, plus a fixture config cache for the estate; SKILLS_SET and SKILLS_Q drive the control and the search",tools/render/scenarios,95,driver,no,no,no
-tools/render/scenarios/map-surfacing-read.mjs,"the Surfacing tab's two header doors: the Read deck (filled, docked, and on its index slide) and the peek card over the doc's own mark",tools/render/scenarios,89,driver,no,no,no
+tools/render/scenarios/map-surfacing-read.mjs,"the Surfacing tab's two header doors: the Read deck (filled, docked, and on its index slide) and the peek card over the doc's own mark",tools/render/scenarios,97,driver,no,no,no
 tools/render/scenarios/map-tests.mjs,the Map view's Tests tab: the test registry rendered live with assertion names expanded,tools/render/scenarios,63,driver,no,no,no
 tools/render/scenarios/nest-probe.mjs,"probe: a nested self-toss's address bar, and the FAB's actions at depth two",tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/open-drawer.mjs,the FAB drawer open with the take grid scrolled into view,tools/render/scenarios,20,driver,no,no,no

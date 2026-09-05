@@ -4,10 +4,6 @@ Making a session's work visible, reviewable, and durable when chat is the only o
 
 The installed set includes the universal **surfacing primitives** and the **surfacing course**, the guide-PR lifecycle that begins when a PR opens. See [PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md).
 
-## Per-repo settings
-
-Two, and these are the defaults. **Render path:** ⭐ for a page already deployed, the 🥏 toss otherwise; there is no per-repo preview mechanism. **Per-session refreshes:** normally none, and a local `CLAUDE.md` names only a generated artifact too slow or too non-deterministic to ride a commit hook.
-
 ---
 
 ## Surfacing primitives
