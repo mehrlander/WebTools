@@ -203,7 +203,10 @@ test('the merged PR is reported, which is the whole point of onMeta', async () =
 });
 
 // The head is the reason `facts` exists: deferring the compare would otherwise
-// blank four numbers the host measured minutes ago.
+// blank the numbers the host measured minutes ago. It asserted the lifespan as
+// its third figure until 2026-09-05, when the head dropped that fact and its
+// getter with it; `behind` took its place, being the number the head now leads
+// with and the only one on the line that says something has to be done.
 test('a host lends its row, and the compare corrects it', async () => {
   window.BranchBrief.forget();
   reset();
@@ -211,7 +214,7 @@ test('a host lends its row, and the compare corrects it', async () => {
                                    lastDate: '2026-07-08T00:00:00Z', sessions: ['s1'] } });
   assert.equal(data.brief.ahead, 9);
   assert.equal(data.brief.state, 'live', 'the badge is right on the first frame');
-  assert.equal(data.lifespan, '7d');
+  assert.equal(data.brief.behind, 1);
   await openFiles();
   assert.equal(data.brief.ahead, 2, 'the read wins wherever the two differ');
   assert.equal(data.brief.sessions.length, 0, 'and the lent list is dropped, not merged');
@@ -295,6 +298,33 @@ test('framed: the head holds its place and the pane takes the scroll', async () 
   assert.ok(root.lastElementChild.className.includes('overflow-y-auto'), 'the pane takes the scroll');
   assert.ok(root.lastElementChild.className.includes('min-h-0'),
     'without which a flex child refuses to shrink and scrolls the document again');
+});
+
+// THE HEAD'S CEILING. It was three bands and 188px at 390x844 until
+// 2026-09-05: an identity block, a bordered card holding four figures, and the
+// Look row. The reader's report was that a third of the phone went by before
+// the first file row. The card went, its figures moved onto the identity block
+// as a plain line, and `lifespan` went with it, being the widest fact on the
+// line and the one they said they never read. The head is 102px now.
+//
+// A jsdom box has no layout, so two mechanical facts stand in for the pixels:
+// how many bands the head has, and whether any of them is drawn as a card. A
+// third band, or a border inside one, is the old shape coming back, and nothing
+// else in the suite would notice. The pixels themselves are
+// tools/render/scenarios/branch-guide.mjs at 390x844.
+test('the head stays two bands, and none of them is a card', async () => {
+  window.BranchBrief.forget();
+  await mount('feat/a');
+  const head = window.document.querySelector('#m > div > div').firstElementChild;
+  assert.ok(head.className.includes('shrink-0'), 'this is the head');
+  assert.equal(head.children.length, 2,
+    'the identity block and the Look row; a third band is the figures card returning');
+  for (const el of head.querySelectorAll('*')) {
+    assert.ok(!/\bborder-base-300\b/.test(String(el.className)),
+      'nothing in the head is drawn as a card: ' + String(el.className).slice(0, 60));
+  }
+  assert.doesNotMatch(head.textContent, /lifespan/i,
+    'the fact that forced the wrap, and the one the reader never read');
 });
 
 test('framed: the document itself is left alone', async () => {
