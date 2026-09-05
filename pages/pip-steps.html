@@ -32,7 +32,11 @@
   in-app web view permits PiP is unmeasured; Safari is the known-good venue, so
   a shortcut reaches this through Open-URL rather than showing it inline.
 
-  ADDRESS. ?v= the MP4, ?steps= the JSON behind it; both default to the
+  A CARD HOLDS WHAT THE READER CAN ACT ON WITHOUT LOOKING BACK, so grouping two
+  or three shortens the loop. That is the cost this format has to keep down: a
+  reader who misses their card waits for the whole cycle to come round.
+
+  ADDRESS. ?v= the MP4, ?steps= the cards JSON behind it; both default to the
   probe-automation pair. The JSON's title names the walkthrough.
 -->
 </head>
@@ -51,19 +55,21 @@
     <video x-ref="v" :src="video" class="w-full max-h-[60dvh] mx-auto object-contain rounded-box bg-black"
            playsinline muted loop controls preload="auto"></video>
 
-    <ol x-show="!canFloat || listed" class="mt-4 space-y-4">
-      <template x-for="(s, i) in steps" :key="i">
+    <ol x-show="!canFloat || listed" class="mt-4 space-y-6">
+      <template x-for="(c, i) in cards" :key="i">
         <li class="text-xl leading-8">
-          <span class="text-xs font-mono opacity-60" x-text="`${i + 1}/${steps.length}`"></span>
-          <div class="font-semibold text-pretty" x-text="s.text"></div>
-          <div class="opacity-70 text-pretty" x-show="s.detail" x-text="s.detail"></div>
+          <span class="text-xs font-mono opacity-60" x-text="`${i + 1}/${cards.length}`"></span>
+          <template x-for="line in c.lines" :key="line">
+            <div class="font-semibold text-pretty" x-text="line"></div>
+          </template>
+          <div class="opacity-70 text-pretty" x-show="c.note" x-text="c.note"></div>
         </li>
       </template>
     </ol>
   </main>
 
   <footer class="flex items-center gap-3 px-4 py-3 bg-base-100 border-t border-base-300">
-    <span class="text-xs font-mono opacity-60" x-text="`${steps.length} steps · ${seconds}s each`"></span>
+    <span class="text-xs font-mono opacity-60" x-text="`${cards.length} cards · ${seconds}s each · ${cards.length * seconds}s loop`"></span>
     <span class="grow"></span>
     <button class="btn btn-ghost btn-sm" @click="listed = !listed" x-show="canFloat"
             x-text="listed ? 'Hide list' : 'Show list'"></button>
@@ -77,9 +83,9 @@ function pip() {
   return {
     video: q.get('v') || 'media/probe-automation.mp4',
     source: q.get('steps') || '../data/pip-steps/probe-automation.json',
-    seconds: Number(q.get('seconds') || 5),
+    seconds: Number(q.get('seconds') || 6),
     title: 'Floating steps',
-    steps: [],
+    cards: [],
     listed: false,
     canFloat: false,
 
@@ -90,7 +96,7 @@ function pip() {
         || (document.pictureInPictureEnabled && typeof v.requestPictureInPicture === 'function');
       const doc = await fetch(this.source).then(r => r.json());
       this.title = doc.title || this.title;
-      this.steps = doc.steps || [];
+      this.cards = doc.cards || [];
     },
 
     // Both calls stay synchronous inside the click: iOS drops the PiP request

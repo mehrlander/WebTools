@@ -1,15 +1,11 @@
 {
   "title": "Nightly automation for Probe-Unattended",
-  "steps": [
-    {"text": "Open Shortcuts", "detail": "Then the Automation tab, along the bottom"},
-    {"text": "Tap + at the top right"},
-    {"text": "Scroll down to Time of Day", "detail": "Under the clock icon, near the top of the list"},
-    {"text": "Set the time to 2:00 AM", "detail": "Repeat: Daily"},
-    {"text": "Choose Run Immediately", "detail": "Not Run After Confirmation. This is the one that matters."},
-    {"text": "Turn Notify When Run off", "detail": "Same screen, below the two choices"},
-    {"text": "Tap Next", "detail": "Top right"},
-    {"text": "Tap New Blank Automation", "detail": "Below the suggested shortcuts"},
-    {"text": "Long-press the canvas, tap Paste", "detail": "The Run Shortcut card is already on your clipboard"},
-    {"text": "Tap Done", "detail": "That is the whole thing"}
+  "cards": [
+    {"lines": ["Open Shortcuts", "Automation tab"]},
+    {"lines": ["Tap + top right", "Pick Time of Day"]},
+    {"lines": ["Set 2:00 AM", "Repeat Daily"]},
+    {"lines": ["Run Immediately", "Notify When Run off"], "note": "Not Run After Confirmation. This is the one that matters."},
+    {"lines": ["Tap Next", "New Blank Automation"]},
+    {"lines": ["Long-press, Paste", "Tap Done"], "note": "The Run Shortcut card is already on your clipboard."}
   ]
 }
