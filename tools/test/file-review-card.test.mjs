@@ -347,8 +347,20 @@ test('a reading card puts its name, its layouts and one menu on a single row', (
     .filter(i => i.closest('button').style.display !== 'none');
   assert.equal(copies.length, 1, 'one copy control on screen');
   assert.ok(!copies[0].closest('li'), 'and it is a button on the row, not a menu row');
-  assert.ok(card.querySelector('.ph-dots-three-vertical'), 'the overflow is plain vertical dots');
-  assert.ok(!card.querySelector('.ph-github-logo'), 'not a github logo, since it holds more than links');
+  // THE MENU IS A GITHUB MENU, and it wears the logo because every row in it
+  // goes to GitHub. That was nearly true already and the one exception was the
+  // Render row, which a card whose first layout icon IS the render has no
+  // business offering a second door onto. It sits beside the name rather than
+  // at the end of the row, by flex order, so the same element serves both
+  // surfaces.
+  assert.ok(card.querySelector('.ph-github-logo'), 'the menu is a github menu');
+  const menu = card.querySelector('details[x-ref="ghMenu"]');
+  assert.match(menu.className, /order-2/, 'and it sits beside the name');
+  const hosts = [...new Set(data('page').ghLinks.map(l => new URL(l.url).host))].sort();
+  assert.deepEqual(hosts, ['github.com', 'raw.githubusercontent.com'],
+    'every row is a GitHub destination: ' + JSON.stringify(data('page').ghLinks.map(l => l.label)));
+  assert.ok(!data('page').ghLinks.some(l => l.label === 'Render'),
+    'the render row is gone, the first layout icon being the same door');
 });
 
 // ── The comparison, as a control ────────────────────────────────────────────
