@@ -363,6 +363,37 @@ test('a reading card puts its name, its layouts and one menu on a single row', (
     'the render row is gone, the first layout icon being the same door');
 });
 
+// The row reads left to right as identity, then arrangement, then the one
+// utility: who and which copy on the left, what shape in the middle, take it
+// with you at the end. The middle group is centred by a grow spacer on each
+// side rather than pushed against whichever end is shorter, which is only
+// visible above about 500px and is the reason for the second spacer.
+test('a reading card orders its row identity, arrangement, utility', () => {
+  const card = window.document.getElementById('page');
+  const row = [...card.querySelectorAll('div')].find(e =>
+    /flex items-center gap-1$/.test(e.className || '') &&
+    e.querySelector('details[x-ref="ghMenu"]'));
+  assert.ok(row, 'the single control row');
+
+  const name = (el) => {
+    if (el.querySelector('.ph-github-logo')) return 'github';
+    if (el.querySelector('.ph-git-diff')) return 'compare';
+    if (el.querySelector('.ph-copy')) return 'copy';
+    if (el.querySelector('.ph-square')) return 'layouts';
+    if (el.querySelector('[x-text="namePart"]')) return 'name';
+    if (/\bgrow\b/.test(el.className || '')) return 'spacer';
+    return el.tagName.toLowerCase();
+  };
+  const seen = [...row.children]
+    .filter(el => el.style.display !== 'none')
+    .map(el => ({ n: name(el), o: Number((/\border-(\d+)\b/.exec(el.className || '') || [])[1]) }))
+    .sort((a, b) => a.o - b.o)
+    .map(e => e.n);
+  assert.deepEqual(seen,
+    ['name', 'github', 'compare', 'spacer', 'layouts', 'spacer', 'copy'],
+    'read order: ' + JSON.stringify(seen));
+});
+
 // ── The comparison, as a control ────────────────────────────────────────────
 //
 // A reading card carried a caption reading "against main" under its tabs:
