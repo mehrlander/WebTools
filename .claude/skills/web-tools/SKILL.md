@@ -109,9 +109,10 @@ Apply the two files as one set, substituting the current repo into the URL
 templates. `CONVENTIONS.md` is the general-behavior hub. `SURFACING.md` holds
 the **surfacing primitives** (universal, no setup) and the **surfacing course**
 (the guide-PR lifecycle, wrap-up, and handoff), which does nothing
-until the repo opens a PR. Pages render one way, the 🥏 toss, so there is no
-preview mechanism to configure. The one per-repo setting is per-session
-refreshes, normally none (`SURFACING.md` explains it). Where the current repo's
+until the repo opens a PR. Two per-repo settings carry defaults and rarely move:
+pages render one way, the 🥏 toss, so there is no preview mechanism to
+configure, and per-session refreshes are normally none (`SURFACING.md`
+states both). Where the current repo's
 own CLAUDE.md conflicts on a point, the current repo wins.
 
 ## Fallbacks

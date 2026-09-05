@@ -203,8 +203,8 @@ emit() {
   echo "wrap-up, and post-merge handoff). It is delivered when you create a pull"
   echo "request; read it sooner with /web-tools, or at docs/SURFACING.md."
   if [ "${1:-}" = "skip_head" ]; then
-    echo "ALSO NOT INCLUDED, to fit the channel: SURFACING.md's opening sections"
-    echo "(the render path, the per-repo setting). Every primitive is below."
+    echo "ALSO NOT INCLUDED, to fit the channel: SURFACING.md's opening (the two"
+    echo "per-repo settings and their defaults). Every primitive is below."
   fi
   echo
   cat "$DOCS/CONVENTIONS.md"

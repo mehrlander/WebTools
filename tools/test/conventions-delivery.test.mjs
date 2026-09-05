@@ -142,9 +142,12 @@ test('it carries every primitive and none of the course', () => {
   const rules = (section.match(/^\* \*\*/gm) || []).length;
   assert.equal((out.match(/^\* \*\*/gm) || []).length, rules,
     'every primitive in the document reaches the session');
-  for (const heading of ['### The guide PR', '### Wrap-up', '## Post-merge handoff']) {
-    assert.ok(!out.includes('\n' + heading), `the course stays out: ${heading}`);
-  }
+  // The course is excluded by its OWN BOUNDARY, not by three sampled headings.
+  // Sampling was the older shape and it coupled a delivery claim to the course's
+  // internal structure: paring that section on 2026-09-05 dropped two of the
+  // three subheadings and broke a test that had no opinion about them.
+  assert.ok(!out.includes('\n## The surfacing course'), 'the course stays out');
+  assert.ok(!out.includes('\n## Post-merge handoff'), 'and so does the handoff');
   assert.match(out, /NOT INCLUDED/, 'and the payload names what it withheld');
 });
 
@@ -226,9 +229,14 @@ test('the PR hook carries the course the injector left out', () => {
     .hookSpecificOutput.additionalContext;
   assert.match(ctx, /subscribe_pr_activity with owner=mehrlander, repo=web-tools, pullNumber=999/,
     'the subscribe hint is still the half that must not be lost');
-  for (const heading of ['### The guide PR', '### Wrap-up', '## Post-merge handoff']) {
-    assert.ok(ctx.includes(heading), `the course arrives here instead: ${heading}`);
-  }
+  // VERBATIM AND WHOLE, which is the real claim and is what three sampled
+  // headings could only approximate: a payload carrying the course's opening
+  // line and nothing after it passed the old form. The hook takes the document
+  // from the course heading to EOF, so that is exactly what is compared.
+  const doc = readFileSync(join(HOOKS, '..', 'web-tools', 'SURFACING.md'), 'utf8');
+  const course = ('## The surfacing course' + doc.split('## The surfacing course')[1]).trim();
+  assert.ok(ctx.includes(course),
+    'the whole course arrives, not a sample of its headings');
   assert.ok(!ctx.includes('## Surfacing primitives'),
     'and not the primitives, which session start already delivered');
 });
