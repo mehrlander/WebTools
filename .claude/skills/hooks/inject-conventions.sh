@@ -150,10 +150,12 @@ surfacing_head() {
 # when this first fired for real on 2026-08-27. What goes first is what a
 # session can most afford to lose.
 #
-# SURFACING.md's front matter is two short sections of pointers (the render
-# path, the one per-repo setting), about 1 KB, and both are restated where they
-# are used. The primitives are the rules themselves. So the head goes before
-# they do, and CONVENTIONS.md, the hub, goes last of all.
+# SURFACING.md's front matter is its opening: what the document is and where
+# its canonical copy lives, under 1 KB, and nothing in it is a rule (the two
+# per-repo settings lived there until 2026-09-05 and are CONVENTIONS.md's now,
+# under Scope and precedence, so they ride the rung that never drops). The
+# primitives are the rules themselves. So the head goes before they do, and
+# CONVENTIONS.md, the hub, goes last of all.
 # ── The recovery block, and why it is printed first ────────────────────────
 #
 # The budget below can be respected and the payload still lost. The ceiling is
@@ -199,12 +201,12 @@ emit() {
   echo "===== Portable working conventions, injected from the portable plugin ====="
   echo "Canonical source: mehrlander/web-tools docs/CONVENTIONS.md and docs/SURFACING.md."
   echo "This copy ships with the plugin and refreshes with 'claude plugin update'."
-  echo "NOT INCLUDED: SURFACING.md's \"The surfacing course\" (the guide-PR lifecycle,"
-  echo "wrap-up, and post-merge handoff). It is delivered when you create a pull"
+  echo "NOT INCLUDED: SURFACING.md's \"The surfacing course\" (the guide-PR lifecycle"
+  echo "and wrap-up). It is delivered when you create a pull"
   echo "request; read it sooner with /web-tools, or at docs/SURFACING.md."
   if [ "${1:-}" = "skip_head" ]; then
-    echo "ALSO NOT INCLUDED, to fit the channel: SURFACING.md's opening (the two"
-    echo "per-repo settings and their defaults). Every primitive is below."
+    echo "ALSO NOT INCLUDED, to fit the channel: SURFACING.md's opening (what the"
+    echo "document is and where it lives). Every primitive is below."
   fi
   echo
   cat "$DOCS/CONVENTIONS.md"
