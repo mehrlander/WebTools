@@ -24,7 +24,7 @@ files in the public repo `mehrlander/web-tools`, loaded together as one set:
 - `docs/SURFACING.md` — the **surfacing system**: the primitives (explicit-markdown
   links, reference-is-a-link, the per-file `[new]/[main]/[diff]` list, show-pixels,
   the render forms, branch anchor, the caption) and the surfacing course (guide PR
-  body as the durable account, wrap-up, post-merge handoff).
+  body as the durable account, wrap-up).
 
 This skill fetches both fresh so any session in any repo follows the same
 conventions without keeping a stale copy.

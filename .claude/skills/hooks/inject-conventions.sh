@@ -201,8 +201,8 @@ emit() {
   echo "===== Portable working conventions, injected from the portable plugin ====="
   echo "Canonical source: mehrlander/web-tools docs/CONVENTIONS.md and docs/SURFACING.md."
   echo "This copy ships with the plugin and refreshes with 'claude plugin update'."
-  echo "NOT INCLUDED: SURFACING.md's \"The surfacing course\" (the guide-PR lifecycle,"
-  echo "wrap-up, and post-merge handoff). It is delivered when you create a pull"
+  echo "NOT INCLUDED: SURFACING.md's \"The surfacing course\" (the guide-PR lifecycle"
+  echo "and wrap-up). It is delivered when you create a pull"
   echo "request; read it sooner with /web-tools, or at docs/SURFACING.md."
   if [ "${1:-}" = "skip_head" ]; then
     echo "ALSO NOT INCLUDED, to fit the channel: SURFACING.md's opening (what the"

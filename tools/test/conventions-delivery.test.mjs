@@ -147,7 +147,6 @@ test('it carries every primitive and none of the course', () => {
   // internal structure: paring that section on 2026-09-05 dropped two of the
   // three subheadings and broke a test that had no opinion about them.
   assert.ok(!out.includes('\n## The surfacing course'), 'the course stays out');
-  assert.ok(!out.includes('\n## Post-merge handoff'), 'and so does the handoff');
   assert.match(out, /NOT INCLUDED/, 'and the payload names what it withheld');
 });
 
