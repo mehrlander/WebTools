@@ -35,6 +35,7 @@
     "code-shape": "python3 scripts/code-shape.py lib",
     "test:pdf": "node tools/test/pdf-kit-browser.mjs && node tools/test/pdf-ink-alignment.mjs",
     "test:pdf-versions": "node tools/test/pdf-version-probe.mjs",
+    "test:pdf-flow-start": "node tools/test/pdf-flow-start.mjs",
     "test:word-select": "node tools/test/word-select-touch.mjs",
     "test:dictate-page": "node tools/test/dictate-page.mjs",
     "test:render-copy": "node tools/test/render-copy.mjs",
