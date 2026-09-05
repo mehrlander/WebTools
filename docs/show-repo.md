@@ -483,6 +483,34 @@ It opens on hover where the pointer can hover, and on focus for a keyboard
 reader. On a touch screen it never opens: the icon keeps its single meaning,
 which is a tap that jumps to GitHub.
 
+**One address, one destination**, since 2026-09-04. The mark was four
+attributes, `:href="hubUrl(p)" :data-peek="peek(p)" target="_blank"
+rel="noopener"`, and nothing held the first two to the same file: a site could
+open one path and preview another, silently, because both halves render fine
+when they disagree. The `x-blob` directive
+([`lib/alpine-bundle.js`](https://github.com/mehrlander/web-tools/blob/main/lib/alpine-bundle.js))
+takes the address once and derives the href from it through `SourcePeek.blobUrl`,
+the same builder the card's own head uses. The GLYPH stays at the call site,
+because it is not invariant: a github mark says "the file on GitHub" and a
+`ph-function` mark says "the builder that stamps this", which is a different
+claim about the same kind of link. Nineteen sites in the Map view are converted;
+`estate.js`, `stage.js`, `state-view.js` and `tools.js` still spell the pair by
+hand. [`tools/test/x-blob.test.mjs`](https://github.com/mehrlander/web-tools/blob/main/tools/test/x-blob.test.mjs)
+holds the directive and keeps the Map view's count from going back up.
+
+The card's head carries a mark of its own (2026-09-04), inline after the
+filename, and it is the same destination the trigger has: the card is enterable,
+so a reader who has moved onto it to read the excerpt has left a 16 px glyph
+behind, and going to GitHub meant travelling back to it. The URL is derived from
+the address the head displays rather than read off the trigger's `href`, so a
+card cannot name one commit and open another; a key that is not an address (the
+stage's pasted flavors) names no repo and gets no mark. It is one anchor, not a
+control: nothing at the call site changes, and the narrow rule above is
+unaltered. Whether it can be pressed at all is a claim a browser has to make,
+since mousedown focuses an anchor before the click resolves and the focus
+handler used to dismiss on that, so [`tools/test/peek-head-link.mjs`](https://github.com/mehrlander/web-tools/blob/main/tools/test/peek-head-link.mjs)
+(`npm run test:peek-link`) drives a real press.
+
 ## The estate: the all-repo view
 
 The estate (`lib/alpineComponents/estate.js`) is the central dashboard over the
@@ -1710,7 +1738,54 @@ authoritative carrier, since it is what sessions load and follow, and the
 manifest is its gated index (membership held two-way to the doc's bullet
 lead-ins by `tools/test/surfacing-manifest.test.mjs`; the card summaries are
 paraphrases and stay unchecked, which the Docs registry's claims table states).
-Surfacing decides what to hand over; Showing is what makes it openable.
+A card's TITLE opens the doc at the bullet it paraphrases (2026-09-04), docking
+the deck so the two sit side by side, scrolling smoothly to the bullet and
+tinting it yellow for four seconds. That treatment is
+[`lib/kits/land.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/land.js)'s
+rather than this tab's, and the kit is a SECOND implementation lifted rather
+than a first invented: `mehrlander/home`'s budget-drs submittal view has
+answered the same question for months over two subjects, a block of prose in an
+office document and a rectangle on a page of a PDF, and this tab arrived at a
+near-identical scroller walk independently. A landing sits 28% down rather than
+centred, since centred puts half the previous section above the heading that was
+asked for; only the nearest scrolling ancestor moves, since scrollIntoView walks
+every one and scrolled the card list out from under the reader. home's copy is
+still inline in its own page and is the adopter, not the source.
+
+**The estate had six landings and they disagreed on both axes.** A survey on
+2026-09-04 found them in five files across two repos, sitting at the centre, at
+28%, at a fixed 80px and at the page top, in three different yellows, two of
+them a hardcoded orange the theme does not carry. Nothing reported it, because
+each one looked right on its own surface. `kits/pdf.js` is the one now brought
+alongside: its find hit lands at the kit's height and its marks read
+`--color-warning` through the same `color-mix` the kit compiles to, held by
+[`tools/test/land-parity.test.mjs`](https://github.com/mehrlander/web-tools/blob/main/tools/test/land-parity.test.mjs)
+rather than by a call, since pdf.js has no kit dependencies and one consumer
+loads it straight from jsDelivr. Three of its lessons went the other way: a set
+has a **current** member and is drawn at two strengths; an overlay mark
+**multiplies** so it sits under the glyphs it covers; and a mark over a rendered
+page needs a stronger percentage than one behind DOM text, because multiplying
+against white washes the same number out. `state-view.js`'s `aim` takes the kit's
+scroll and keeps its own tint, since `item` already drives a reactive class
+there and two owners for one mark leaves one behind. Two stay put on purpose:
+`fab.js`'s highlight has no dwell and a clear button, which makes it a
+highlighter rather than a landing, and `annotate.js` lands on a foreign page
+where its 80px is a gap above a drawn rectangle rather than a fraction of a
+pane.
+No correspondence is invented for it: `surfacing.csv`'s `lead` already is that
+bullet's bold lead-in, held both ways by `surfacing-manifest.test.mjs`. What the
+manifest gate cannot say is whether the key survives RENDERING, and it barely
+does: the primitives are a loose list, so marked wraps each item in a `<p>` and
+the lead-in is `li > p > strong:first-child`. The tight `li > strong` matched
+none of the twenty-two. [`tools/test/surfacing-lead-anchor.test.mjs`](https://github.com/mehrlander/web-tools/blob/main/tools/test/surfacing-lead-anchor.test.mjs)
+renders the real doc and holds both facts.
+
+The header's deck door opens that carrier and its index as two slides of the
+house swipe deck rather than routing to the Files view (2026-09-04): docked, the
+prose sits beside the cards it is authoritative for, where the route change put
+them off screen. It wears `swipeDeck.entry`'s glyph and wording like every other
+door in the estate, ghost-toned because the cards are the subject. Surfacing
+decides what to hand over; Showing is what makes it openable.
 
 *Showing* (named Transport until 2026-08-04; renamed because
 [`SURFACING.md`](SURFACING.md) already uses "transport" for the stage link, and
@@ -1765,7 +1840,19 @@ cannot drift, paging through the selected folder's files as filtered, opened
 on the tapped row; its GitHub icon, inline with the badges and always visible,
 carries the source peek for the desktop glance, one details toggle on the
 reach strip shows every row's maintenance at once, and the files view stays
-the route for working on a file rather than reading it. The file list runs two
+the route for working on a file rather than reading it. The folder heading
+carries the deck's own door beside its GitHub mark (2026-09-04), since the row
+tap was a gesture nobody was told about. The **Tests** and **Harness** tabs
+answer the same tap the same way from that date: a row title opens the deck
+rather than routing to the Files view, and each carries the door. Tests pages
+the suite as its strip has cut it, counted in checks rather than files, since
+what a check protects is prose at the top of its own file; Harness pages the
+selected folder, the Docs tab's shape exactly. A `.csv` row opens as a TABLE rather
+than as raw text: the deck converts it to a markdown table so md-doc's wide-table
+scroller and prose styling apply, with each cell's markdown escaped, since a
+registry that describes markdown was otherwise rendering its own
+`[caption](url)` as a link. The peek keeps the raw excerpt, which is what a
+glance at the head of a file wants. The file list runs two
 columns above `xl` so a wide screen is used rather than left as a gutter. And the **shared claims**: statements that live in
 more than one place, each with its one authoritative carrier and its typed
 repetitions (copy, paraphrase, pointer, live read; a copy says who keeps it, by

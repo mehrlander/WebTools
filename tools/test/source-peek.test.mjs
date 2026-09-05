@@ -21,6 +21,11 @@ import { repoRoot } from './bootstrap.mjs';
 const window = {};
 const run = rel => new Function('window', readFileSync(path.join(repoRoot, rel), 'utf8'))(window);
 run('lib/kits/repo-address.js');   // the address grammar source-peek reads with
+// vanilla-bundle.js's escape, which the kit interpolates through and which the
+// boot chain puts in before this file. The whole bundle needs a document, so
+// the one function it uses stands in.
+window.esc = s => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 run('lib/kits/source-peek.js');
 const SP = window.SourcePeek;
 
@@ -175,4 +180,40 @@ test('seeding ignores a non-string, so a failed load cannot poison the cache', (
   SP.seed(addr, undefined);
   SP.seed(addr, null);
   assert.equal(SP.cached(addr), null);
+});
+
+test('the head links the file it is displaying, at the ref it names', () => {
+  // Derived from the ADDRESS, never read off the trigger's href: the head says
+  // repo@ref and the mark has to open that commit, or a card names one thing
+  // and opens another.
+  assert.equal(SP.blobUrl({ repo: 'me/web-tools', ref: 'main', path: 'docs/APP.md' }),
+               'https://github.com/me/web-tools/blob/main/docs/APP.md');
+  // A slashed branch keeps its slashes: GitHub reads /blob/claude/feat-x/…,
+  // not the %2F a whole-string encode would give.
+  assert.equal(SP.blobUrl({ repo: 'me/web-tools', ref: 'claude/feat-x', path: 'a b/c.md' }),
+               'https://github.com/me/web-tools/blob/claude/feat-x/a%20b/c.md');
+  // An address with no ref reads HEAD, the same fall-through to the default
+  // branch the contents API gives the fetch behind the card.
+  assert.equal(SP.blobUrl({ repo: 'me/web-tools', ref: '', path: 'README.md' }),
+               'https://github.com/me/web-tools/blob/HEAD/README.md');
+});
+
+test('a key that is not an address gets no mark rather than a guessed one', () => {
+  // The stage seeds peeks keyed by a pasted file's own name, which names no
+  // repo. A link built from that would point at a repository nobody named.
+  assert.equal(SP.blobUrl({ repo: '', ref: '', path: 'pasted.md' }), '');
+  assert.equal(SP.blobUrl(null), '');
+  const head = SP.frame('pasted.md', '<pre></pre>');
+  assert.ok(!head.includes('<a '), 'no anchor in a head with no repo behind it');
+  assert.match(head, /pasted\.md/, 'the key still reads as the path');
+});
+
+test('the head carries exactly one mark, pointing at the address it shows', () => {
+  const head = SP.frame('me/web-tools@main:docs/SURFACING.md', '<pre></pre>');
+  const anchors = head.match(/<a /g) || [];
+  assert.equal(anchors.length, 1, 'one door out of the card, not two');
+  assert.match(head, /href="https:\/\/github\.com\/me\/web-tools\/blob\/main\/docs\/SURFACING\.md"/);
+  assert.match(head, /target="_blank"/);
+  assert.match(head, /rel="noopener"/);
+  assert.match(head, /ph-github-logo/);
 });
