@@ -28,6 +28,13 @@
 // document. A window opened with an empty URL inherits the opener's origin, so
 // this file can script it and `window.opener` survives.
 //
+// THE STYLING IS PLAIN CSS, WHICH IS THE ONE PLACE THE HOUSE STACK DOES NOT
+// REACH. One markup string mounts into a blank popup document and into a shadow
+// root on somebody else's page, and Tailwind from a CDN reaches the first and
+// not the second. The composition rules still apply and are what the form below
+// is answering: labels and structure instead of prose, one size for content,
+// one accent that means "the selected target".
+//
 // WHAT THE TRUST MODEL IS. No token anywhere: the errand list and the scripts
 // are public, and a result leaves by clipboard or by a prefilled GitHub form
 // you submit while signed in. A bookmarklet's code runs inside the visited
@@ -62,13 +69,31 @@
   // has to place itself over a document that did not invite it.
   const SHELL = `
     <style>
-      .cx-panel{background:#fff;color:#0f172a;display:flex;flex-direction:column;gap:10px;
-        padding:16px;box-sizing:border-box;font:14px/1.45 -apple-system,system-ui,sans-serif}
-      .cx-panel h3{margin:0;font-size:16px}
-      .cx-panel p{margin:0;color:#475569;font-size:13px}
-      .cx-body,.cx-out{flex:1;min-height:0;overflow:auto;background:#f1f5f9;border:1px solid #cbd5e1;
-        border-radius:8px;padding:10px;color:#0f172a;margin:0}
-      .cx-code,.cx-out{font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+      .cx-panel{background:#fff;color:#0f172a;display:flex;flex-direction:column;gap:14px;
+        padding:16px;box-sizing:border-box;font:14px/1.5 -apple-system,system-ui,sans-serif}
+      .cx-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+        border-bottom:1px solid #e2e8f0;padding-bottom:10px}
+      .cx-head h3{margin:0;font-size:15px}
+      .cx-head .cx-here{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#15803d}
+      .cx-head .cx-state{margin-left:auto;font-size:12px;color:#64748b}
+      .cx-lab{font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.05em;
+        text-transform:uppercase;color:#64748b}
+      .cx-pick{display:flex;flex-direction:column;gap:6px;margin:4px 0 0}
+      .cx-opt{display:flex;gap:10px;align-items:flex-start;background:#f8fafc;cursor:pointer;
+        border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px}
+      .cx-opt.on{border-color:#15803d;background:#f0fdf4}
+      .cx-opt input{margin:3px 0 0;accent-color:#15803d;flex:none}
+      .cx-opt b{display:block;font-weight:600;text-wrap:balance}
+      .cx-opt .cx-note{display:block;color:#475569;margin-top:3px;text-wrap:pretty}
+      .cx-opt .cx-host{display:block;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#15803d;margin-top:2px}
+      .cx-meta{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 14px;margin:0}
+      .cx-meta dt{font:11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.05em;
+        text-transform:uppercase;color:#64748b}
+      .cx-meta dd{margin:0;word-break:break-word}
+      .cx-meta dd.cx-mono{font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+      .cx-body,.cx-out{flex:1;min-height:120px;overflow:auto;background:#f1f5f9;border:1px solid #cbd5e1;
+        border-radius:8px;padding:11px 12px;color:#0f172a;margin:0;
+        font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
         white-space:pre-wrap;word-break:break-word}
       .cx-out{resize:none;width:100%;box-sizing:border-box}
       .cx-row{display:flex;gap:8px;flex-wrap:wrap}
@@ -76,16 +101,14 @@
         font:600 15px system-ui;color:#fff;background:#0f172a;cursor:pointer}
       .cx-row button.cx-quiet{background:#e2e8f0;color:#0f172a}
       .cx-row button.cx-go{background:#15803d}
-      .cx-list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px;margin:0}
-      .cx-item{display:block;text-decoration:none;color:#0f172a;background:#f1f5f9;
-        border:1px solid #cbd5e1;border-radius:10px;padding:11px 13px}
-      .cx-item:hover{background:#e8eef6;border-color:#94a3b8}
-      .cx-item b{display:block;font-size:15px}
-      .cx-item .cx-host{display:block;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#15803d;margin-top:2px}
-      .cx-item .cx-note{display:block;font-size:12.5px;color:#475569;margin-top:5px}
+      .cx-fields{display:flex;flex-direction:column;gap:12px;margin:0}
+      .cx-msg{margin:0;color:#475569;text-wrap:pretty}
     </style>
     <div class="cx-panel">
-      <h3></h3><p></p><div class="cx-body"></div><div class="cx-row"></div>
+      <header class="cx-head"><h3>Courier</h3><span class="cx-here"></span><span class="cx-state"></span></header>
+      <div class="cx-fields"></div>
+      <div class="cx-body"></div>
+      <div class="cx-row"></div>
     </div>`;
 
   // Mounted on demand, not on entry: on our own pages the common path navigates
@@ -121,12 +144,21 @@
       root = el.shadowRoot;
       close = () => el.remove();
     }
+    $('.cx-here').textContent = HOST;
   };
 
   const $ = (sel) => root.querySelector(sel);
   const esc = (t) => String(t == null ? '' : t)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const say = (title, note) => { $('h3').textContent = title; $('p').textContent = note || ''; };
+  const state = (t) => { $('.cx-state').textContent = t || ''; };
+  const button = (label, cls, fn) => {
+    const b = (root.ownerDocument || root).createElement('button');
+    b.textContent = label;
+    if (cls) b.className = cls;
+    b.onclick = fn;
+    $('.cx-row').appendChild(b);
+    return b;
+  };
   // A script's leading comment banner is documentation, not logic, so the panel
   // drops it and opens on the first line that runs.
   //
@@ -144,71 +176,108 @@
     const rest = lines.slice(i).join('\n');
     return i && rest.trim() ? rest : t;
   };
-  const button = (label, cls, fn) => {
-    const b = (root.ownerDocument || root).createElement('button');
-    b.textContent = label;
-    if (cls) b.className = cls;
-    b.onclick = fn;
-    $('.cx-row').appendChild(b);
-    return b;
-  };
-  // A dead end is the failure mode that reads as a broken bookmark, so `stop`
-  // offers the way out rather than only naming it: every open errand as a link
-  // to the page it runs on.
-  const stop = (title, note, errands) => {
+
+  // The errand record's own fields, shown as a form rather than described in a
+  // sentence: where it runs, what it runs, where the answer goes, who is
+  // waiting. Adding a field to errands.json means adding a row here.
+  const FIELDS = [
+    ['Page', e => e.url, 1],
+    ['Script', e => e.script, 1],
+    ['Result', e => e.result && (e.result.repo + ' · ' + e.result.path), 1],
+    ['For', e => e.for, 0],
+    ['Opened', e => e.opened, 1],
+  ];
+
+  // ---- one form, two verbs -------------------------------------------------
+  //
+  // The picker is drawn even for a single errand. That is the point of it: the
+  // shape of the thing is "one of the open errands", and a panel that hid the
+  // choice when there was one left the reader guessing whether there could be
+  // more. Errands here run; errands elsewhere open.
+  const form = (errands, verb, onPick) => {
     mount();
-    say(title, note);
-    const body = $('.cx-body');
-    if (errands && errands.length) {
-      body.className = 'cx-list';
-      body.innerHTML = errands.map(e =>
-        `<a class="cx-item" href="${esc(e.url)}" target="_blank" rel="noopener">`
-        + `<b>${esc(e.title)}</b><span class="cx-host">${esc(e.host)}</span>`
-        + (e.note ? `<span class="cx-note">${esc(e.note)}</span>` : '') + `</a>`).join('');
-    } else {
-      body.remove();
-    }
+    state(errands.length + (errands.length === 1 ? ' errand' : ' errands')
+      + (verb === 'run' ? ' on this page' : ' open elsewhere'));
+
+    const fields = $('.cx-fields');
+    fields.innerHTML =
+      `<div><div class="cx-lab">${verb === 'run' ? 'Errand' : 'Where to go'}</div>
+         <div class="cx-pick">` + errands.map((e, i) =>
+        `<label class="cx-opt${i ? '' : ' on'}">
+           <input type="radio" name="cx-e" value="${i}"${i ? '' : ' checked'}>
+           <span><b>${esc(e.title)}</b>${verb === 'go' ? `<span class="cx-host">${esc(e.host)}</span>` : ''}${e.note ? `<span class="cx-note">${esc(e.note)}</span>` : ''}</span>
+         </label>`).join('') + `</div></div>
+       <dl class="cx-meta"></dl>`;
+
+    const meta = $('.cx-meta');
+    const draw = (e) => {
+      meta.innerHTML = FIELDS
+        .map(([label, read, mono]) => [label, read(e), mono])
+        .filter(([, v]) => v)
+        .map(([label, v, mono]) =>
+          `<dt>${esc(label)}</dt><dd${mono ? ' class="cx-mono"' : ''}>${esc(v)}</dd>`).join('');
+    };
+    draw(errands[0]);
+
+    fields.querySelectorAll('.cx-opt').forEach((opt, i) => {
+      opt.querySelector('input').onchange = () => {
+        fields.querySelectorAll('.cx-opt').forEach((o, j) => o.classList.toggle('on', i === j));
+        draw(errands[i]);
+        onPick(errands[i], i);
+      };
+    });
+    return errands[0];
+  };
+
+  const stop = (note) => {
+    mount();
+    state('');
+    $('.cx-fields').innerHTML = `<p class="cx-msg">${esc(note)}</p>`;
+    $('.cx-body').remove();
     button('Close', 'cx-quiet', () => close());
   };
 
-  // ---- the errand ----------------------------------------------------------
+  // ---- routing -------------------------------------------------------------
   let list;
   try { list = JSON.parse(await api('courier/errands.json')); }
-  catch (e) { return stop('Courier', 'Could not read the errand list. ' + e.message); }
+  catch (e) { return stop('Could not read the errand list. ' + e.message); }
 
-  // Routing is by exact hostname, no normalisation, so www.example.com and
-  // example.com are different errands.
+  // Exact hostname, no normalisation, so www.example.com and example.com are
+  // different errands.
   const mine = (list.errands || []).filter(e => e.host === HOST && e.status === 'open');
-  if (!mine.length) {
-    const elsewhere = (list.errands || []).filter(e => e.status === 'open' && e.url);
-    // One open errand and we are on our own page: go there. More than one and
-    // there is nothing to go to, so the list is the answer after all.
-    if (home && elsewhere.length === 1) { location.href = elsewhere[0].url; return; }
-    return stop('Nothing open for ' + HOST,
-      elsewhere.length
-        ? (elsewhere.length === 1 ? 'One errand is open. ' : elsewhere.length + ' errands are open. ')
-          + 'Open one below, then tap the courier again on that page. Links open in a new tab.'
-        : 'No errand is open on any host.',
-      elsewhere);
-  }
-  const errand = mine[0];
+  const elsewhere = (list.errands || []).filter(e => e.status === 'open' && e.url);
 
-  let src;
-  try { src = await api(errand.script); }
-  catch (e) { return stop(errand.title, 'Could not read the script. ' + e.message); }
+  if (!mine.length) {
+    // One open errand and we are on our own page: go there. More than one and
+    // there is nothing single to go to, so the picker is the answer after all.
+    if (home && elsewhere.length === 1) { location.href = elsewhere[0].url; return; }
+    if (!elsewhere.length) return stop('No errand is open on any host.');
+    let pick = form(elsewhere, 'go', (e) => { pick = e; });
+    $('.cx-body').remove();
+    button('Close', 'cx-quiet', () => close());
+    button('Open that page', 'cx-go', () => (popup || window).open(pick.url, '_blank'));
+    return;
+  }
 
   // Show the bytes, not a description of them: the Proposals rule, applied to
   // code rather than to a diff. The script is on screen in full before the
   // button that runs it exists.
-  mount();
-  say(errand.title, errand.note || '');
-  const body = $('.cx-body');
-  body.className = 'cx-body cx-code';
-  body.textContent = trimBanner(src);
+  let errand = mine[0], src = null;
+  const body = () => $('.cx-body') || $('.cx-out');
+  const load = async (e) => {
+    errand = e; src = null;
+    body().textContent = 'Reading ' + e.script + '…';
+    try { src = await api(e.script); body().textContent = trimBanner(src); }
+    catch (err) { body().textContent = 'Could not read the script. ' + err.message; }
+  };
+  form(mine, 'run', load);
+  await load(errand);
+
   button('Cancel', 'cx-quiet', () => close());
   button('Run this script', 0, async () => {
+    if (!src) return;
     $('.cx-row').innerHTML = '';
-    say(errand.title + ' — ran', 'Working…');
+    state('running');
 
     // In the OPENER's context, which is where the page is.
     let out;
@@ -220,16 +289,14 @@
     box.className = 'cx-out';
     box.value = out;
     $('.cx-body').replaceWith(box);
-    say(errand.title + ' — ran',
-      out.length + ' characters. Commit opens a prefilled GitHub form for '
-      + errand.result.repo + ' at ' + errand.result.path + '; you tap Commit changes there.');
+    $('.cx-pick').parentElement.remove();
+    state(out.length.toLocaleString() + ' characters');
 
     button('Copy', 'cx-quiet', () => {
       box.select();
-      const done = () => say(errand.title + ' — copied', out.length + ' characters on the clipboard.');
       const nav = (popup && popup.navigator) || navigator;
-      if (nav.clipboard) nav.clipboard.writeText(out).then(done, () => say(errand.title, 'Select the text and copy it by hand.'));
-      else say(errand.title, 'Select the text and copy it by hand.');
+      if (nav.clipboard) nav.clipboard.writeText(out).then(() => state('copied'), () => state('copy by hand'));
+      else state('copy by hand');
     });
     // GitHub's new-file form takes the content prefilled, on your signed-in
     // session, so nothing here needs a token. The cap is where the prefill stops
@@ -238,10 +305,7 @@
       const url = 'https://github.com/' + errand.result.repo + '/new/' + errand.result.branch
         + '?filename=' + encodeURIComponent(errand.result.path)
         + '&value=' + encodeURIComponent(out);
-      if (url.length > 7500) {
-        return say(errand.title, 'Too long for the GitHub form (' + url.length
-          + ' characters encoded). Use Copy and paste it back instead.');
-      }
+      if (url.length > 7500) return state('too long for the form, ' + url.length + ' encoded; use Copy');
       (popup || window).open(url, '_blank');
     });
     button('Close', 'cx-quiet', () => close());

@@ -105,10 +105,10 @@ bookmarklet must not do. So the tab is only ever taken on pages that are ours.
 
 ## Anywhere else, every page is the directory
 
-A host with no open errand does not dead-end. The panel lists **every** open
-errand as a link to the page it runs on, with its host and its note. So the
-courier answers "what is waiting, and where do I go" from anywhere, and there is
-no separate helper page to remember to visit.
+A host with no open errand does not dead-end. The panel becomes the same form
+over **every** open errand, with each one's host beside its title, and the verb
+becomes Open that page. So the courier answers "what is waiting, and where do I
+go" from anywhere, and there is no separate helper page to remember to visit.
 
 The one thing a page on the Web Tools origin could add is **results already
 landed**, since it holds the token that reads the private results folder and the
@@ -136,6 +136,12 @@ Content-Security-Policy would refuse the loader would have refused the errand
 too.
 
 ## An errand
+
+**The panel is a form over this record, and shows all of it**: a radio per open
+errand, then `url`, `script`, `result`, `for` and `opened` as labelled rows for
+whichever is selected. The picker is drawn for a single errand too, because
+hiding the choice when there is one leaves a reader unable to tell whether there
+could be more. Adding a field here means adding a row to `FIELDS` in `run.js`.
 
 ```json
 {
