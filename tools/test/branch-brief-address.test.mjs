@@ -133,7 +133,16 @@ test('&file= opens the deck on that file, and asks for the compare itself', asyn
   assert.deepEqual(calls.compare, ['me/tools@claude/thing'],
     'a file address reads the diff even though nothing else on the page asked');
   assert.equal(opened.length, 1);
-  assert.equal(opened[0].start, 1, 'the deck opens on the named file, not the first');
+  // AN ADDRESS OUTRANKS A COLLAPSE. Since 2026-09-05 the list lifts pages and
+  // docs into their own group and starts the rest closed, and this named a file
+  // in a closed one: `deckFiles` reads only open groups, so the check that used
+  // to sit here turned a good address into silence, the page opening nothing
+  // and saying nothing. The group opens now, and stays open behind the deck.
+  assert.ok(data.deckFiles.some(f => f.path === 'lib/kits/file-deck.js'),
+    'the group holding it was opened');
+  // The index is wherever the file lands once that group joins, which the lift
+  // moved. The path is the assertion; the number is read off it.
+  assert.ok(opened[0].start > 0, 'the deck opens on the named file, not the first');
   assert.equal(opened[0].files[opened[0].start].path, 'lib/kits/file-deck.js');
   assert.equal(opened[0].repo, 'me/tools');
   assert.equal(opened[0].ref, 'claude/thing');
