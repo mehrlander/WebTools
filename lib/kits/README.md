@@ -1243,8 +1243,9 @@ that records none arrives as one tall page per section.
 fixture XML with a control at every level and a bullet in each font.
 `npm run test:viewer-docx` drives the real viewer in a browser: the fixture
 document opens on the page render, a cell-level label is drawn, the bullet is a
-list marker, a `javascript:` link has lost its `href`, and `__doc.locate` lands
-on a phrase. `--docx <file> --shot out.png` renders a real file and writes the
+list marker, a `javascript:` link has lost its `href`, `__doc.locate` lands on
+a phrase, and a pinch or a ctrl-wheel zooms the page about the fingers with the
+pdf column's pill as the way back to fit width. `--docx <file> --shot out.png` renders a real file and writes the
 pane, which is how the two OFM forms in the PR were pictured.
 
 ## Salvage status

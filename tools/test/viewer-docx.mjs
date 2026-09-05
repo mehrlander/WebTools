@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // The viewer's page render for a Word document, end to end in a browser.
 //
-//   node tools/test/viewer-docx.mjs [--shot out.png] [--docx path/to/file.docx]
+//   node tools/test/viewer-docx.mjs [--shot out.png] [--docx path/to/file.docx] [--width px] [--pinch factor]
 //
 // The node suite holds kits/docx.js's preparation against fixture XML. What
 // it cannot hold is the claim the whole thing exists for: that a .docx handed
 // to the viewer OPENS on the page render, that the painter draws it as pages
 // with the header and footer on them, and that a content control inside a
 // table cell, which the painter alone drops, reaches the page because the kit
-// unwrapped it first. Five claims:
+// unwrapped it first. Six claims:
 //
 //   1. a .docx opens in the page mode over the host's blanket defaultMode,
 //      and the reading view is still in the strip
@@ -19,6 +19,8 @@
 //   4. a Symbol-font bullet reaches the page as a Unicode dot
 //   5. the header line states pages and bytes, and `__doc.locate` lands on a
 //      cited phrase
+//   6. a pinch and a ctrl-wheel zoom the page about the fingers, the pill
+//      shows the level off fit width, and tapping it returns to fit
 //
 // The fixture is built here with jszip rather than committed, so no binary
 // enters the tree and the document's internals are exactly what the
@@ -282,9 +284,60 @@ try {
        hit.landed?.startsWith('What is the problem'), JSON.stringify(hit));
     ok('and reported the page it is on', hit.at?.page === 1, JSON.stringify(hit.at));
     ok('the survey counts the body\'s three controls (the header\'s is not the body\'s)', hit.controls === 3, JSON.stringify(hit));
+
+    // Claim 6: the reader can zoom. A pinch is two touch pointers moving
+    // apart; a ctrl-wheel is the desktop chord and the trackpad pinch. Both
+    // are synthesized here, since Playwright drives one pointer at a time,
+    // and read back through the CSS zoom the pane applies and the pill it
+    // shows off fit width.
+    console.log('zoom:');
+    const zoomed = await page.evaluate(async () => {
+      const root = document.querySelector('[data-page="root"]');
+      const pane = root.querySelector('[data-page="stage"] > div');
+      const body = pane.children[1];
+      const pill = root.querySelector('.viewer-page-zoom');
+      const level = () => root.querySelector('[data-page="zoomlevel"]')?.textContent;
+      const before = { zoom: body.style.zoom, pill: pill.classList.contains('hidden') };
+      const r = pane.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + 200;
+      const touch = (type, id, x, y) => pane.dispatchEvent(new PointerEvent(type, {
+        pointerId: id, pointerType: 'touch', clientX: x, clientY: y, bubbles: true }));
+      touch('pointerdown', 1, cx - 40, cy); touch('pointerdown', 2, cx + 40, cy);
+      touch('pointermove', 1, cx - 80, cy); touch('pointermove', 2, cx + 80, cy);
+      touch('pointerup', 1, cx - 80, cy); touch('pointerup', 2, cx + 80, cy);
+      const pinched = { zoom: body.style.zoom, pill: pill.classList.contains('hidden'), level: level(),
+                        scrollWidth: pane.scrollWidth, clientWidth: pane.clientWidth };
+      pane.dispatchEvent(new WheelEvent('wheel', { deltaY: 400, deltaMode: 0, ctrlKey: true, clientX: cx, clientY: cy, bubbles: true, cancelable: true }));
+      const wheeled = { zoom: body.style.zoom, level: level() };
+      root.querySelector('[data-page="zoomreset"]').click();
+      const reset = { zoom: body.style.zoom, pill: pill.classList.contains('hidden'), api: root.closest('#dv-viewer') ? null : null };
+      const api = [...document.querySelectorAll('*')].map(e => e.__doc).find(Boolean);
+      return { before, pinched, wheeled, reset, apiZoom: api?.zoom?.() };
+    });
+    const num = (v) => Number(v) || 0;
+    ok('the pill is hidden at fit width', zoomed.before.pill === true, JSON.stringify(zoomed.before));
+    ok('a pinch doubles the scale, about', Math.abs(num(zoomed.pinched.zoom) / num(zoomed.before.zoom) - 2) < 0.05,
+       JSON.stringify({ before: zoomed.before.zoom, after: zoomed.pinched.zoom }));
+    ok('and shows the pill with the level', zoomed.pinched.pill === false && zoomed.pinched.level === '200%', JSON.stringify(zoomed.pinched));
+    ok('the zoomed page scrolls sideways rather than being clipped', zoomed.pinched.scrollWidth > zoomed.pinched.clientWidth,
+       JSON.stringify(zoomed.pinched));
+    ok('a ctrl-wheel down zooms out', num(zoomed.wheeled.zoom) < num(zoomed.pinched.zoom), JSON.stringify(zoomed.wheeled));
+    ok('tapping the pill returns to fit width and hides it',
+       Math.abs(num(zoomed.reset.zoom) - num(zoomed.before.zoom)) < 0.001 && zoomed.reset.pill === true, JSON.stringify(zoomed.reset));
+    ok('__doc reports the zoom', zoomed.apiZoom === 1, JSON.stringify(zoomed.apiZoom));
   }
 
   if (shot) {
+    // --pinch <factor>: zoom the page about its centre before the shot, so a
+    // picture can show the pill and the sideways scroll a zoomed page grows.
+    const pinch = Number(opt('--pinch') || 0);
+    if (pinch > 0) {
+      await page.evaluate((f) => {
+        const api = [...document.querySelectorAll('*')].map(e => e.__doc).find(Boolean);
+        api?.setZoom?.(f);
+      }, pinch);
+      await page.waitForTimeout(300);
+    }
     const pane = await page.$('[data-page="root"]');
     if (pane) await pane.screenshot({ path: shot });
     else await page.screenshot({ path: shot });
