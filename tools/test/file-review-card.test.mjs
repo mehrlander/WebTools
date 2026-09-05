@@ -47,6 +47,12 @@ const { window, problems } = makeWindow({
          path: 'lib/c.js', status: 'modified', patch: '@@ -1 +1 @@', bare: true })"></div>
     <div id="blob" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
          path: 'data/x.dat', status: 'modified' })"></div>
+    <div id="page" x-data="fileReview({ repo: 'mehrlander/web-tools', ref: 'feat/x', base: 'main',
+         path: 'pages/a.html', status: 'modified', patch: '@@ -1 +1 @@', read: true, open: true })"></div>
+    <div id="pageList" x-data="fileReview({ repo: 'mehrlander/web-tools', ref: 'feat/x', base: 'main',
+         path: 'pages/a.html', status: 'modified', open: true })"></div>
+    <div id="pageElsewhere" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'pages/a.html', status: 'modified', patch: '@@ -1 +1 @@', read: true, open: true })"></div>
     <div id="srcRead" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'mb-sha',
          baseName: 'main', path: 'lib/d.js', status: 'modified', patch: '@@ -1 +1 @@',
          read: true, bare: true, open: true })"></div>
@@ -63,7 +69,7 @@ window.GH = class {
     // whose content depends on the ref, which is what gives the compare cases
     // below something to actually differ about.
     return { text: /x\.dat$/.test(p) ? 'ab\u0000cd'
-                 : /d\.js$/.test(p) ? 'body at ' + this.ref : 'x', size: 8 };
+                 : /d\.js$/.test(p) || /a\.html$/.test(p) ? 'body at ' + this.ref : 'x', size: 8 };
   }
   async bytes(p) { fetched.push(this.ref + ':bytes:' + p);
                    return { bytes: new Uint8Array([1, 2, 3]), size: 3 }; }
@@ -337,6 +343,52 @@ const kindOfPath = async (path) => {
   await tick(2);
   return Alpine.$data(el).kind;
 };
+
+// ── An html file, shown as the page ─────────────────────────────────────────
+//
+// The pane is an iframe of the shared toss at this ref, so a page previewed in
+// a card and a page opened from a caption link are the same rendering. Three
+// things are checkable without a browser that can actually paint it, and all
+// three were wrong in a draft of this: which tab a surface lands on, whether
+// the card still fetches the bytes, and whether the tab appears at all where
+// the renderer cannot reach the repo.
+test('a reading surface opens an html file on the page; a list opens it on the diff', async () => {
+  const reading = data('page');
+  await tick(3);
+  assert.equal(reading.shownPane, 'render');
+  assert.equal(reading.tab, 'render', 'the deck and the reviewable section want the page');
+  assert.match(reading.tossUrl, /toss-render\.html#gh=mehrlander\/web-tools@feat\/x:pages\/a\.html$/,
+    'and the frame is the same address a caption link carries');
+  const list = data('pageList');
+  await tick(3);
+  assert.equal(list.shownPane, 'render', 'the tab is offered either way');
+  assert.equal(list.tab, 'diff', 'but a changed-file list is asking how it changed');
+  assert.ok(list.panes.some(p => p.id === 'render'), 'and the page is one tap away');
+});
+
+// The trap: `load()` reads "has a kind" as "is not text" and takes the bytes
+// path. Adding html to KIND without adding it to TEXTUAL would leave every
+// page card with empty Diff, New and Base behind a Render tab that worked.
+test('an html card still fetches both sides as text, so its diff survives', async () => {
+  const d = data('page');
+  await tick(3);
+  assert.equal(typeof d.newText, 'string', 'the new side is text, not bytes');
+  assert.equal(typeof d.baseText, 'string');
+  assert.ok(fetched.some(f => f.endsWith(':pages/a.html')), 'and it went down the text path');
+  assert.ok(!fetched.some(f => f.includes('bytes:pages/a.html')), 'not the bytes one');
+  assert.equal(d.copyable, d.newText, 'so the copy button takes the file behind the page');
+});
+
+// tossUrl is the allowlist: the renderer fetches same-origin, so it answers for
+// mehrlander repos and nothing else. A Render tab over a frame that could load
+// nothing would put the source tabs one tap further away for no gain.
+test('no render tab where the renderer cannot reach the repo', async () => {
+  const d = data('pageElsewhere');
+  await tick(3);
+  assert.equal(d.tossUrl, '');
+  assert.equal(d.shownPane, '', 'so the card is plain source again');
+  assert.ok(!d.panes.some(p => p.id === 'render'));
+});
 
 test('the two classifiers agree about what markdown is', async () => {
   window.document.body.insertAdjacentHTML('beforeend', '<div id="m2"></div>');
