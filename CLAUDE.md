@@ -44,29 +44,9 @@ Any turn that modifies `lib/gh-api.js` must end with the jsDelivr purge link so 
 
 The `gh.load` chain it replaces is the repo's default, not a legacy path: 36 page files use it, and [`docs/loader.md`](docs/loader.md) is the only statement of the contract a file must honor to be loadable that way, plus the timing invariants the boot sequence depends on. Read it before adding a file to `lib/` or changing how a page boots. Which folder the file belongs in at all is the prior question, answered once in [`docs/code-layers.md`](docs/code-layers.md) and measured by `npm run code-scan`. It is also the argument that load and build are two readings of one set of rules, which is why the pre-build works at all.
 
-Every **deterministic** derived artifact is owned by one commit-time hook, [`.githooks/pre-commit`](.githooks/pre-commit). Before a `git commit` it regenerates and stages, in the same commit, whatever the pending changes touch:
+Every **deterministic** derived artifact is owned by one commit-time hook, [`.githooks/pre-commit`](.githooks/pre-commit). Before a `git commit` it regenerates and stages, in the same commit, whatever the pending changes touch. [`tools/README.md`](tools/README.md#the-refresh-model) lists the legs, the order they run in, and why that order matters.
 
-- `lib/` changed → `npm run build:lib` → `dist/web-tools.js`; `lib/` or `app/index.html` → `npm run build:app` → `dist/app.js`
-- `pages/**/*.html` changed → `npm run pages-index` → `pages/README.md` + `pages/index.html`
-- skills, `lib/`, `pages/`, or `docs/` changed → `npm run docs-reach` → the `reach` and `words` fields in `docs/docs.csv`
-- `docs/docs.csv` changed → `npm run docs-readme` → `docs/README.md`, then `npm run docs-reach` again (leg 3c)
-- `docs/SNAGS.md` changed → `npm run snags-index` → the index block at its top
-- `tracker/tasks/` changed → `npm run tracker-board` → `tracker/board.md` + `tracker/board.csv`
-
-`reach` and `words` are the odd ones: derived fields in an otherwise authored
-file, so `docs/docs.csv` is hand-edited everywhere except those two keys.
-`reach` says who can get to a doc and moves when a skill or page names a file,
-an edit nowhere near the registry; `words` says how much of the folder it is.
-The two disagree, which is why the Docs tab shows both: the orphans are the
-larger count and the smaller mass. `tools/test/docs-registry.test.mjs` holds
-both to the derivation and names the restamp command when they part.
-
-Leg 3c exists because 3a and 3b are a cycle: `docs/README.md` is generated *from*
-the registry and is also a row *in* it. One more stamp settles it. The stamp
-itself runs to a fixpoint for the same reason one level down, and asserts
-convergence rather than assuming it.
-
-Don't hand-edit any of those five files; edit the source and let the hook refresh them. Thumbnails (`pages/thumbs/*.png`) are the deliberate exception: not byte-deterministic, so the hook only *warns* when a page changes without its thumb; the actual refresh happens once per session at wrap-up (see "Per-session refresh" above).
+Don't hand-edit a file the hook writes; edit the source and let the hook refresh it. Thumbnails (`pages/thumbs/*.png`) are the deliberate exception: not byte-deterministic, so the hook only *warns* when a page changes without its thumb; the actual refresh happens once per session at wrap-up (see "Per-session refresh" above).
 
 **It is a git hook, not a Claude Code hook, deliberately:** a `PreToolUse` hook is read only when the session's project root IS this repo, so a multi-repo session ran it never and said nothing. [`.claude/hooks/session-githooks.sh`](.claude/hooks/session-githooks.sh) sets `core.hooksPath`; `--no-verify` bypasses. Why, and what it does not generalize to: [extending.md](docs/environment/extending.md).
 
