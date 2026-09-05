@@ -37,6 +37,24 @@ WHAT IT CANNOT DO, and says so rather than implying otherwise:
   * It reports every page a shared lib file reaches and does not choose among
     them, since which one is worth looking at is about the change, not the
     graph.
+
+ANOTHER REPO'S PAGES. Run from a checkout other than web-tools (or pass
+--root) and the picker reads that repo's `.web-tools.json` instead of this
+repo's page graph. A repo whose pages are framed by one app declares it:
+
+    "showing": {"hosted": false,
+                "app": "projects/budget-drs/app/view/app.html",
+                "app_dir": "projects/budget-drs/app/",
+                "views": {"submittal": "projects/budget-drs/submittal/",
+                          "cem": "projects/budget-drs/cem/"}}
+
+and a change under a view's prefix, or under `app_dir` (the app's own files;
+the folder of `app` when omitted), resolves to
+the toss of the APP carrying that view, never the framed page on its own. That
+was the largest single cause in the 2026-09-05 read of the session store: of
+the render-link corrections that named a cause, "wrong route" (a standalone
+page where the app was wanted, `#gz=` where `#gh=` was needed) was 30 of 47,
+and the rule lived in prose that three files repeated and nothing executed.
 """
 
 import argparse
@@ -78,7 +96,7 @@ class GitFailed(RuntimeError):
         super().__init__(" ".join(args) + ": " + (err or "exited non-zero"))
 
 
-def sh(*args, cwd=ROOT, check=False):
+def sh(*args, cwd=None, check=False):
     """stdout, stripped. `check=True` raises instead of letting a failed command
     read as an empty result.
 
@@ -95,7 +113,7 @@ def sh(*args, cwd=ROOT, check=False):
     `check=True`. The incidental ones do not: `git rev-parse origin/<branch>`
     on an unpushed branch SHOULD read as empty, which is how `ref_facts` knows
     it is unpushed."""
-    r = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
+    r = subprocess.run(args, cwd=cwd or ROOT, capture_output=True, text=True)
     if check and r.returncode != 0:
         raise GitFailed(args, r.stderr.strip())
     return r.stdout.strip()
@@ -107,16 +125,38 @@ def repo_slug():
     return f"{m.group(1)}/{m.group(2)}" if m else "owner/repo"
 
 
+def manifest_showing():
+    """The `showing` block of the root's `.web-tools.json`, or {}."""
+    try:
+        return json.loads((ROOT / ".web-tools.json").read_text()).get("showing", {}) or {}
+    except Exception:
+        return {}
+
+
+def frame():
+    """The app that frames this repo's pages, and which prefixes it frames as
+    which view, from the manifest. Declared rather than derived because the
+    app's own view table is JavaScript, and a view's folder is not its key
+    (budget-drs: 4 of 30 folders match a key)."""
+    m = manifest_showing()
+    app = m.get("app")
+    if not app:
+        return None
+    views = {}
+    for key, prefixes in (m.get("views") or {}).items():
+        views[key] = [prefixes] if isinstance(prefixes, str) else list(prefixes)
+    app_dir = m.get("app_dir") or (app.rsplit("/", 1)[0] + "/" if "/" in app else "")
+    if app_dir and not app_dir.endswith("/"):
+        app_dir += "/"
+    return {"app": app, "dir": app_dir, "views": views}
+
+
 def hosted_ok():
     """Whether this repo serves its pages. A private repo has no Pages site, so
     every hosted form is off the table there and only the toss reaches anything.
     Declared rather than probed: the answer cannot be had offline, and a wrong
     guess produces a link that 404s for the one reader it was written for."""
-    try:
-        m = json.loads((ROOT / ".web-tools.json").read_text())
-        return bool(m.get("showing", {}).get("hosted", True))
-    except Exception:
-        return True
+    return bool(manifest_showing().get("hosted", True))
 
 
 # ---- what changed --------------------------------------------------------
@@ -275,6 +315,10 @@ def pick(paths, base, ref, use_git=True, diff=None):
     if not facts["pushed"]:
         warn.append("HEAD is not pushed: every link below names a commit the renderer cannot fetch.")
 
+    fr = frame()
+    if fr:
+        return pick_framed(paths, fr, base, sha, slug, hosted, warn, use_git)
+
     # The renderer previews by nesting, and it has to be asked first: a change
     # to toss-render.html is also a shell change, and the shell rule would send
     # the reader to the deployed renderer to look at itself.
@@ -345,6 +389,64 @@ def pick(paths, base, ref, use_git=True, diff=None):
     return decision("none-needed", [], sha, slug, hosted, why, warn, facts)
 
 
+def pick_framed(paths, fr, base, sha, slug, hosted, warn, use_git):
+    """The manifest-declared case: one app frames the repo's pages.
+
+    Three rungs, in order. A path under a declared view's prefix is that view,
+    opened in the app. A path under the app's own folder is the app, bare,
+    since which view it draws is not knowable from the path. Any other HTML
+    file is tossed on its own and SAID to be unframed, because "not declared"
+    and "not framed" are different facts and the manifest only knows the
+    first."""
+    why, subjects, seen, loose = [], [], set(), []
+    for p in paths:
+        key = next((k for k, pre in fr["views"].items() if any(p.startswith(x) for x in pre)), None)
+        if key:
+            sub = (fr["app"], key)
+        elif fr["dir"] and p.startswith(fr["dir"]):
+            sub = (fr["app"], None)
+        elif p.endswith(".html"):
+            loose.append(p)
+            continue
+        else:
+            continue
+        if sub not in seen:
+            seen.add(sub)
+            subjects.append(sub)
+    if subjects:
+        # A view beats the bare app when both are present: the bare row would
+        # be a second link to the same page, one tap short of the change.
+        keyed = [s for s in subjects if s[1]]
+        subjects = keyed or subjects
+        why.append(fr["app"] + " frames these pages, so the link is the app carrying the view; "
+                   "the framed page on its own is the route the store recorded as wrong most often.")
+    if loose and not subjects:
+        why.append("an HTML file outside the app changed, so it is tossed on its own.")
+    for p in loose:
+        subjects.append((p, None))
+        warn.append(p + " is not declared under showing.views or the app's folder, so it is "
+                    "tossed on its own: if the app frames it, declare it and re-run.")
+    if not subjects:
+        if use_git and not paths:
+            waiting = uncommitted()
+            if waiting:
+                warn.append("nothing is committed against " + base + " yet, but " + str(len(waiting))
+                            + " file(s) are staged or modified (" + ", ".join(waiting[:4])
+                            + ("…" if len(waiting) > 4 else "") + "): this reads COMMITS, so commit and re-run, or pass --files.")
+                why.append("no committed change to show yet.")
+                return decision("none-yet", [], sha, slug, hosted, why, warn, {"branch": "", "pushed": True})
+        why.append("nothing that renders changed.")
+        return decision("none-needed", [], sha, slug, hosted, why, warn, {"branch": "", "pushed": True})
+    return decision("toss-app", subjects, sha, slug, hosted, why, warn, {"branch": "", "pushed": True})
+
+
+# An MCP-written PR body or comment turns a URL of this many characters or more
+# into literal text (SURFACING.md, "Surfacing caption"; measured in
+# environment/capabilities.md). Chat is untouched, so this is a warning about
+# WHERE the link may go, not about the link.
+MCP_URL_CAP = 150
+
+
 def address(mech, page, sha, slug, view=None):
     base = f"https://{slug.split('/')[0]}.github.io/{slug.split('/')[1]}/"
     pretty = page[:-len("index.html")] if page.endswith("/index.html") else page
@@ -353,13 +455,19 @@ def address(mech, page, sha, slug, view=None):
         return base + pretty + q
     if mech == "toss-gh":
         return f"{base}pages/toss-render.html?use={sha}#gh={slug}@{sha}:{page}"
+    if mech == "toss-app":
+        # The renderer is web-tools' own, on main, so no ?use= pins it; the
+        # ref belongs to the framed repo and rides in the #gh= address, where
+        # the app's embeds inherit it (home CLAUDE.md, "Render path").
+        return (f"https://mehrlander.github.io/web-tools/pages/toss-render.html#gh={slug}@{sha}:{page}"
+                + (f"?view={view}" if view else ""))
     if mech == "toss-nested":
         return (f"{base}pages/toss-render.html#gh={slug}@{sha}:pages/toss-render.html"
                 f"#gh={slug}@{sha}:pages/<the page to render>.html")
     return ""
 
 
-GLYPH = {"use": "⭐", "toss-gh": "🥏", "toss-nested": "🥏"}
+GLYPH = {"use": "⭐", "toss-gh": "🥏", "toss-nested": "🥏", "toss-app": "🥏"}
 
 
 def decision(mech, subjects, sha, slug, hosted, why, warn, facts):
@@ -367,6 +475,11 @@ def decision(mech, subjects, sha, slug, hosted, why, warn, facts):
         warn.append("this repo serves no pages, so ?use= has nothing to pin: use the toss instead.")
         mech = "toss-gh"
     links = [{"page": p, "view": v, "url": address(mech, p, sha, slug, v)} for p, v in subjects]
+    over = [l for l in links if len(l["url"]) >= MCP_URL_CAP]
+    if over:
+        warn.append(f"{len(over)} link(s) run {MCP_URL_CAP}+ characters: fine in chat, literal text in an "
+                    "MCP-written PR body or comment. There, drop the link to the chat caption "
+                    "(SURFACING.md's shortening ladder) rather than trimming the address by hand.")
     return {"mechanism": mech, "sha": sha, "branch": facts["branch"], "pushed": facts["pushed"],
             "repo": slug, "links": links, "why": why, "warnings": warn}
 
@@ -393,7 +506,8 @@ def lines(d):
         g = GLYPH[d["mechanism"]]
         for l in d["links"]:
             via = f"  ({l['via']})" if l.get("via") and l["via"] != "declared route" else ""
-            out.append(f"{g} [{l['page']}]({l['url']}){via}")
+            label = l["page"] + (f" ?view={l['view']}" if d["mechanism"] == "toss-app" and l.get("view") else "")
+            out.append(f"{g} [{label}]({l['url']}){via}")
         out.append("why: " + " ".join(d["why"]))
         if d.get("carried"):
             out.append(f"({len(d['carried'])} more pages import the pre-build, so they LOAD the change "
@@ -412,7 +526,17 @@ def main():
     ap.add_argument("--diff", help="a file holding diff text to scan for top-level-document calls, "
                                    "instead of reading git (for tests)")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--root", help="the checkout to read (default: the git toplevel of the current "
+                                   "directory, else this repo); another repo's pages come from its "
+                                   ".web-tools.json `showing` block")
     a = ap.parse_args()
+    global ROOT
+    if a.root:
+        ROOT = Path(a.root).resolve()
+    else:
+        top = sh("git", "rev-parse", "--show-toplevel", cwd=Path.cwd())
+        if top:
+            ROOT = Path(top)
     diff = Path(a.diff).read_text() if a.diff else None
     if a.files is not None:
         # A stated file set pins the SHA too, so a test's expected output does

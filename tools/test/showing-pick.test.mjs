@@ -151,3 +151,67 @@ test('a diff that FAILS is never reported as a diff that found nothing', () => {
   assert.ok(!/nothing that renders changed/.test(text),
     'the false-negative wording must not appear on a failed read');
 });
+
+// ANOTHER REPO'S PAGES. A repo whose pages one app frames declares the app and
+// its views in .web-tools.json, and the picker reads that instead of this
+// repo's page graph. The fixture is home's shape. What is pinned is the route:
+// the 2026-09-05 read of the session store found "the framed page on its own,
+// where the app was wanted" the largest named cause of a wrong render link,
+// and the rule lived in three prose files and no executable.
+function framedRepo() {
+  const dir = mkdtempSync(path.join(tmpdir(), 'showing-framed-'));
+  execFileSync('git', ['init', '-q'], { cwd: dir });
+  execFileSync('git', ['remote', 'add', 'origin', 'https://github.com/mehrlander/home.git'], { cwd: dir });
+  writeFileSync(path.join(dir, '.web-tools.json'), JSON.stringify({ showing: {
+    hosted: false,
+    app: 'projects/budget-drs/app/view/app.html',
+    app_dir: 'projects/budget-drs/app/',
+    views: { submittal: 'projects/budget-drs/submittal/', cem: ['projects/budget-drs/cem/'] },
+  } }));
+  return dir;
+}
+
+function runIn(root, files) {
+  const out = execFileSync('python3', [SCRIPT, '--root', root, '--files', files, '--json'],
+    { cwd: repoRoot, encoding: 'utf8' });
+  return JSON.parse(out);
+}
+
+test('a framed page resolves to the app carrying its view, never to the page on its own', () => {
+  const d = runIn(framedRepo(), 'projects/budget-drs/submittal/submittal.html,projects/budget-drs/submittal/data.js');
+  assert.equal(d.mechanism, 'toss-app');
+  assert.equal(d.links.length, 1, 'two files under one view are one link');
+  const [l] = d.links;
+  assert.equal(l.page, 'projects/budget-drs/app/view/app.html');
+  assert.equal(l.view, 'submittal');
+  assert.match(l.url, new RegExp(`#gh=mehrlander/home@${ZERO}:projects/budget-drs/app/view/app\\.html\\?view=submittal$`));
+  assert.doesNotMatch(l.url, /\?use=/, 'the renderer is web-tools main; the ref belongs to the framed repo');
+  // The address is over the MCP body cap, and the warning says where that
+  // matters rather than shortening it by hand.
+  assert.ok(d.warnings.some(w => /150\+ characters/.test(w)));
+});
+
+test("a change under the app's own folder is the app, bare, since the path does not name a view", () => {
+  const d = runIn(framedRepo(), 'projects/budget-drs/app/spend/data.js');
+  assert.equal(d.mechanism, 'toss-app');
+  assert.equal(d.links[0].view, null);
+  assert.match(d.links[0].url, /app\.html$/);
+});
+
+test('a view beats the bare app when a branch touches both', () => {
+  const d = runIn(framedRepo(), 'projects/budget-drs/app/spend/data.js,projects/budget-drs/cem/cem.html');
+  assert.deepEqual(d.links.map(l => l.view), ['cem']);
+});
+
+test('an HTML file the manifest does not frame is tossed on its own and said to be undeclared', () => {
+  const d = runIn(framedRepo(), 'created/thing.html,chron/2026/09/x.md');
+  assert.equal(d.mechanism, 'toss-app');
+  assert.equal(d.links[0].page, 'created/thing.html');
+  assert.match(d.links[0].url, /#gh=mehrlander\/home@0{40}:created\/thing\.html$/);
+  assert.ok(d.warnings.some(w => /not declared under showing\.views/.test(w)));
+});
+
+test('a framed repo with only non-rendering changes says so in the same words as this one', () => {
+  const d = runIn(framedRepo(), 'chron/2026/09/x.md,tools/x.py');
+  assert.equal(d.mechanism, 'none-needed');
+});
