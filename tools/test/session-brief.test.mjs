@@ -72,6 +72,7 @@ const { window, problems } = makeWindow({
   html: `<!doctype html><html><body>
     <div id="lent" x-data="sessionBrief(window.__lent)"></div>
     <div id="cold" x-data="sessionBrief(window.__cold)"></div>
+    <div id="stem" x-data="sessionBrief(window.__stem)"></div>
     <div id="unread" x-data="sessionBrief(window.__unread)"></div>
   </body></html>`,
 });
@@ -100,6 +101,10 @@ window.swipeDeck = { top: () => null };
 window.__lent = { id: 'b8fae678', day: '2026-08-05', repo: STORE, framed: true, facts,
                   onMeta: (m) => { window.__meta = m; } };
 window.__cold = { id: 'b8fae678', repo: STORE };
+// The same session addressed by the whole filename stem, which is what the
+// store's directory listing shows and therefore what a hand-built link tends to
+// carry. Both forms have to land on one record.
+window.__stem = { id: '2026-08-05-b8fae678', repo: STORE };
 // A row whose record cannot be read. It is the state every slide passes through
 // on its way to loaded, and it is also a real end state: the store is private,
 // so a reader whose token cannot reach it still gets everything the cache knew.
@@ -123,6 +128,7 @@ await tick(6);
 
 const lent = () => Alpine.$data(window.document.getElementById('lent'));
 const cold = () => Alpine.$data(window.document.getElementById('cold'));
+const stem = () => Alpine.$data(window.document.getElementById('stem'));
 const strip = (d) => Object.fromEntries(d.strip.map(f => [f.k, f.v]));
 
 test('mounting is quiet', () => {
@@ -186,6 +192,16 @@ test('a cold mount with no day resolves the id against the store listing', () =>
   // Once for the whole store, however many mounts need it: this fixture has
   // two (the cold one, and the one whose derived path 404s and falls through).
   assert.equal(trees().length, 1, 'exactly one listing read');
+});
+
+test('the dated stem resolves to the same record as the bare id', () => {
+  // The two names are in front of a reader in different places: every surface
+  // PRINTS b8fae678, and the store's own directory listing SHOWS
+  // 2026-08-05-b8fae678.json. A link built from the listing used to reach the
+  // "No record" error on a record that was sitting in the tree, and the error
+  // called the id a filename stem while refusing one (2026-09-05).
+  assert.equal(stem().path, PATH);
+  assert.equal(stem().err, '', 'the stem form is not an error state');
 });
 
 test('the record is read once, however many mounts ask for it', () => {
@@ -515,7 +531,14 @@ test('a fact carries its definition on data-note, not in a title', () => {
     assert.ok(hit, 'strip row ' + f.k + ' is on the page');
     assert.equal(hit[1], f.t, 'and states the definition the strip carries, not a copy of it');
   }
-  assert.match(noted.find(n => /^\(/.test(n.textContent))?.getAttribute('data-note') || '', /filename stem/);
+  // The id's own note, pinned by what it must NOT say. It called the id the
+  // record's filename stem, which it is not: the stem carries the date as well
+  // (2026-08-05-b8fae678), and reading the note as written is what produced a
+  // dead session link on 2026-09-05. The positive wording is free to move; the
+  // conflation is what has to stay fixed.
+  const idNote = noted.find(n => /^\(/.test(n.textContent))?.getAttribute('data-note') || '';
+  assert.ok(idNote.length > 20, 'the id carries a definition');
+  assert.doesNotMatch(idNote, /filename stem/, 'the id is part of the stem, not the whole of it');
 });
 
 test('the kit that draws the notes is in the chain that loads them', () => {
