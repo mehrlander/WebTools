@@ -12,8 +12,15 @@
 // That is not a style choice: a popup is permitted only while the user-gesture
 // token is live, and the first await spends it. By the time this file has been
 // fetched the gesture is gone, so `w` arrives as an argument and cannot be
-// opened here. If it was blocked anyway, `w` is null and the fallback panel
-// below runs instead, which is deliberately plain.
+// opened here.
+//
+// ON OUR OWN PAGES THERE IS NO WINDOW AND NO PANEL. The pointer passes `home`
+// true on mehrlander.github.io and opens nothing, so a tap there navigates the
+// tab to the open errand. Reading about the errand was never the point; being
+// on its page is. This is also why `home` is a separate argument rather than
+// `w === null`: a blocked popup on somebody else's page arrives the same way,
+// and stealing the tab you were reading is the one thing a bookmarklet must
+// not do. Blocked, the plain fallback panel below runs instead.
 //
 // THE ERRAND SCRIPT STILL RUNS IN THE HOST PAGE. Only the interface moved. The
 // script's whole purpose is to read the DOM the browser already loaded and
@@ -30,7 +37,7 @@
 // to this repo; that is a smaller guarantee than the first cut had, stated
 // rather than quietly lost.
 
-(async (popup) => {
+(async (popup, home) => {
   const HOST = location.hostname;
   const REPO = 'mehrlander/web-tools';
   const REF = 'main';
@@ -76,60 +83,60 @@
       .cx-item b{display:block;font-size:15px}
       .cx-item .cx-host{display:block;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#15803d;margin-top:2px}
       .cx-item .cx-note{display:block;font-size:12.5px;color:#475569;margin-top:5px}
-      .cx-foot{margin:0;font-size:12px;color:#64748b}
-      .cx-foot a{color:#475569}
     </style>
     <div class="cx-panel">
       <h3></h3><p></p><div class="cx-body"></div><div class="cx-row"></div>
-      <p class="cx-foot"><span class="cx-src"></span><a
-        href="https://github.com/mehrlander/web-tools/blob/main/courier/README.md"
-        target="_blank" rel="noopener">What the courier is, and what it will not do</a></p>
     </div>`;
 
+  // Mounted on demand, not on entry: on our own pages the common path navigates
+  // and shows nothing at all, and a panel that painted first would be a flash.
   let root, close;
-  if (popup && popup.document) {
-    // A named window is reused across runs, so the document is reopened rather
-    // than appended to; otherwise a second run stacks on the first.
-    const d = popup.document;
-    d.open();
-    d.write(`<!doctype html><html><head><meta charset="utf-8"><title>Courier</title>
-      <style>html,body{margin:0;height:100%}body{display:flex}.cx-panel{flex:1;min-height:0}</style>
-      </head><body>${SHELL}</body></html>`);
-    d.close();
-    root = d;
-    close = () => popup.close();
-    try { popup.focus(); } catch (e) { /* some browsers refuse; harmless */ }
-  } else {
-    // Fallback: plain, and only reached when the popup was blocked. Shadow root
-    // so the host page's stylesheet cannot reach in; no scrim, no animation.
-    const tag = 'courier-' + Date.now();
-    customElements.define(tag, class extends HTMLElement {
-      constructor() { super().attachShadow({ mode: 'open' }); }
-    });
-    const el = document.createElement(tag);
-    document.documentElement.appendChild(el);
-    el.shadowRoot.innerHTML =
-      `<style>:host{position:fixed;inset:0;z-index:2147483647;background:rgba(15,23,42,.55)}
-       .cx-panel{position:absolute;inset:5%;max-width:900px;margin:auto;border-radius:12px;
-         box-shadow:0 10px 40px rgba(0,0,0,.35)}</style>` + SHELL;
-    root = el.shadowRoot;
-    close = () => el.remove();
-  }
+  const mount = () => {
+    if (root) return;
+    if (popup && popup.document) {
+      // A named window is reused across runs, so the document is reopened rather
+      // than appended to; otherwise a second run stacks on the first.
+      const d = popup.document;
+      d.open();
+      d.write(`<!doctype html><html><head><meta charset="utf-8"><title>Courier</title>
+        <style>html,body{margin:0;height:100%}body{display:flex}.cx-panel{flex:1;min-height:0}</style>
+        </head><body>${SHELL}</body></html>`);
+      d.close();
+      root = d;
+      close = () => popup.close();
+      try { popup.focus(); } catch (e) { /* some browsers refuse; harmless */ }
+    } else {
+      // In the page: our own pages by design, somebody else's only when the
+      // popup was blocked. Shadow root so the host stylesheet cannot reach in.
+      const tag = 'courier-' + Date.now();
+      customElements.define(tag, class extends HTMLElement {
+        constructor() { super().attachShadow({ mode: 'open' }); }
+      });
+      const el = document.createElement(tag);
+      document.documentElement.appendChild(el);
+      el.shadowRoot.innerHTML =
+        `<style>:host{position:fixed;inset:0;z-index:2147483647;background:rgba(15,23,42,.55)}
+         .cx-panel{position:absolute;inset:5%;max-width:900px;margin:auto;border-radius:12px;
+           box-shadow:0 10px 40px rgba(0,0,0,.35)}</style>` + SHELL;
+      root = el.shadowRoot;
+      close = () => el.remove();
+    }
+  };
 
   const $ = (sel) => root.querySelector(sel);
   const esc = (t) => String(t == null ? '' : t)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const say = (title, note) => { $('h3').textContent = title; $('p').textContent = note || ''; };
-  // A script's leading comment banner is documentation, not logic, and reading
-  // past it to reach the code is the whole complaint. The panel drops it.
+  // A script's leading comment banner is documentation, not logic, so the panel
+  // drops it and opens on the first line that runs.
   //
   // Only a CONTIGUOUS run of `//` lines and blanks from the very START of the
   // file, stopping at the first line that is neither. Nothing can precede the
   // first line, so no string or regular expression can be mistaken for a
   // comment, which is what makes this safe where a general comment stripper is
   // not: it cannot remove code. Comments beside code stay, since those are read
-  // with the line they explain. The footer links the untrimmed file either way,
-  // so the confirm gate still reaches what actually runs.
+  // with the line they explain. The gate loses nothing either way, because what
+  // it exists to show is what will execute, and a comment never does.
   const trimBanner = (t) => {
     const lines = t.split('\n');
     let i = 0;
@@ -147,12 +154,9 @@
   };
   // A dead end is the failure mode that reads as a broken bookmark, so `stop`
   // offers the way out rather than only naming it: every open errand as a link
-  // to the page it runs on. That makes ANY page the directory, which is why
-  // there is no special case for the Web Tools app and no separate helper page
-  // to remember to visit. The one thing a page on that origin could add is
-  // results already landed, which needs the token the app holds and this does
-  // not; that is a status view, and it is not built.
+  // to the page it runs on.
   const stop = (title, note, errands) => {
+    mount();
     say(title, note);
     const body = $('.cx-body');
     if (errands && errands.length) {
@@ -164,7 +168,7 @@
     } else {
       body.remove();
     }
-    button('Close', 'cx-quiet', close);
+    button('Close', 'cx-quiet', () => close());
   };
 
   // ---- the errand ----------------------------------------------------------
@@ -173,12 +177,13 @@
   catch (e) { return stop('Courier', 'Could not read the errand list. ' + e.message); }
 
   // Routing is by exact hostname, no normalisation, so www.example.com and
-  // example.com are different errands. A host with nothing open names the hosts
-  // that do have something, because "nothing happened" is the failure mode that
-  // reads as a broken bookmark.
-  const open = (list.errands || []).filter(e => e.host === HOST && e.status === 'open');
-  if (!open.length) {
+  // example.com are different errands.
+  const mine = (list.errands || []).filter(e => e.host === HOST && e.status === 'open');
+  if (!mine.length) {
     const elsewhere = (list.errands || []).filter(e => e.status === 'open' && e.url);
+    // One open errand and we are on our own page: go there. More than one and
+    // there is nothing to go to, so the list is the answer after all.
+    if (home && elsewhere.length === 1) { location.href = elsewhere[0].url; return; }
     return stop('Nothing open for ' + HOST,
       elsewhere.length
         ? (elsewhere.length === 1 ? 'One errand is open. ' : elsewhere.length + ' errands are open. ')
@@ -186,7 +191,7 @@
         : 'No errand is open on any host.',
       elsewhere);
   }
-  const errand = open[0];
+  const errand = mine[0];
 
   let src;
   try { src = await api(errand.script); }
@@ -195,15 +200,12 @@
   // Show the bytes, not a description of them: the Proposals rule, applied to
   // code rather than to a diff. The script is on screen in full before the
   // button that runs it exists.
+  mount();
   say(errand.title, errand.note || '');
   const body = $('.cx-body');
   body.className = 'cx-body cx-code';
-  const shown = trimBanner(src);
-  body.textContent = shown;
-  $('.cx-src').innerHTML =
-    `<a href="https://github.com/${REPO}/blob/${REF}/${esc(errand.script)}" target="_blank" rel="noopener">`
-    + (shown === src ? 'This script' : 'This script in full, banner and all') + '</a> &middot; ';
-  button('Cancel', 'cx-quiet', close);
+  body.textContent = trimBanner(src);
+  button('Cancel', 'cx-quiet', () => close());
   button('Run this script', 0, async () => {
     $('.cx-row').innerHTML = '';
     say(errand.title + ' — ran', 'Working…');
@@ -242,6 +244,6 @@
       }
       (popup || window).open(url, '_blank');
     });
-    button('Close', 'cx-quiet', close);
+    button('Close', 'cx-quiet', () => close());
   });
-})(typeof w !== 'undefined' ? w : null);
+})(typeof w !== 'undefined' ? w : null, typeof home !== 'undefined' ? home : false);

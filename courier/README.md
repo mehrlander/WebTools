@@ -46,7 +46,7 @@ other route here gets:
 
 | Part | Where | Changes |
 | --- | --- | --- |
-| the pointer | [`bookmarklets/courier.js`](../bookmarklets/courier.js) | never; it opens the window and names one URL |
+| the pointer | [`bookmarklets/courier.js`](../bookmarklets/courier.js) | almost never; it names one URL and decides whether to open a window |
 | the body | [`run.js`](run.js) | freely: routing, panel, gate, delivery |
 | the errand list | [`errands.json`](errands.json) | per errand |
 | the errand script | `sites/<hostname>/courier/<id>.js` | per errand, then frozen when it closes |
@@ -57,12 +57,11 @@ whatever `main` served that minute. There is no ref switch on purpose: a
 bookmark that could be aimed at a branch is a bookmark that can be aimed
 anywhere.
 
-Install the pointer once, as a bookmark whose URL is the whole file. It opens a
-window, fetches `run.js` and runs it. `run.js` reads `location.hostname`, finds
-the open errands for that host, shows what it is about to run in that window,
-and runs it on your tap.
+Install the pointer once, as a bookmark whose URL is the whole file. It fetches
+`run.js` and runs it. `run.js` reads `location.hostname`, finds the open errands
+for that host, shows what it is about to run, and runs it on your tap.
 
-## The interface is a popup, and the pointer has to open it
+## Where there is an interface, it is a popup, and only the pointer can open one
 
 A panel injected into somebody else's document loses fights it should not be in:
 a host stylesheet, a focus trap, `overflow:hidden` on `html`, `position:fixed`
@@ -90,14 +89,26 @@ inside the popup would hand it a blank document.
 instead: a shadow root, no scrim animation, the same markup and wiring. It is
 the fallback rather than the design, so it is kept simple deliberately.
 
-## Every page is the directory
+## On our own pages it opens nothing and takes you there
+
+On `mehrlander.github.io` the pointer opens no window and passes `home` true.
+With one errand open, `run.js` sets `location.href` to it and stops: no popup,
+no panel, nothing to read and nothing to dismiss. Reading about the errand was
+never the point; standing on its page is. With more than one open there is no
+single place to go, so the list is the answer after all and the in-page panel
+carries it.
+
+**`home` is a separate argument rather than `w === null`**, and that distinction
+is the whole safety of this. A blocked popup on somebody else's page arrives as
+`w === null` too, and navigating a page you were reading is the one thing a
+bookmarklet must not do. So the tab is only ever taken on pages that are ours.
+
+## Anywhere else, every page is the directory
 
 A host with no open errand does not dead-end. The panel lists **every** open
-errand as a link to the page it runs on, with its host and its note, and every
-state carries a link to this file. So the courier answers "what is waiting, and
-where do I go" from anywhere, which is why there is no special case for the Web
-Tools app and no separate helper page to remember to visit. A rule with one
-member is not a rule.
+errand as a link to the page it runs on, with its host and its note. So the
+courier answers "what is waiting, and where do I go" from anywhere, and there is
+no separate helper page to remember to visit.
 
 The one thing a page on the Web Tools origin could add is **results already
 landed**, since it holds the token that reads the private results folder and the
@@ -110,9 +121,14 @@ repo's reach: no commit could remove the step that shows you a script before it
 runs. Moving it out makes every part revisable without a reinstall, and moves
 the trust anchor from "this bookmark's own code" to "whatever
 `mehrlander/web-tools` main serves at `courier/run.js`". That is a smaller
-guarantee, stated rather than quietly lost, and it buys two things: you install
-once and never again, and the mechanism becomes readable source instead of the
-single line a bookmarklet is obliged to be.
+guarantee, stated rather than quietly lost, and it buys two things: reinstalling
+becomes rare rather than routine, and the mechanism becomes readable source
+instead of the single line a bookmarklet is obliged to be.
+
+**Rare is not never, and the reinstalls are predictable.** The pointer has to
+change when a decision must be made before the first `await`, since that is the
+only ground it holds alone. Two are made there today: whether to open a window,
+and what to pass in. Everything after the fetch belongs in `run.js`.
 
 It adds no new capability requirement. `run.js` reaches the page through
 `new Function`, which is how an errand script already ran, so a page whose
