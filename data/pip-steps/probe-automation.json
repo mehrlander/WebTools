@@ -1,11 +1,49 @@
 {
   "title": "Nightly automation for Probe-Unattended",
   "cards": [
-    {"lines": ["Open Shortcuts", "Automation tab"]},
-    {"lines": ["Tap + top right", "Pick Time of Day"]},
-    {"lines": ["Set 2:00 AM", "Repeat Daily"]},
-    {"lines": ["Run Immediately", "Notify When Run off"], "note": "Not Run After Confirmation. This is the one that matters."},
-    {"lines": ["Tap Next", "New Blank Automation"]},
-    {"lines": ["Long-press, Paste", "Tap Done"], "note": "The Run Shortcut card is already on your clipboard."}
+    {
+      "lines": [
+        "Open Shortcuts",
+        "Automation tab"
+      ]
+    },
+    {
+      "lines": [
+        "Tap + top right",
+        "Pick Time of Day"
+      ]
+    },
+    {
+      "lines": [
+        "Set 2:00 AM",
+        "Repeat Daily"
+      ]
+    },
+    {
+      "lines": [
+        "Run Immediately",
+        "Notify When Run off"
+      ],
+      "note": "Not Run After Confirmation. This is the one that matters."
+    },
+    {
+      "lines": [
+        "Tap Next",
+        "New Blank Automation"
+      ]
+    },
+    {
+      "lines": [
+        "Copy the card from chat"
+      ],
+      "note": "Tap the copy link in the chat. Your half-built automation stays put."
+    },
+    {
+      "lines": [
+        "Long-press, Paste",
+        "Tap Done"
+      ],
+      "note": "No card pastes? Add action, search Run Shortcut, pick Probe-Unattended."
+    }
   ]
 }
