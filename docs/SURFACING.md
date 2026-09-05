@@ -4,13 +4,9 @@ Making a session's work visible, reviewable, and durable when chat is the only o
 
 The installed set includes the universal **surfacing primitives** and the **surfacing course**, the guide-PR lifecycle that begins when a PR opens. See [PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md).
 
-## One render path
+## Per-repo settings
 
-Use ⭐ for the canonical URL of an already-deployed page. Otherwise use the 🥏 toss below; there is no per-repo preview mechanism.
-
-## The one per-repo setting: per-session refreshes
-
-Normally none. In local `CLAUDE.md`, name only a slow or non-deterministic generated artifact that cannot ride a commit hook and must be regenerated once at wrap-up.
+Two, and these are the defaults. **Render path:** ⭐ for a page already deployed, the 🥏 toss otherwise; there is no per-repo preview mechanism. **Per-session refreshes:** normally none, and a local `CLAUDE.md` names only a generated artifact too slow or too non-deterministic to ride a commit hook.
 
 ---
 
@@ -129,40 +125,7 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
 
 ## The surfacing course
 
-Once a PR opens, the branch gets a **guide PR**. Its body is the one **surfacing moment**: the live answer to "where did I leave things" while the branch is open, the reviewer's summary at review, and the permanent account of what shipped after merge.
-
-It leads with:
-
-1. **Outcome + why:** one sentence, no preamble.
-2. **The thing to open:** ⭐ hosted URL, else 🥏 branch toss, else an honest `[new]` source view.
-
-**The body does not enumerate files.** GitHub's Files tab and the branch page's Files pane already do, current by construction, the branch page grouping them through the repo's content registry where one is declared (`content-registry` owns that convention). What the body carries instead is what no derived list can produce: a change-set paragraph in prose, naming only the files with something non-obvious to say (paths plain; the branch page styles them), `renders on:` consumers for a shared component, and only non-obvious notes. The chat reply answers to the same rule (Surfacing caption). Bodies written before 2026-08-08 keep the Changed list they were written with.
-
-### The guide PR
-
-Open the branch's PR as a draft at first push, automatically where configured or through the API otherwise. Keep `Follow-up to #N` when continuing an earlier PR and end with the harness's session-link footer.
-
-* **Ready is the user's decision.** Mark the PR ready only on explicit instruction, including an accepted wrap-up offer.
-* **Keep the body synchronized.** It is current state, not a per-file or per-push changelog; update it after a meaningful change in state. Rewrite only the region between the markers below, via `update_pull_request`, leaving hand-written text outside them untouched.
-* **Put narrative in dated PR comments.** Comments are the append-only progress log; the body is current state.
-* **Abandon by closing the draft** with a final comment saying why.
-* **Keep branch guidance out of main.** Delete any obsolete `BRANCH-GUIDE.md` found there.
-
-Keep the body under one screen. **Next steps / open threads** is its heart and must remain current.
-
-**One screen is a shape, not a word budget.** A body that overruns is carrying
-each fact fused to its own justification. Four habits do the damage:
-
-| habit | cut it to |
-| --- | --- |
-| a fact and its reason in one sentence | the fact; keep the reason only where it changes what someone would do |
-| defending a decision nobody questioned | nothing |
-| self-commentary (*worth knowing*, *the point is*, *deliberately*) | nothing |
-| a section opening by restating its own heading | the next sentence |
-
-Prefer a table or a line per fact to a paragraph, and let the number carry the
-weight: "27 of 54 sheets" says what two sentences of explanation were going to.
-Measurements belong in **Notes / Risk** as a list, never narrated.
+Once a PR opens, its body is the branch's current state: live while the branch is open, the shipped account after merge. Open it as a draft at first push.
 
 ```markdown
 <One sentence: what this branch is doing and why.> [Follow-up to #N.]
@@ -171,10 +134,9 @@ Measurements belong in **Notes / Risk** as a list, never narrated.
 
 ⭐ **Look:** [<the thing to open>](<branch preview w/ commit SHA, else [new] blob>)
 
-<The change set as a short prose paragraph: only the files with something
-non-obvious to say, paths plain, no link triplets. `renders on:` lines for
-shared components. Omit entirely when the one-sentence opener already covers
-it; the Files tab and the branch page enumerate.>
+<The change set in prose: only the files with something non-obvious to say,
+paths plain and no link triplets, `renders on:` for a shared component.
+Omit where the opener already says it.>
 
 **Next steps / open threads:**
 - <current and honest; revise on every sync>
@@ -186,59 +148,23 @@ it; the Files tab and the branch page enumerate.>
 <session-link footer>
 ```
 
-**The region markers are markdown link labels, not HTML comments.** Both render as nothing on GitHub, but reading a body back through the GitHub MCP strips HTML comments, so a sync cannot find its region and appends a second one or overwrites hand-written prose. Recognition still accepts the older `<!-- guide -->` pair, which bodies written before 2026-07-28 carry. The one constraint the new form brings: a link label is a reference definition, so it must start a line and sit between blank lines, and inside a list item or a blockquote it can render literally. Read either pair when locating the region, emit the link-label form when rewriting, and if neither is present stop and say so rather than guessing at the boundary. Check a body's URLs before writing it with `python3 scripts/mcp-link-safe.py --check body.md`, adding `--unescape-entities` for a body read back through the MCP, whose readback expands `&` into `&amp;` and inflates the count. Measured, with the probe and the controls, in [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
+- **The body does not enumerate files.** The Files tab and the branch page already do, current by construction.
+- **It is state, not a changelog.** Narrative goes in dated PR comments; **Next steps** must stay honest.
+- **The markers are link labels, not HTML comments,** which the GitHub MCP strips on readback. Rewrite only between them, via `update_pull_request`. Read either form, emit this one, and stop rather than guess if neither is present. Check URLs first: `python3 scripts/mcp-link-safe.py --check body.md`.
+- **Ready is the user's decision,** on explicit instruction or an accepted wrap-up offer.
+- **"Wrap up" means green, not merged:** preflight `git merge-tree` against main, run per-session refreshes, finalize the guide, mark ready. **"Merge" means merge,** so run that sequence and merge without asking twice. Never merge red, and never by any route but the PR.
+- **Abandon by closing the draft,** with a comment saying why.
+- **Before the container goes,** route anything costly that exists only in session context into the guide or a PR comment, never a tracker task.
+- **Post-merge edits need a new PR.** `git log main..HEAD` shows what is waiting.
 
-### Shipped history
-
-**Delivery history is the repository's merged pull requests, read where they live. Do not commit a projection of them.**
-
-Where a live reader helps, build one that reads the pulls endpoint.
-
-**Do not run two histories.** A merge guide keys on the **PR**, a unit of delivery; [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md) keys on the **task**, a unit of intent. Pick one axis, and prefer the tracker: it holds what the API does not, which is why the work was undertaken.
-
-**The general rule: do not commit what a live read already answers.** It reaches past shipped history to branch state, CI status, and review state alike.
-
-### Wrap-up & marking ready
-
-Offer: *"want me to wrap up (per-session refreshes, then mark the PR ready)?"* Accepting authorizes the sequence below, including marking ready. The guide body should already be current; when all preparation is complete, ask only whether to mark ready. **"Wrap up"** means finish and go green, not merge.
-
-**"Merge" means merge.** It authorizes the wrap-up sequence *and* the merge that follows, so run the sequence, mark ready, and merge, without asking a second time. Two things it does not authorize, and neither is a question to ask: merging **red**, since a PR with a reporting CI check waits for it and a failure is a fact to report and fix; and merging by any route other than the pull request, so never fast-forward or push to `main` from a checkout.
-
-1. **Preflight:** run `git fetch origin main && git merge-tree --write-tree origin/main HEAD` to test-merge without touching the tree. Resolve any conflicts and report the result.
-2. Execute per-session refreshes.
-3. Finalize the guide: make Notes / Risk reviewer-current, and settle the next steps. A next step the branch will not reach either rides forward in the guide body or becomes a task, which goes through `/tasks` and its filing rules rather than being written straight to `tracker/`. The body is the shipped account, so leave it fit to read after merge.
-4. Mark the PR ready.
-
-**Last look before the container goes.** Preserve any **precious work product** that would cost real tokens to reproduce and exists only in session context, such as a fan-out's findings, a spike's conclusion, or an uncommitted diagnosis. Route it to the guide or a PR comment, never a tracker task: a task is for work that remains, not a place to park findings (see `/tasks`). Let cheaply reconstructable context go. Then check that new files landed where they belong and name any placement that sits uneasily.
-
-**UI trigger:** if the user marks ready or merges in the UI before wrap-up, run steps 1 through 3 silently and surface any conflict.
-
-### The next PR
-
-Post-merge edits require a new PR, even on the same branch. The next push opens, or the session opens, a fresh draft; `git log main..HEAD` shows the commits waiting for it.
+Delivery history is the merged PRs themselves: do not commit a projection of them, and do not run a second history beside [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)'s task axis.
 
 ---
 
 ## Post-merge handoff
 
-Merge terminates the session branch; the argument for why a merged branch stops being a live workspace is [github/post-merge-branch-mutation.md](https://github.com/mehrlander/web-tools/blob/main/docs/github/post-merge-branch-mutation.md).
-
-Where the repo uses [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md), a follow-up worth keeping goes through `/tasks`, which carries the bar and the gate, and the handoff prompt can then collapse to "check the tracker and assess how to proceed." A one-off issue not worth a task keeps the full diagnostic handoff below. Otherwise:
-
-* **Option 1 (default):** issue a diagnostic handoff prompt (HP) and wind down.
-* **Option 2:** continue edits only on explicit instruction; a new PR is required.
-
-Under Option 1, end every subsequent reply with:
+Merge terminates the session branch; the argument is [post-merge-branch-mutation.md](https://github.com/mehrlander/web-tools/blob/main/docs/github/post-merge-branch-mutation.md). Continue only on explicit instruction, and then in a new PR. Until then close every reply with:
 
 `*Branch <branch> merged in PR #<n>; no further edits will be made here.*`
 
-Drop it only when the user chooses Option 2.
-
-**Handoff prompt (HP):**
-
-* Wrap it in a fenced Markdown block, using four backticks if it contains three.
-* Reference the merged PR or commit SHA; point to files and functions without dumping code.
-* Shape each issue as symptom, cause (*suspected*/*confirmed*), and fixes (*possible*/*likely*).
-* Keep it factual and short: one context paragraph, one section per issue.
-* Where useful, propose diagnostic tests that emit serialized output and move a cause from suspected to confirmed.
-* Close with: "Look through the relevant files, assess, and propose how to proceed."
+Where the repo runs a [tracker](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md), a follow-up worth keeping goes through `/tasks` and the handoff collapses to "check the tracker and assess how to proceed." A one-off not worth a task gets a **handoff prompt** instead: one fenced block (four backticks if it contains three), the merged PR or SHA, and each issue as symptom, then cause (*suspected* or *confirmed*), then fixes (*possible* or *likely*). Point at files and functions rather than dumping code. Where a diagnostic test would move a cause from suspected to confirmed, propose it. Close with: "Look through the relevant files, assess, and propose how to proceed."
