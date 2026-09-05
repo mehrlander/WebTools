@@ -16,8 +16,20 @@ nothing here should be written as though a session could fetch this host.
 ## Contents
 
 - `courier/list-cafr.js`: the [courier](../../courier/README.md) errand
-  `wsl-drs-cafr-index`. Collects every document link on the DRS CAFR index and
-  returns it as a table, with a per-host count, because which host the documents
-  actually sit on decides whether a session can fetch them itself. The
-  neighbouring `digitalarchives.wa.gov` answers a session fine; this host does
-  not.
+  `wsl-drs-cafr-index`. Collects every document link on the index and returns it
+  as a table.
+
+### Why that script is terse, and what its columns are for
+
+An errand script is read in the courier's confirm panel before it runs, so the
+reasoning goes here and the file stays short enough to take in at a glance. The
+panel also drops a script's leading comment banner, which is why one worth
+reading is a pointer rather than an essay.
+
+Three decisions are in the code without saying so:
+
+| In the script | Why |
+| --- | --- |
+| a **per-host count** in the header | which host the documents sit on decides whether a session can fetch them itself. The neighbouring `digitalarchives.wa.gov` answers a session fine; this host does not, so the count is the finding the caller is waiting on. |
+| the **year** pulled from link text first, URL second | the caller addresses reports by fiscal year, and the page states one in prose more reliably than in a filename. |
+| an empty result **reports its anchor and frame counts** | a page that yields nothing should say why. Zero anchors means the links are built after load; frames above zero means they live in a child document. Silence would send the caller back to guessing. |
