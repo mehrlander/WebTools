@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The viewer's page render for a Word document, end to end in a browser.
 //
-//   node tools/test/viewer-docx.mjs [--shot out.png] [--docx path/to/file.docx] [--width px] [--pinch factor]
+//   node tools/test/viewer-docx.mjs [--shot out.png] [--docx path/to/file.docx] [--width px] [--pinch factor] [--dump]
 //
 // The node suite holds kits/docx.js's preparation against fixture XML. What
 // it cannot hold is the claim the whole thing exists for: that a .docx handed
@@ -347,6 +347,31 @@ try {
     ok('tapping the pill returns to fit width and hides it',
        Math.abs(zoomed.reset.k - zoomed.before.k) < 0.001 && zoomed.reset.pill === true, JSON.stringify(zoomed.reset));
     ok('__doc reports the zoom', zoomed.apiZoom === 1, JSON.stringify(zoomed.apiZoom));
+  }
+
+  // --dump: what each page carries, for a real file whose header or footer
+  // came out differently from Word's.
+  if (opt('--dump') !== null || args.includes('--dump')) {
+    const pages = await page.evaluate(() => [...document.querySelectorAll('[data-page="root"] section[class^="wd"]')].map((s, i) => ({
+      page: i + 1,
+      header: (s.querySelector('header')?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60),
+      headerImgs: s.querySelectorAll('header img').length,
+      imgs: [...s.querySelectorAll('header img')].map(img => {
+        const r = img.getBoundingClientRect(), cs = getComputedStyle(img);
+        return { w: Math.round(r.width), h: Math.round(r.height), x: Math.round(r.left), y: Math.round(r.top),
+                 natural: img.naturalWidth + 'x' + img.naturalHeight, complete: img.complete, src: (img.getAttribute('src') || '').slice(0, 12),
+                 pos: cs.position, display: cs.display, visibility: cs.visibility, opacity: cs.opacity,
+                 style: (img.getAttribute('style') || '').slice(0, 160), cssW: cs.width, cssMaxW: cs.maxWidth,
+                 parent: img.parentElement?.tagName + '.' + (img.parentElement?.className || '') + ' ' + (img.parentElement?.getAttribute('style') || '').slice(0, 120) };
+      }),
+      headerBox: (() => { const h = s.querySelector('header'); if (!h) return null; const r = h.getBoundingClientRect(), sr = s.getBoundingClientRect(), a = s.querySelector('article')?.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top - sr.top), bodyTop: a ? Math.round(a.top - sr.top) : null,
+                 marginTop: getComputedStyle(h).marginTop, minHeight: getComputedStyle(h).minHeight,
+                 paras: [...h.querySelectorAll('p')].map(p => { const pr = p.getBoundingClientRect(); return Math.round(pr.height) + '@' + Math.round(pr.top - sr.top); }) }; })(),
+      footer: (s.querySelector('footer')?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 60),
+      body: (s.querySelector('article')?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 50),
+    })));
+    for (const p of pages) console.log('  page', JSON.stringify(p));
   }
 
   if (shot) {

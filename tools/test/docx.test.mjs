@@ -76,7 +76,7 @@ const count = (doc, name) => doc.getElementsByTagNameNS(W, name).length;
 const texts = (doc) => [...doc.getElementsByTagNameNS(W, 't')].map(t => t.textContent);
 
 test('kit surface', () => {
-  for (const k of ['normalize', 'prepare', 'survey', 'listControls', 'unwrapControls', 'mapBullets']) {
+  for (const k of ['normalize', 'prepare', 'survey', 'listControls', 'unwrapControls', 'mapBullets', 'markPageBreaks', 'fixHeaderRefs', 'markPageFields']) {
     assert.equal(typeof docxKit[k], 'function', k);
   }
   assert.ok(docxKit.CONTENT_PART.test('word/document.xml'));
@@ -167,6 +167,156 @@ test('mapBullets: the bare byte form and the private-use form name the same glyp
   assert.equal(one(''), '•');
   assert.equal(one('·'), '•');
   assert.equal(one('•'), '•', 'already Unicode: unchanged');
+});
+
+// ── page breaks ──────────────────────────────────────────────────────────────
+
+// A body the shape of the IT Addendum: a title paragraph ending a section with
+// no break type (next page), the form after it; then the other shapes the
+// pass has to answer: a continuous break, a break followed by a table, a next
+// paragraph that already carries Word's saved break, a paragraph's own
+// pageBreakBefore, and the body's final sectPr.
+const SECTIONS = `<w:document ${NS}><w:body>
+  <w:p><w:pPr><w:pStyle w:val="Heading1"/><w:sectPr><w:pgSz w:w="12240" w:h="15840"/></w:sectPr></w:pPr><w:r><w:t>Title</w:t></w:r></w:p>
+  <w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>Form starts</w:t></w:r></w:p>
+  <w:p><w:pPr><w:sectPr><w:type w:val="continuous"/></w:sectPr></w:pPr></w:p>
+  <w:p><w:r><w:t>Same page</w:t></w:r></w:p>
+  <w:p><w:pPr><w:sectPr><w:type w:val="nextPage"/></w:sectPr></w:pPr></w:p>
+  <w:tbl><w:tr><w:tc><w:p><w:r><w:t>Table first</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+  <w:p><w:pPr><w:sectPr/></w:pPr></w:p>
+  <w:p><w:r><w:lastRenderedPageBreak/><w:t>Already broken</w:t></w:r></w:p>
+  <w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>Break before me</w:t></w:r></w:p>
+  <w:p><w:pPr><w:pageBreakBefore w:val="0"/></w:pPr><w:r><w:t>Not me</w:t></w:r></w:p>
+  <w:sectPr><w:pgSz w:w="12240" w:h="15840"/></w:sectPr>
+</w:body></w:document>`;
+
+const breakRuns = (p) => [...p.getElementsByTagNameNS(W, 'br')].filter(b => b.getAttributeNS(W, 'type') === 'page').length;
+
+test('markPageBreaks: a next-page section break becomes a page break at the start of the paragraph that opens the page', () => {
+  const doc = parse(SECTIONS);
+  const n = docxKit.markPageBreaks(doc);
+  assert.equal(n, 3, 'the untyped break, the nextPage break before the table, and the pageBreakBefore');
+  const ps = [...doc.getElementsByTagNameNS(W, 'p')];
+  assert.equal(breakRuns(ps[0]), 0, 'the title itself is untouched');
+  assert.equal(breakRuns(ps[1]), 1, 'the form\'s first paragraph opens with the break');
+  assert.deepEqual([...ps[1].children].map(c => c.localName), ['pPr', 'r', 'r'], 'after pPr, before the text run');
+  assert.equal(ps[1].children[1].firstElementChild.localName, 'br');
+  assert.equal(breakRuns(ps[2]) + breakRuns(ps[3]), 0, 'a continuous break is not a page');
+  assert.equal(breakRuns(ps[4]), 1, 'a break followed by a table is written on the breaking paragraph');
+  assert.equal(breakRuns(ps[6]) + breakRuns(ps[7]), 0, 'a saved break already there is not doubled');
+  assert.equal(breakRuns(ps[8]), 1, 'pageBreakBefore');
+  assert.deepEqual([...ps[8].children].map(c => c.localName), ['pPr', 'r', 'r']);
+  assert.equal(breakRuns(ps[9]), 0, 'pageBreakBefore w:val="0" is off');
+  assert.deepEqual(texts(doc), texts(parse(SECTIONS)), 'no text moved');
+});
+
+test('markPageBreaks: idempotent, and the body\'s final sectPr is not a break', () => {
+  const doc = parse(SECTIONS);
+  docxKit.markPageBreaks(doc);
+  assert.equal(docxKit.markPageBreaks(doc), 0);
+  const solo = parse(`<w:document ${NS}><w:body><w:p><w:r><w:t>only</w:t></w:r></w:p><w:sectPr/></w:body></w:document>`);
+  assert.equal(docxKit.markPageBreaks(solo), 0);
+});
+
+test('normalize: page breaks ride the main document and are reported', () => {
+  const { parts, report } = docxKit.normalize({ 'word/document.xml': SECTIONS, 'word/header1.xml': SECTIONS });
+  assert.equal(report.breaks, 3);
+  assert.equal(report.byPart['word/document.xml'], 3);
+  assert.equal(report.byPart['word/header1.xml'], undefined, 'a header does not paginate');
+  assert.equal(count(parse(parts['word/document.xml']), 'br'), 3);
+});
+
+// ── headers and footers ──────────────────────────────────────────────────────
+
+// The IT Addendum's shape: a first section naming a default, an even and a
+// first header and footer, and a body section naming none.
+const HEADERS = `<w:document ${NS} xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>
+  <w:p><w:pPr><w:sectPr>
+    <w:headerReference w:type="even" r:id="rId11"/><w:headerReference w:type="default" r:id="rId12"/>
+    <w:footerReference w:type="even" r:id="rId13"/><w:footerReference w:type="default" r:id="rId14"/>
+    <w:headerReference w:type="first" r:id="rId15"/><w:footerReference w:type="first" r:id="rId16"/>
+    <w:pgSz w:w="12240" w:h="15840"/></w:sectPr></w:pPr><w:r><w:t>Title</w:t></w:r></w:p>
+  <w:p><w:r><w:t>Form</w:t></w:r></w:p>
+  <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440"/></w:sectPr>
+</w:body></w:document>`;
+
+const refsOf = (sect) => [...sect.children].filter(c => /Reference$/.test(c.localName))
+  .map(c => c.localName.replace('Reference', '') + ':' + c.getAttributeNS(W, 'type'));
+
+test('fixHeaderRefs: a section naming no header or footer inherits the previous one\'s, ahead of its own children', () => {
+  const doc = parse(HEADERS);
+  const n = docxKit.fixHeaderRefs(doc, '<w:settings xmlns:w="' + W + '"><w:evenAndOddHeaders/></w:settings>');
+  const [first, body] = [...doc.getElementsByTagNameNS(W, 'sectPr')];
+  assert.equal(n, 6, 'six references copied, none removed with even-and-odd on');
+  assert.deepEqual(refsOf(body), ['header:even', 'header:default', 'header:first', 'footer:even', 'footer:default', 'footer:first']);
+  assert.equal(body.firstElementChild.localName, 'headerReference', 'references lead the sectPr');
+  assert.equal(body.lastElementChild.localName, 'pgMar', 'the section\'s own children follow');
+  assert.equal(refsOf(first).length, 6, 'the source is untouched');
+});
+
+test('fixHeaderRefs: even-page references go unless the document enabled even and odd headers', () => {
+  const doc = parse(HEADERS);
+  const n = docxKit.fixHeaderRefs(doc, '<w:settings xmlns:w="' + W + '"/>');
+  const [first, body] = [...doc.getElementsByTagNameNS(W, 'sectPr')];
+  assert.equal(n, 6 + 4, 'six copied, then two even references removed from each of two sections');
+  assert.deepEqual(refsOf(first), ['header:default', 'footer:default', 'header:first', 'footer:first']);
+  assert.deepEqual(refsOf(body), ['header:default', 'header:first', 'footer:default', 'footer:first']);
+  const off = parse(HEADERS);
+  docxKit.fixHeaderRefs(off, '<w:settings xmlns:w="' + W + '"><w:evenAndOddHeaders w:val="0"/></w:settings>');
+  assert.ok(!refsOf(off.getElementsByTagNameNS(W, 'sectPr')[0]).includes('header:even'), 'val="0" is off');
+  const none = parse(HEADERS);
+  docxKit.fixHeaderRefs(none, null);
+  assert.ok(!refsOf(none.getElementsByTagNameNS(W, 'sectPr')[0]).includes('header:even'), 'no settings part is off');
+});
+
+test('fixHeaderRefs: idempotent', () => {
+  const doc = parse(HEADERS);
+  docxKit.fixHeaderRefs(doc, null);
+  assert.equal(docxKit.fixHeaderRefs(doc, null), 0);
+});
+
+test('normalize: the header pass reads word/settings.xml from the parts and reports', () => {
+  const settings = '<w:settings xmlns:w="' + W + '"/>';
+  const { parts, report } = docxKit.normalize({ 'word/document.xml': HEADERS, 'word/settings.xml': settings });
+  assert.equal(report.headerRefs, 10);
+  assert.equal(Object.keys(parts).join(), 'word/document.xml', 'settings is read, never rewritten');
+});
+
+// ── page-number fields ───────────────────────────────────────────────────────
+
+const FOOTER = `<w:ftr ${NS}><w:p>
+  <w:r><w:t xml:space="preserve">Page </w:t></w:r>
+  <w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>
+  <w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>1</w:t></w:r><w:r><w:t>7</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>
+  <w:r><w:t xml:space="preserve"> of </w:t></w:r>
+  <w:fldSimple w:instr=" NUMPAGES  \\* MERGEFORMAT "><w:r><w:t>2</w:t></w:r></w:fldSimple>
+  <w:fldSimple w:instr=" DATE "><w:r><w:t>2026</w:t></w:r></w:fldSimple>
+  <w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText> HYPERLINK "x" </w:instrText></w:r>
+  <w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>link</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>
+</w:p></w:ftr>`;
+
+test('markPageFields: PAGE and NUMPAGES results become sentinels, other fields are left alone', () => {
+  const doc = parse(FOOTER);
+  const n = docxKit.markPageFields(doc);
+  assert.equal(n, 2);
+  const text = texts(doc);
+  assert.deepEqual(text, ['Page ', docxKit.PAGE_FIELD, '', ' of ', docxKit.NUMPAGES_FIELD, '2026', 'link']);
+  assert.equal(docxKit.markPageFields(doc), 2, 'idempotent in effect: the sentinels are rewritten to themselves');
+  assert.deepEqual(texts(doc), text);
+});
+
+test('markPageFields: the sentinel keeps the first result run and its formatting', () => {
+  const doc = parse(FOOTER);
+  docxKit.markPageFields(doc);
+  const runs = [...doc.getElementsByTagNameNS(W, 'r')];
+  const carrier = runs.find(r => r.textContent === docxKit.PAGE_FIELD);
+  assert.ok(carrier.getElementsByTagNameNS(W, 'b').length, 'the bold on the result run survives');
+});
+
+test('normalize: fields are marked in every content part, headers and footers included', () => {
+  const { parts, report } = docxKit.normalize({ 'word/footer1.xml': FOOTER, 'word/document.xml': `<w:document ${NS}><w:body><w:p/></w:body></w:document>` });
+  assert.equal(report.fields, 2);
+  assert.ok(parts['word/footer1.xml'].includes(docxKit.PAGE_FIELD));
 });
 
 // ── normalize, the pure entry point ──────────────────────────────────────────
