@@ -19,9 +19,9 @@
 //   4. a Symbol-font bullet reaches the page as a Unicode dot
 //   5. the header line states pages and bytes, and `__doc.locate` lands on a
 //      cited phrase
-//   6. a pinch previews as a transform and commits as a zoom when the fingers
-//      lift, a ctrl-wheel zooms about the pointer, the pill shows the level
-//      off fit width, and tapping it returns to fit
+//   6. a two-finger touch is taken from the browser and scales the page as a
+//      transform while the fingers move, a ctrl-wheel zooms about the pointer,
+//      the pill shows the level off fit width, and tapping it returns to fit
 //
 // The fixture is built here with jszip rather than committed, so no binary
 // enters the tree and the document's internals are exactly what the
@@ -298,44 +298,54 @@ try {
       const shell = pane.children[1];
       const body = shell.firstElementChild;
       const pill = root.querySelector('.viewer-page-zoom');
-      const frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       const level = () => root.querySelector('[data-page="zoomlevel"]')?.textContent;
-      const before = { zoom: body.style.zoom, pill: pill.classList.contains('hidden') };
+      const k = () => Number(/scale\(([\d.]+)\)/.exec(body.style.transform)?.[1]) || 0;
+      const frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const read = () => ({ k: k(), pill: pill.classList.contains('hidden'), level: level(),
+                            shellW: parseFloat(shell.style.width), scrollWidth: pane.scrollWidth, clientWidth: pane.clientWidth });
+      const before = read();
       const r = pane.getBoundingClientRect();
       const cx = r.left + r.width / 2, cy = r.top + 200;
-      const touch = (type, id, x, y) => pane.dispatchEvent(new PointerEvent(type, {
-        pointerId: id, pointerType: 'touch', clientX: x, clientY: y, bubbles: true }));
-      touch('pointerdown', 1, cx - 40, cy); touch('pointerdown', 2, cx + 40, cy);
-      touch('pointermove', 1, cx - 80, cy); touch('pointermove', 2, cx + 80, cy);
+      // Two fingers, as the browser reports them: Touch objects on a
+      // TouchEvent, cancelable, since the pane's handler has to be able to
+      // take the gesture away from the browser.
+      const touch = (type, pts) => {
+        const touches = pts.map(([id, x, y]) => new Touch({ identifier: id, target: pane, clientX: x, clientY: y }));
+        const ev = new TouchEvent(type, { touches: type === 'touchend' ? [] : touches, changedTouches: touches,
+                                          targetTouches: touches, bubbles: true, cancelable: true });
+        pane.dispatchEvent(ev);
+        return ev.defaultPrevented;
+      };
+      const took = touch('touchstart', [[1, cx - 40, cy], [2, cx + 40, cy]]);
+      touch('touchmove', [[1, cx - 80, cy], [2, cx + 80, cy]]);
       await frame();
-      // Mid-gesture: the scale is a transform on the shell and the zoom has
-      // not moved, which is the whole reason the pinch is smooth.
-      const during = { zoom: body.style.zoom, transform: shell.style.transform, level: level() };
-      touch('pointerup', 1, cx - 80, cy); touch('pointerup', 2, cx + 80, cy);
-      const pinched = { zoom: body.style.zoom, transform: shell.style.transform, pill: pill.classList.contains('hidden'), level: level(),
-                        scrollWidth: pane.scrollWidth, clientWidth: pane.clientWidth };
+      const during = read();
+      touch('touchend', [[1, cx - 80, cy], [2, cx + 80, cy]]);
+      await frame();
+      const pinched = { ...read(), willChange: body.style.willChange };
       pane.dispatchEvent(new WheelEvent('wheel', { deltaY: 400, deltaMode: 0, ctrlKey: true, clientX: cx, clientY: cy, bubbles: true, cancelable: true }));
-      await new Promise(r => setTimeout(r, 300));
-      const wheeled = { zoom: body.style.zoom, level: level() };
+      await frame();
+      const wheeled = read();
       root.querySelector('[data-page="zoomreset"]').click();
-      const reset = { zoom: body.style.zoom, pill: pill.classList.contains('hidden'), api: root.closest('#dv-viewer') ? null : null };
+      await frame();
+      const reset = read();
       const api = [...document.querySelectorAll('*')].map(e => e.__doc).find(Boolean);
-      return { before, during, pinched, wheeled, reset, apiZoom: api?.zoom?.() };
+      return { took, before, during, pinched, wheeled, reset, apiZoom: api?.zoom?.() };
     });
-    const num = (v) => Number(v) || 0;
     ok('the pill is hidden at fit width', zoomed.before.pill === true, JSON.stringify(zoomed.before));
-    ok('mid-pinch the scale is a transform and the layout is untouched',
-       /scale\(2/.test(zoomed.during.transform) && zoomed.during.zoom === zoomed.before.zoom && zoomed.during.level === '200%',
+    ok('the two-finger touchstart is taken from the browser', zoomed.took === true, String(zoomed.took));
+    ok('the pinch doubles the scale while the fingers are still down',
+       Math.abs(zoomed.during.k / zoomed.before.k - 2) < 0.05 && zoomed.during.level === '200%',
+       JSON.stringify({ before: zoomed.before, during: zoomed.during }));
+    ok('and the shell grew with it, so the page scrolls sideways rather than being clipped',
+       Math.abs(zoomed.during.shellW / zoomed.before.shellW - 2) < 0.05 && zoomed.during.scrollWidth > zoomed.during.clientWidth,
        JSON.stringify(zoomed.during));
-    ok('lifting the fingers commits: the zoom doubles and the transform is gone',
-       Math.abs(num(zoomed.pinched.zoom) / num(zoomed.before.zoom) - 2) < 0.05 && zoomed.pinched.transform === '',
-       JSON.stringify({ before: zoomed.before.zoom, after: zoomed.pinched }));
-    ok('and shows the pill with the level', zoomed.pinched.pill === false && zoomed.pinched.level === '200%', JSON.stringify(zoomed.pinched));
-    ok('the zoomed page scrolls sideways rather than being clipped', zoomed.pinched.scrollWidth > zoomed.pinched.clientWidth,
+    ok('lifting the fingers keeps the scale and drops the layer promotion',
+       Math.abs(zoomed.pinched.k - zoomed.during.k) < 0.001 && zoomed.pinched.willChange === '' && zoomed.pinched.pill === false,
        JSON.stringify(zoomed.pinched));
-    ok('a ctrl-wheel down zooms out', num(zoomed.wheeled.zoom) < num(zoomed.pinched.zoom), JSON.stringify(zoomed.wheeled));
+    ok('a ctrl-wheel down zooms out', zoomed.wheeled.k < zoomed.pinched.k, JSON.stringify(zoomed.wheeled));
     ok('tapping the pill returns to fit width and hides it',
-       Math.abs(num(zoomed.reset.zoom) - num(zoomed.before.zoom)) < 0.001 && zoomed.reset.pill === true, JSON.stringify(zoomed.reset));
+       Math.abs(zoomed.reset.k - zoomed.before.k) < 0.001 && zoomed.reset.pill === true, JSON.stringify(zoomed.reset));
     ok('__doc reports the zoom', zoomed.apiZoom === 1, JSON.stringify(zoomed.apiZoom));
   }
 
