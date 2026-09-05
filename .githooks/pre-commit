@@ -169,6 +169,18 @@ if git status --porcelain -- tools scripts package.json tools/build/tools-index.
   fi
 fi
 
+# --- leg 2c2: lib/kits/ -> the kits registry ----------------------------------
+# docs/kits.csv authors nothing: namespace, headline, boot, demo, users and
+# tested are all read off the tree, so any change on the shelf, to a demo, to a
+# page that loads a kit, or to the boot manifest can move a row.
+if git status --porcelain -- lib pages app tools/test tools/build/kits-index.mjs docs/kits.csv | grep -q .; then
+  if npm run kits-index --silent >/dev/null 2>&1; then
+    stage docs/kits.csv
+  else
+    echo "build hook: 'npm run kits-index' failed — docs/kits.csv may be stale" >&2
+  fi
+fi
+
 # --- leg 2d: lib/ or pages/ -> the registries' renders_in field ---------------
 # docs/registries.csv is authored everywhere except `renders_in`, the app
 # files that name each carrier, stamped the way leg 3a stamps reach. Must

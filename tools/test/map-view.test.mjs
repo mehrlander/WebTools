@@ -61,6 +61,7 @@ const propsVocabCsv = readFileSync(path.join(repoRoot, 'docs', 'vocabularies.csv
 const skillsCsv = readFileSync(path.join(repoRoot, 'skills', 'manifest.csv'), 'utf8');
 const textFieldsCsv = readFileSync(path.join(repoRoot, 'docs', 'text-fields.csv'), 'utf8');
 const testsCsv = readFileSync(path.join(repoRoot, 'docs', 'tests.csv'), 'utf8');
+const kitsCsv = readFileSync(path.join(repoRoot, 'docs', 'kits.csv'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
 // is the join the readership column has to get right.
@@ -93,6 +94,7 @@ window.GH = class {
     if (p === 'skills/manifest.csv') return { text: skillsCsv };
     if (p === 'docs/text-fields.csv') return { text: textFieldsCsv };
     if (p === 'docs/tests.csv') return { text: testsCsv };
+    if (p === 'docs/kits.csv') return { text: kitsCsv };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: toCsv(manifest.items) };
   }
@@ -228,6 +230,37 @@ test('Owners loads its own carrier, separately from Docs', async () => {
   assert.equal(data.propsReg, null, 'opening Claims does not pull the registry pair');
   assert.equal(data.OWNERS_MANIFEST, 'docs/owners.csv');
   assert.equal(data.OWNERS_REPS, 'docs/repetitions.csv');
+});
+
+// The kit shelf: every column derived, so the tab's whole job is to filter
+// and to make the warning states countable. The demo link is an APP VIEW of
+// this app, which is what puts the FAB's layer strip and takes over the demo.
+test('Kits loads on demand, filters on its derived columns, and opens a demo as an app view', async () => {
+  assert.equal(data.kitsReg, null, 'the registry is not fetched until the tab is opened');
+  await data.loadKitsReg();
+  assert.equal(data.kitsErr, '');
+  const kits = data.kitsReg.kits;
+  assert.ok(kits.length > 50, 'the shelf has more than fifty kits');
+  assert.ok(kits.every(k => k.name && k.path.startsWith('lib/kits/')), 'every row is a kit on the shelf');
+  const peek = kits.find(k => k.name === 'peek');
+  assert.ok(peek && peek.namespace === 'Peek', 'the namespace is read off the file');
+  assert.match(peek.gloss, /under the pointer/, 'the gloss is the header sentence');
+  assert.equal(data.KITS_MANIFEST, 'docs/kits.csv');
+  // The strip: a filter narrows the rows to the kits it counts, and clearing
+  // it restores them, so the count on the pill and the rows under it agree.
+  const demo = data.kitFilterCounts.find(r => r.key === 'demo');
+  assert.ok(demo && demo.n > 0, 'some kit has a demo');
+  data.kitFilter = 'demo';
+  assert.equal(data.kitRows.length, demo.n, 'the filtered rows are exactly the counted ones');
+  assert.ok(data.kitRows.every(k => k.demo));
+  data.kitFilter = '';
+  assert.equal(data.kitRows.length, kits.length);
+  // The demo opens through this app's own app-view route, not as a bare page.
+  const withDemo = kits.find(k => k.demo);
+  const href = data.kitDemoHref(withDemo);
+  assert.match(href, /^\?view=app&/, 'an app view of this app');
+  assert.ok(href.includes('appPath=lib%2Fkits%2Fdemos%2F' + withDemo.name + '.html'), href);
+  assert.equal(data.kitTotals.kits, kits.length);
 });
 
 test('the Docs folder rail rolls up, nests, and prunes by reach without changing shape', () => {
