@@ -25,7 +25,16 @@ python3 scripts/userscript-stub.py launcher --name 'wt launcher' \
 
 That writes the stub and its bookmarklet twin together, both pinned at HEAD. A
 body must define `window.wt<Lib>` and do nothing on load; the stub calls it. One
-body then serves both routes, which is the only way to compare them.
+body then serves both routes, which is the only way to compare them, and
+`tools/test/userscript-stubs.test.mjs` holds the pair to one pin, since a stub
+re-pinned without its twin ships two routes that claim to run the same code.
+
+**Which route reaches a page.** Measured against `script-src 'self'`: the
+bookmarklet is refused, because it is a script tag the page injects; the
+userscript mounts, because the extension evaluates the body itself. That is the
+reason the launcher exists as a userscript and the reason its styles are a
+constructed stylesheet rather than a `<style>` element, which `style-src` would
+refuse the same way.
 
 - [`launcher.user.js`](launcher.user.js): the Web Tools launcher on any page,
   from [`lib/launcher.js`](lib/launcher.js). Drag it anywhere, tap for a menu:
