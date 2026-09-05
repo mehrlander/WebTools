@@ -316,6 +316,60 @@ test('the controls sit on the tab row, not on a strip above it', () => {
 });
 
 
+// ── One row on a reading card ───────────────────────────────────────────────
+//
+// A presented file had two rows of chrome above it and five controls across
+// them: the collapsed header, then a File/Compare tab pair, a split/unified
+// icon pair, a copy, a deck action and a github menu. On a 390px phone that is
+// most of the first screen spent before the document starts, which is what the
+// reader called too many buttons hovering at the top (2026-09-05).
+test('a reading card puts its name, its layouts and one menu on a single row', () => {
+  const card = window.document.getElementById('page');
+  // The collapsed header stands down once the card is open, because the control
+  // row below carries the name instead. Closed it has to come back, or the card
+  // would have nothing left to tap.
+  const header = [...card.querySelectorAll('div')]
+    .find(e => /hover:bg-base-200\/50/.test(e.className || ''));
+  assert.ok(header, 'the header element is still there');
+  assert.equal(header.style.display, 'none', 'and hidden while the card is open');
+
+  // No text tabs: three layout icons in one group, and the file is the first.
+  assert.equal(data('page').panes.length, 2, 'the file and its comparison');
+  assert.deepEqual(JSON.parse(JSON.stringify(data('page').viewModes.map(m => m.icon))),
+    ['ph-square', 'ph-columns', 'ph-rows'], 'one pane, two columns, two rows');
+  assert.equal(card.querySelector('[role="tablist"]').style.display, 'none',
+    'the text tab strip is not drawn on a reading card');
+
+  // And the utilities fold into the menu rather than sitting beside it.
+  // One copy control, not one copy ELEMENT: the standalone button is still in
+  // the DOM behind an x-show, which is what the list needs it for. What has to
+  // be true is that exactly one of them is on screen, and that it is the one in
+  // the menu.
+  const copies = [...card.querySelectorAll('.ph-copy')]
+    .filter(i => i.closest('button').style.display !== 'none');
+  assert.equal(copies.length, 1, 'one copy control on screen');
+  assert.ok(copies[0].closest('li'), 'and it is a row in the menu, not a button beside it');
+  assert.ok(card.querySelector('.ph-dots-three-outline'), 'behind an overflow, not a github logo');
+});
+
+// The list is untouched by all of that: there the top row is the LIST ROW,
+// thirty of them scanned at once, and the tab strip names panes a reader is
+// choosing between rather than layouts.
+test('a list card keeps both rows and its named tabs', () => {
+  // pageList, not withPatch: the layout group only exists where there is a
+  // comparison to lay out, and withPatch has loaded two identical sides by the
+  // time this runs, so it would pass the last assertion for the wrong reason.
+  // Same file as the reading card above, same comparison, different surface.
+  const card = window.document.getElementById('pageList');
+  const header = [...card.querySelectorAll('div')]
+    .find(e => /hover:bg-base-200\/50/.test(e.className || ''));
+  assert.notEqual(header.style.display, 'none', 'the list row stays');
+  assert.notEqual(card.querySelector('[role="tablist"]').style.display, 'none');
+  assert.equal(data('pageList').comparable, true, 'there IS a comparison here');
+  assert.equal(data('pageList').viewModes.length, 0, 'and no layout group is offered for it');
+  assert.ok(card.querySelector('.ph-github-logo'), 'the github menu is still a github menu');
+});
+
 // ── the classifier, and why there are two of them ───────────────────────────
 //
 // kits/source-peek.js already decides what a path IS, and map.js's renderDoc
