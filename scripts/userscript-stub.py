@@ -27,7 +27,9 @@ so one body serves the userscript (extension context, exempt from the page's
 script-src) and the bookmarklet (a script tag the page's policy may refuse).
 """
 import argparse
+import datetime
 import hashlib
+import json
 import pathlib
 import re
 import subprocess
@@ -37,6 +39,9 @@ CDN = 'https://cdn.jsdelivr.net/gh/mehrlander/web-tools@{ref}/userscripts/lib/{l
 PURGE = 'https://purge.jsdelivr.net/gh/mehrlander/web-tools@{ref}/userscripts/lib/{lib}.js'
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 STAMP = re.compile(r"^const BUILD = '([^']*)';$", re.M)
+BUILT = re.compile(r"^const BUILT = '([^']*)';$", re.M)
+REF = re.compile(r"^const REF = '([^']*)';$", re.M)
+MANIFEST = 'userscripts/builds.json'
 
 
 def current_branch() -> str:
@@ -49,10 +54,12 @@ def fn_name(lib: str) -> str:
 
 
 def stamp_of(text: str) -> str:
-    """The hash is taken with the stamp line neutralised, so stamping is
-    idempotent: re-running on an unchanged body writes back the same id."""
-    return hashlib.sha256(
-        STAMP.sub("const BUILD = '#BUILD#';", text).encode()).hexdigest()[:7]
+    """The hash is taken with all three stamp lines neutralised, so stamping is
+    idempotent: re-running on an unchanged body writes back the same id, and the
+    build time is not itself part of what the build id covers."""
+    for pat, key in ((STAMP, 'BUILD'), (BUILT, 'BUILT'), (REF, 'REF')):
+        text = pat.sub(f"const {key} = '#{key}#';", text)
+    return hashlib.sha256(text.encode()).hexdigest()[:7]
 
 
 def main() -> int:
@@ -82,12 +89,26 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
+    ref = a.ref or current_branch()
     build = stamp_of(text)
-    stamped = STAMP.sub(f"const BUILD = '{build}';", text, count=1)
+    was = STAMP.search(text).group(1)
+    # The build time only moves when the build id does. Re-running the generator
+    # on an unchanged body must not make it look freshly published.
+    built = (BUILT.search(text).group(1) if was == build and BUILT.search(text)
+             else datetime.datetime.now(datetime.timezone.utc)
+             .replace(microsecond=0).isoformat().replace('+00:00', 'Z'))
+    stamped = text
+    for pat, key, val in ((STAMP, 'BUILD', build), (BUILT, 'BUILT', built), (REF, 'REF', ref)):
+        stamped = pat.sub(f"const {key} = '{val}';", stamped, count=1)
     if stamped != text:
         body.write_text(stamped)
 
-    ref = a.ref or current_branch()
+    # The manifest the launcher reads to answer "am I current?". One row per
+    # body, so adding a script does not disturb the others.
+    mf = ROOT / MANIFEST
+    rows = json.loads(mf.read_text()) if mf.exists() else {}
+    rows[a.lib] = {'build': build, 'built': built}
+    mf.write_text(json.dumps(dict(sorted(rows.items())), indent=2) + '\n')
     url = CDN.format(ref=ref, lib=a.lib)
     matches = '\n'.join(f'// @match       {m}' for m in a.match)
 
@@ -108,9 +129,10 @@ window.{fn}();
         f"javascript:(s=>{{s.src='{url}';s.onload=()=>{fn}();"
         f"document.body.appendChild(s)}})(document.createElement('script'))\n")
 
-    print(f'{a.lib} stamped {build}, pinned to {ref}')
+    print(f'{a.lib} stamped {build} at {built}, pinned to {ref}')
     print(f'  userscripts/{a.lib}.user.js')
     print(f'  bookmarklets/{a.lib}.js')
+    print(f'  {MANIFEST}')
     print(f'  purge after pushing: {PURGE.format(ref=ref, lib=a.lib)}')
     return 0
 

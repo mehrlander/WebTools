@@ -44,7 +44,22 @@
 // the stub is pinned to a BRANCH and never changes again: that is what removes
 // the reinstall, and it costs the one thing a SHA pin gave for free, namely
 // knowing which copy ran. The stamp buys that back, and the drawer shows it.
-const BUILD = 'fd15eda';
+const BUILD = '107ebdd';
+const BUILT = '2026-09-06T14:31:53Z';
+const REF = 'claude/bookmarklets-shortcuts-iphone-safari-rjakex';
+
+// Where the current build id is published. The launcher compares its own stamp
+// against this and says so when they differ, which is the only way a reader
+// learns that the edge they hit is behind: jsDelivr propagates a purge per
+// edge, so for a while after a push a reload can land on either body.
+//
+// It is read from raw.githubusercontent with a cache-buster rather than from
+// the CDN, because a manifest served from the same cache as the thing it
+// describes can be stale in exactly the case it exists to detect. And it stays
+// SILENT on failure: a strict connect-src refuses this fetch, and an
+// unlooked-up answer reading as a good one is worse than no verdict, which is
+// the rule the shortcut library already runs on its own build manifest.
+const MANIFEST = `https://raw.githubusercontent.com/mehrlander/web-tools/${REF}/userscripts/builds.json`;
 
 window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {}) => {
   const ID = 'wt-launcher';
@@ -69,6 +84,18 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
   // the fab builds its own body on first open.
 
   const clean = s => String(s || '').replace(/\s+/g, ' ').trim();
+
+  // "3h ago" is readable without a second number to compare it to, which a hash
+  // is not. It is the always-available half of the freshness answer; the
+  // manifest below is the definitive half, where the page allows the fetch.
+  const age = iso => {
+    const mins = Math.floor((Date.now() - Date.parse(iso)) / 60000);
+    if (!isFinite(mins)) return '';
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    if (mins < 48 * 60) return Math.floor(mins / 60) + 'h ago';
+    return Math.floor(mins / 1440) + 'd ago';
+  };
 
   // Links, deduped by address. A page repeats its own navigation in a header
   // and a footer, and a list of forty links where fifteen are the same six
@@ -261,7 +288,11 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
     .bar button.on::before { content: '● '; }
     .head b { display: block; font-size: .875rem; font-weight: 600;
               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .head small { font: 11px ui-monospace, monospace; color: ${mix('var(--wt-bc)', 60)}; }
+    .head small { display: block; font: 11px ui-monospace, monospace;
+                  color: ${mix('var(--wt-bc)', 60)}; }
+    .stale { display: block; margin-top: .25rem; font-size: 11px; font-weight: 600;
+             color: oklch(55% .17 40); }
+    .stale[hidden] { display: none; }
     .tabs { display: flex; border-bottom: 1px solid var(--wt-b300); flex: none; }
     .tab { flex: 1; padding: .5rem; background: none; border: 0;
            border-bottom: 2px solid transparent; cursor: pointer;
@@ -327,7 +358,7 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
   layer.innerHTML = `
     <div class="panel">
       <div class="head">
-        <div><b></b><small></small></div>
+        <div><b></b><small></small><span class="stale" hidden></span></div>
         <button class="reread" aria-label="Read this page again">${svg(ICON.refresh)}</button>
       </div>
       <div class="tabs">
@@ -472,7 +503,7 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
   let read = false;
   const openDrawer = () => {
     state.sel = clean(String(getSelection() || ''));
-    if (!read) { readPage(); read = true; }
+    if (!read) { readPage(); checkBuild(); read = true; }
     renderPage();
     refresh();
     panel.classList.add('open');
@@ -631,7 +662,22 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
   });
 
   q('.head b').textContent = page.title;
-  q('.head small').textContent = `${location.hostname} · ${BUILD}`;
+  q('.head small').textContent = `${location.hostname} · ${BUILD} · built ${age(BUILT)}`;
+
+  // Asked once, on the first open, and never allowed to fail loudly.
+  let checked = false;
+  const checkBuild = async () => {
+    if (checked) return;
+    checked = true;
+    try {
+      const r = await fetch(MANIFEST + '?_=' + Date.now(), { cache: 'no-store' });
+      const current = (await r.json())?.launcher?.build;
+      if (!current || current === BUILD) return;
+      const el = q('.stale');
+      el.textContent = `${current} is current. Reload; an edge may still be catching up.`;
+      el.hidden = false;
+    } catch { /* the page refused the fetch: say nothing rather than guess */ }
+  };
   document.documentElement.append(host);
 
   // The second half of the yield rule. A web-tools page boots its loader and

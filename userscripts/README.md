@@ -29,12 +29,26 @@ for about twelve hours, so without it the old body keeps being served. The
 generator prints the exact URL.
 
 **A branch pin costs the one thing a commit pin gave free**, knowing which copy
-ran, so the body carries a `BUILD` stamp: a short hash of itself, written by the
-generator and shown in the drawer header and the menu's foot.
-`tools/test/userscript-stubs.test.mjs` holds the stamp to the file it was
-computed from, so a body edited without re-stamping fails rather than reporting
-a build id that was true yesterday. It also holds the stub and its bookmarklet
-twin to one address. A body must define `window.wt<Lib>` and do nothing on load;
+ran, and a purge does not settle it either: jsDelivr propagates per edge, so for
+a while after a push a reload can land on either body (measured 2026-09-06, six
+of eight reads on the old one). Purging is also rate-limited, roughly hourly per
+path. So the drawer header answers the freshness question three ways, each
+weaker than the next but each available where the others are not:
+
+| Shown | Answers |
+| --- | --- |
+| `107ebdd` | which copy ran, always |
+| `built 3h ago` | roughly how old it is, without a second number to compare |
+| a warning line | that a different build is current, where the fetch is allowed |
+
+The warning comes from [`builds.json`](builds.json), read from
+raw.githubusercontent with a cache-buster rather than from the CDN, since a
+manifest served by the cache it describes can be stale in exactly the case it
+exists to detect. It **stays silent on failure**, because a strict `connect-src`
+refuses that fetch and an unlooked-up answer reading as a good one is worse than
+no verdict. `tools/test/userscript-stubs.test.mjs` holds the manifest to the
+body and the stamp to the file it was computed from, and holds the stub and its
+bookmarklet twin to one address. A body must define `window.wt<Lib>` and do nothing on load;
 the stub calls it, so one body serves both routes.
 
 **Which route reaches a page.** Measured against `script-src 'self'`: the

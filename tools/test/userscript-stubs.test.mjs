@@ -7,6 +7,10 @@
 //   - A body edited without re-stamping, so the launcher reports a build id
 //     that was true yesterday. That is worse than no id: an unlooked-up answer
 //     reading as a good one is the failure the stamp exists to prevent.
+//   - The published manifest disagreeing with the body, which would make an
+//     up-to-date launcher announce that it is behind, or a stale one keep
+//     quiet. The manifest is the one thing a reader on the phone cannot check
+//     for themselves, so it is the one that most needs checking here.
 //
 // The pin is deliberately a BRANCH here, which an earlier version of this file
 // refused. A commit pin made every edit a reinstall on the phone, and the
@@ -23,9 +27,15 @@ const stubs = fs.readdirSync(path.join(ROOT, 'userscripts'))
   .filter(f => f.endsWith('.user.js'));
 
 const STAMP = /^const BUILD = '([^']*)';$/m;
+const BUILT = /^const BUILT = '([^']*)';$/m;
+const REF = /^const REF = '([^']*)';$/m;
 const fnName = lib => 'wt' + lib.split('-').map(p => p[0].toUpperCase() + p.slice(1)).join('');
-const stampOf = text => crypto.createHash('sha256')
-  .update(text.replace(STAMP, "const BUILD = '#BUILD#';")).digest('hex').slice(0, 7);
+const stampOf = text => crypto.createHash('sha256').update(
+  text.replace(STAMP, "const BUILD = '#BUILD#';")
+      .replace(BUILT, "const BUILT = '#BUILT#';")
+      .replace(REF, "const REF = '#REF#';")).digest('hex').slice(0, 7);
+const manifest = JSON.parse(
+  fs.readFileSync(path.join(ROOT, 'userscripts', 'builds.json'), 'utf8'));
 
 test('every stub loads a body that exists and defines what the stub calls', () => {
   assert.ok(stubs.length, 'no stubs found; this test would pass vacuously');
@@ -70,4 +80,27 @@ test('every body carries a stamp matching its own contents', () => {
       `${lib}.js was edited without re-stamping, so it would report build ` +
       `${m[1]} while running something else: python3 scripts/userscript-stub.py ${lib} …`);
   }
+});
+
+test('the published manifest agrees with every body it names', () => {
+  for (const stub of stubs) {
+    const lib = stub.replace('.user.js', '');
+    const text = fs.readFileSync(path.join(ROOT, 'userscripts', 'lib', `${lib}.js`), 'utf8');
+    const row = manifest[lib];
+    assert.ok(row, `userscripts/builds.json has no row for ${lib}`);
+    assert.equal(row.build, text.match(STAMP)[1],
+      `builds.json says ${lib} is at ${row.build} and the body says ` +
+      `${text.match(STAMP)[1]}, so a current launcher would report itself stale`);
+    assert.equal(row.built, text.match(BUILT)[1], `${lib}: build times disagree`);
+    assert.ok(!Number.isNaN(Date.parse(row.built)),
+      `${lib}: built is not a date the launcher can subtract from now`);
+  }
+});
+
+test('the manifest names nothing that has no body', () => {
+  const libs = new Set(stubs.map(f => f.replace('.user.js', '')));
+  const orphans = Object.keys(manifest).filter(k => !libs.has(k));
+  assert.deepEqual(orphans, [],
+    'these rows outlived their script and would answer for a build nobody ' +
+    'ships: ' + orphans.join(', '));
 });
