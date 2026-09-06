@@ -18,6 +18,7 @@ lib/kits/csv.js,Csv,"CSV, small and shared.",54,no,no,6,yes
 lib/kits/data-payload.js,DataPayload,Reading a data toss.,190,no,no,3,yes
 lib/kits/data-shelf.js,dataShelf,shelf record schema + helpers.,62,no,no,1,yes
 lib/kits/dictate.js,Dictate,"voice input as a plain text buffer: start the engine, speak, and read `text` back.",1407,no,yes,10,yes
+lib/kits/dispatch.js,dispatch,mint a link that starts a new session somewhere else.,274,no,no,0,yes
 lib/kits/dock-split.js,dockSplit,the drag handle between two panes.,264,no,yes,5,yes
 lib/kits/docx.js,docxKit,"WordprocessingML (.docx) preparation: what a Word file has to have done to it before a browser renderer draws it faithfully, and what it knows about itself…",497,no,no,1,yes
 lib/kits/estate-search.js,EstateSearch,"The estate's search calls, in one place, with one cache.",354,no,no,5,yes
