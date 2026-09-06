@@ -14,7 +14,7 @@
   <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
     <h1 class="text-2xl font-semibold">note</h1>
     <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">data-note="…"</code>
-    <span class="text-[13px] text-base-content/50">hover · tap · Tab</span>
+    <span class="text-[13px] text-base-content/50">hover · tap · Tab · tap the note to close it</span>
     <span class="ml-auto flex gap-2">
       <button class="btn btn-sm" onclick="Note.open('#ext')">Open one</button>
       <button class="btn btn-sm btn-ghost" onclick="Note.close()">Close</button>
@@ -29,7 +29,7 @@
       <span class="text-base-content/60">Requests</span>
       <span class="w-px h-4 bg-base-300"></span>
       <span id="ext" class="text-[10px] uppercase tracking-wider text-base-content/40"
-            data-note="This tab fetches its content from the repository when you open it, rather than loading it with the page. It is gated on your GitHub token, so it can be unavailable when the rest of the view is fine.">External</span>
+            data-note="Fetched from the repository when opened">External</span>
       <span class="text-base-content/60"><i class="ph ph-cloud-arrow-down align-[-2px]"></i> Budget bill</span>
     </div>
   </section>
@@ -38,9 +38,9 @@
     <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Running text</h2>
     <p class="text-[15px] leading-relaxed">
       The schedule reconciles to the
-      <span data-note="Fund 600, appropriated lane only. The non-appropriated lane is reported on the same fund number and never nets into this figure.">appropriated ledger</span>
+      <span data-note="Fund 600, appropriated lane only">appropriated ledger</span>
       to the dollar, and the
-      <span data-note="Audited, on a wider perimeter than AEF05. It never ties to the appropriated ledger, by construction.">ACFR schedule</span>
+      <span data-note="Annual Comprehensive Financial Report">ACFR schedule</span>
       does not.
     </p>
   </section>
@@ -52,14 +52,31 @@
         <tr>
           <th class="text-left font-medium px-3 py-1.5 border-b border-base-300">Item</th>
           <th class="text-left font-medium px-3 py-1.5 border-b border-base-300"
-              data-note="Net of reversions, so a session that reverted more than it added shows negative.">Net</th>
+              data-note="Net of reversions">Net</th>
         </tr>
       </thead>
       <tbody>
         <tr><td class="px-3 py-1.5">Recordkeeping</td><td class="px-3 py-1.5 font-mono">1,204</td></tr>
         <tr><td class="px-3 py-1.5">CORE-PAM</td>
             <td class="px-3 py-1.5 font-mono" data-note-bare
-                data-note="Gated funding: released by proviso rather than appropriated outright.">—</td></tr>
+                data-note="Gated: released by proviso, not appropriated">—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="space-y-2" data-note-look="plain">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">The plain look, set once on the section</h2>
+    <table class="text-[13px] border border-base-300">
+      <thead class="bg-base-200">
+        <tr>
+          <th class="text-left font-medium px-3 py-1.5 border-b border-base-300">Fund</th>
+          <th class="text-right font-medium px-3 py-1.5 border-b border-base-300" data-note="Full-time equivalents">FTE</th>
+          <th class="text-right font-medium px-3 py-1.5 border-b border-base-300" data-note="Thousands of dollars">$K</th>
+          <th class="text-left font-medium px-3 py-1.5 border-b border-base-300 max-w-24 truncate" data-note="Non-appropriated lane of fund 600">Non-approp…</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="px-3 py-1.5">600</td><td class="px-3 py-1.5 font-mono text-right">312.4</td><td class="px-3 py-1.5 font-mono text-right">92,118</td><td class="px-3 py-1.5">yes</td></tr>
       </tbody>
     </table>
   </section>
@@ -81,11 +98,11 @@ npm run shot -- lib/kits/demos/note.html --script open-note.mjs</code></pre>
       <tbody>
         <tr class="border-b border-base-300">
           <td class="px-3 py-2 font-medium align-top w-40">note</td>
-          <td class="px-3 py-2"><code class="font-mono text-[0.9em]">pointer-events:none</code>, so nothing in it can be tapped. A string the reader looks at.</td>
+          <td class="px-3 py-2">Meant to be one line: what the page already implies and cannot fit, so nobody asks where it came from. Nothing tappable, no scrollbar; on touch, tapping the note closes it. Six lines is the ceiling; past it the console says so.</td>
         </tr>
         <tr>
-          <td class="px-3 py-2 font-medium align-top">panel</td>
-          <td class="px-3 py-2">Anything the reader taps inside: a link, a copy button, a table. Build it per <code class="font-mono text-[0.9em]">daisy-alpine/references/mechanics.md</code>.</td>
+          <td class="px-3 py-2 font-medium align-top">card</td>
+          <td class="px-3 py-2">Anything the reader taps inside, or scrolls: a link, a copy button, a table; and anything a reader might ask the source of, which the card names with a ↗. Carries its ✕ on touch. The rule, once: <code class="font-mono text-[0.9em]">daisy-alpine/references/mechanics.md</code>, "Notes and cards".</td>
         </tr>
       </tbody>
     </table>
