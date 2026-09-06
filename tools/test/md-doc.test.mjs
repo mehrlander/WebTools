@@ -249,9 +249,10 @@ test('copy for revision leads with an ask the answer has to fit', async () => {
   delete window.io;
 });
 
-test('the note row appears only where the annotator is actually running', () => {
-  // A control that opens nothing is worse than an absent one: the reader has
-  // no way to tell which kind they are looking at.
+test('the note row appears wherever the annotator is loaded, running or not', () => {
+  // A control that opens nothing is worse than an absent one, so an absent kit
+  // is still no row: the reader has no way to tell which kind they are looking
+  // at. PRESENCE is where that line falls, not `enabled`.
   const host = window.document.createElement('div');
   mdDoc.render(host, DOC, { addr: ADDR });
   assert.deepEqual(rowLabels(openMenu(host, 1)), ['Copy section', 'Copy for revision']);
@@ -262,10 +263,46 @@ test('the note row appears only where the annotator is actually running', () => 
   assert.deepEqual(rowLabels(openMenu(host2, 1)),
     ['Copy section', 'Copy for revision', 'Note this section']);
 
+  // Loaded and idle is the case this row is BEST placed to serve, and it was
+  // the case the gate excluded until 2026-09-06: the reader is looking at the
+  // heading they want a note on, and the only way to start one was the
+  // launcher menu somewhere else on the page.
   window.Annotate = { enabled: false, noteSection: () => true };
   const host3 = window.document.createElement('div');
   mdDoc.render(host3, DOC, { addr: ADDR });
-  assert.equal(rowLabels(openMenu(host3, 1)).length, 2, 'present but not enabled is still no row');
+  assert.deepEqual(rowLabels(openMenu(host3, 1)),
+    ['Copy section', 'Copy for revision', 'Note this section'],
+    'loaded but idle still offers the row: the click turns it on');
+  delete window.Annotate;
+});
+
+test('the note row turns the annotator on before it asks for a note', () => {
+  // noteSection returns false with no card mounted, so an idle annotator would
+  // have flashed a warning and done nothing. enable() comes first, aimed at the
+  // heading's OWN document, since a render inside a frame is annotated where it
+  // lives rather than on window.document.
+  const calls = [];
+  let live = false;
+  window.Annotate = {
+    get enabled() { return live; },
+    enable: (o) => { live = true; calls.push(['enable', o && o.doc === window.document]); },
+    noteSection: (h) => { calls.push(['noteSection', !!h]); return live; },
+  };
+  const host = window.document.createElement('div');
+  window.document.body.append(host);
+  mdDoc.render(host, DOC, { addr: ADDR });
+  const menu = openMenu(host, 1);
+  [...menu.querySelectorAll('button')]
+    .find(b => b.textContent.includes('Note this section')).click();
+  assert.deepEqual(calls, [['enable', true], ['noteSection', true]]);
+
+  // Already running: no second enable, since the card is up and aimed.
+  calls.length = 0;
+  const menu2 = openMenu(host, 1);
+  [...menu2.querySelectorAll('button')]
+    .find(b => b.textContent.includes('Note this section')).click();
+  assert.deepEqual(calls, [['noteSection', true]], 'a running annotator is not re-enabled');
+  host.remove();
   delete window.Annotate;
 });
 

@@ -1252,6 +1252,16 @@ test('the title, the count and the way in are one control', () => {
   assert.match(S.expandBtn.title, /^Put the set away/, 'and it says which way it is going');
   assert.equal(S.expandBtn.style.background, 'rgb(250, 204, 21)', 'lit while open, the way a live mode chip is');
 
+  // AND THE WORD YIELDS THE ROW. Expanding is what brings the readings strip
+  // and the copy key, taking this header from three controls to five: at 390px
+  // that is 380px of unshrinkable content in 333px of room, and the aim button
+  // fell to a second line. The count and the chevron stay, and what is open
+  // under them says what the card is.
+  assert.equal(S.expandWord.style.display, 'none', 'the word goes when the row fills up');
+  assert.equal(S.countEl.textContent, '2', 'the count does not');
+  S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(S.expandWord.style.display, '', 'and comes back when there is room');
+
   assert.match(S.expandBtn.getAttribute('style'), /min-height:\s*30px/, 'sized to the controls under it');
   A.clear();
   A.disable();
@@ -1327,8 +1337,11 @@ test('an unaimed note is a page note, and the menu names the aim in force', asyn
   assert.deepEqual(bare.target, { type: 'page' }, 'an omitted target is the page');
   assert.match(A.toMarkdown(), /## 1\. the page/, 'and it serializes as one');
 
-  // The button carries the aim in force, which at rest is the default.
-  assert.equal(S.aimLabel.textContent, 'Page');
+  // The button carries the aim in force, which at rest is the default. It
+  // carries it as a GLYPH, so the header holds one line on a phone once the
+  // card is expanded; the word is in the title and the aria-label.
+  assert.match(S.aimGlyph.className, /\bph-file\b/);
+  assert.equal(S.aimBtn.title, 'What the next note is about: Page');
   assert.equal(S.aimMenu.style.display, 'none', 'and the alternatives cost nothing until asked for');
 
   S.aimBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
@@ -1337,7 +1350,8 @@ test('an unaimed note is a page note, and the menu names the aim in force', asyn
   // Arming an aim renames the button and lights it, so a mode is never a state
   // you have to remember being in.
   S.modeChips.region.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.aimLabel.textContent, 'Region');
+  assert.match(S.aimGlyph.className, /\bph-frame-corners\b/);
+  assert.equal(S.aimBtn.title, 'What the next note is about: Region');
   assert.equal(S.aimBtn.style.backgroundColor, 'rgb(250, 204, 21)');
   assert.equal(S.aimMenu.style.display, 'none', 'and picking closes the menu');
 
@@ -1345,7 +1359,7 @@ test('an unaimed note is a page note, and the menu names the aim in force', asyn
   // the lit chip again, an exit with nothing on screen naming it.
   S.pageChip.dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(S.mode, null, 'the mode is off');
-  assert.equal(S.aimLabel.textContent, 'Page');
+  assert.match(S.aimGlyph.className, /\bph-file\b/);
   A.clear();
   A.disable();
 });

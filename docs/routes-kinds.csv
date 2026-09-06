@@ -1,12 +1,12 @@
-kind,label,subject,detect,exclusive,view,route,shown_by,kit,unit,address,aim,aim_label,aim_hint
-page,HTML page,a page (renders itself),ext html,,code,,hosted;use;toss-gz;toss-gh;toss-nested;artifact,,,,,,
-markdown,Markdown document,a file (needs a renderer),ext md,,preview,,toss-gh,lib/kits/md-doc.js,section (a heading and the run under it),path § heading (lines N-M),section,Markdown section,tap a heading: the note is about its source
-records,Record array,data (needs a viewer),"ext json, and every element a plain object",,table,data,toss-gh,,"row, column, cell",,,,
-tree,Nested JSON,data (needs a viewer),"ext json, anything not a record array",,tree,data,toss-gh,,node (by key path),,,,
-delimited,Delimited data,data (needs a viewer),ext csv or tsv,,table,data,toss-gh,,"row, column, cell",,,,
-code,Source code,a file (needs a renderer),any other text file,,code,,toss-gh,lib/kits/code-doc.js,"line range (one line, or a run of them)","path:N, or path:N-M",,,
-image,Image,a file (needs a renderer),ext in IMAGE_MIME,yes,image,data,toss-gh,,,,,,
-pdf,PDF,a file (needs a renderer),ext pdf,yes,pdf,pdf,toss-gh,,"page, then column or lattice cell",path p.N,,,
-workbook,Spreadsheet,a file (needs a renderer),ext xlsx or xlsm,yes,sheet,data,toss-gh,,"sheet, then row and column",,,,
-document,Word document,a file (needs a renderer),ext docx,yes,page,data,toss-gh,lib/kits/docx.js,"page, then a phrase",,,,
-chat,Chat transcript,a fileset (needs an envelope),a chat-results envelope,,,chat-results,toss-gh,,turn,chat <id> turn N,,,
+kind,label,subject,detect,exclusive,view,route,shown_by,kit,unit,address,aim,aim_label,aim_hint,aim_icon
+page,HTML page,a page (renders itself),ext html,,code,,hosted;use;toss-gz;toss-gh;toss-nested;artifact,,,,,,,
+markdown,Markdown document,a file (needs a renderer),ext md,,preview,,toss-gh,lib/kits/md-doc.js,section (a heading and the run under it),path § heading (lines N-M),section,Markdown section,tap a heading: the note is about its source,ph-file-md
+records,Record array,data (needs a viewer),"ext json, and every element a plain object",,table,data,toss-gh,,"row, column, cell",,,,,
+tree,Nested JSON,data (needs a viewer),"ext json, anything not a record array",,tree,data,toss-gh,,node (by key path),,,,,
+delimited,Delimited data,data (needs a viewer),ext csv or tsv,,table,data,toss-gh,,"row, column, cell",,,,,
+code,Source code,a file (needs a renderer),any other text file,,code,,toss-gh,lib/kits/code-doc.js,"line range (one line, or a run of them)","path:N, or path:N-M",,,,
+image,Image,a file (needs a renderer),ext in IMAGE_MIME,yes,image,data,toss-gh,,,,,,,
+pdf,PDF,a file (needs a renderer),ext pdf,yes,pdf,pdf,toss-gh,,"page, then column or lattice cell",path p.N,,,,
+workbook,Spreadsheet,a file (needs a renderer),ext xlsx or xlsm,yes,sheet,data,toss-gh,,"sheet, then row and column",,,,,
+document,Word document,a file (needs a renderer),ext docx,yes,page,data,toss-gh,lib/kits/docx.js,"page, then a phrase",,,,,
+chat,Chat transcript,a fileset (needs an envelope),a chat-results envelope,,,chat-results,toss-gh,,turn,chat <id> turn N,,,,

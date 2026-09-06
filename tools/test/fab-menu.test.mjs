@@ -23,7 +23,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const { window } = makeWindow({ html: '<!doctype html><html><body></body></html>' });
 const doc = window.document;
@@ -373,7 +378,46 @@ test('a declared render puts its own name on the row', async () => {
   // aim_label and kits/md-doc.js carries it onto the declaration.
   assert.equal(d.annKind.aimLabel, 'Markdown section');
   assert.ok(rowLabels(d.$root).includes('Note a markdown section'));
+
+  // AND ITS OWN GLYPH, for the same reason and from the same row. This file
+  // wrote out ph-text-align-left until 2026-09-06, so the next kind to declare
+  // would have arrived wearing markdown's icon under its own name.
+  assert.equal(d.annKind.aimIcon, 'ph-file-md');
+  const btn = [...d.$root.querySelectorAll('button')]
+    .find(b => (b.getAttribute('aria-label') || '') === 'Note a markdown section');
+  assert.ok(btn, 'the declared aim has a button');
+  assert.match(btn.querySelector('i').className, /\bph-file-md\b/,
+    'the row draws the glyph the kind declared');
+  assert.doesNotMatch(btn.querySelector('i').className, /text-align-left/);
   box.remove();
+});
+
+// The three that are not declared are this component's own, and they have to
+// keep matching kits/annotate.js's AIM_ICON glyph for glyph: one aim, one mark,
+// whichever control starts it.
+test('the built-in aims wear the same glyphs the card does', async () => {
+  clearPages();
+  const d = await mountFab();
+  d.openFabMenu();
+  await tick(2);
+  const glyph = (label) => {
+    const b = [...d.$root.querySelectorAll('button')]
+      .find(x => (x.getAttribute('aria-label') || '') === label);
+    assert.ok(b, 'no row: ' + label);
+    return b.querySelector('i').className;
+  };
+  assert.match(glyph('Note the page'), /\bph-file\b/);
+  assert.match(glyph('Note an element'), /\bph-crosshair-simple\b/);
+  assert.match(glyph('Note a region'), /\bph-frame-corners\b/);
+
+  const card = readFileSync(path.join(repoRoot, 'lib/kits/annotate.js'), 'utf8');
+  const lit = card.match(/const AIM_ICON = \{([\s\S]*?)\};/);
+  assert.ok(lit, 'kits/annotate.js no longer carries AIM_ICON');
+  for (const [key, g] of [['page', 'ph-file'], ['pick', 'ph-crosshair-simple'],
+                          ['region', 'ph-frame-corners']]) {
+    assert.match(lit[1], new RegExp(key + ":\\s*'" + g + "'"),
+      'the card and the launcher disagree about the ' + key + ' aim');
+  }
 });
 
 test('a declaration with no sections offers no row', async () => {

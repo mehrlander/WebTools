@@ -99,6 +99,97 @@ test('Element and Region are unconditional', () => {
   A.disable();
 });
 
+// ── The mark on the row, and on the button that opens it ────────────────────
+//
+// The launcher menu and this menu start the same four modes and looked nothing
+// alike: alpineComponents/fab.js's row is four glyphs and no words, this one
+// was four words and no glyph. A reader who learned the aims in one place
+// recognised none of them in the other.
+
+test('the declared kind supplies the Section row its label, hint and glyph', () => {
+  A.enable({ doc });
+  const host = render();
+  const item = A._state.modeChips.section;
+  assert.equal(item._label.textContent, 'Markdown section');
+  assert.equal(item._hint.textContent, 'tap a heading: the note is about its source');
+  // docs/routes-kinds.csv owns all three; kits/md-doc.js carries them onto the
+  // declaration. Hardcoding the glyph here is what sent an alignment control
+  // out to describe a markdown document until 2026-09-06.
+  assert.match(item._glyph.className, /\bph-file-md\b/);
+  assert.doesNotMatch(item._glyph.className, /text-align-left/);
+  host.remove();
+  A.disable();
+});
+
+test('the aim button shows the glyph of the aim in force, and names it in full', () => {
+  A.enable({ doc });
+  const S = A._state;
+  // Resting: Page, the aim that needs nothing on the page to hit.
+  assert.match(S.aimGlyph.className, /\bph-file\b/);
+  assert.equal(S.aimBtn.title, 'What the next note is about: Page');
+  assert.equal(S.aimBtn.getAttribute('aria-label'), S.aimBtn.title);
+  // No visible word at all: the header carries five controls once the card is
+  // expanded and the row does not fit a phone with a word on this button.
+  assert.equal(S.aimBtn.textContent.trim(), '');
+
+  const host = render();
+  A.startPick({ aim: 'section' });
+  assert.match(S.aimGlyph.className, /\bph-file-md\b/);
+  // The DECLARED label, not the generic one. The button read `Section` while
+  // the menu row beside it read `Markdown section`, in plain sight.
+  assert.equal(S.aimBtn.title, 'What the next note is about: Markdown section');
+
+  A.startRegion();
+  assert.match(S.aimGlyph.className, /\bph-frame-corners\b/);
+  assert.equal(S.aimBtn.title, 'What the next note is about: Region');
+  host.remove();
+  A.disable();
+});
+
+// ── Several renders in one document ─────────────────────────────────────────
+//
+// The deck mounts four at once and a doc beside a preview is two, so "the
+// markdown on this page" is routinely plural. The carrier answers both
+// questions now: declaredIn is what a CONTROL asks (does anything here declare
+// an aim), declaredAll is what a MARK asks (where is it).
+
+test('the carrier answers with every declared render, not just the first', () => {
+  const a = render(), b = render();
+  const all = window.srcDoc.declaredAll(doc);
+  assert.equal(all.length, 2, 'both renders qualify');
+  assert.deepEqual(all.map(f => f.box), [a.firstElementChild, b.firstElementChild],
+    'in document order');
+  assert.equal(window.srcDoc.declaredIn(doc).box, all[0].box,
+    'and the singular reading is still the first of them');
+  a.remove(); b.remove();
+});
+
+test('a pick resolves inside whichever render it lands in', () => {
+  // This half always worked, and it is what made the drawing gap invisible:
+  // locate() walks up from the tapped node, so the second render was fully
+  // pickable while nothing on screen said it was markdown. The rules were drawn
+  // from declaredIn until 2026-09-06, so they marked one document of two.
+  const a = render(), b = render();
+  A.enable({ doc });
+  assert.equal(A.noteSection(headingNamed(b, 'First')), true);
+  assert.equal(A._state.draft.target.type, 'section');
+  assert.match(A._state.draft.target.excerpt, /^## First/);
+  A.disable();
+  a.remove(); b.remove();
+});
+
+test('the structure paint reads every render', () => {
+  // jsdom computes no rects, so the rules themselves are real-browser behavior
+  // (verified headless, like the pick engine above). What is checkable here is
+  // the reading the paint is built on, which is the half that was wrong.
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/annotate.js'), 'utf8');
+  const paint = src.match(/const paintStructure = \(\) => \{[\s\S]*?\n {4}\};/);
+  assert.ok(paint, 'paintStructure is gone from kits/annotate.js');
+  assert.match(paint[0], /srcDoc\.declaredAll\(/,
+    'the section rules are drawn from one render again');
+  assert.doesNotMatch(paint[0], /declaredIn\(/);
+});
+
 // ── The target ──────────────────────────────────────────────────────────────
 
 test('a section note carries markdown, not the rendered text', () => {
