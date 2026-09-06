@@ -77,12 +77,17 @@
     two that only read it leave it alone.
 
     AND SEND, WHICH IS THE ONE THAT DOES NOT FILE THE WORDS AT ALL. It reads
-    them as an INSTRUCTION and hands them to something that can act on it: a
-    new Claude Code session with repositories preselected, or a chat. That is
-    why it is the only one of the five that opens a sheet, and why the page's
-    own rule against choosers (see THE DESTINATIONS ARE FOUR BUTTONS) does not
-    reach it: that rule forbids a sheet wrapping choices already made, and
-    which target and which repositories are choices nobody has made yet.
+    them as an INSTRUCTION and hands them somewhere that can act on it: the
+    system share sheet, a new Claude Code session with repositories
+    preselected, or a chat. It stands where Share stood, because Share is one
+    of those rows rather than a peer of them.
+
+    THAT ALSO FIXES WHAT SHARE COULD NOT SAY. The button carried
+    `x-show="canShare"`, so on a browser without navigator.share, which is
+    most desktops, it was simply absent: no reason given, and no pointer at
+    Copy. The button is unconditional now and the share ROW carries the
+    absence, greyed with its reason, exactly as an unreachable link target
+    does.
 
     IT IS ALSO WHY THIS PAGE IS THE ONE THAT CAN DO IT. The composer on a page
     (kits/annotate.js) has room for the words and nowhere to put the aiming;
@@ -129,7 +134,14 @@
   THE DESTINATIONS ARE FOUR BUTTONS, not a Save that opens four. The sheet
   they were in was a CHOOSER and never a confirmation: tapping Jot in it
   filed the note there and then, so the extra tap bought no safety, only
-  distance. Flattened 2026-08-27. What the sheet carried and the row cannot
+  distance. Flattened 2026-08-27.
+
+  AND THE FOURTH OF THEM IS A CHOOSER AGAIN, which is not a reversal. Send
+  took Share's slot on 2026-09-06 and Share became one row inside it, beside
+  the two that start a session somewhere. The rule above forbids a sheet
+  wrapping choices already MADE; which destination, and for a session which
+  repositories, are choices nobody has made yet. Share was always a chooser
+  with a single option, opened by the operating system rather than here. What the sheet carried and the row cannot
   is a line of description under each name; those are titles now, and the one
   that says something a reader cannot infer, where Drop writes, is also in
   the toast that lands after it writes.
@@ -155,10 +167,11 @@
   moment its own gesture does.
 
   ADDRESSING
-    ?to=copy|share|jot|drop|send   which destination is painted as the lead
+    ?to=copy|jot|drop|send    which destination is painted as the lead
+                              (share is read as send, where it moved)
     ?dest=owner/repo[@ref]:dir   where Drop writes, overriding home/chron/dump
     ?repo=owner/repo,owner/repo2 preselected for Send, in the order given
-    ?target=code|chat            which of Send's targets opens selected
+    ?target=share|code|chat      which of Send's rows opens selected
     ?lang=en-US               recognition language, default the browser's
     ?use=<ref>                pin the lib chain to a branch for previewing
 
@@ -197,31 +210,6 @@
 }
 [data-dictate-ui] textarea, [data-dictate-ui] input {
   -webkit-touch-callout: default; -webkit-user-select: text; user-select: text;
-}
-
-/* ── The destinations row below 360px ────────────────────────────────────
-   The row held four buttons and now holds five, and the fifth costs the other
-   four their labels on the narrowest phones. Measured rather than guessed, ink
-   against content box, Share being the widest label: with five across it fits
-   at 375 (75px of ink in 77) and clips below that. So 375 is the floor, and
-   under it every label goes: all five become icons at about 36px of ink in 63,
-   and a row that is uniformly iconic reads as a decision rather than as three
-   buttons that happened to get cut.
-
-   Two smaller moves bought the 375 case rather than conceding it, since the
-   labels are what the four-button row was measured for in the first place (see
-   THE DESTINATIONS ARE FOUR BUTTONS): the row's gap went from 4px to 2px, and
-   Send is 44px rather than 48, which is still the platform's minimum target.
-
-   A RULE RATHER THAN A UTILITY, which is the same reason the two rules above
-   are rules. Tailwind's smallest breakpoint is `sm` at 640px, so there is no
-   utility for "under 360" without an arbitrary variant, and this page's other
-   two rules are already here because a utility could not express them either.
-
-   Scoped by an attribute rather than by element, so nothing else on the page
-   loses text at a narrow width. */
-@media (max-width: 374px) {
-  [data-dest-row] > button > span { display: none; }
 }
 
 /* A PIN IS FURNITURE WHILE ANYTHING IS DRIVING IT, the pad or the pin's own
@@ -307,12 +295,17 @@
       edit: false, draft: '',
       breaks: false,
       menu: false, autoOpen: false,
-      dest: q.get('to') || 'copy',
+      // ?to=share still paints this row, which is where Share went. An address
+      // written before the fold should not stop naming anything.
+      dest: (q.get('to') === 'share' ? 'send' : q.get('to')) || 'copy',
       // ── Send: state ────────────────────────────────────────────────────
       // The sheet is closed and the selection is empty until asked for, so a
       // page that is only ever dictated into pays nothing for this at all. The
       // repo list is fetched on first open and never again.
       sendOpen: false,
+      // Defaults to Claude Code rather than to Share, because Share is the one
+      // row a reader already knows how to reach (it was a button until
+      // 2026-09-06) and the two beneath it are the ones this sheet exists for.
       sendTarget: q.get('target') || 'code',
       sendRepos: (q.get('repo') || '').split(',').map((x) => x.trim()).filter(Boolean),
       repoList: null,           // null = never fetched, [] = fetched and empty
@@ -343,6 +336,18 @@
       get blank() { return this.empty && !this.draft.trim(); },
       get sel() { this.beat; return !!(this.d && this.d.hasSelection); },
       get stitchable() { this.beat; return !!(this.d && this.d.canStitch); },
+      // The key says which of the three repairs it would make (kits/dictate.js
+      // `stitchAim`), because they are not the same act and the reader cannot
+      // see which applies. Read on hover and on a long press, which is where a
+      // title is read at all; the key itself stays a glyph.
+      get stitchNote() {
+        this.beat;
+        const aim = this.d && this.d.stitchAim;
+        if (aim === 'caret') return 'Close the gap your caret is in: the full stop goes and the capital comes down';
+        if (aim === 'end') return 'Take back the full stop the pause just wrote, and keep the sentence running';
+        if (aim === 'back') return 'Undo the most recent sentence break the pause invented, wherever it is';
+        return 'Nothing to undo yet';
+      },
       get breakable() { this.beat; return !this.edit && !!this.text && !!(this.d && this.d.segments.length); },
       get canUndo() { this.beat; return !!(this.d && this.d.canUndo); },
       get canRedo() { this.beat; return !!(this.d && this.d.canRedo); },
@@ -357,13 +362,19 @@
       //   CASING    AB ab Ab       while a selection is live, since a selection
       //                            is made to fix a word far more often than to
       //                            punctuate one
-      //   STITCHED  ⇥ , ?          with a caret in a sentence gap, the top key
-      //                            becomes the key that closes the gap, because
-      //                            a full stop cannot be wanted where one sits
-      //
       // The page's own six-across row is retired with the arrow cluster: it was
       // reasoned from the width a page has and the composer does not, which was
       // true and beside the point once the composer had moved on.
+      //
+      // THE STITCH IS NO LONGER ONE OF THESE FACES. It used to replace the full
+      // stop whenever a caret sat in a sentence gap, on the reasoning that a
+      // full stop cannot be wanted where one already sits. That reasoning held
+      // for a caret and broke the moment the key learned to reach back on its
+      // own (kits/dictate.js): a buffer with any invented break in it can now
+      // be repaired, which is nearly always, and a key that swallowed the full
+      // stop nearly always would leave no way to type one. So it has a slot of
+      // its own in the row below, always there, and this face is a full stop
+      // again.
       get pad() {
         if (this.sel) return [
           { k: 'AB', t: 'Upper case' }, { k: 'ab', t: 'Lower case' }, { k: 'Ab', t: 'Capitalise' },
@@ -372,9 +383,7 @@
           { k: ';', t: 'Semicolon' }, { k: '!', t: 'Exclamation point' }, { k: '¶', t: 'New paragraph' },
         ];
         return [
-          this.stitchable
-            ? { k: 'stitch', t: 'Join this to the sentence before it: the full stop goes and the capital comes down' }
-            : { k: '.', t: 'Full stop' },
+          { k: '.', t: 'Full stop' },
           { k: ',', t: 'Comma' }, { k: '?', t: 'Question mark' },
         ];
       },
@@ -1601,13 +1610,32 @@
           : [...this.sendRepos, slug];
       },
 
-      get sendTargets() { return (window.PromptLink?.targets) || []; },
+      // SHARE IS A ROW, NOT A LINK, so it is prepended here rather than added to
+      // kits/prompt-link.js. That kit mints addresses; the system share sheet
+      // is an act the operating system performs and has no URL to mint. Mixing
+      // it in would mean a target row whose link is permanently empty.
+      //
+      // Present whether or not it works, carrying its own absence. A desktop
+      // browser without navigator.share used to make the Share BUTTON vanish,
+      // which said nothing about why or what to do instead; a greyed row with a
+      // reason is the treatment the unavailable link target already gets.
+      get sendTargets() {
+        const share = {
+          key: 'share', label: 'Share', icon: 'ph-share-network',
+          hint: 'The system sheet: any app on this device',
+          reason: 'This browser has no share sheet. Copy the words instead.',
+          available: this.canShare, submits: false, takesRepos: false,
+        };
+        return [share, ...((window.PromptLink?.targets) || [])];
+      },
       get sendTargetRow() { return this.sendTargets.find((t) => t.key === this.sendTarget) || null; },
 
       // The link, and what it could not carry. Recomputed on every change
       // rather than stored, so the sheet's own summary line cannot drift from
       // the button beside it.
       get sendLink() {
+        // Share mints nothing: the words go to the operating system, whole.
+        if (this.sendTarget === 'share') return { url: '', carried: ['the words'], dropped: [] };
         const P = window.PromptLink;
         if (!P) return { url: '', carried: [], dropped: ['prompt-link kit not loaded'] };
         return P.url(this.sendTarget, {
@@ -1621,11 +1649,23 @@
       // The sheet says the number so the reader can cut it themselves, which is
       // the only edit that knows which sentence matters.
       get sendOver() {
+        // The cap belongs to the query string, so it does not apply to Share,
+        // which hands the buffer over as text with no address to fit it into.
+        if (this.sendTarget === 'share') return false;
         const P = window.PromptLink;
         return !!P && this.outgoing().length > P.PROMPT_MAX;
       },
 
+      // Whether the button at the foot of the sheet can act at all. Share has
+      // no url and is ready whenever the browser has a sheet; everything else
+      // needs an address that fits.
+      get sendReady() {
+        if (this.sendTarget === 'share') return this.canShare;
+        return !!this.sendLink.url && !this.sendOver;
+      },
+
       send() {
+        if (this.sendTarget === 'share') { this.sendOpen = false; this.share(); return; }
         const link = this.sendLink;
         if (!link.url) {
           Alpine.store('toast')('warning', link.dropped[0] || 'Nowhere to send this', 'alert-error', 5000);
@@ -1870,10 +1910,12 @@
 
   <!-- ── The keys ────────────────────────────────────────────────────────
        The composer's three keys and its shift, laid across instead of down,
-       with backspace on the end. Five keys at a phone's width is 73px each,
-       which is still half again the column's 46 and costs the text nothing.
-       Tapped over and over inside one note, so they are the tall row, and
-       being the tall row is what qualifies a control to be here. -->
+       with the stitch and backspace on the end. Six keys at a phone's width is
+       60px each, still well over the column's 46 and still costing the text
+       nothing: every one of them holds a single glyph, so the width they need
+       is a touch target rather than a label. Tapped over and over inside one
+       note, so they are the tall row, and being the tall row is what qualifies
+       a control to be here. -->
   <div x-show="!edit" class="shrink-0 flex items-stretch gap-1 px-1 pt-1">
     <template x-for="k in pad" :key="k.k">
       <button @pointerdown.prevent="key(k.k)" :title="k.t"
@@ -1894,10 +1936,38 @@
             :class="shift ? 'btn-warning' : 'btn-ghost bg-base-200'"
             title="The other three marks"
             x-text="shift ? 'abc' : '·!¶'"></button>
-    <!-- BACKSPACE, the fifth key, at the right end. It is red because it is
-         the one key here that takes something away, and the tint is the aim:
-         the other four are reached for by position and this one has to be
-         found in a hurry, mid-sentence, without reading. It needs no
+    <!-- THE STITCH, the fifth key, and the one this row gained on 2026-09-06.
+         It undoes the sentence break the pause invented: the full stop goes and
+         the capital after it comes down, in one tap.
+
+         ALWAYS HERE, WHICH IS THE WHOLE CHANGE. It used to appear in the full
+         stop's place, and only while a caret sat in the gap, which meant the
+         repair cost leaving the sentence you were speaking, aiming a thumb at
+         a three-character gap, tapping, and finding your place again. That is
+         more than the wrong full stop costs, so it was not done. The key
+         reaches the most recent break by itself now, so the gesture is: hear
+         it land, tap, keep talking.
+
+         DIMMED RATHER THAN GONE when there is nothing to undo, which is the
+         first seconds of a note and nothing else. A key that came and went in
+         the middle of a row would move the four beside it under a thumb that
+         had already learned where they are.
+
+         It sits between the marks and the backspace because that is what it
+         is: the row reads compose, compose, compose, then the two repairs. -->
+    <button @pointerdown.prevent="key('stitch')" :disabled="!stitchable"
+            class="btn h-14 min-h-0 grow basis-0 px-0 text-2xl"
+            :class="stitchable ? 'btn-ghost bg-warning/20 text-warning' : 'btn-ghost bg-base-200'"
+            :title="stitchNote">
+      <i class="ph ph-arrows-in-line-horizontal"></i>
+    </button>
+    <!-- BACKSPACE, the sixth key, at the right end. It is red because it is
+         the one key here that takes a WORD away, and the tint is the aim: the
+         marks are reached for by position and this one has to be found in a
+         hurry, mid-sentence, without reading. The stitch beside it takes
+         something away too and wears the warning tint rather than this one,
+         which is the same distinction the pad's shift already draws: amber is
+         a state or a repair, red is a deletion. It needs no
          `:disabled` for the keyboard half, since the row it is in is hidden
          there and the software keyboard has its own. -->
     <button @pointerdown.prevent="back()"
@@ -1929,44 +1999,45 @@
        are never in. So the tap is left live and `commit()` answers it with the
        toast it already carried and the sheet made unreachable: no token here,
        use Copy or Share. The explanation arrives when it is asked for. -->
-  <div data-dest-row class="shrink-0 flex items-stretch gap-0.5 px-1 pb-1 pt-1"
+  <div class="shrink-0 flex items-stretch gap-1 px-1 pb-1 pt-1"
        style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.25rem)">
     <button @click="copy()" :disabled="blank"
             class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
             :class="lead('copy')" title="Copy the words, to paste into a chat">
-      <i class="ph ph-clipboard-text text-lg"></i><span>Copy</span>
+      <i class="ph ph-clipboard-text text-lg"></i>Copy
     </button>
-    <button x-show="canShare" @click="share()" :disabled="blank"
+    <!-- SEND, IN THE SLOT SHARE HELD, and it is the same button rather than a
+         sixth one. Share was one destination among four and is now one row
+         inside this one, beside the two that start a session somewhere. That
+         is what it always was: a chooser with a single option, opened by the
+         operating system instead of by this page.
+
+         It also fixes what Share could not say. `x-show="canShare"` meant the
+         button simply was not there on a browser without navigator.share,
+         which is most desktops, with nothing on screen to say why or what the
+         alternative was. This button is unconditional and the SHARE ROW inside
+         it carries the absence, greyed with its reason, the way the sheet
+         already treats a target with no link.
+
+         A separate icon-only Send sat at the end of this row for one commit.
+         It was narrower than the four beside it, which read as an afterthought
+         because it was one, and it took the row to five across and cost the
+         other four their labels under 375px. Folding it in gives all of that
+         back: four buttons, four labels, one width. -->
+    <button @click="openSend()" :disabled="blank"
             class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
-            :class="lead('share')" title="The system sheet: any app on the phone">
-      <i class="ph ph-share-network text-lg"></i><span>Share</span>
+            :class="lead('send')" title="Share it, or send it somewhere that can act on it">
+      <i class="ph ph-paper-plane-tilt text-lg"></i>Send
     </button>
     <button @click="jot()" :disabled="blank || !!saving"
             class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
             :class="lead('jot')" title="File it in the estate's jots pile, beside the others">
-      <i class="ph ph-note-pencil text-lg"></i><span>Jot</span>
+      <i class="ph ph-note-pencil text-lg"></i>Jot
     </button>
     <button @click="drop()" :disabled="blank || !!saving"
             class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
             :class="lead('drop')" :title="'Write a dated markdown file into ' + destName + ', for the next drain'">
-      <i class="ph ph-tray-arrow-down text-lg"></i><span>Drop</span>
-    </button>
-    <!-- SEND, AND IT IS SHAPED UNLIKE THE OTHER FOUR ON PURPOSE. Those four
-         act on the tap; this one opens, because which target and which
-         repositories are choices nobody has made yet. A control that opens
-         should not look like four controls that fire.
-
-         ICON ONLY, at a fixed width, which is the other half of the same
-         decision and is also what protects the row. The comment above measured
-         four at 92px on a 390px phone so the name could sit beside the icon; a
-         fifth full-width button takes all five to 73px, and to 59px on a 320px
-         screen, where "Share" clips. A 48px square leaves the other four at 86,
-         within a rounding of what they have now. -->
-    <button @click="openSend()" :disabled="blank"
-            class="btn h-12 min-h-0 w-11 shrink-0 px-0"
-            :class="lead('send')"
-            title="Send the words somewhere that can act on them: a new Claude Code session, or a chat">
-      <i class="ph ph-paper-plane-tilt text-lg"></i>
+      <i class="ph ph-tray-arrow-down text-lg"></i>Drop
     </button>
   </div>
 
@@ -2048,10 +2119,12 @@
         <p class="text-xs opacity-60" x-text="'Not carried: ' + d"></p>
       </template>
 
-      <button @click="send()" :disabled="!!(!sendLink.url || sendOver)"
+      <button @click="send()" :disabled="!sendReady"
               class="btn btn-primary h-12 min-h-0 gap-2">
-        <i class="ph ph-paper-plane-tilt text-lg"></i>
-        <span x-text="sendTargetRow && sendTargetRow.submits ? 'Open and send' : 'Open, prefilled'"></span>
+        <i class="ph text-lg"
+           :class="sendTarget === 'share' ? 'ph-share-network' : 'ph-paper-plane-tilt'"></i>
+        <span x-text="sendTarget === 'share' ? 'Open the share sheet'
+                      : (sendTargetRow && sendTargetRow.submits) ? 'Open and send' : 'Open, prefilled'"></span>
       </button>
     </div>
   </div>

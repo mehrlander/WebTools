@@ -554,27 +554,90 @@ test('the whole gap is one target, since a thumb cannot aim at one offset', () =
     'whatever the gap held, the join is one space');
 });
 
-test('the stitch declines where there is no seam to close', () => {
-  const away = withText('so I went to the store. And then I came back');
-  away.caretAt(10);
-  assert.equal(away.canStitch, false, 'a caret four words off reaches nothing');
-  assert.equal(away.stitch(), false);
-  assert.equal(away.text, 'so I went to the store. And then I came back');
-
-  const end = withText('this sentence ends here.');
-  end.caretAt(24);
-  assert.equal(end.canStitch, false, 'a mark at the end of the buffer joins to nothing');
-
-  const resting = withText('this sentence ends here.');
-  assert.equal(resting.canStitch, false, 'and neither does the resting null range');
-
+test('the stitch declines where there is no sentence break anywhere', () => {
+  // Narrowed on 2026-09-06 to what STILL declines. A caret away from the seam
+  // and a buffer ending in a pause period both used to be refusals; both are
+  // now readings of their own, covered in "reaching back" below.
   const tight = withText('nasa.gov is a site');
   tight.caretAt(5);
   assert.equal(tight.canStitch, false, 'no gap means the join is already tight');
+  assert.equal(tight.stitch(), false);
 
   const bare = withText('. A stray mark');
   bare.caretAt(1);
   assert.equal(bare.canStitch, false, 'a mark with no sentence in front of it is not an ending');
+  assert.equal(bare.stitch(), false);
+
+  const none = withText('nothing to undo here');
+  assert.equal(none.canStitch, false);
+  assert.equal(none.stitch(), false);
+});
+
+// ── Reaching back, which is what the key is actually for ────────────────────
+// The caret model was not wrong, it was unreachable in the flow it existed for.
+// A pause writes a full stop, the reader hears it, and by the time a thumb
+// could aim at the gap they are three words past it. So the key stopped
+// needing an address: no caret means the most recent invented break.
+
+test('with no caret placed, the stitch takes the most recent break', () => {
+  const d = withText('so I went to the store. And then I came back');
+  assert.equal(d.range, null, 'the resting state, which is where dictation leaves it');
+  assert.equal(d.canStitch, true);
+  assert.equal(d.stitch(), true);
+  assert.equal(d.text, 'so I went to the store and then I came back');
+  assert.equal(d.range, null, 'and the caret is not moved, since the reader never placed one');
+});
+
+test('the most recent means the rightmost, and tapping again walks back', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  d.stitch();
+  assert.equal(d.text, 'one thing. Two things three things happened',
+    'the newer break goes first');
+  d.stitch();
+  assert.equal(d.text, 'one thing two things three things happened',
+    'a second tap uncovers the one before it');
+  assert.equal(d.canStitch, false, 'and then there are none left');
+});
+
+test('a caret in a seam still wins, because placing one is an explicit aim', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  d.caretAt(10);                          // the older seam, deliberately
+  d.stitch();
+  assert.equal(d.text, 'one thing two things. Three things happened',
+    'the aimed break, not the newest');
+  assert.deepEqual(d.range, { start: 10, end: 10 }, 'and the caret lands on the join');
+});
+
+test('a caret resting at the end is not an aim, so it does not shadow the reach', () => {
+  const d = withText('one thing. Two things happened');
+  d.caretAt(30);
+  d.stitch();
+  assert.equal(d.text, 'one thing two things happened');
+});
+
+test('a caret past the reached seam keeps its place in the words', () => {
+  const d = withText('one thing. Two things happened');
+  d.caretAt(26);                          // inside "happened"
+  d.stitch();
+  assert.equal(d.text, 'one thing two things happened');
+  assert.deepEqual(d.range, { start: 25, end: 25 },
+    'shifted by what the join removed, rather than left pointing at a moved offset');
+});
+
+test('a join that leaves a full stop standing does not lower the next capital', () => {
+  // The join used to assert a continuation unconditionally, which was true only
+  // while the caret kept it near the end of the buffer. Join an EARLIER seam
+  // and the sentence after it is still ended, so the next utterance starts a
+  // new one and its capital stands.
+  const d = withText('one. Two. Three.');
+  d.caretAt(4);                           // the older seam, aimed at
+  d.stitch();
+  assert.equal(d.text, 'one two. Three.');
+  d.clearRange();                         // back to the resting end, where dictation appends
+  d.start();
+  FakeSR.last.say([{ t: 'Four things', final: true }]);
+  assert.match(d.text, /Three\. Four things\.$/, 'a sentence ended is a sentence ended');
+  d.stop();
 });
 
 test('a live selection is not a stitch: the pad is showing casing keys then', () => {
@@ -633,9 +696,13 @@ test('un-ending takes back the pause\'s full stop and the sentence runs on', () 
   d.start();
   FakeSR.last.say([{ t: 'so I went to the store', final: true }]);
   assert.equal(d.text, 'so I went to the store.');
-  assert.equal(d.canStitch, false, 'nothing follows the mark, so there is no seam');
   assert.equal(d.canUnend, true);
-  assert.equal(d.unend(), true);
+  // The stitch key answers here too, and this is the case the reader meets
+  // most: the full stop has just landed and nothing follows it yet, so there
+  // is no seam and the repair is the un-end. Reachable from the pad now; it
+  // was bound to a tapped Control key, which is a desk and not a phone.
+  assert.equal(d.canStitch, true, 'the most recent break is the one at the end');
+  assert.equal(d.stitch(), true);
   assert.equal(d.text, 'so I went to the store');
 
   FakeSR.last.say([{ t: 'And then I came back', final: true }]);
@@ -1495,4 +1562,24 @@ test('starting twice is one engine, and toggle reads the intent', async () => {
   d.toggle();
   assert.equal(d.listening, true);
   d.stop();
+});
+
+test('un-ending does not reach back across a paragraph break', () => {
+  // `endSentence` refuses to write a full stop after a paragraph mark, so a
+  // buffer ending "line.\n\n" holds a pause period the reader then deliberately
+  // broke after. Taking the mark back would take their paragraph with it.
+  //
+  // Latent while `unend` was bound to a tapped Control key and nothing else;
+  // the pads reached the stitch instead. Offering it on the pad made the case
+  // ordinary, and the stage's own pad test is what caught it.
+  const d = withText('a line.\n\n');
+  assert.equal(d.canUnend, false);
+  assert.equal(d.canStitch, false, 'and the pad does not offer it either');
+  assert.equal(d.unend(), false);
+  assert.equal(d.text, 'a line.\n\n');
+
+  const spaces = withText('a line.   ');
+  assert.equal(spaces.canUnend, true, 'trailing spaces are not a break');
+  spaces.unend();
+  assert.equal(spaces.text, 'a line');
 });
