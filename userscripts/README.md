@@ -24,9 +24,19 @@ git commit && git push
 # then tap the purge URL the generator printed
 ```
 
-Purging is part of publishing, not a tidy-up: jsDelivr caches a branch address
-for about twelve hours, so without it the old body keeps being served. The
-generator prints the exact URL.
+No purge, because the `@require` reads **raw.githubusercontent**, whose cache is
+five minutes. jsDelivr was the first answer and was the wrong one for a file
+edited several times an hour: it caches a branch for about twelve hours,
+propagates a purge per edge, and rate-limits purging to roughly hourly per path.
+Measured 2026-09-06, an hour after a push it still served two builds back with
+the purge window closed, while raw already had the current one.
+
+**The bookmarklet cannot follow it there**, so the two routes read different
+hosts on purpose. Raw serves `text/plain` with `nosniff`, which a browser
+refuses to execute from a script tag; jsDelivr serves it as JavaScript. So the
+bookmarklet keeps the CDN and keeps needing the purge, and the generator prints
+that URL. The test holds the two to the same ref and path, which is what decides
+which body runs.
 
 **A branch pin costs the one thing a commit pin gave free**, knowing which copy
 ran, and a purge does not settle it either: jsDelivr propagates per edge, so for
