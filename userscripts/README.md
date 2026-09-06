@@ -13,21 +13,29 @@ allowed there, and Safari only asks when the menu is opened. That cost one
 detour on 2026-09-05, with the script installed and matched and nothing on
 screen.
 
-**Edit:** commit to `lib/`, then re-run the generator. Each script here is a
-stub whose one `@require` pulls its body from jsDelivr at a pinned commit, so
-the installed file never changes and a script's behaviour is a commit rather
-than a phone-typing session:
+**Edit, without reinstalling.** The stub is pinned to a **branch**, so it never
+changes and the phone never sees it again after the first install. Editing is:
 
 ```bash
+vim userscripts/lib/launcher.js
 python3 scripts/userscript-stub.py launcher --name 'wt launcher' \
-    --description '...' --match '*://*/*'
+    --description '...' --match '*://*/*'      # re-stamps the body
+git commit && git push
+# then tap the purge URL the generator printed
 ```
 
-That writes the stub and its bookmarklet twin together, both pinned at HEAD. A
-body must define `window.wt<Lib>` and do nothing on load; the stub calls it. One
-body then serves both routes, which is the only way to compare them, and
-`tools/test/userscript-stubs.test.mjs` holds the pair to one pin, since a stub
-re-pinned without its twin ships two routes that claim to run the same code.
+Purging is part of publishing, not a tidy-up: jsDelivr caches a branch address
+for about twelve hours, so without it the old body keeps being served. The
+generator prints the exact URL.
+
+**A branch pin costs the one thing a commit pin gave free**, knowing which copy
+ran, so the body carries a `BUILD` stamp: a short hash of itself, written by the
+generator and shown in the drawer header and the menu's foot.
+`tools/test/userscript-stubs.test.mjs` holds the stamp to the file it was
+computed from, so a body edited without re-stamping fails rather than reporting
+a build id that was true yesterday. It also holds the stub and its bookmarklet
+twin to one address. A body must define `window.wt<Lib>` and do nothing on load;
+the stub calls it, so one body serves both routes.
 
 **Which route reaches a page.** Measured against `script-src 'self'`: the
 bookmarklet is refused, because it is a script tag the page injects; the

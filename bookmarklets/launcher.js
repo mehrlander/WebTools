@@ -1,1 +1,1 @@
-javascript:(s=>{s.src='https://cdn.jsdelivr.net/gh/mehrlander/web-tools@54978a655295a47a5b7fc24e62e0516d238c1260/userscripts/lib/launcher.js';s.onload=()=>wtLauncher({ref:'54978a655295a47a5b7fc24e62e0516d238c1260'});document.body.appendChild(s)})(document.createElement('script'))
+javascript:(s=>{s.src='https://cdn.jsdelivr.net/gh/mehrlander/web-tools@claude/bookmarklets-shortcuts-iphone-safari-rjakex/userscripts/lib/launcher.js';s.onload=()=>wtLauncher();document.body.appendChild(s)})(document.createElement('script'))

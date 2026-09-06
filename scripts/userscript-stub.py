@@ -1,41 +1,58 @@
 #!/usr/bin/env python3
-"""Emit a userscript stub and its bookmarklet twin, both pinned at HEAD.
+"""Stamp a userscript body and emit its stub, its bookmarklet twin, and a purge link.
 
 A userscript installed on the phone is a file nobody can edit there, so every
 script here is a STUB: a header naming what it matches and one @require pulling
-the body from jsDelivr at a commit. Editing a script is then a commit plus a new
-pin, and the pin is what this script owns, because doing it by hand means the
-same SHA typed into two files and a runbook, which is three chances to ship a
-stub pointing at a body that no longer exists.
+the body from jsDelivr. The question is what that @require pins to, and the
+answer changed on 2026-09-06.
 
-The pin is a full commit SHA, never a branch: jsDelivr caches a branch address
-for about twelve hours, so a stub pinned to `main` is a script whose behaviour
-changes at a time nobody chose.
+A COMMIT PIN meant every edit was a reinstall, because a new commit is a new
+file to install, and the install is the one step on the device. So the stub
+pins a BRANCH and never changes again: push, purge the one URL, and the next
+page load runs the new body. jsDelivr caches a branch address for about twelve
+hours, which is what makes the purge part of publishing rather than an optional
+tidy-up. The stub prints the purge URL for that reason.
+
+What the commit pin gave for free was knowing which copy ran. The stamp buys it
+back: `#BUILD#` in the body is replaced here by a short hash of the body itself,
+and the launcher shows it. tools/test/userscript-stubs.test.mjs holds the stamp
+to the file it was computed from, so a body edited without re-stamping fails
+rather than reporting a build id that was true yesterday.
 
     python3 scripts/userscript-stub.py launcher --match '*://*/*' \\
         --name 'wt launcher' --description '...'
 
-Writes userscripts/<lib>.user.js and bookmarklets/<lib>.js. The body must define
-window.wt<Lib> and do nothing on load: the stub calls it, so one file serves the
-userscript (extension context, exempt from the page's script-src) and the
-bookmarklet (a script tag the page's policy may refuse).
+The body must define window.wt<Lib> and do nothing on load: the stub calls it,
+so one body serves the userscript (extension context, exempt from the page's
+script-src) and the bookmarklet (a script tag the page's policy may refuse).
 """
 import argparse
+import hashlib
 import pathlib
+import re
 import subprocess
 import sys
 
-CDN = 'https://cdn.jsdelivr.net/gh/mehrlander/web-tools@{sha}/userscripts/lib/{lib}.js'
+CDN = 'https://cdn.jsdelivr.net/gh/mehrlander/web-tools@{ref}/userscripts/lib/{lib}.js'
+PURGE = 'https://purge.jsdelivr.net/gh/mehrlander/web-tools@{ref}/userscripts/lib/{lib}.js'
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+STAMP = re.compile(r"^const BUILD = '([^']*)';$", re.M)
 
 
-def head_sha() -> str:
-    return subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT,
+def current_branch() -> str:
+    return subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=ROOT,
                           capture_output=True, text=True, check=True).stdout.strip()
 
 
 def fn_name(lib: str) -> str:
     return 'wt' + ''.join(p.capitalize() for p in lib.replace('_', '-').split('-'))
+
+
+def stamp_of(text: str) -> str:
+    """The hash is taken with the stamp line neutralised, so stamping is
+    idempotent: re-running on an unchanged body writes back the same id."""
+    return hashlib.sha256(
+        STAMP.sub("const BUILD = '#BUILD#';", text).encode()).hexdigest()[:7]
 
 
 def main() -> int:
@@ -47,7 +64,7 @@ def main() -> int:
     ap.add_argument('--match', action='append', required=True,
                     help='@match pattern; repeatable')
     ap.add_argument('--run-at', default='document-end')
-    ap.add_argument('--sha', help='pin this commit instead of HEAD')
+    ap.add_argument('--ref', help='branch to pin (default: the current one)')
     a = ap.parse_args()
 
     body = ROOT / 'userscripts' / 'lib' / f'{a.lib}.js'
@@ -55,13 +72,23 @@ def main() -> int:
         print(f'no such body: {body.relative_to(ROOT)}', file=sys.stderr)
         return 1
 
+    text = body.read_text()
     fn = fn_name(a.lib)
-    if f'window.{fn}' not in body.read_text():
+    if f'window.{fn}' not in text:
         print(f'{body.relative_to(ROOT)} does not define window.{fn}', file=sys.stderr)
         return 1
+    if not STAMP.search(text):
+        print(f"{body.relative_to(ROOT)} has no \"const BUILD = '...';\" line to stamp",
+              file=sys.stderr)
+        return 1
 
-    sha = a.sha or head_sha()
-    url = CDN.format(sha=sha, lib=a.lib)
+    build = stamp_of(text)
+    stamped = STAMP.sub(f"const BUILD = '{build}';", text, count=1)
+    if stamped != text:
+        body.write_text(stamped)
+
+    ref = a.ref or current_branch()
+    url = CDN.format(ref=ref, lib=a.lib)
     matches = '\n'.join(f'// @match       {m}' for m in a.match)
 
     (ROOT / 'userscripts' / f'{a.lib}.user.js').write_text(f"""\
@@ -72,18 +99,19 @@ def main() -> int:
 // @require     {url}
 // @run-at      {a.run_at}
 // ==/UserScript==
-// Generated by scripts/userscript-stub.py; edit the body, then re-run.
-window.{fn}({{ ref: '{sha}' }});
+// Generated by scripts/userscript-stub.py. Pinned to a branch, not a commit, so
+// editing the body never means reinstalling this file: push, then purge.
+window.{fn}();
 """)
 
     (ROOT / 'bookmarklets' / f'{a.lib}.js').write_text(
-        f"javascript:(s=>{{s.src='{url}';"
-        f"s.onload=()=>{fn}({{ref:'{sha}'}});"
+        f"javascript:(s=>{{s.src='{url}';s.onload=()=>{fn}();"
         f"document.body.appendChild(s)}})(document.createElement('script'))\n")
 
-    print(f'pinned {a.lib} at {sha[:7]}')
+    print(f'{a.lib} stamped {build}, pinned to {ref}')
     print(f'  userscripts/{a.lib}.user.js')
     print(f'  bookmarklets/{a.lib}.js')
+    print(f'  purge after pushing: {PURGE.format(ref=ref, lib=a.lib)}')
     return 0
 
 

@@ -39,7 +39,14 @@
 // and a constructed sheet is CSSOM, which does not. Measured against
 // `script-src 'self'; style-src 'self'`, where the bookmarklet route is refused
 // outright and this one mounts intact.
-window.wtLauncher = ({ ref, app = 'https://mehrlander.github.io/web-tools/app/' }) => {
+// The build stamp, written here by scripts/userscript-stub.py from a hash of
+// this file's own contents. It lives in the body rather than the stub because
+// the stub is pinned to a BRANCH and never changes again: that is what removes
+// the reinstall, and it costs the one thing a SHA pin gave for free, namely
+// knowing which copy ran. The stamp buys that back, and the drawer shows it.
+const BUILD = '49762dc';
+
+window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {}) => {
   const ID = 'wt-launcher';
   if (document.getElementById(ID)) return;
 
@@ -305,6 +312,7 @@ window.wtLauncher = ({ ref, app = 'https://mehrlander.github.io/web-tools/app/' 
       <a class="row" data-capture>${svg(ICON.note)}<span>Capture selection</span></a>
       <a class="row" href="${app}">${svg(ICON.out)}<span>Web Tools</span></a>
       <button class="row" data-hide>${svg(ICON.hide)}<span>Hide until reload</span></button>
+      <div class="foot">${BUILD}</div>
     </div>
     <div class="btn" tabindex="0" role="button" aria-label="Web Tools launcher">${svg(ICON.sidebar)}</div>`;
 
@@ -339,7 +347,7 @@ window.wtLauncher = ({ ref, app = 'https://mehrlander.github.io/web-tools/app/' 
   const shortcutUrl = md =>
     'shortcuts://run-shortcut?name=Log-Repo&input=text&text=' +
     encodeURIComponent(JSON.stringify({
-      op: 'capture', name: 'launcher', build: ref,
+      op: 'capture', name: 'launcher', build: BUILD,
       title: page.title, href: page.href, md,
     }));
 
@@ -508,7 +516,7 @@ window.wtLauncher = ({ ref, app = 'https://mehrlander.github.io/web-tools/app/' 
   });
 
   q('.head b').textContent = page.title;
-  q('.head small').textContent = location.hostname;
+  q('.head small').textContent = `${location.hostname} · ${BUILD}`;
   document.documentElement.append(host);
 
   // The second half of the yield rule. A web-tools page boots its loader and
