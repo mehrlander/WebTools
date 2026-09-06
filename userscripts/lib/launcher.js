@@ -156,7 +156,18 @@ window.wtLauncher = ({ ref, app = 'https://mehrlander.github.io/web-tools/app/' 
       --wt-bc: oklch(41.886% .053 255.824);
     }
     button, a { font: inherit; color: inherit; }
-    .wrap { position: fixed; z-index: 2147483647;
+    /* ONE MEASURED ROOT, and the reason is iOS. position:fixed resolves
+       against the LAYOUT viewport, which on a page carrying an unclamped table,
+       a wide ad slot or a pinch-zoom is wider than the screen; a panel anchored
+       to its right edge then hangs off the side, and vw units measure the same
+       wrong thing so max-width does not save it. visualViewport is the API that
+       reports what is actually on screen, so the root is sized and offset from
+       it and everything inside is positioned against that. Chromium anchors
+       fixed to the visual viewport already, so this changes nothing on a
+       desktop and is only observable where it matters. */
+    .vp { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+          pointer-events: none; z-index: 2147483647; }
+    .wrap { position: absolute; z-index: 2; pointer-events: auto;
             font: 400 14px/1.4 ui-sans-serif, -apple-system, system-ui, sans-serif;
             color: var(--wt-bc); }
     .btn { width: 3.5rem; height: 3.5rem; border-radius: 1rem;
@@ -183,7 +194,7 @@ window.wtLauncher = ({ ref, app = 'https://mehrlander.github.io/web-tools/app/' 
     /* The drawer, in the fab's shape: an absolute panel inside a fixed
        overflow-hidden layer, so the off-screen half is clipped rather than
        widening the host page's layout. */
-    .layer { position: fixed; inset: 0; z-index: 2147483646;
+    .layer { position: absolute; inset: 0; z-index: 1;
              overflow: hidden; pointer-events: none;
              font: 400 14px/1.4 ui-sans-serif, -apple-system, system-ui, sans-serif;
              color: var(--wt-bc); }
@@ -297,7 +308,24 @@ window.wtLauncher = ({ ref, app = 'https://mehrlander.github.io/web-tools/app/' 
     </div>
     <div class="btn" tabindex="0" role="button" aria-label="Web Tools launcher">${svg(ICON.sidebar)}</div>`;
 
-  root.append(layer, wrap);
+  const vp = document.createElement('div');
+  vp.className = 'vp';
+  vp.append(layer, wrap);
+  root.append(vp);
+
+  // Re-measured whenever the visible area changes: a rotation, a keyboard, a
+  // pinch, or the URL bar sliding away. Without the listeners the root is
+  // correct once and wrong after the first gesture.
+  const fit = () => {
+    const v = window.visualViewport;
+    if (!v) return;
+    vp.style.width = v.width + 'px';
+    vp.style.height = v.height + 'px';
+    vp.style.transform = `translate(${v.offsetLeft}px, ${v.offsetTop}px)`;
+  };
+  fit();
+  window.visualViewport?.addEventListener('resize', fit);
+  window.visualViewport?.addEventListener('scroll', fit);
 
   // ---- Behaviour ---------------------------------------------------------
 
@@ -454,8 +482,10 @@ window.wtLauncher = ({ ref, app = 'https://mehrlander.github.io/web-tools/app/' 
     if (!drag.moved && Math.hypot(dx, dy) < 6) return;
     drag.moved = true;
     clearTimeout(held);
-    pos.right = Math.max(4, Math.min(innerWidth - 60, drag.right + dx));
-    pos.bottom = Math.max(4, Math.min(innerHeight - 60, drag.bottom + dy));
+    const w = window.visualViewport?.width || innerWidth;
+    const h = window.visualViewport?.height || innerHeight;
+    pos.right = Math.max(4, Math.min(w - 60, drag.right + dx));
+    pos.bottom = Math.max(4, Math.min(h - 60, drag.bottom + dy));
     place();
   });
   btn.addEventListener('pointerup', () => {
