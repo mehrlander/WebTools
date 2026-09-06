@@ -75,3 +75,21 @@ test('the take grid carries Capture and runs it onto the clipboard', async () =>
   assert.equal(JSON.parse(written).capture, 'fab/1', 'and parses back');
   assert.match(fab.outMsg, /^Copied a \d+K capture$/, 'reported on the shared output line');
 });
+
+// Region is the one take scoped to a PART of the page: it arms Peek on its
+// Render reading rather than copying anything itself, so the row is held to
+// naming what a pick becomes and the run to opening the kit on that reading.
+test('the take grid carries Region, which arms Peek on its Render reading', async () => {
+  const open = [...fab.takeGroups].find(g => g.kind === 'Open');
+  const region = [...open.items].find(i => i.key === 'region');
+  assert.ok(region, 'Region rides the Open group');
+  assert.match(region.desc, /renders alone/, 'the row says what the copy becomes');
+  const calls = [];
+  window.Peek = { enabled: false, enable: (o) => calls.push(o), disable: () => {} };
+  await fab.runTake('region');
+  assert.equal(calls.length, 1, 'Peek was armed once');
+  assert.equal(calls[0].view, 'render', 'on the Render reading');
+  assert.equal(calls[0].doc, window.document, 'aimed at this document outside a toss');
+  assert.match(fab.outMsg, /^Region:/, 'reported on the shared output line');
+  assert.equal(fab.open, false, 'the drawer closes so the page can be tapped');
+});

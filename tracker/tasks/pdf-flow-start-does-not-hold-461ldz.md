@@ -1,8 +1,10 @@
 ---
 id: pdf-flow-start-does-not-hold-461ldz
 title: pdf.flow's `start` does not survive the column's own layout
-status: backlog
+status: done
 opened: 2026-08-29
+closed: 2026-09-05
+session: claude/budget-drs-kits-analysis-krcugt
 size: S
 ---
 # pdf.flow's `start` does not survive the column's own layout
@@ -59,3 +61,14 @@ caller does not have to re-assert it. Likely fixes:
   come out once this is fixed. Every existing caller naming a page (a guidance
   cite, a filed section) had the same drift and nobody had noticed, because the
   deep openings were rare until a search result could land anywhere.
+- 2026-09-05: **closed by #603.** The kit alone landed correctly on Part 1 and
+  on a three-shape fixture, so the drift needs a host condition; the
+  reproducible one is a column mounted into a host with no geometry yet, where
+  every offset reads 0, `at` reads the last page, and every re-anchor kept it.
+  `start` is now held as a page number that every re-anchor reads first and
+  that only the reader or the host releases (a wheel, a touch, a `go()`, a
+  scroll the kit did not write); never the size pass, which can finish inside
+  the window where the layout does not exist. `tools/test/pdf-flow-start.mjs`
+  holds four claims in a browser. home keeps `settleOnPage` until a deep
+  opening is seen to land on the device.
+

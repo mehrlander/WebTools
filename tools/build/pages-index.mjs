@@ -32,6 +32,7 @@ const SRC_URL = `https://github.com/${REPO}/blob/main/pages`;
 // One-line blurb per page, keyed by path relative to pages/. Falls back to the
 // page's <title> when a key is missing, so a new page still lists (just terser).
 const NOTES = {
+  'pip-steps.html':                  'Steps that float over another app, through iOS Picture-in-Picture.',
   'demos/alpine-bundle-demo.html':   'Live tour of alpine-bundle.js — magics, directives, x-define.',
   'demos/vanilla-bundle-demo.html':  'Live tour of vanilla-bundle.js — the framework-free DOM shorthand.',
   'demos/cross-repo-read-demo.html': 'Reading files across repos with gh.read() — a data-transfer demo.',

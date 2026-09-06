@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>source-peek — the hover card behind an exact-file GitHub jump-over</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script type="module">
+  const ref = new URLSearchParams(location.search).get('use') || 'main';
+  const base = `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@${ref}/lib`;
+  await import(`${base}/gh-api.js`);
+  // The address grammar the card parses a data-peek with, then the kit itself.
+  await gh.load('kits/repo-address.js');
+  await gh.load('kits/source-peek.js');
+  // No self-install: the boot manifest calls this for a chain-booted app, and a
+  // page loading the kit on its own owns the listeners.
+  SourcePeek.install();
+
+  // The three seeded samples. Bytes carried in the page, so the cache is warm
+  // before the first hover and read()'s fetch is never reached.
+  const sample = id => document.getElementById(id).textContent.replace(/^\n/, '');
+  SourcePeek.seed('mehrlander/web-tools@main:tracker/tasks/add-task-tracker-skill-iwr1ay.md', sample('s-md'));
+  SourcePeek.seed('mehrlander/web-tools@main:.web-tools.json', sample('s-json'));
+  SourcePeek.seed('mehrlander/web-tools@main:lib/kits/source-peek.js', sample('s-src'));
+
+  // Alpine boots from unpkg while this chain is still fetching, so the bench
+  // below evaluates once before the kit exists. The flag is what it re-reads.
+  window.dispatchEvent(new Event('source-peek-ready'));
+  document.body.dataset.ready = '1';
+</script>
+<script defer src="https://unpkg.com/alpinejs"></script>
+
+<script type="text/plain" id="s-md">
+---
+id: add-task-tracker-skill-iwr1ay
+title: Add a task-tracker skill
+status: done
+opened: 2026-07-14
+closed: 2026-07-15
+session: claude/agent-file-retrieval-skill-tv4can
+---
+# Add a task-tracker skill
+
+The tracker's mechanics live only in `docs/TRACKER.md`: the task file schema, the recognized-vs-open key split, the claiming workflow, and the rule that task files and `board.md` are committed directly to `main`, not to feature branches. Nothing surfaces that doc automatically.
+</script>
+
+<script type="text/plain" id="s-json">
+{"icon":"ph-toolbox","estate":true,"group":"core","order":11,"tracker":"tracker/board.md","pins":["pages","console","lib/alpineComponents","docs/CONVENTIONS.md","docs/SURFACING.md"]}
+</script>
+
+<script type="text/plain" id="s-src">
+  // ── Pure: what a peek shows ─────────────────────────────────────────────
+  // Three renditions, by extension, because the useful excerpt of a file is not
+  // the same shape as the file. Markdown reads as prose, so it renders; JSON is
+  // structure, so it is pretty-printed and its shape named; everything else is
+  // code, and code's excerpt is its own text.
+  function kindOf(path) {
+    const ext = (String(path || '').match(/\.([A-Za-z0-9]+)$/) || ['', ''])[1].toLowerCase();
+    if (ext === 'md' || ext === 'markdown') return 'markdown';
+    if (ext === 'json') return 'json';
+    return 'source';
+  }
+
+  // First `lines` lines, plus what was left behind. `total` counts the file, so
+  // the footer can say how much is not on screen rather than only that some is.
+  function excerpt(text, lines = LINES) {
+    const all = String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n');
+    while (all.length && all[all.length - 1] === '') all.pop();
+    const shown = all.slice(0, lines);
+    return { text: shown.join('\n'), shown: shown.length, total: all.length,
+             truncated: all.length > shown.length };
+  }
+
+  // JSON's headline: what the top level IS. A peek at a manifest answers "how
+  // many routes" before the reader has scrolled anything.
+  function shape(text) {
+    let v;
+    try { v = JSON.parse(text); } catch { return 'not valid JSON'; }
+    if (Array.isArray(v)) return 'array · ' + v.length + (v.length === 1 ? ' item' : ' items');
+    if (v && typeof v === 'object') {
+      const k = Object.keys(v);
+      return 'object · ' + k.length + (k.length === 1 ? ' key' : ' keys');
+    }
+    return typeof v;
+  }
+</script>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-8">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">source-peek</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">data-peek="owner/repo@ref:path"</code>
+    <span class="text-[13px] text-base-content/50">hover · Tab · Esc · never on touch, where the icon stays one tap to GitHub</span>
+    <span class="ml-auto flex gap-2">
+      <button class="btn btn-sm" onclick="document.getElementById('t-md').focus()">Markdown</button>
+      <button class="btn btn-sm" onclick="document.getElementById('t-json').focus()">JSON</button>
+      <button class="btn btn-sm" onclick="document.getElementById('t-src').focus()">Source</button>
+    </span>
+  </header>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Three renditions, seeded</h2>
+    <p class="text-[13px] text-base-content/50">Seeded through <code class="font-mono">SourcePeek.seed()</code> from bytes this page carries, so these three open with no token and no network.</p>
+    <ul class="divide-y divide-base-300 border border-base-300 rounded-lg max-w-lg">
+      <li class="flex items-center gap-3 px-3 py-2">
+        <i class="ph ph-file-text text-base-content/30 text-[17px]"></i>
+        <span class="font-mono text-[13.5px] truncate min-w-0">tracker/tasks/add-task-tracker-skill-iwr1ay.md</span>
+        <a id="t-md" class="ml-auto shrink-0 text-base-content/30 hover:text-primary"
+           href="https://github.com/mehrlander/web-tools/blob/main/tracker/tasks/add-task-tracker-skill-iwr1ay.md"
+           data-peek="mehrlander/web-tools@main:tracker/tasks/add-task-tracker-skill-iwr1ay.md"
+           target="_blank" rel="noopener" title="Open on GitHub"><i class="ph ph-github-logo text-[17px]"></i></a>
+      </li>
+      <li class="flex items-center gap-3 px-3 py-2">
+        <i class="ph ph-brackets-curly text-base-content/30 text-[17px]"></i>
+        <span class="font-mono text-[13.5px] truncate min-w-0">.web-tools.json</span>
+        <a id="t-json" class="ml-auto shrink-0 text-base-content/30 hover:text-primary"
+           href="https://github.com/mehrlander/web-tools/blob/main/.web-tools.json"
+           data-peek="mehrlander/web-tools@main:.web-tools.json"
+           target="_blank" rel="noopener" title="Open on GitHub"><i class="ph ph-github-logo text-[17px]"></i></a>
+      </li>
+      <li class="flex items-center gap-3 px-3 py-2">
+        <i class="ph ph-file-code text-base-content/30 text-[17px]"></i>
+        <span class="font-mono text-[13.5px] truncate min-w-0">lib/kits/source-peek.js</span>
+        <a id="t-src" class="ml-auto shrink-0 text-base-content/30 hover:text-primary"
+           href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/source-peek.js"
+           data-peek="mehrlander/web-tools@main:lib/kits/source-peek.js"
+           target="_blank" rel="noopener" title="Open on GitHub"><i class="ph ph-github-logo text-[17px]"></i></a>
+      </li>
+      <li class="flex items-center gap-3 px-3 py-2">
+        <i class="ph ph-folder-simple text-base-content/30 text-[17px]"></i>
+        <span class="font-mono text-[13.5px] truncate min-w-0">lib/kits/</span>
+        <a class="ml-auto shrink-0 text-base-content/30 hover:text-primary"
+           href="https://github.com/mehrlander/web-tools/tree/main/lib/kits"
+           target="_blank" rel="noopener" title="Open on GitHub"><i class="ph ph-github-logo text-[17px]"></i></a>
+      </li>
+    </ul>
+    <p class="text-[13px] text-base-content/50">The last row names a directory and carries no <code class="font-mono">data-peek</code>, which is the convention: an icon that can show you the file is pointing at a file.</p>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">One live address</h2>
+    <p class="text-[13px] text-base-content/50">Not seeded: this one goes through <code class="font-mono">SourcePeek.read()</code> to the GitHub API on your stored token, so a fresh browser gets the error in the card rather than the file.</p>
+    <ul class="divide-y divide-base-300 border border-base-300 rounded-lg max-w-lg">
+      <li class="flex items-center gap-3 px-3 py-2">
+        <i class="ph ph-file-text text-base-content/30 text-[17px]"></i>
+        <span class="font-mono text-[13.5px] truncate min-w-0">docs/CONVENTIONS.md</span>
+        <a id="t-live" class="ml-auto shrink-0 text-base-content/30 hover:text-primary"
+           href="https://github.com/mehrlander/web-tools/blob/main/docs/CONVENTIONS.md"
+           data-peek="mehrlander/web-tools@main:docs/CONVENTIONS.md"
+           target="_blank" rel="noopener" title="Open on GitHub"><i class="ph ph-github-logo text-[17px]"></i></a>
+      </li>
+    </ul>
+  </section>
+
+  <section class="space-y-2"
+           x-data="{ path: 'docs/routes.json', text: '', ready: false,
+                     addr() { return this.ready ? window.SourcePeek.addr('mehrlander/web-tools', 'main', this.path) : '' },
+                     out() { return this.ready ? window.SourcePeek.body(this.path, this.text) : { kind: '…', note: '…' } } }"
+           x-init="text = document.getElementById('s-json').textContent.trim();
+                   ready = !!window.SourcePeek;
+                   window.addEventListener('source-peek-ready', () => ready = true, { once: true })">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">The decision, without the card</h2>
+    <div class="flex flex-wrap items-center gap-2">
+      <input class="input input-sm input-bordered font-mono text-[13.5px] w-72" x-model="path" spellcheck="false">
+      <span class="badge badge-outline font-mono text-[12px]" x-text="out().kind">source</span>
+      <span class="font-mono text-[13px] text-base-content/60" x-text="out().note">…</span>
+      <span class="ml-auto flex items-center gap-2">
+        <button class="btn btn-sm btn-primary"
+                :disabled="!ready"
+                @click="window.SourcePeek.seed(addr(), text); $refs.trig.focus()">Seed and peek</button>
+        <a x-ref="trig" :data-peek="addr()" :href="'https://github.com/mehrlander/web-tools/blob/main/' + path"
+           target="_blank" rel="noopener" title="Open on GitHub"
+           class="text-base-content/30 hover:text-primary"><i class="ph ph-github-logo text-[17px]"></i></a>
+      </span>
+    </div>
+    <textarea class="textarea textarea-bordered font-mono text-[13px] leading-snug w-full h-40"
+              x-model="text" spellcheck="false"></textarea>
+    <p class="text-[13px] text-base-content/50">Change the extension to <code class="font-mono">.md</code> or <code class="font-mono">.js</code> and the kind, the note and the card all follow the path, not the bytes.</p>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">From a script</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>SourcePeek.install()                             // one delegated listener, once per page
+const a = SourcePeek.addr('me/repo', 'main', 'docs/x.md')   // 'me/repo@main:docs/x.md'
+SourcePeek.seed(a, text)                         // bytes in the cache, so no fetch
+SourcePeek.body('docs/x.md', text)               // { kind, text, note, truncated }
+await SourcePeek.read(a)                         // { text } or { err }, fetched once</code></pre>
+  </section>
+
+</main>
+</body>
+</html>

@@ -175,3 +175,40 @@ test('the overlay palette is stronger than the flow palette', () => {
   assert.match(Land.OVERLAY, /mix-blend-mode:\s*multiply/,
     'an overlay multiplies, so it sits under the glyphs it covers');
 });
+
+test('a landing is re-asserted once the layout settles under it', async () => {
+  // A scroll is taken against the scroller's size at that instant, and a pane
+  // that is still being laid out (a docked split, a deck slide just filled)
+  // grows under it. Measured in mehrlander/home from a search result on a
+  // phone: found, marked, and the pane still showing the first line. So the
+  // kit reads the target again once the frame has settled and moves only if
+  // it changed; a stable pane costs two comparisons and no second scroll.
+  const seen = [];
+  const box = window.document.createElement('div');
+  box.style.overflowY = 'auto';
+  Object.defineProperty(box, 'scrollHeight', { value: 900 });
+  Object.defineProperty(box, 'clientHeight', { value: 100 });
+  box.getBoundingClientRect = () => ({ top: 0, bottom: 100, height: 100 });
+  box.scrollTo = (o) => seen.push(Math.round(o.top));
+  const d = window.document.createElement('div');
+  let top = 100;
+  d.getBoundingClientRect = () => ({ top, bottom: top + 20 });
+  box.appendChild(d);
+  window.document.body.appendChild(box);
+
+  Land.mark(d, { dwell: 20 });
+  top = 300;                      // the layout moved after the first scroll
+  await wait(450);
+  assert.deepEqual(seen, [72, 272], 'scrolled once, then again to where the target went');
+
+  seen.length = 0; top = 100;
+  Land.mark(d, { dwell: 20 });
+  await wait(450);
+  assert.deepEqual(seen, [72], 'a pane that did not move is not scrolled twice');
+
+  seen.length = 0;
+  Land.mark(d, { dwell: 20, settle: false });
+  top = 300;
+  await wait(450);
+  assert.deepEqual(seen, [72], 'settle:false scrolls exactly once');
+});

@@ -19,6 +19,13 @@ harness,invocation,computed,tools/build/tools-index.mjs,value,column,yes,,"how t
 harness,emits,computed,tools/build/tools-index.mjs,value,column,yes,yes;no,writes a file: a generator rather than a reader
 harness,named,computed,tools/build/tools-index.mjs,value,column,yes,yes;no,its path or basename appears in tracked prose
 harness,tested,computed,tools/build/tools-index.mjs,value,column,yes,yes;no,a file under tools/test/ exercises it
+kits,namespace,computed,tools/build/kits-index.mjs,value,column,yes,,"the public handle: the last window.<name> assignment in the file, which the shelf's shape rule makes the namespace. Blank is the warning state: a kit nothing can reach by name"
+kits,gloss,computed,tools/build/kits-index.mjs,counted,column,yes,,"the first sentence of the kit's own header comment, its filename prefix stripped. The header is the kit's authoritative doc, so this is read rather than authored; blank where the file opens with code, and blanks are counted rather than hidden"
+kits,lines,computed,tools/build/kits-index.mjs,value,column,yes,,file length
+kits,boot,computed,tools/build/kits-index.mjs,value,column,yes,yes;no,gh-boot.js loads it on every chain-boot page: a fact about what a page pays to start
+kits,demo,computed,tools/build/kits-index.mjs,value,column,yes,yes;no,lib/kits/demos/<name>.html exists
+kits,users,computed,tools/build/kits-index.mjs,value,column,yes,,"how many other files under lib/, pages/ and app/ name the kit by its load path; zero is the warning state"
+kits,tested,computed,tools/build/kits-index.mjs,value,column,yes,yes;no,a file under tools/test/ names it
 content,creation_mode,recorded,,none,column,yes,supplied;mechanical;human-authored;model-authored;hybrid-authored;mixed,what the artifact IS epistemically; the portable content skill owns the convention
 content,analysis_use,recorded,,none,column,yes,concept-vocabulary;prose-review;semantic-search;source-corpus;exclude,"what the artifact is good for downstream. The domain is closed and is owned by the content skill, not here; docs/owners.csv records the copy"
 content,description,recorded,,none,column,yes,,one line on the artifact

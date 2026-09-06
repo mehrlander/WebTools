@@ -18,6 +18,7 @@
 //   over   docked, then a peek opened from the list, which must sit ABOVE it
 //   docs   the Docs tab's own door, over its selected folder
 //   lead   a card title tapped, which docks the deck and marks its bullet
+//   region a region door tapped, which docks the deck and marks the heading
 //   tests  the Tests tab's door, over the suite as its strip has cut it
 
 export default async (page) => {
@@ -44,6 +45,13 @@ export default async (page) => {
     // A card well down the list, so the mark has to have scrolled the slide to
     // be visible at all: a shot of the top of the doc would pass either way.
     await page.locator('button[title^="Show Toss data"]').first().click();
+    await page.waitForTimeout(3200);
+    return;
+  }
+  if (mode === 'region') {
+    // The course's heading sits past every primitive, so a mark visible in
+    // the shot proves the deck landed there rather than merely opened.
+    await page.locator('button[title^="Show The surfacing course"]').first().click();
     await page.waitForTimeout(3200);
     return;
   }

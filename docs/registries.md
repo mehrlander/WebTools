@@ -296,6 +296,28 @@ one-to-one does not. That is a property of the estate being described, not of th
 describer, so a repo adopting this model picks the form its own carriers imply
 rather than the form the hub happens to use. Neither is the canonical shape.
 
+**The column grain is the same shape under two vocabularies.** This repo's
+`properties.csv` describes the columns of its registries, and budget-drs's
+`data/design/lineage/columns.csv` describes the columns of its tables (145 of
+them, 12 of which are registries). The hub needs no separate column file because
+its registries are its only governed tables; budget-drs does because most of its
+tables are not. Field for field:
+
+| hub `properties.csv` | budget-drs `columns.csv` | difference |
+| --- | --- | --- |
+| `registry`, `property` | `table`, `column` | the key |
+| `mode`: recorded, computed | `role`: source, carried, computed | `carried` has no hub value; the hub says borrowing at registry grain, as `inherits` |
+| `deriver` | `op`, `sources` | budget-drs carries the refs, the hub names the script |
+| `values` | `domain`, resolved in `domains.csv` | an inline set against a keyed universe |
+| `gloss` | `transform`, `note` | one sentence either side |
+| `required`, `form`, `exclusive` | `additivity` | the enrichment each side needed |
+
+Neither vocabulary converts to the other, for the reason above: no consumer
+reads both, and a rename is a cost with nothing waiting for it. What this table
+buys is that a reader meeting `mode` here and `role` there does not have to
+rediscover that they are one concept, which is how the sentence "neither shape
+maps onto the other" got written on 2026-09-05 and retracted the same day.
+
 **The borrowing runs both ways, and one attempt at it failed usefully.** The
 origin instrument carries a `definition_owner` field, naming per property the
 document that defines its value domain. Adopting it here was tried and should not

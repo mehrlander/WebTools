@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>swipe-deck — the house swipe format</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script type="module">
+  // The chain boot, so the FAB arrives and the kit is fetched at the previewed ref.
+  const ref = new URLSearchParams(location.search).get('use') || 'main';
+  const base = `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@${ref}/lib`;
+  await import(`${base}/gh-api.js`);
+  await gh.load('kits/swipe-deck.js');
+
+  // ── Sample content ───────────────────────────────────────────────────────
+  const NOTES = [
+    { group: 'Ground', icon: 'ph-mountains', title: 'Ridge cut, mile 4',
+      subtitle: 'Station GR-11 · 14 March',
+      paras: [
+        'The cut face is dry to the touch a metre back from the road, and the seep that ran through February has stopped without leaving a stain. Nothing above it has changed: the same two firs, the same slumped bench, the same litter of shale at the foot.',
+        'The logger has been on the same battery since October and reads 3.61 volts, which is the point at which the last one began skipping samples. Swap it before the melt rather than after.',
+        'One deer track crosses the apron and does not come back, which is the first this year on the upper side.'],
+      readings: [
+        { when: '06:00', value: '3.61 V', note: 'Battery, unloaded' },
+        { when: '06:05', value: '-1.2 °C', note: 'Air, shaded probe' },
+        { when: '06:05', value: '0.4 °C', note: 'Soil at 20 cm' },
+        { when: '12:00', value: '3.58 V', note: 'Battery, under sample load' }] },
+    { group: 'Ground', icon: 'ph-mountains', title: 'Bench above the fork',
+      subtitle: 'Station GR-14 · 14 March',
+      paras: [
+        'Frost heave has lifted the north leg of the tripod about four centimetres, enough to put the plate out of level and enough that the tilt flag has been set since the ninth. Nothing is broken and nothing needs a part: it wants a shovel and twenty minutes.',
+        'The record either side of the ninth agrees, so the flagged span is usable once the tilt is entered as a correction rather than dropped.'],
+      readings: [
+        { when: '00:00', value: '4.1 cm', note: 'Leg rise, north' },
+        { when: '00:00', value: '1.9 °', note: 'Plate tilt' },
+        { when: '09:30', value: 'set', note: 'Tilt flag, since 9 March' }] },
+    { group: 'Ground', icon: 'ph-mountains', title: 'Old quarry floor',
+      subtitle: 'Station GR-19 · 15 March',
+      paras: [
+        'Standing water across the whole floor, ankle deep at the drain end, which has not happened since the culvert was cleared two summers ago. The culvert is clear. The water is coming from the wall, not from the road.',
+        'That makes this a spring rather than a blockage, and it belongs on the water sheet from here on rather than on this one.'],
+      readings: [
+        { when: '08:15', value: '9 cm', note: 'Depth at the drain' },
+        { when: '08:20', value: '6.8', note: 'pH, surface' },
+        { when: '08:40', value: '11.3 °C', note: 'Water, at the wall' }] },
+    { group: 'Ground', icon: 'ph-mountains', title: 'Fence line, east',
+      subtitle: 'Station GR-21 · 15 March',
+      paras: [
+        'Nothing to report, which is worth writing down for a station that has produced something every visit since it went in. Cable intact, mast plumb, desiccant still blue.'],
+      readings: [
+        { when: '10:00', value: 'blue', note: 'Desiccant' },
+        { when: '10:02', value: '0.0 °', note: 'Mast plumb' }] },
+    { group: 'Ground', icon: 'ph-mountains', title: 'Track junction',
+      subtitle: 'Station GR-23 · 16 March',
+      paras: [
+        'Someone has been leaning a gate against the enclosure. The gate is not ours and the enclosure is not damaged, but the sensor arm now sits in the gate’s shadow for about two hours either side of noon, and the afternoon curve has flattened for exactly that span on each of the last six days.',
+        'Move the gate, then look at whether the six days can be recovered from the shape of the seventh.'],
+      readings: [
+        { when: '11:00', value: '412 W/m²', note: 'Irradiance, before shade' },
+        { when: '12:30', value: '96 W/m²', note: 'Irradiance, in shade' },
+        { when: '14:20', value: '388 W/m²', note: 'Irradiance, after shade' }] },
+    { group: 'Water', icon: 'ph-drop', title: 'Weir pool',
+      subtitle: 'Station WA-02 · 16 March',
+      paras: [
+        'The stage board reads 0.84 m against a logger saying 0.79, and the five-centimetre gap has been there since the boards were reset in January. The board is the one that moved.',
+        'Until it is re-surveyed, treat the logger as the record and the board as a sanity check rather than the other way round.'],
+      readings: [
+        { when: '07:45', value: '0.84 m', note: 'Stage board, read by eye' },
+        { when: '07:45', value: '0.79 m', note: 'Logger' },
+        { when: '07:50', value: '1.42 m³/s', note: 'Discharge, rated' }] },
+    { group: 'Water', icon: 'ph-drop', title: 'Confluence, upper',
+      subtitle: 'Station WA-05 · 17 March',
+      paras: [
+        'Both arms are running clear and the mixed reach below is not, which puts whatever is colouring it between the junction and the bridge. There is no obvious inflow along that stretch, so it is either the bed or something entering under the bank.',
+        'Sampled at three points down the reach; the turbidity climbs steadily rather than stepping, which argues for the bed.'],
+      readings: [
+        { when: '09:10', value: '2 NTU', note: 'North arm' },
+        { when: '09:15', value: '3 NTU', note: 'South arm' },
+        { when: '09:40', value: '18 NTU', note: 'Below the bridge' }] },
+    { group: 'Water', icon: 'ph-drop', title: 'Gauge house',
+      subtitle: 'Station WA-08 · 17 March',
+      paras: [
+        'Float clean, cable free, intake clear. The chart drum is a week behind because the clock stopped, and the paper record for that week is a flat line that means nothing at all.',
+        'The digital record covers it, so the loss is the redundancy rather than the data.'],
+      readings: [
+        { when: '13:00', value: '0.61 m', note: 'Float stage' },
+        { when: '13:05', value: 'stopped', note: 'Chart clock' }] },
+    { group: 'Water', icon: 'ph-drop', title: 'Tidal limit',
+      subtitle: 'Station WA-12 · 18 March',
+      paras: [
+        'A spring tide put brackish water eighty metres past the marker for about forty minutes, which is the furthest recorded here and the second time this month. Conductivity came back down within the hour.',
+        'The marker was placed on a survey from 1998 and is now the wrong question: what matters is the duration, not whether the line was crossed.'],
+      readings: [
+        { when: '04:40', value: '0.9 mS/cm', note: 'Conductivity, before' },
+        { when: '05:20', value: '14.6 mS/cm', note: 'Conductivity, peak' },
+        { when: '06:30', value: '1.1 mS/cm', note: 'Conductivity, after' }] },
+    { group: 'Sky', icon: 'ph-cloud-sun', title: 'Mast, hilltop',
+      subtitle: 'Station SK-01 · 18 March',
+      paras: [
+        'Rime on the upper cups through the morning and the anemometer under-reads while it is there, which the temperature record can be used to bound but not to correct.',
+        'The vane is unaffected, so direction is good for the whole day and speed is good from about eleven.'],
+      readings: [
+        { when: '07:00', value: '2.1 m/s', note: 'Wind, rimed' },
+        { when: '11:15', value: '6.4 m/s', note: 'Wind, clear' },
+        { when: '11:15', value: '243 °', note: 'Direction' }] },
+    { group: 'Sky', icon: 'ph-cloud-sun', title: 'Rain gauge, orchard',
+      subtitle: 'Station SK-04 · 19 March',
+      paras: [
+        'The funnel held four leaves and a quantity of blossom, and the tipping bucket recorded nothing through a night that put nine millimetres in the manual gauge fifty metres away.',
+        'Cleared and tested with a measured pour: it tips correctly and the count is right, so the fault was the funnel and the night is a manual figure.'],
+      readings: [
+        { when: '00:00', value: '0.0 mm', note: 'Tipping bucket, blocked' },
+        { when: '08:00', value: '9.0 mm', note: 'Manual gauge' },
+        { when: '08:30', value: '20 tips', note: 'Measured pour, 200 ml' }] },
+    { group: 'Sky', icon: 'ph-cloud-sun', title: 'Radiation plot',
+      subtitle: 'Station SK-07 · 19 March',
+      paras: [
+        'Clean run, no gaps, and the daily total sits within a percent of the modelled clear-sky figure for the date. Worth keeping as the reference day for the spring calibration.'],
+      readings: [
+        { when: '12:00', value: '744 W/m²', note: 'Global, noon' },
+        { when: '23:59', value: '19.2 MJ/m²', note: 'Daily total' }] },
+  ];
+  const CHAPTERS = [...new Set(NOTES.map(n => n.group))];
+  const firstOf = g => NOTES.findIndex(n => n.group === g);
+  // window.esc, from lib/vanilla-bundle.js, which the boot chain above loads
+  // first. One escape helper in the repo, held by tools/test/one-escape-helper.
+  const esc = window.esc;
+
+  // ── The dock hook: this page's claim that it can hold a deck beside itself ──
+  const root = document.documentElement;
+  window.__deckPane = (intent) => {
+    if (intent === 'dock') {
+      root.dataset.deckPane = 'dock';
+      root.style.setProperty('--deck-left', '58%');
+      root.style.setProperty('--deck-border', '1px');
+    } else {
+      root.dataset.deckPane = 'full';
+      root.style.removeProperty('--deck-left');
+      root.style.removeProperty('--deck-border');
+    }
+  };
+  window.__deckPane.when = '(min-width: 1024px)';
+
+  // ── One render, two chromes ──────────────────────────────────────────────
+  const rows = rs => rs.map(r => `<tr>
+      <td class="px-3 py-1.5 font-mono text-sm tabular-nums text-base-content/60">${esc(r.when)}</td>
+      <td class="px-3 py-1.5 font-mono text-sm tabular-nums">${esc(r.value)}</td>
+      <td class="px-3 py-1.5 text-sm text-base-content/70">${esc(r.note)}</td>
+    </tr>`).join('');
+
+  const renderNote = (drillable) => (i, slide) => {
+    const n = NOTES[i];
+    slide.innerHTML = `
+      <article class="space-y-5">
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-widest text-primary">${esc(n.group)}</p>
+          <h2 class="text-3xl font-semibold text-balance">${esc(n.title)}</h2>
+          <p class="text-sm text-base-content/50">${esc(n.subtitle)}</p>
+        </div>
+        ${n.paras.map(p => `<p class="text-xl leading-8 text-pretty">${esc(p)}</p>`).join('')}
+        <table class="w-full border border-base-300"><tbody>${rows(n.readings)}</tbody></table>
+        ${drillable ? `<button data-drill class="btn btn-sm btn-outline">
+            <i class="ph ph-caret-right"></i> Readings, one at a time</button>` : ''}
+      </article>`;
+    slide.querySelector('[data-drill]')?.addEventListener('click', () => drillReadings(i));
+  };
+
+  // ── The takeover ─────────────────────────────────────────────────────────
+  let current = null;
+  const watch = document.getElementById('watch');
+  const say = i => { watch.textContent = `onSlide → ${i} · ${NOTES[i].title}`; };
+
+  const chapterStrip = cur => deck => {
+    const wrap = document.createElement('div');
+    wrap.className = 'flex items-center gap-1';
+    for (const g of CHAPTERS) {
+      const b = document.createElement('button');
+      b.className = 'btn btn-xs ' + (NOTES[cur].group === g ? 'btn-primary' : 'btn-ghost');
+      b.textContent = g;
+      b.addEventListener('click', () => deck.go(firstOf(g)));
+      wrap.append(b);
+    }
+    return wrap;
+  };
+
+  function openDeck(extra = {}) {
+    const start = extra.start || 0;
+    current = window.swipeDeck.open({
+      count: NOTES.length,
+      render: renderNote(true),
+      title: 'Field notes',
+      subtitle: 'Gauge network, sample content',
+      icon: 'ph-notebook',
+      link: { href: 'https://github.com/mehrlander/web-tools/blob/main/lib/kits/swipe-deck.js',
+              title: 'The kit source', icon: 'ph-code' },
+      index: i => ({ title: NOTES[i].title, subtitle: NOTES[i].subtitle,
+                     icon: NOTES[i].icon, group: NOTES[i].group }),
+      actions: [
+        { icon: 'ph-shuffle', title: 'Go to a note at random',
+          onClick: deck => deck.go(Math.floor(Math.random() * NOTES.length)) },
+        { icon: 'ph-flag', title: 'Flag this note',
+          onClick: (deck, btn) => { flag(deck.active()); btn.classList.add('text-primary'); } },
+      ],
+      subheader: chapterStrip(start),
+      onSlide: i => { say(i); current?.setSubheader(chapterStrip(i)); },
+      onClose: () => { current = null; },
+      ...extra,
+    });
+  }
+
+  function drillReadings(i) {
+    const n = NOTES[i];
+    window.swipeDeck.drill(current, {
+      count: n.readings.length,
+      title: n.title,
+      subtitle: 'Readings',
+      icon: 'ph-gauge',
+      index: k => ({ title: n.readings[k].when, subtitle: n.readings[k].note }),
+      render: (k, slide) => {
+        const r = n.readings[k];
+        slide.innerHTML = `<div class="space-y-3">
+          <p class="font-mono text-sm text-base-content/50">${esc(r.when)}</p>
+          <p class="font-mono text-4xl tabular-nums">${esc(r.value)}</p>
+          <p class="text-xl leading-8 text-pretty">${esc(r.note)}</p></div>`;
+      },
+    });
+  }
+
+  const flagged = new Set();
+  const flagEl = document.getElementById('flagged');
+  function flag(i) {
+    flagged.add(NOTES[i].title);
+    flagEl.textContent = [...flagged].join(' · ');
+  }
+
+  // ── The same track, docked in the page ───────────────────────────────────
+  const inline = window.swipeDeck.core(NOTES.length, renderNote(false), {
+    innerClass: 'mx-auto', slideClass: 'bg-base-100',
+  });
+  document.getElementById('track-host').append(inline.track);
+  const pos = document.getElementById('inline-pos');
+  const where = document.getElementById('inline-where');
+  inline.onSlide(i => { pos.textContent = `${i + 1} / ${inline.count}`; where.textContent = NOTES[i].title; });
+  document.getElementById('inline-prev').addEventListener('click', () => inline.go(inline.active() - 1));
+  document.getElementById('inline-next').addEventListener('click', () => inline.go(inline.active() + 1));
+
+  // ── Wiring ───────────────────────────────────────────────────────────────
+  document.getElementById('entry-host').append(window.swipeDeck.entry({
+    count: NOTES.length, noun: 'note', onOpen: () => openDeck(),
+  }));
+  document.getElementById('open-mid').addEventListener('click', () => openDeck({ start: 6 }));
+  document.getElementById('open-immersive').addEventListener('click', () => openDeck({ immersive: true }));
+  document.getElementById('open-bare').addEventListener('click', () => window.swipeDeck.open({
+    count: NOTES.length, render: renderNote(false), title: 'Field notes',
+  }));
+  document.body.dataset.ready = '1';
+</script>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-8">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">swipe-deck</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">swipeDeck.open({ count, render })</code>
+    <span class="text-[13px] text-base-content/50">swipe · ← → · Esc · Back · the mark opens the contents</span>
+    <span class="ml-auto flex items-center gap-2">
+      <span id="entry-host" class="flex"></span>
+      <button id="open-mid" class="btn btn-sm">Open at 7</button>
+      <button id="open-immersive" class="btn btn-sm">Immersive</button>
+      <button id="open-bare" class="btn btn-sm btn-ghost">count + render only</button>
+    </span>
+  </header>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">The same track, docked in the page</h2>
+    <div class="flex h-[26rem] flex-col overflow-hidden rounded-box border border-base-300">
+      <div id="track-host" class="flex min-h-0 flex-1"></div>
+      <div class="flex items-center gap-3 border-t border-base-300 px-3 py-2">
+        <button id="inline-prev" class="btn btn-circle btn-sm btn-ghost" aria-label="Previous"><i class="ph ph-arrow-left"></i></button>
+        <span id="inline-where" class="truncate text-[14px]">Ridge cut, mile 4</span>
+        <span id="inline-pos" class="ml-auto font-mono text-xs tabular-nums text-base-content/50">1 / 12</span>
+        <button id="inline-next" class="btn btn-circle btn-sm btn-ghost" aria-label="Next"><i class="ph ph-arrow-right"></i></button>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">What the takeover reports back</h2>
+    <dl class="text-[14px]">
+      <div class="flex gap-3 border-b border-base-300 py-1.5">
+        <dt class="w-40 shrink-0 text-base-content/50">onSlide</dt>
+        <dd id="watch" class="font-mono text-[13px]">not opened yet</dd>
+      </div>
+      <div class="flex gap-3 py-1.5">
+        <dt class="w-40 shrink-0 text-base-content/50">flag action</dt>
+        <dd id="flagged" class="font-mono text-[13px]">nothing flagged</dd>
+      </div>
+    </dl>
+    <p class="text-[13px] text-base-content/50">The dock toggle appears only where the host installs <code class="font-mono">window.__deckPane</code>; this page installs one and qualifies it at 1024px and up, so the toggle is absent on a narrow window.</p>
+    <p class="text-[13px] text-base-content/50">The docked edge is fixed here: dragging it needs <code class="font-mono">kits/dock-split.js</code> and a <code class="font-mono">window.__deckWidth</code> hook, and this page installs neither.</p>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">From a script</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>const inline = swipeDeck.core(notes.length, render, { innerClass: 'mx-auto' });
+host.append(inline.track);           // a track with chrome of your own
+inline.onSlide(i =&gt; say(i));
+
+const deck = swipeDeck.open({        // the takeover
+  count: notes.length, render, title: 'Field notes', icon: 'ph-notebook',
+  index: i =&gt; ({ title: notes[i].title, group: notes[i].group }),
+  actions: [{ icon: 'ph-shuffle', title: 'Random', onClick: d =&gt; d.go(pick()) }],
+});
+deck.setSubheader(strip);            // chrome belonging to the slide
+swipeDeck.drill(deck, { count: 4, render: readings });   // one level down
+deck.close();</code></pre>
+  </section>
+
+</main>
+</body>
+</html>
