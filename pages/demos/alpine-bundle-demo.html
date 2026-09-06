@@ -25,17 +25,14 @@
   const SECTIONS = [
     {
       title: 'Class-shortcut directives',
-      intro: 'Each block injects alpine-bundle.js into its own frame; the bundle boots Alpine and registers its directives there. Edit the markup and the frame re-renders. These four mirror the html.* presets, as directives.',
+      intro: 'Each block injects alpine-bundle.js into its own frame; the bundle boots Alpine and registers its directives there. Edit the markup and the frame re-renders. These three mirror the html.* presets, as directives.',
       examples: [
         {
-          title: 'x-tip · x-btn · x-toolbar · x-lines',
-          prose: `<code class="${c()}">x-tip.&lt;pos&gt;</code> takes an HTML body; <code class="${c()}">x-btn.&lt;size|variant&gt;</code> adds daisyUI button classes + an optional click handler; <code class="${c()}">x-toolbar</code> and <code class="${c()}">x-lines.&lt;gap&gt;</code> are layout containers.`,
+          title: 'x-btn · x-toolbar · x-lines',
+          prose: `<code class="${c()}">x-btn.&lt;size|variant&gt;</code> adds daisyUI button classes + an optional click handler; <code class="${c()}">x-toolbar</code> and <code class="${c()}">x-lines.&lt;gap&gt;</code> are layout containers.`,
           lang: 'html', kind: 'render', inject, daisy: true,
           code:
 `<div x-data class="flex flex-col gap-4 items-start">
-  <button x-tip.top="'<strong>Rich tooltip</strong><div>HTML body, not escaped text</div>'"
-          class="btn btn-sm">Hover for a tip</button>
-
   <button x-btn.sm.primary="$el.textContent = 'clicked!'">x-btn.sm.primary</button>
 
   <div x-toolbar class="w-full">
