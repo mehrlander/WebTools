@@ -463,11 +463,19 @@ export default async function (page) {
   // summarises it, so the turns on screen are the ones the real summarizer
   // makes, cuts and all, and a tap has somewhere to read the rest from.
   if (process.env.LIVE) {
+    if (process.env.SLOW) await page.evaluate((ms) => { window.__slowRecord = +ms; }, process.env.SLOW);
     await page.evaluate((REC) => {
       const Real = window.GH;
       window.GH = class extends Real {
         async get(p) {
-          if (p.startsWith('sessions/')) return { text: JSON.stringify(REC) };
+          if (p.startsWith('sessions/')) {
+            // SLOW=<ms> holds the record back, which is the field's own timing:
+            // the card opens on the ask, and the transcript lands a beat later.
+            // Anything about what the card does WHILE it waits has to be shot
+            // against a delay, since a local fixture answers in one microtask.
+            if (window.__slowRecord) await new Promise(r => setTimeout(r, window.__slowRecord));
+            return { text: JSON.stringify(REC) };
+          }
           return super.get(p);
         }
       };

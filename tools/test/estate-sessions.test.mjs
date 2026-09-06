@@ -1471,3 +1471,68 @@ test('a slower first mount cannot overwrite the transcript a later one drew', as
   await new Promise(r => setTimeout(r, 5));
   assert.equal(drawn.length, full, 'which draws nothing, rather than the ask over the top of it');
 });
+
+// ── The header's own timeline ──────────────────────────────────────────────
+// The position moved into the big number, the clock became the reader's own,
+// and the rail places each exchange by WHEN it happened. All three need the
+// instant, which the row does not carry: its `ts` is a UTC clock with no date.
+// The record does, and the card always has it, so these hold the join.
+
+test('a turn is placed by its instant, taken from the record', () => {
+  const S = window.RepoSessionsCache;
+  const ident = { short: 'railabc1', session_id: 'railabc1-0000-0000-0000-000000000000' };
+  const body = rec({ ...ident, schema: 4, exchanges: 3,
+    started: '2026-08-05T12:00:00Z', ended: '2026-08-05T16:00:00Z',
+    prompts: [{ at: '2026-08-05T12:00:00Z', text: 'the opening ask' },
+              { at: '2026-08-05T14:00:00Z', text: 'halfway through' },
+              { at: '2026-08-05T15:00:00Z', text: 'and the last one' }],
+    replies: [{ at: '2026-08-05T13:00:00Z', text: 'an answer' },
+              { at: '2026-08-05T16:00:00Z', text: 'the closing answer' }] });
+  const row = S.summarize(body, 'rail1');
+  data._records[row.id] = body;
+  const c = transcriptCard(row);
+  const pcts = c.turns.map(t => Math.round(t.pct));
+  assert.deepEqual(plain(pcts), [0, 25, 50, 75, 100],
+    'four hours of session, and each turn lands where its own clock puts it');
+  assert.equal(c.span.ms, 4 * 3600e3, 'the span is the session, not the card');
+  assert.equal(c.ticks.length, 3, 'one tick an exchange, which is what the number counts');
+  assert.deepEqual(plain(c.ticks.map(t => t.n)), [1, 2, 3]);
+  data._records[row.id] = undefined;
+});
+
+test('with no record the rail spaces its ticks and claims nothing about time', () => {
+  const S = window.RepoSessionsCache;
+  const row = S.summarize(rec({ schema: 4, exchanges: 2,
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'one' },
+              { at: '2026-08-05T15:00:00Z', text: 'two' }],
+    replies: [{ at: '2026-08-05T16:00:00Z', text: 'the answer' }] }), 'x');
+  const c = transcriptCard(row);          // no _records entry for this id
+  assert.ok(c.turns.every(t => typeof t.pct === 'number'), 'every turn still has a place');
+  assert.equal(c.turns[0].pct, 0);
+  assert.equal(c.turns.at(-1).pct, 100);
+});
+
+test('the clock is the reader\'s, and names the date only across one', () => {
+  const S = window.RepoSessionsCache;
+  const ident = { short: 'clockab1', session_id: 'clockab1-0000-0000-0000-000000000000' };
+  const body = rec({ ...ident, schema: 4, exchanges: 2,
+    started: '2026-08-05T12:00:00Z', ended: '2026-08-06T12:00:00Z',
+    prompts: [{ at: '2026-08-05T12:00:00Z', text: 'the opening ask' },
+              { at: '2026-08-06T11:00:00Z', text: 'a day later' }],
+    replies: [{ at: '2026-08-06T12:00:00Z', text: 'the closing answer' }] });
+  const row = S.summarize(body, 'clock1');
+  data._records[row.id] = body;
+  const c = transcriptCard(row);
+  const first = data.localClock(c.turns[0].atMs, c.turns[0].ts);
+  const last = data.localClock(c.turns.at(-1).atMs, c.turns.at(-1).ts);
+  assert.match(first, /\d:\d\d\s?(AM|PM)/i, 'a time a person reads, not a 24-hour stamp');
+  assert.ok(!/\d{2}:\d{2}:\d{2}/.test(first), 'and not the row\'s UTC clock');
+  assert.match(last, /[A-Z][a-z]{2} \d+/, 'the day is named once the session has crossed one');
+  assert.ok(!/[A-Z][a-z]{2} \d+/.test(first), 'and not before');
+  data._records[row.id] = undefined;
+});
+
+test('a turn with no instant still prints something rather than nothing', () => {
+  assert.equal(data.localClock(0, '13:51:08'), '13:51:08', 'the row\'s own string is the floor');
+  assert.equal(data.localClock(0, ''), '');
+});

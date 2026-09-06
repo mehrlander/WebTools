@@ -44,7 +44,7 @@ lib/kits/repo-checks.js,RepoChecks,"Declared staleness checks for a repo, evalua
 lib/kits/repo-config-cache.js,RepoConfigCache,Config aggregate + history + alignment grade for the web-tools ecosystem.,120,no,no,3,yes
 lib/kits/repo-mailbox.js,RepoMailbox,"Private mailbox: an async, git-backed request/response channel between an agent session (limited repo scope) and show-repo in the browser (the user's…",133,no,no,2,yes
 lib/kits/repo-proposals.js,RepoProposals,Proposals: the write-side counterpart to the read-only mailbox (lib/kits/repo-mailbox.js).,658,no,no,2,yes
-lib/kits/repo-sessions-cache.js,RepoSessionsCache,Sessions aggregate for the web-tools ecosystem.,1436,no,no,2,yes
+lib/kits/repo-sessions-cache.js,RepoSessionsCache,Sessions aggregate for the web-tools ecosystem.,1443,no,no,2,yes
 lib/kits/review-target.js,reviewTarget,parse and mint the address grammar for the review page (pages/review.html).,133,no,no,3,yes
 lib/kits/route-activity.js,routeActivity,"rank the app's own routes by when the code behind each last moved, and join each to the work in flight against it.",320,no,no,4,yes
 lib/kits/row-menu.js,rowMenu,"a tap on a row, and what you can do with it",242,no,yes,2,yes
