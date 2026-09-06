@@ -141,10 +141,6 @@
   // Sessions-aggregate builders for the private cache (state/sessions.json).
   await gh.load('kits/closing-state.js');
   await gh.load('kits/repo-sessions-cache.js');
-  // Outbound: the new-session link a session row mints from its own repo scope
-  // (window.PromptLink). Not in BOOT, because the two consumers are this page
-  // and pages/dictate.html, neither on the chain every page carries.
-  await gh.load('kits/prompt-link.js');
   // The pure fold behind Activity's Routes pane: the app's own destinations
   // ranked by when the code behind each last moved (window.routeActivity).
   await gh.load('kits/route-activity.js');

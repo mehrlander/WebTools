@@ -206,7 +206,10 @@ proposed so the app's Map view could render them beside the showing mechanisms.
 It was not built. The array is already data, already gated by
 `tools/test/prompt-link.test.mjs`, and already carries the reasons in the kit's
 header; a CSV would have been a verbatim second copy whose only advantage was
-being readable by a view that reads CSVs.
+being readable by a view that reads CSVs. (The consumer that prompted the
+proposal, a pair of link buttons on every session row, was itself withdrawn the
+same day as too much furniture for a list row. The registry would have outlived
+its reason by hours.)
 
 **The test is where the assertions already live, not where they would be
 convenient to read.** Where a kit or a generator holds them, the registry is the

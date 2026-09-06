@@ -1,15 +1,16 @@
-// alpineComponents/estate.js — a session row's repo SCOPE, and the new-session
-// link minted from it.
+// alpineComponents/estate.js — a session row's repo SCOPE.
 //
 // The record has carried `repos` since schema 1 and the pane never printed it,
-// so the pane could not answer "where was this session" for the row a reader
-// was actually on. These are the two halves that fixes: the strip that says the
-// scope, and the link that copies it forward.
+// so the pane could not answer "where was this session" for the row a reader was
+// actually on. The strip is that answer, and its whole job is to be the union of
+// two fields that disagree on purpose: `attached` (what the container held) and
+// `repos` (where the shell actually stood).
 //
-// What is asserted hardest is the LOSSES. A scope is where the shell stood, not
-// what was attached, and a multi-repo scope cannot carry a branch; a button that
-// narrowed either quietly would be worse than no button, so the note is under
-// test the way the URL is.
+// Two link-minting getters lived here and are gone with the row buttons they
+// served (2026-09-06): a second Claude mark and a microphone on every session
+// row was more furniture than the row could carry, and the route to a new
+// session belongs on a detail surface where it can say what it will do. What
+// survives is the strip, and `kits/prompt-link.js` still holds the minting.
 //
 // Driven over the same fake GH as estate-sessions; no network, no pixels.
 
@@ -75,7 +76,6 @@ const MIXED = {
   branches: ['claude/bookmarklets-rjakex'],
 };
 
-const params = (url) => new URL(url).searchParams;
 // Everything read back through Alpine's $data is a reactive proxy: structurally
 // equal to a literal and never reference-equal. estate-sessions.test.mjs keeps
 // the same helper for the same reason.
@@ -104,53 +104,23 @@ test('checkout names resolve to owner/repo slugs', () => {
   ]);
 });
 
-test('the link preselects every repo the estate could resolve', () => {
-  const r = data.newSessionFor(MIXED);
-  assert.equal(params(r.url).get('repositories'),
-    'mehrlander/shortcut-tools,mehrlander/web-tools,mehrlander/web-tools-private');
-  assert.equal(params(r.url).has('prompt'), false, 'the composer at the far end is the composer');
-});
-
-test('a mixed scope loses its branch, and the note says so with the count', () => {
-  const r = data.newSessionFor(MIXED);
-  assert.equal(params(r.url).has('branch'), false);
-  const note = data.newSessionNote(MIXED);
-  assert.match(note, /Not carried/);
-  assert.match(note, /3 repositories/);
-});
-
-test('the note always states the scope caveat and that nothing starts', () => {
-  const note = data.newSessionNote(MIXED);
-  assert.match(note, /absolute path/, 'the recorder cannot see a repo worked only that way');
-  assert.match(note, /nothing starts until you send it/);
-});
-
-test('a single-repo session does carry its branch', () => {
-  const one = {
-    repos: [{ name: 'web-tools', branch: 'claude/x', lines: 10 }],
-    branches: ['claude/x'],
-  };
-  const r = data.newSessionFor(one);
-  assert.equal(params(r.url).get('repositories'), 'mehrlander/web-tools');
-  assert.equal(params(r.url).get('branch'), 'claude/x');
-  // Length rather than deepEqual: this comes back through Alpine's $data, so
-  // every array is a reactive proxy and never reference-equal to a literal.
-  assert.equal(r.dropped.length, 0);
-});
-
-test('an unresolvable checkout is left out of the link and named in the note', () => {
+test('an unresolvable checkout shows in the strip and resolves to no slug', () => {
+  // It is still the reader's answer to "where did this run"; what it cannot be
+  // is handed to anything that needs an owner/repo.
   const odd = { repos: [{ name: 'web-tools', branch: 'main', lines: 5 },
                         { name: 'some-other-clone', branch: 'main', lines: 2 }],
                 branches: [] };
+  assert.deepEqual(plain(data.sessionRepoRows(odd)).map((r) => r.name),
+    ['some-other-clone', 'web-tools']);
   assert.deepEqual(plain(data.sessionRepoSlugs(odd)), ['mehrlander/web-tools']);
-  assert.equal(params(data.newSessionFor(odd).url).get('repositories'), 'mehrlander/web-tools');
-  assert.match(data.newSessionNote(odd), /some-other-clone.*no repository of that name/);
+  assert.match(data.sessionRepoNote(plain(data.sessionRepoRows(odd))[0]),
+    /no repository of that name/);
 });
 
-test('a session that named no repo mints nothing to hang a button on', () => {
+test('a session that named no repo has no strip at all', () => {
   const bare = { repos: [], branches: [] };
+  assert.deepEqual(plain(data.sessionRepoRows(bare)), []);
   assert.deepEqual(plain(data.sessionRepoSlugs(bare)), []);
-  assert.equal(params(data.newSessionFor(bare).url).has('repositories'), false);
 });
 
 // ── `attached`: scope, beside where the shell stood ─────────────────────────
@@ -171,21 +141,6 @@ test('a repo attached but never entered still shows, and says which it is', () =
   assert.match(data.sessionRepoNote(rows[0]), /attached, but never the working directory/);
 });
 
-test('the wider scope is what the new-session link carries', () => {
-  const row = {
-    repos: [{ name: 'web-tools', branch: 'claude/x', lines: 40 }],
-    attached: ['home', 'web-tools'],
-    branches: ['claude/x'],
-  };
-  data.entries = data.entries.concat([{ repo: 'mehrlander/home' }]);
-  const r = data.newSessionFor(row);
-  assert.equal(params(r.url).get('repositories'), 'mehrlander/home,mehrlander/web-tools');
-  // Two repos now, so the branch cannot ride, and that is the whole reason the
-  // note exists rather than the link silently being narrower than it looks.
-  assert.equal(params(r.url).has('branch'), false);
-  assert.match(data.newSessionNote(row), /2 repositories/);
-});
-
 test('an empty attached means the record cannot say, not that nothing was attached', () => {
   // Every record written before schema 8, permanently: they are never
   // revisited, so `repos` is the only answer they will ever have and the strip
@@ -194,31 +149,4 @@ test('an empty attached means the record cannot say, not that nothing was attach
   const rows = plain(data.sessionRepoRows(old));
   assert.deepEqual(rows.map((r) => r.name), ['web-tools']);
   assert.equal(rows[0].idle, false, 'never claim "attached but idle" from a record that cannot say');
-});
-
-// ── The same scope, spoken ──────────────────────────────────────────────────
-// The Claude mark opens a composer to type into. This one opens the dictation
-// page with the repositories already chosen, which is the surface for a thought
-// you would rather say than type, and the case a session row exists for: you are
-// reading one, an idea arrives, and the phone is better at hearing it.
-
-test('the dictation link carries the scope and lands on Send', () => {
-  const row = {
-    repos: [{ name: 'web-tools', branch: 'claude/x', lines: 10 }],
-    attached: ['home', 'web-tools'],
-    branches: ['claude/x'],
-  };
-  const u = new URL(data.sessionDictateUrl(row));
-  assert.equal(u.pathname, '/web-tools/pages/dictate.html');
-  assert.equal(u.searchParams.get('repo'), 'mehrlander/home,mehrlander/web-tools',
-    'the same union the strip shows, not the narrower `repos`');
-  assert.equal(u.searchParams.get('to'), 'send', 'painted as the lead, never acted on');
-  assert.equal(u.searchParams.get('target'), 'code');
-});
-
-test('a session with no resolvable repo mints no dictation link', () => {
-  // Absent rather than dimmed: the page is reachable on its own, so a link that
-  // preselected nothing would be the plain address with extra steps.
-  assert.equal(data.sessionDictateUrl({ repos: [], branches: [] }), '');
-  assert.equal(data.sessionDictateUrl({ repos: [{ name: 'nowhere', lines: 1 }], branches: [] }), '');
 });
