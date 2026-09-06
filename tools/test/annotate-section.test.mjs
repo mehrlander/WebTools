@@ -254,7 +254,6 @@ test('the reading names the section in markdown terms, not the DOM ones', () => 
   A.enable();
   A._state.aimEl = headingNamed(host, 'Under first');
   A._state.aimKind = 'section';
-  A.expand(true);
   A.setReading('dom');
 
   assert.equal(domHead(), 'h3Under first', 'the rank and the title, not a tag and a class list');
@@ -273,7 +272,6 @@ test('the trail is the markdown chain, which the DOM does not carry', () => {
   A.enable();
   A._state.aimEl = headingNamed(host, 'Under first');
   A._state.aimKind = 'section';
-  A.expand(true);
   A.setReading('dom');
 
   const crumbs = [...A._state.domBody.querySelectorAll('[data-peek-crumb]')]
@@ -293,7 +291,6 @@ test('a crumb re-points the reading at the containing section', () => {
   A.enable();
   A._state.holdEl = headingNamed(host, 'Under first');
   A._state.holdKind = 'section';
-  A.expand(true);
   A.setReading('dom');
   assert.equal(domHead(), 'h3Under first');
 
@@ -307,7 +304,6 @@ test('a crumb re-points the reading at the containing section', () => {
 test('subsections are listed, and a leaf section lists none', () => {
   const host = render();
   A.enable();
-  A.expand(true);
   A._state.aimKind = 'section';
 
   A._state.aimEl = headingNamed(host, 'First');
@@ -330,7 +326,6 @@ test('a filed section note reads as a section, not as its heading element', () =
   const target = A._state.draft.target;
   assert.equal(target.type, 'section');
   A.add(target, 'a note');
-  A.expand(true);
   A.setReading('dom');
   assert.equal(domHead(), 'h2First', 'the target type chose the reading');
   A.disable(); host.remove();

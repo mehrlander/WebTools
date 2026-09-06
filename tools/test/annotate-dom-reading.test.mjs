@@ -45,17 +45,14 @@ const head = (A) => (A._state.domBody.firstElementChild?.textContent || '').trim
 test('chip: absent without peek, offered with it', () => {
   const bare = boot({ peek: false });
   assert.equal(bare.Peek, undefined);
-  bare.Annotate.expand(true);
   assert.equal(bare.Annotate._state.readChips.dom.style.display, 'none');
 
   const w = boot();
-  w.Annotate.expand(true);
   assert.equal(w.Annotate._state.readChips.dom.style.display, 'flex');
 });
 
 test('chip: asking for dom without peek falls back to notes', () => {
   const w = boot({ peek: false });
-  w.Annotate.expand(true);
   w.Annotate.setReading('dom');
   assert.equal(w.Annotate.reading, 'notes');
 });
@@ -65,7 +62,6 @@ test('subject: selected note wins, then the draft, then the most recent', () => 
   const A = w.Annotate;
   A.add(elTarget(w, '#p1'), 'first');
   A.add(elTarget(w, '#li1'), 'second');
-  A.expand(true);
   A.setReading('dom');
 
   // Nothing selected: the most recent note.
@@ -79,7 +75,6 @@ test('reading: names the element, its selector, its subtree and its ancestors', 
   const w = boot();
   const A = w.Annotate;
   A.add(elTarget(w, '#li1'), 'note');
-  A.expand(true);
   A.setReading('dom');
   const t = pane(A);
 
@@ -104,14 +99,12 @@ test('reading: says so when the note resolves to nothing', () => {
   const w = boot();
   const A = w.Annotate;
   A.add(elTarget(w, '#gone'), 'note');
-  A.expand(true);
   A.setReading('dom');
   assert.match(pane(A), /does not resolve to an element/);
 });
 
 test('reading: with no note and no draft it says where a subject comes from', () => {
   const w = boot();
-  w.Annotate.expand(true);
   w.Annotate.setReading('dom');
   // The aim leads the sentence because it leads the fallback chain.
   assert.match(pane(w.Annotate), /Aim at something, or select a note/);
@@ -120,7 +113,6 @@ test('reading: with no note and no draft it says where a subject comes from', ()
 test('empty set: the dom reading still shows, where md and json go bare', () => {
   const w = boot();
   const A = w.Annotate;
-  A.expand(true);
   A.setReading('md');
   assert.equal(A._state.empty.style.display, 'flex', 'md over an empty set is bare');
   A.setReading('dom');
@@ -132,7 +124,6 @@ test('empty set: the dom reading still shows, where md and json go bare', () => 
 test('copy: the key is offered for dom on an empty set', () => {
   const w = boot();
   const A = w.Annotate;
-  A.expand(true);
   A.setReading('json');
   assert.equal(A._state.serialCopy.style.display, 'none', 'nothing to copy from an empty set');
   A.setReading('dom');
@@ -147,7 +138,6 @@ test('subject: the staged aim outranks every filed note', () => {
   const w = boot();
   const A = w.Annotate;
   A.add(elTarget(w, '#p1'), 'filed');
-  A.expand(true);
   A.setReading('dom');
   assert.equal(head(A), 'p#p1', 'the note, with no aim');
 
@@ -160,7 +150,6 @@ test('subject: ending the mode keeps the reading and drops only the outline', ()
   const w = boot();
   const A = w.Annotate;
   A.add(elTarget(w, '#p1'), 'filed');
-  A.expand(true);
   A._state.aimEl = w.document.getElementById('li1');
   A.setReading('dom');
   assert.equal(head(A), 'li#li1');
@@ -177,7 +166,6 @@ test('subject: choosing a note drops the held aim', () => {
   const w = boot();
   const A = w.Annotate;
   A.add(elTarget(w, '#p1'), 'filed');
-  A.expand(true);
   A._state.holdEl = w.document.getElementById('li1');
   A.setReading('dom');
   assert.equal(head(A), 'li#li1');
@@ -190,7 +178,6 @@ test('subject: choosing a note drops the held aim', () => {
 test('subject: a staged rectangle reads as a region, not a node', () => {
   const w = boot();
   const A = w.Annotate;
-  A.expand(true);
   A._state.aimRect = { x: 0, y: 0, w: 300, h: 200 };
   A.setReading('dom');
   const t = pane(A);
@@ -201,32 +188,29 @@ test('subject: a staged rectangle reads as a region, not a node', () => {
 });
 
 // Arming the element aim is one deliberate act with one question behind it, so
-// the pane that answers it opens with the mode rather than being found after.
-// The earlier objection was to expanding on every TAP, which is a different
-// moment; section stays out because its notes are about markdown source.
-test('element aim: choosing it opens the card on the DOM reading', () => {
+// the pane that answers it is switched to with the mode rather than found
+// after. It used to OPEN the card as well; with the collapsed state gone
+// (2026-09-06) there is nothing to open and the reading is the whole of it.
+test('element aim: choosing it switches the card to the DOM reading', () => {
   const w = boot();
-  assert.equal(w.Annotate.expanded, false);
+  assert.equal(w.Annotate.reading, 'notes');
   w.Annotate.startPick();
-  assert.equal(w.Annotate.expanded, true);
   assert.equal(w.Annotate.reading, 'dom');
 });
 
-test('section aim: opens it too, since a section has its own reading', () => {
+test('section aim: switches too, since a section has its own reading', () => {
   // This reverses an earlier exclusion. Section was left out because the
   // reading would answer with an <h2> in a div where the reader is asking
   // about a passage; the fix is a markdown reading, not a withheld one.
   const w = boot();
   w.Annotate.startPick({ aim: 'section' });
-  assert.equal(w.Annotate.expanded, true);
   assert.equal(w.Annotate.reading, 'dom');
 });
 
-test('either aim: a page without peek opens nothing', () => {
+test('either aim: a page without peek switches nothing', () => {
   const bare = boot({ peek: false });
   bare.Annotate.startPick();
-  assert.equal(bare.Annotate.expanded, false, 'no reading to open without the kit');
-  assert.equal(bare.Annotate.reading, 'notes');
+  assert.equal(bare.Annotate.reading, 'notes', 'no reading to switch to without the kit');
 });
 
 // The trail is the one thing in the pane a reader can act on. With no mode
@@ -235,7 +219,6 @@ test('either aim: a page without peek opens nothing', () => {
 test('trail: tapping a crumb re-points the reading at that ancestor', () => {
   const w = boot();
   const A = w.Annotate;
-  A.expand(true);
   A._state.holdEl = w.document.getElementById('li1');
   A.setReading('dom');
   assert.equal(head(A), 'li#li1');
@@ -266,7 +249,6 @@ test('elementOf: every target type resolves through one function', () => {
   const A = w.Annotate;
   const d = w.document;
   A.add({ type: 'page' }, 'p');
-  A.expand(true);
   A.setReading('dom');
   assert.match(head(A), /^body/, 'a page note reads the body');
 

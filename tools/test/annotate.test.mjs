@@ -1229,42 +1229,61 @@ test('the Page chip opens a draft outright: no gesture to make first', () => {
   A.disable();
 });
 
-test('the title, the count and the way in are one control', () => {
-  // Three were two too many, and the first was the leftover of a fourth: a
-  // title button whose only errand was opening the drawer's Notes tab, a count
-  // that said how many and offered nothing, and a chevron. With the tab
-  // retired the title had nothing left to do, and a card that names itself,
-  // counts itself and opens itself was saying one thing three times.
+test('the count rides the list reading, and is empty until there is one', () => {
+  // It was the expander's, `Notes 3 ⌄`, and the expander went with the
+  // collapsed state (2026-09-06): a number saying how many notes there are
+  // belongs on the control that shows them, not on one that used to open them.
   A.enable({ doc, subject: { title: 'x', url: '' } });
   A.clear();
   const S = A._state;
 
-  assert.equal(S.expandBtn.textContent.trim(), 'Notes', 'untouched, it is the card\u2019s name and its way in');
-  assert.equal(S.countEl.textContent, '', 'and carries no number until there is one');
+  assert.equal(S.countEl.textContent, '', 'no number until there is one');
+  assert.equal(S.readChips.notes.contains(S.countEl), true, 'and it rides the list key');
   A.add({ type: 'page' }, 'one');
   A.add({ type: 'page' }, 'two');
   assert.equal(S.countEl.textContent, '2');
-  assert.match(S.expandBtn.textContent, /^Notes\s*2/);
+  A.remove(A.items[0].id);
+  assert.equal(S.countEl.textContent, '1', 'and follows the set down');
+  A.clear();
+  assert.equal(S.countEl.textContent, '', 'back to a bare glyph on an empty set');
+  A.disable();
+});
 
-  assert.match(S.expandBtn.title, /^Open the set/);
-  S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(A.expanded, true);
-  assert.match(S.expandBtn.title, /^Put the set away/, 'and it says which way it is going');
-  assert.equal(S.expandBtn.style.backgroundColor, 'rgb(250, 204, 21)', 'lit while open, the way a live mode chip is');
+// ── One card state, and the launcher owns the other one ────────────────────
+//
+// Collapsed was the writing surface and expanded the reading surface, and the
+// reader carried a toggle between them on a header with no room for it. The
+// real question was whether the card is THERE, and nothing anywhere answered
+// it: a card raised by a long press could not be put down by one.
 
-  // AND THE WORD YIELDS THE ROW. Expanding is what brings the readings strip
-  // and the copy key, taking this header from three controls to five: at 390px
-  // that is 380px of unshrinkable content in 333px of room, and the aim button
-  // fell to a second line. The count and the chevron stay, and what is open
-  // under them says what the card is.
-  assert.equal(S.expandWord.style.display, 'none', 'the word goes when the row fills up');
-  assert.equal(S.countEl.textContent, '2', 'the count does not');
-  S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(S.expandWord.style.display, '', 'and comes back when there is room');
+test('there is no collapsed state left to reach', () => {
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  const S = A._state;
+  assert.equal(A.expand, undefined, 'the API no longer offers to open what is always open');
+  assert.equal(A.expanded, undefined, 'nor a flag saying which of two states it is in');
+  assert.equal(S.expandBtn, undefined, 'and the header carries no key for it');
 
-  assert.match(S.expandBtn.getAttribute('style'), /min-height:\s*30px/, 'sized to the controls under it');
+  // The window applies on arrival rather than on a first tap, so the readings
+  // strip, the list and the set actions are all there to be reached.
+  assert.equal(S.readBar.style.display, 'flex');
+  A.add({ type: 'page' }, 'one');
+  assert.equal(S.listEl.style.display, 'flex');
+  assert.equal(S.setActs.style.display, 'flex');
+  assert.match(S.panel.style.height, /^\d+px$/, 'and the card is windowed from the start');
   A.clear();
   A.disable();
+});
+
+test('the height came down 15% to pay for the card always being windowed', () => {
+  // Writing a note used to happen over a content-sized card. Every figure took
+  // the same cut so the shape holds at every viewport rather than the cap
+  // moving relative to the fraction.
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/annotate.js'), 'utf8');
+  assert.match(src, /Math\.max\(204, Math\.min\(374, Math\.round\(vh \* 0\.47\)/,
+    'the windowed height is 204/374/0.47, which is 240/440/0.55 less 15%');
+  assert.match(src, /PANEL_MAX = 'min\(408px,60vh\)'/,
+    'and the declared fallback is 480/70vh less 15%');
 });
 
 test('the launcher-staged page draft opens idle: an offer, not a recorder', () => {
@@ -1577,7 +1596,7 @@ test('a drag surface cancels the touch itself, not just its touch-action', () =>
   // `cursor:move` with a space, so a style-substring match is a false negative
   // waiting to happen.)
   const header = S.panel.firstChild;
-  assert.ok(header.textContent.includes('Notes'), 'the header, by position');
+  assert.equal(header.firstChild, S.placeBtn, 'the header, by position');
   assert.equal(touch(header, 'touchstart'), true, 'the bare header cancels');
   assert.equal(touch(S.pageChip, 'touchstart'), false,
     'and a chip inside it does not, or a tap on it would never become a click');
@@ -1783,46 +1802,35 @@ test('the set has a second reading: on the page, where a screenshot can hold it'
   A.disable();
 });
 
-test('the expander opens the set, and the card grows upward whatever it is anchored by', () => {
-  // Reading the set used to mean leaving for the drawer's Notes tab, on a page
-  // that has a drawer at all. The card is anchored bottom-left, so a taller
-  // panel grows up and the header stays under the thumb that just tapped it.
-  // A header drag re-anchors the card to the TOP, though, and a taller panel
-  // then grows down and off the screen: expanding re-pins the bottom edge so
-  // the direction is the same either way.
+test('the card grows upward whatever it is anchored by', () => {
+  // The card is anchored bottom-left, so a taller panel grows up and the header
+  // stays under the thumb. A header drag re-anchors it to the TOP, though, and
+  // a taller panel then grows down and off the screen: the sizer re-pins the
+  // bottom edge so the direction is the same either way. That used to be the
+  // expander's job; with one card state it belongs to whatever resizes the
+  // window, which is a rotation or a keyboard rather than a tap.
   A.enable({ doc, subject: { title: 'x', url: '' } });
   A.clear();
   const S = A._state;
-
-  // OFFERED ON ARRIVAL, with nothing filed. It hid behind a non-empty set at
-  // first, which is defensible and was still wrong: the first thing a reader
-  // does with a fresh page is arrive at it holding no notes, so the control
-  // was invisible in exactly the state where it had to teach itself.
-  assert.equal(S.expandBtn.style.display, 'flex', 'the way in is visible before there is anything in it');
-  assert.equal(S.countEl.textContent, '', 'carrying no number, so it is narrower empty than full');
-  A.add({ type: 'page' }, 'about the page');
-  assert.equal(S.countEl.textContent, '1');
-  assert.equal(A.expanded, false);
-  assert.equal(S.readBar.style.display, 'none');
-  assert.equal(S.setActs.style.display, 'none');
 
   // What a drag leaves behind: bottom released, top pinned.
   S.ui.style.bottom = 'auto';
   S.ui.style.top = '40px';
 
-  S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(A.expanded, true);
+  A.add({ type: 'page' }, 'about the page');
   assert.equal(S.ui.style.top, 'auto', 'the top anchor is released');
   assert.match(S.ui.style.bottom, /px$/, 'and the bottom edge is pinned, so the growth goes up');
   assert.match(S.panel.style.maxHeight, /px$/, 'the ceiling is computed from the room above that edge');
-  assert.equal(S.readBar.style.display, 'flex', 'the three readings arrive');
+  assert.equal(S.readBar.style.display, 'flex', 'the readings are there from the start');
   assert.equal(S.setActs.style.display, 'flex', 'and the actions on the set');
-  assert.equal(S.listEl.style.display, 'flex', 'opening on the list, which is where a reader already was');
+  assert.equal(S.listEl.style.display, 'flex', 'opening on the list');
 
-  S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
-  assert.equal(A.expanded, false);
-  assert.equal(S.panel.style.maxHeight, 'min(480px,70vh)', 'and collapsing puts the card back to its own cap');
+  // In place is the one reading that is not windowed, and the only thing left
+  // that falls back to the declared cap.
+  A.showInPlace(true);
+  assert.equal(S.panel.style.maxHeight, 'min(408px,60vh)');
   assert.equal(S.readBar.style.display, 'none');
+  A.showInPlace(false);
   A.clear();
   A.disable();
 });
@@ -1835,7 +1843,6 @@ test('three readings of one set, and a serialization is shown rather than descri
   A.add({ type: 'element', selector: '#p1', excerpt: 'the quick brown fox' }, 'about the paragraph');
   A.add({ type: 'page' }, 'about the page');
   const S = A._state;
-  A.expand(true);
 
   S.readChips.md.dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(A.reading, 'md');
@@ -1875,7 +1882,6 @@ test('a serialization is of the whole set, whatever row is selected', () => {
   const two = A.add({ type: 'element', selector: '#p1', excerpt: 'the quick brown fox' }, 'second');
   A.add({ type: 'page' }, 'third');
   const S = A._state;
-  A.expand(true);
   A.setReading('md');
 
   assert.equal(S.serialPre.textContent, A.toMarkdown());
@@ -1950,7 +1956,6 @@ test('the copy key reports on itself, since the card has no status line', async 
   A.clear();
   A.add({ type: 'page' }, 'one');
   const S = A._state;
-  A.expand(true);
   A.setReading('md');
 
   let copied = null;
@@ -1998,10 +2003,9 @@ test('every key in the header row wears one shape, and states on with a fill', (
   A.clear();
   A.add({ type: 'page' }, 'one');
   const S = A._state;
-  A.expand(true);
   A.setReading('md');
 
-  const keys = [S.expandBtn, S.placeBtn, ...Object.values(S.readChips), S.serialCopy, S.aimBtn];
+  const keys = [S.placeBtn, ...Object.values(S.readChips), S.serialCopy, S.aimBtn];
   for (const b of keys) {
     const css = b.getAttribute('style');
     assert.match(css, /min-height:\s*30px/, 'one height: ' + (b.title || b.textContent));
@@ -2009,14 +2013,11 @@ test('every key in the header row wears one shape, and states on with a fill', (
     assert.equal(b.style.borderRadius, '7px', 'one corner: ' + (b.title || b.textContent));
   }
 
-  // ON IS A FILL AND AN INK, and nothing else, wherever it appears. Three keys
-  // are lit here: the expander (the set is open), the md reading (it is
-  // showing) and neither the eye nor the aim button, which are at rest.
+  // ON IS A FILL AND AN INK, and nothing else, wherever it appears.
   const lit = (b) => b.style.backgroundColor === 'rgb(250, 204, 21)'
                   && b.style.color === 'rgb(24, 24, 27)';
   const dark = (b) => b.style.backgroundColor === 'transparent';
-  assert.ok(lit(S.expandBtn), 'the expander is lit while the set is open');
-  assert.ok(lit(S.readChips.md), 'and the reading that is showing');
+  assert.ok(lit(S.readChips.md), 'the reading that is showing is lit');
   assert.ok(dark(S.readChips.json), 'not the ones that are not');
   assert.ok(dark(S.placeBtn), 'nor the eye, which is at rest');
   assert.ok(dark(S.aimBtn), 'nor the aim button on the default aim');
@@ -2030,18 +2031,16 @@ test('every key in the header row wears one shape, and states on with a fill', (
 test('the set band goes when the notes go, and when the page takes them', () => {
   // Copy, Save and Clear over an empty set are three offers that cannot be
   // taken up. And the in-place reading exists to leave one 30px strip for a
-  // screenshot, which an expanded card would be the loudest thing to break.
+  // screenshot, which the windowed card would be the loudest thing to break.
   A.enable({ doc, subject: { title: 'x', url: '' } });
   A.clear();
   A.add({ type: 'page' }, 'one');
   const S = A._state;
-  A.expand(true);
   assert.equal(S.setActs.style.display, 'flex');
 
   A.showInPlace(true);
   assert.equal(S.readBar.style.display, 'none', 'the readings fold away with the list');
   assert.equal(S.setActs.style.display, 'none');
-  assert.equal(S.expandBtn.style.display, 'none', 'and so does the way back into them');
 
   A.showInPlace(false);
   assert.equal(S.readBar.style.display, 'flex', 'the card comes back the way it was left');
@@ -2049,20 +2048,19 @@ test('the set band goes when the notes go, and when the page takes them', () => 
 
   A.clear();
   assert.equal(S.setActs.style.display, 'none', 'an empty set has no actions to offer');
-  assert.equal(S.expandBtn.style.display, 'flex', 'but the way in stays, which is how it is ever found');
+  assert.equal(S.readBar.style.display, 'flex', 'but the readings stay, which is how they are ever found');
   A.disable();
 });
 
-test('an expanded empty set says where notes come from, rather than showing an empty one', () => {
-  // Opening the expander with nothing filed is the state that has to teach the
-  // gesture, so it cannot be a blank pane: an empty markdown document under a
-  // lit Markdown chip reads as something broken. The readings strip stays,
-  // since seeing the three on offer is most of what opening an empty set is
-  // for; the list, the serialization and the actions all wait for a note.
+test('an empty set says where notes come from, rather than showing an empty one', () => {
+  // Arriving with nothing filed is the state that has to teach the gesture, so
+  // it cannot be a blank pane: an empty markdown document under a lit Markdown
+  // chip reads as something broken. The readings strip stays, since seeing what
+  // is on offer is most of what an empty card is for; the list, the
+  // serialization and the actions all wait for a note.
   A.enable({ doc, subject: { title: 'x', url: '' } });
   A.clear();
   const S = A._state;
-  A.expand(true);
 
   assert.equal(S.empty.style.display, 'flex');
   assert.match(S.empty.textContent, /Select text on the page/, 'and it names the gesture with no chip of its own');
@@ -2096,7 +2094,6 @@ test('the three readings are one window, and what does not fit scrolls inside it
   A.add({ type: 'page' }, 'one');
   A.add({ type: 'page' }, 'two');
   const S = A._state;
-  A.expand(true);
 
   const h = S.panel.style.height;
   assert.match(h, /px$/, 'an open set is a window of a fixed size');
@@ -2112,18 +2109,18 @@ test('the three readings are one window, and what does not fit scrolls inside it
   assert.equal(S.panel.style.height, h, 'so is the JSON');
   assert.match(S.serialPre.getAttribute('style'), /overflow:\s*auto/, 'the pane scrolls rather than the card growing');
 
-  // Collapsed, the card goes back to being sized by what is in it: a stretched
-  // list under a composer holding two notes is a band of white.
-  A.expand(false);
+  // In place is the one reading left that is not windowed: it exists to leave a
+  // single strip of card behind, so it falls back to the declared cap.
+  A.showInPlace(true);
   assert.equal(S.panel.style.height, '');
-  assert.equal(S.panel.style.maxHeight, 'min(480px,70vh)');
+  assert.equal(S.panel.style.maxHeight, 'min(408px,60vh)');
   assert.equal(S.listEl.style.flexGrow, '');
+  A.showInPlace(false);
 
   // AN EMPTY SET TAKES THE WINDOW TOO, which is a reversal. It used to stay
   // small, on the reading that one italic line does not need a window: true of
   // the line, false of the reader, who then watched the card jump to a new size
   // the moment they filed anything. One gesture, one size.
-  A.expand(true);
   const full = S.panel.style.height;
   A.clear();
   assert.equal(S.panel.style.height, full, 'nothing filed, and the card is the same window');
@@ -2140,7 +2137,6 @@ test('copy rides the header beside the readings, so it needs no word at all', ()
   A.clear();
   A.add({ type: 'page' }, 'one');
   const S = A._state;
-  A.expand(true);
   A.setReading('md');
 
   assert.equal(S.serialCopy.textContent.trim(), '', 'the glyph alone: the chips beside it are the qualifier');

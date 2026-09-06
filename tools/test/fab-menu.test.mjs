@@ -392,6 +392,53 @@ test('a declared render puts its own name on the row', async () => {
   box.remove();
 });
 
+// ── The row raises the card, and it is the only thing that puts it down ─────
+//
+// The card had a collapsed state that read as putting it away and was not: it
+// stayed, smaller, still over the page. Nothing anywhere called disable(), so a
+// card raised by a long press could not be put down by one. With the collapsed
+// state gone (2026-09-06) this row owns both halves.
+
+test('the hide row appears only where there is a card, and puts it away', async () => {
+  clearPages();
+  const calls = [];
+  let live = false;
+  window.Annotate = {
+    get enabled() { return live; },
+    enable() { live = true; calls.push('enable'); },
+    disable() { live = false; calls.push('disable'); },
+    notePage() { calls.push('page'); },
+  };
+  const d = await mountFab();
+
+  d.openFabMenu();
+  await tick(2);
+  assert.equal(d.annOn, false, 'nothing running, so nothing to put away');
+  const off = () => [...d.$root.querySelectorAll('button')]
+    .find(b => (b.getAttribute('aria-label') || '') === 'Hide the note card');
+  assert.equal(off().style.display, 'none', 'and the row is not offered');
+
+  // ITS OWN ROW, not a fifth glyph on the aims. A fifth key overflowed the
+  // w-56 menu and was clipped away entirely, and an X at the end of four aims
+  // reads as a fifth aim.
+  const aims = d.$root.querySelector('[aria-label="Note the page"]').parentElement;
+  assert.ok(!aims.contains(off()), 'it does not ride the aims group');
+  assert.match(off().textContent, /Hide notes/, 'it is a labelled row like every other verb here');
+
+  await d.annAim('page');
+  assert.deepEqual(calls, ['enable', 'page']);
+
+  d.openFabMenu();
+  await tick(2);
+  assert.equal(d.annOn, true, 'a card is up, read at open time');
+  assert.notEqual(off().style.display, 'none');
+  off().click();
+  await tick(2);
+  assert.deepEqual(calls, ['enable', 'page', 'disable'], 'and the tap unmounts the card');
+  assert.equal(d.annOn, false);
+  delete window.Annotate;
+});
+
 // The three that are not declared are this component's own, and they have to
 // keep matching kits/annotate.js's AIM_ICON glyph for glyph: one aim, one mark,
 // whichever control starts it.
