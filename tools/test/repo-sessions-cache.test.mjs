@@ -1251,3 +1251,57 @@ test('a carried row from an older file is thinned without a re-read', () => {
   assert.deepEqual(S.stalePaths(next, [{ path: p, sha: 'same' }]), [], 'sha and version still match');
   assert.equal(S.leanRow(null), null);
 });
+
+// ── The scroll back, whole ─────────────────────────────────────────────────
+// A card that offers to open one turn has to be able to find that turn in the
+// record, and the only address it has is a position in its own list. So the
+// two lists are one function with a cap and a head on the end of it, and this
+// is what holds them in step.
+
+test('fullTurns and priorTurns line up entry for entry', () => {
+  const prompts = [], replies = [];
+  for (let i = 0; i < 6; i++) {
+    prompts.push({ at: '2026-08-05T13:0' + i + ':00Z', text: 'ask number ' + i });
+    replies.push({ at: '2026-08-05T13:0' + i + ':30Z',
+                   text: 'A sentence answering ' + i + '. ' + 'And more of it. '.repeat(40) });
+  }
+  const r = record({ schema: 4, prompts, replies });
+  const full = S.fullTurns(r), head = S.priorTurns(r);
+  assert.equal(full.length, head.length, 'nothing is capped at this size');
+  assert.deepEqual(full.map(e => e.k), head.map(e => e[0]), 'same roles, same order');
+  assert.deepEqual(full.map(e => e.ts), head.map(e => e[2]), 'same clocks');
+  const cut = head.findIndex(e => e[3]);
+  assert.ok(cut >= 0, 'the fixture has to cut something for this to mean anything');
+  assert.ok(full[cut].md.length > head[cut][1].length,
+    'and the whole turn at that index is longer than the head of it');
+  assert.ok(full[cut].md.startsWith('A sentence answering'));
+});
+
+test('the cap is applied to the same list, so the window is the last N of it', () => {
+  const prompts = [], replies = [];
+  for (let i = 0; i < 50; i++) {
+    prompts.push({ at: '2026-08-05T13:' + String(i).padStart(2, '0') + ':00Z', text: 'ask ' + i });
+    replies.push({ at: '2026-08-05T13:' + String(i).padStart(2, '0') + ':30Z', text: 'answer ' + i });
+  }
+  const r = record({ schema: 4, prompts, replies });
+  const full = S.fullTurns(r), head = S.priorTurns(r);
+  assert.equal(head.length, S.TURNS_KEPT);
+  assert.ok(full.length > head.length, 'the fixture has to overflow the cap');
+  const window_ = full.slice(-S.TURNS_KEPT);
+  assert.deepEqual(window_.map(e => e.ts), head.map(e => e[2]),
+    'entry i of the card is entry i of the last TURNS_KEPT, which is what a tap trades on');
+});
+
+test('an empty turn is dropped before the cap, not after it', () => {
+  // Dropped downstream it would shorten the card's list and leave every index
+  // past it addressing the turn before.
+  const r = record({ schema: 4,
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'open' },
+              { at: '2026-08-05T13:02:00Z', text: '   ' },
+              { at: '2026-08-05T13:04:00Z', text: 'the second ask' }],
+    replies: [{ at: '2026-08-05T13:01:00Z', text: 'the first answer' },
+              { at: '2026-08-05T13:05:00Z', text: 'the last answer' }] });
+  const full = S.fullTurns(r), head = S.priorTurns(r);
+  assert.equal(full.length, head.length);
+  assert.ok(!full.some(e => !e.img && !String(e.md).trim()), 'no blank entry survives');
+});
