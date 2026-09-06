@@ -343,11 +343,11 @@
       get stitchNote() {
         this.beat;
         const aim = this.d && this.d.stitchAim;
-        if (aim === 'caret') return 'Close the gap your caret is in: the full stop goes and the capital comes down';
+        if (aim === 'caret') return 'Close the break your caret is on: the full stop goes and the capital comes down';
         if (aim === 'end') return 'Take back the full stop the pause just wrote, and keep the sentence running';
-        if (aim === 'back') return 'Undo the most recent sentence break the pause invented, wherever it is';
-        return 'Nothing to undo yet';
+        return 'Nothing at the caret to undo. Step back to a sentence break first.';
       },
+      get jumpable() { this.beat; return !!(this.d && this.d.canJumpBack); },
       get breakable() { this.beat; return !this.edit && !!this.text && !!(this.d && this.d.segments.length); },
       get canUndo() { this.beat; return !!(this.d && this.d.canUndo); },
       get canRedo() { this.beat; return !!(this.d && this.d.canRedo); },
@@ -1322,6 +1322,7 @@
       shift: false,
       key(k) {
         if (k === 'stitch') { this.d.stitch(); this.paint(); return; }
+        if (k === 'jump') { this.d.jumpBack(); this.paint(); return; }
         const cased = { AB: 'upper', ab: 'lower', Ab: 'title' }[k];
         if (cased) { this.d.recase(cased); this.paint(); return; }
         this.d.punct(k);
@@ -1909,13 +1910,20 @@
   </div>
 
   <!-- ── The keys ────────────────────────────────────────────────────────
-       The composer's three keys and its shift, laid across instead of down,
-       with the stitch and backspace on the end. Six keys at a phone's width is
-       60px each, still well over the column's 46 and still costing the text
-       nothing: every one of them holds a single glyph, so the width they need
-       is a touch target rather than a label. Tapped over and over inside one
-       note, so they are the tall row, and being the tall row is what qualifies
-       a control to be here. -->
+       TWO GROUPS PAST A HAIRLINE. On the left the composer's three marks and
+       its shift, laid across instead of down: the keys that WRITE. On the
+       right the three that take something back: step to a break, close it,
+       delete a word. The rule between them is what a thumb reaching without
+       looking reads first, and it is why the backspace no longer has to be
+       found by counting cells from the end.
+
+       Seven keys measure 50px each at 390 and 48 at 375, and every one holds a
+       single glyph, so what each needs is a touch target rather than a label.
+       At 320 they are 40px wide, under the platform's 44, and that is accepted
+       rather than fixed: the row is 56px tall, so the target is 40 by 56 and
+       generous in the axis a thumb actually misses in. Tapped over and over
+       inside one note, so they are the tall row, and being the tall row is
+       what qualifies a control to be here. -->
   <div x-show="!edit" class="shrink-0 flex items-stretch gap-1 px-1 pt-1">
     <template x-for="k in pad" :key="k.k">
       <button @pointerdown.prevent="key(k.k)" :title="k.t"
@@ -1936,32 +1944,64 @@
             :class="shift ? 'btn-warning' : 'btn-ghost bg-base-200'"
             title="The other three marks"
             x-text="shift ? 'abc' : '·!¶'"></button>
-    <!-- THE STITCH, the fifth key, and the one this row gained on 2026-09-06.
-         It undoes the sentence break the pause invented: the full stop goes and
-         the capital after it comes down, in one tap.
+    <!-- ── THE REPAIRS, past a rule ───────────────────────────────────────
+         Four keys write and three take back, and until this rule they sat in
+         one undifferentiated run where a thumb had to count cells to find the
+         backspace. The line says which half of the row it is in before the
+         glyph says what the key does, which is what a thumb reaching without
+         looking actually reads.
 
-         ALWAYS HERE, WHICH IS THE WHOLE CHANGE. It used to appear in the full
-         stop's place, and only while a caret sat in the gap, which meant the
-         repair cost leaving the sentence you were speaking, aiming a thumb at
-         a three-character gap, tapping, and finding your place again. That is
-         more than the wrong full stop costs, so it was not done. The key
-         reaches the most recent break by itself now, so the gesture is: hear
-         it land, tap, keep talking.
+         It is a hairline WITH room either side rather than one or the other. A
+         gap alone at this size reads as a layout accident; a line alone was
+         drawn in base-300 between two base-200 keys and disappeared into
+         them, which a shot showed before this comment was written. Inset from
+         top and bottom too, so it separates the keys without drawing a box
+         around either group. -->
+    <div class="w-px shrink-0 my-3 mx-1 bg-base-content/20" aria-hidden="true"></div>
 
-         DIMMED RATHER THAN GONE when there is nothing to undo, which is the
-         first seconds of a note and nothing else. A key that came and went in
-         the middle of a row would move the four beside it under a thumb that
-         had already learned where they are.
+    <!-- STEP BACK, the key that changes nothing. It walks the caret to the
+         previous sentence break so the reader can SEE which one they are about
+         to close, and tapping again walks past it to the one before.
 
-         It sits between the marks and the backspace because that is what it
-         is: the row reads compose, compose, compose, then the two repairs. -->
+         IT EXISTS BECAUSE THE STITCH CANNOT GUESS. For a few hours on
+         2026-09-06 the stitch reached backwards by itself, and no ordering of
+         its targets was right: during dictation the buffer almost always ends
+         in the full stop the pause just wrote, so "the most recent break" is
+         that one. Taking it back is exactly right when the sentence should
+         keep running and exactly wrong when the reader meant to keep it and
+         repair an earlier break, and nothing in the buffer tells the two
+         apart, since the difference is in what they are about to say.
+
+         BACKWARDS ONLY. Forwards is a tap on the text, which every reader of
+         this surface already knows and which lands anywhere rather than on a
+         break, so a key for it would spend a cell duplicating a gesture.
+         Getting back is the hard direction and the one worth a key.
+
+         The caret it places is a LOAN: the stitch hands it back to the end, so
+         the next thing said still lands where the reader is speaking. See
+         `jumpBack` in kits/dictate.js. -->
+    <button @pointerdown.prevent="key('jump')" :disabled="!jumpable"
+            class="btn h-14 min-h-0 grow basis-0 px-0 text-2xl"
+            :class="jumpable ? 'btn-ghost bg-base-200' : 'btn-ghost bg-base-200 opacity-40'"
+            title="Step the caret back to the previous sentence break, without changing anything">
+      <i class="ph ph-caret-double-left"></i>
+    </button>
+    <!-- THE STITCH, which closes the break the caret is ON. During dictation
+         that is the full stop just written, so the ordinary repair is one tap
+         and no aiming: hear it land, tap, keep talking. Step back first and it
+         closes an older one instead, and the trailing full stop survives.
+
+         DIMMED RATHER THAN GONE where the caret is not on a break. A key that
+         came and went in the middle of a row would move the ones beside it
+         under a thumb that had already learned where they are. -->
     <button @pointerdown.prevent="key('stitch')" :disabled="!stitchable"
             class="btn h-14 min-h-0 grow basis-0 px-0 text-2xl"
-            :class="stitchable ? 'btn-ghost bg-warning/20 text-warning' : 'btn-ghost bg-base-200'"
+            :class="stitchable ? 'btn-ghost bg-warning/20 text-warning' : 'btn-ghost bg-base-200 opacity-40'"
             :title="stitchNote">
       <i class="ph ph-arrows-in-line-horizontal"></i>
     </button>
-    <!-- BACKSPACE, the sixth key, at the right end. It is red because it is
+    <!-- BACKSPACE, at the right end, where every keyboard the reader has ever
+         used puts it. It is red because it is
          the one key here that takes a WORD away, and the tint is the aim: the
          marks are reached for by position and this one has to be found in a
          hurry, mid-sentence, without reading. The stitch beside it takes

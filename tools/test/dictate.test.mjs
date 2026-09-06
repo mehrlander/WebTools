@@ -573,71 +573,103 @@ test('the stitch declines where there is no sentence break anywhere', () => {
   assert.equal(none.stitch(), false);
 });
 
-// ── Reaching back, which is what the key is actually for ────────────────────
-// The caret model was not wrong, it was unreachable in the flow it existed for.
-// A pause writes a full stop, the reader hears it, and by the time a thumb
-// could aim at the gap they are three words past it. So the key stopped
-// needing an address: no caret means the most recent invented break.
+// ── Walking back through the breaks ─────────────────────────────────────────
+// The stitch reached backwards by itself for a few hours on 2026-09-06 and no
+// ordering of its targets could be right: during dictation the buffer almost
+// always ends in a full stop the pause just wrote, so "the most recent break"
+// is that one, and whether the reader wants it gone or wants to keep it and
+// repair an earlier one is a fact about what they are about to say, not one the
+// buffer holds. So the reach became its own key, which changes nothing and
+// shows the target.
 
-test('with no caret placed, the stitch takes the most recent break', () => {
-  const d = withText('so I went to the store. And then I came back');
+test('the stitch acts on the break the caret is at, and reaches for nothing', () => {
+  const d = withText('one thing. Two things. Three things happened');
   assert.equal(d.range, null, 'the resting state, which is where dictation leaves it');
-  assert.equal(d.canStitch, true);
-  assert.equal(d.stitch(), true);
-  assert.equal(d.text, 'so I went to the store and then I came back');
-  assert.equal(d.range, null, 'and the caret is not moved, since the reader never placed one');
+  assert.equal(d.canStitch, false, 'the end of the buffer is not a break here');
+  assert.equal(d.stitch(), false);
+  assert.equal(d.text, 'one thing. Two things. Three things happened');
 });
 
-test('the most recent means the rightmost, and tapping again walks back', () => {
+test('jumping back walks to the previous break, and again walks past it', () => {
   const d = withText('one thing. Two things. Three things happened');
-  d.stitch();
-  assert.equal(d.text, 'one thing. Two things three things happened',
-    'the newer break goes first');
-  d.stitch();
-  assert.equal(d.text, 'one thing two things three things happened',
-    'a second tap uncovers the one before it');
-  assert.equal(d.canStitch, false, 'and then there are none left');
+  assert.equal(d.canJumpBack, true);
+  assert.equal(d.jumpBack(), true);
+  assert.deepEqual(d.range, { start: 23, end: 23 }, 'on the front of "Three"');
+  assert.equal(d.stitchAim, 'caret', 'and the stitch is now aimed');
+
+  d.jumpBack();
+  assert.deepEqual(d.range, { start: 11, end: 11 }, 'on the front of "Two"');
+  assert.equal(d.canJumpBack, false, 'and there is nothing older to reach');
 });
 
-test('a caret in a seam still wins, because placing one is an explicit aim', () => {
+test('the walk changes nothing until the stitch is tapped', () => {
   const d = withText('one thing. Two things. Three things happened');
-  d.caretAt(10);                          // the older seam, deliberately
-  d.stitch();
-  assert.equal(d.text, 'one thing two things. Three things happened',
-    'the aimed break, not the newest');
-  assert.deepEqual(d.range, { start: 10, end: 10 }, 'and the caret lands on the join');
+  // The setter itself records one step, so the claim is that the two jumps add
+  // none: one undo has to reach past them to the buffer being set.
+  d.jumpBack(); d.jumpBack();
+  assert.equal(d.text, 'one thing. Two things. Three things happened');
+  d.undo();
+  assert.equal(d.text, '', 'one undo reaches the empty buffer, so no jump left a step of its own');
+  assert.equal(d.canUndo, false);
 });
 
-test('a caret resting at the end is not an aim, so it does not shadow the reach', () => {
-  const d = withText('one thing. Two things happened');
-  d.caretAt(30);
+test('a jumped caret is handed back to the end, so dictation keeps appending', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  d.jumpBack();
   d.stitch();
-  assert.equal(d.text, 'one thing two things happened');
-});
+  assert.equal(d.text, 'one thing. Two things three things happened');
+  assert.equal(d.range, null,
+    'the caret was on loan for the repair; leaving it mid-buffer would land the next sentence inside this one');
 
-test('a caret past the reached seam keeps its place in the words', () => {
-  const d = withText('one thing. Two things happened');
-  d.caretAt(26);                          // inside "happened"
-  d.stitch();
-  assert.equal(d.text, 'one thing two things happened');
-  assert.deepEqual(d.range, { start: 25, end: 25 },
-    'shifted by what the join removed, rather than left pointing at a moved offset');
-});
-
-test('a join that leaves a full stop standing does not lower the next capital', () => {
-  // The join used to assert a continuation unconditionally, which was true only
-  // while the caret kept it near the end of the buffer. Join an EARLIER seam
-  // and the sentence after it is still ended, so the next utterance starts a
-  // new one and its capital stands.
-  const d = withText('one. Two. Three.');
-  d.caretAt(4);                           // the older seam, aimed at
-  d.stitch();
-  assert.equal(d.text, 'one two. Three.');
-  d.clearRange();                         // back to the resting end, where dictation appends
   d.start();
-  FakeSR.last.say([{ t: 'Four things', final: true }]);
-  assert.match(d.text, /Three\. Four things\.$/, 'a sentence ended is a sentence ended');
+  FakeSR.last.say([{ t: 'and more', final: true }]);
+  assert.match(d.text, /three things happened and more\.$/, 'the words land at the end');
   d.stop();
+});
+
+test('a caret the reader placed is theirs, and stays on the join', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  d.caretAt(23);                          // the same seam, placed by hand
+  d.stitch();
+  assert.equal(d.text, 'one thing. Two things three things happened');
+  assert.deepEqual(d.range, { start: 22, end: 22 }, 'the caret stays where the work is');
+});
+
+test('placing a caret elsewhere ends the loan', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  d.jumpBack();                           // borrowed
+  d.caretAt(11);                          // and handed back by the reader's own move
+  d.stitch();
+  assert.equal(d.text, 'one thing two things. Three things happened');
+  assert.deepEqual(d.range, { start: 10, end: 10 }, 'so this caret stays put');
+});
+
+test('the last break keeps its full stop unless the caret is at it', () => {
+  // The case that sent the reach back to the drawing board: with a full stop
+  // ending the buffer, one tap used to take it back, which is wrong whenever
+  // the reader meant to keep it and repair the break before it.
+  const d = withText('one thing. Two things.');
+  assert.equal(d.stitchAim, 'end', 'at rest the stitch offers the trailing mark');
+
+  const e = withText('one thing. Two things.');
+  e.jumpBack();
+  assert.equal(e.stitchAim, 'caret', 'and one tap back offers the earlier one instead');
+  e.stitch();
+  assert.equal(e.text, 'one thing two things.', 'the trailing full stop survives');
+});
+
+test('jumping declines with nothing behind, and with a selection live', () => {
+  assert.equal(withText('no breaks at all').canJumpBack, false);
+  assert.equal(withText('no breaks at all').jumpBack(), false);
+
+  const one = withText('one thing. Two things');
+  one.jumpBack();
+  assert.equal(one.canJumpBack, false, 'the only break is the one we are on');
+
+  const sel = withText('one thing. Two things');
+  sel.select(0, 3);
+  assert.equal(sel.canJumpBack, false, 'a selection means the reader is aiming at a word');
+  assert.equal(sel.jumpBack(), false);
 });
 
 test('a live selection is not a stitch: the pad is showing casing keys then', () => {
