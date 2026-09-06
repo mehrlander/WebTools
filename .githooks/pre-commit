@@ -131,7 +131,11 @@ if [ -n "$changed_pages" ]; then
   # its arguments the same way. Get this wrong and the nudge points at a
   # thumbnail that does not exist and hands over a command that shoots nothing.
   while IFS= read -r p; do
-    case "$p" in pages/index.html|pages/thumbs/*) continue ;; esac
+    # The two folder indexes are generated listings, not catalogued pages, so
+    # neither has a thumbnail to nag about. lib/kits/demos/index.html was
+    # nagged on every touch until 2026-09-05: pages-shots is handed a name the
+    # catalog does not carry and silently shoots nothing.
+    case "$p" in pages/index.html|lib/kits/demos/index.html|pages/thumbs/*) continue ;; esac
     case "$p" in
       lib/kits/demos/*) virt="kit-demos/${p#lib/kits/demos/}" ;;
       *)                virt="${p#pages/}" ;;
@@ -166,6 +170,18 @@ if git status --porcelain -- tools scripts package.json tools/build/tools-index.
     stage docs/harness.csv
   else
     echo "build hook: 'npm run tools-index' failed — docs/harness.csv may be stale" >&2
+  fi
+fi
+
+# --- leg 2c2: lib/kits/ -> the kits registry ----------------------------------
+# docs/kits.csv authors nothing: namespace, headline, boot, demo, users and
+# tested are all read off the tree, so any change on the shelf, to a demo, to a
+# page that loads a kit, or to the boot manifest can move a row.
+if git status --porcelain -- lib pages app tools/test tools/build/kits-index.mjs docs/kits.csv | grep -q .; then
+  if npm run kits-index --silent >/dev/null 2>&1; then
+    stage docs/kits.csv
+  else
+    echo "build hook: 'npm run kits-index' failed — docs/kits.csv may be stale" >&2
   fi
 fi
 

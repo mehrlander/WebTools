@@ -18,20 +18,19 @@
     </a>
   </div>
   <p class="text-base-content/50 text-sm mb-8">
-    Small pages that exercise one <code class="text-xs">kits/</code> module each.
-    The integration that uses every kit together lives in
-    <a href="../../pages/compression-helper.html" class="link link-hover">pages/compression-helper.html</a>.
+    Small pages that exercise one <code class="text-xs">lib/kits/</code> module each.
+    The whole shelf, with what loads each kit, is the
+    <a href="../../app/?view=map&amp;tab=kits" class="link link-hover">Kits tab</a> of the app.
   </p>
 
   <ul class="divide-y divide-base-200">
-
     <li class="py-3 flex items-start gap-3 group">
-      <i class="ph ph-database text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <i class="ph ph-note-pencil text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
       <div class="min-w-0">
-        <a href="persistence.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">persistence</a>
-        <span class="block text-xs text-base-content/40 mt-0.5">String-path key/value over <code>idb-keyval</code> with structured-clone payloads.</span>
+        <a href="annotate.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">annotate</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">Notes pinned to pieces of a page: selected text, a picked element, a dragged region, each with an anchor meant to survive a reload.</span>
       </div>
-      <a href="https://github.com/mehrlander/web-tools/blob/main/kits/persistence.js"
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/annotate.js"
          class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
          title="View kit source on GitHub" target="_blank">
         <i class="ph ph-code text-sm"></i>
@@ -39,12 +38,12 @@
     </li>
 
     <li class="py-3 flex items-start gap-3 group">
-      <i class="ph ph-broadcast text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <i class="ph ph-brackets-curly text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
       <div class="min-w-0">
-        <a href="messaging.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">messaging</a>
-        <span class="block text-xs text-base-content/40 mt-0.5">In-memory pub/sub keyed on opaque path strings; lets detached components coordinate.</span>
+        <a href="cm6.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">cm6</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">A CodeMirror 6 editor from a host element and an options object. No Alpine, no framework in the kit.</span>
       </div>
-      <a href="https://github.com/mehrlander/web-tools/blob/main/kits/messaging.js"
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/cm6.js"
          class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
          title="View kit source on GitHub" target="_blank">
         <i class="ph ph-code text-sm"></i>
@@ -52,12 +51,38 @@
     </li>
 
     <li class="py-3 flex items-start gap-3 group">
-      <i class="ph ph-arrows-down-up text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <i class="ph ph-file-archive text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
       <div class="min-w-0">
-        <a href="io.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">io</a>
-        <span class="block text-xs text-base-content/40 mt-0.5">File pick/save, blob preview, clipboard. Lazy JSZip for <code>saveZip</code>.</span>
+        <a href="compression.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">compression</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">Brotli/Gzip + acorn + bookmarklet packer. Full UI: <a href="../../pages/compression-helper.html" class="link link-hover">compression-helper.html</a>.</span>
       </div>
-      <a href="https://github.com/mehrlander/web-tools/blob/main/kits/io.js"
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/compression.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-microphone text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="dictate.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">dictate</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">Voice input as a plain text buffer: start the engine, speak, read <code>text</code> back.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/dictate.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-columns text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="dock-split.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">dock-split</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">The drag handle between two panes, in either axis, with the accessibility half on the handle itself.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/dock-split.js"
          class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
          title="View kit source on GitHub" target="_blank">
         <i class="ph ph-code text-sm"></i>
@@ -78,12 +103,129 @@
     </li>
 
     <li class="py-3 flex items-start gap-3 group">
-      <i class="ph ph-file-archive text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <i class="ph ph-arrows-down-up text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
       <div class="min-w-0">
-        <a href="compression.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">compression</a>
-        <span class="block text-xs text-base-content/40 mt-0.5">Brotli/Gzip + acorn + bookmarklet packer. Full UI: <a href="../../pages/compression-helper.html" class="link link-hover">compression-helper.html</a>.</span>
+        <a href="io.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">io</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">File pick/save, blob preview, clipboard. Lazy JSZip for <code>saveZip</code>.</span>
       </div>
-      <a href="https://github.com/mehrlander/web-tools/blob/main/kits/compression.js"
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/io.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-map-pin text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="land.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">land</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">Where the reader was just sent, and how they get told: the scroll, the tint, and the dwell before it fades.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/land.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-broadcast text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="messaging.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">messaging</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">In-memory pub/sub keyed on opaque path strings; lets detached components coordinate.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/messaging.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-file text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="note.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">note</a>
+        <span class="block text-xs text-base-content/40 mt-0.5"></span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/note.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-selection-plus text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="peek.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">peek</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">What is under the pointer and what contains it; a region wrapped as a page that renders alone, proved in a frame before it is copied.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/peek.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-database text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="persistence.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">persistence</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">String-path key/value over <code>idb-keyval</code> with structured-clone payloads.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/persistence.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-speaker-high text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="read-aloud.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">read-aloud</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">Markdown reduced to what is worth hearing, and a player that speaks it.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/read-aloud.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-list-dashes text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="row-menu.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">row-menu</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">A tap on a row of a grid, and what you can then do with that row.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/row-menu.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-file-code text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="source-peek.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">source-peek</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">The hover card behind an exact-file GitHub link: markdown rendered, JSON shaped, everything else as source.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/source-peek.js"
+         class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
+         title="View kit source on GitHub" target="_blank">
+        <i class="ph ph-code text-sm"></i>
+      </a>
+    </li>
+
+    <li class="py-3 flex items-start gap-3 group">
+      <i class="ph ph-cards-three text-base-content/30 text-lg mt-0.5 shrink-0 group-hover:text-primary transition-colors"></i>
+      <div class="min-w-0">
+        <a href="swipe-deck.html" class="font-semibold text-base-content hover:text-primary transition-colors text-sm">swipe-deck</a>
+        <span class="block text-xs text-base-content/40 mt-0.5">The house swipe format: a snap-scrolling track of slides, and the fullscreen takeover that frames it.</span>
+      </div>
+      <a href="https://github.com/mehrlander/web-tools/blob/main/lib/kits/swipe-deck.js"
          class="ml-auto text-base-content/20 hover:text-base-content/50 transition-colors shrink-0 mt-0.5"
          title="View kit source on GitHub" target="_blank">
         <i class="ph ph-code text-sm"></i>

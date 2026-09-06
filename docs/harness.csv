@@ -33,6 +33,7 @@ tools/build/graph.mjs,the static resolver for a page's gh.load chain; feeds buil
 tools/build/graphql-schema.mjs,regenerate the pruned GitHub GraphQL schema the suite typechecks queries against,tools/build,230,npm:graphql-schema,yes,no,no
 tools/build/injection-measure.mjs,"measure what reaches a session at start and through which channel, into docs/injection.json",tools/build,168,argv,yes,no,no
 tools/build/kit-shim.mjs,run a browser-shaped gh.load kit inside Node; the bridge build.mjs and the suite share,tools/build,19,imported,no,yes,no
+tools/build/kits-index.mjs,"restamp docs/kits.csv, the kit shelf registry, every field read off lib/kits/ and the files that load it",tools/build,162,npm:kits-index,yes,no,yes
 tools/build/pages-index.mjs,regenerate both page catalogs: pages/README.md and pages/index.html,tools/build,457,npm:pages-index,yes,yes,yes
 tools/build/pages-shots.mjs,"regenerate pages/thumbs/*.png, one screenshot per page for the visual index",tools/build,85,npm:pages-shots,no,yes,no
 tools/build/registries-load.mjs,"read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",tools/build,103,imported,no,no,yes

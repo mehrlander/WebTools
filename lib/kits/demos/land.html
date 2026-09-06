@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>land — where the reader was just sent</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script type="module">
+  // The chain boot, so the FAB arrives and the kit is fetched at the ref the
+  // page is being previewed from.
+  const ref = new URLSearchParams(location.search).get('use') || 'main';
+  const base = `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@${ref}/lib`;
+  await import(`${base}/gh-api.js`);
+  await gh.load('kits/land.js');
+  document.body.dataset.ready = '1';
+  document.getElementById('consts').textContent =
+    `LAND_AT ${Land.LAND_AT} · DWELL ${Land.DWELL}ms · ${Land.MARK.join(' ')} / ${Land.MARK_REST.join(' ')}`;
+</script>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-8">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">land</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">Land.mark(el)</code>
+    <span id="consts" class="text-[13px] text-base-content/50 font-mono">loading the kit…</span>
+    <span class="ml-auto flex gap-2">
+      <button class="btn btn-sm btn-ghost" onclick="clearAll()">Clear every mark</button>
+    </span>
+  </header>
+
+  <section class="space-y-3">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Six places in one document</h2>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="btn btn-sm btn-primary" onclick="go('sec-1')">Scope</button>
+      <button class="btn btn-sm" onclick="go('sec-2')">Method</button>
+      <button class="btn btn-sm" onclick="go('sec-3')">Fund 600</button>
+      <button class="btn btn-sm" onclick="go('sec-4')">Allotments</button>
+      <button class="btn btn-sm" onclick="go('sec-5')">Objects</button>
+      <button class="btn btn-sm" onclick="go('sec-6')">Reversions</button>
+      <span class="w-px h-5 bg-base-300 mx-1"></span>
+      <label class="label cursor-pointer gap-1.5 text-[13px] py-0"><input id="o-smooth" type="checkbox" class="checkbox checkbox-xs" checked> smooth</label>
+      <label class="label cursor-pointer gap-1.5 text-[13px] py-0"><input id="o-ifneeded" type="checkbox" class="checkbox checkbox-xs"> ifNeeded</label>
+      <label class="label cursor-pointer gap-1.5 text-[13px] py-0"><input id="o-tint" type="checkbox" class="checkbox checkbox-xs" checked> tint</label>
+      <label class="label gap-1.5 text-[13px] py-0">dwell
+        <select id="o-dwell" class="select select-xs select-bordered w-24 font-mono">
+          <option value="4000" selected>4000</option>
+          <option value="1000">1000</option>
+          <option value="12000">12000</option>
+        </select>
+      </label>
+    </div>
+
+    <p id="readout" class="font-mono text-[12px] text-base-content/50">scrollerOf → tap a heading above</p>
+
+    <div id="doc" class="h-[420px] overflow-y-auto border border-base-300 rounded px-5 py-4 space-y-5 text-[15px] leading-relaxed">
+      <section><h3 id="sec-1" class="text-lg font-semibold">Scope</h3>
+        <p>The schedule covers the agency's own operating cost and nothing held in trust. Two ledgers report on the same fund number, and only one of them is appropriated, so a figure carried across without its lane is wrong before it is added up.</p>
+        <p>Everything below is measured against the enacted budget rather than the request, which is why a request-side item can appear here with no dollars beside it.</p></section>
+      <section><h3 id="sec-2" class="text-lg font-semibold">Method</h3>
+        <p>Every line is traced from the allotment packet to the general ledger and back, so a number that cannot be traced in both directions is dropped rather than estimated. The trace is mechanical: a query, a join, and a reconciliation that either balances to the dollar or fails loudly.</p>
+        <p>Where the two sides disagree, the disagreement is reported as its own row. Reconciling silently would leave the reader with a clean total and no way to see what was spent to make it clean.</p></section>
+      <section><h3 id="sec-3" class="text-lg font-semibold">Fund 600</h3>
+        <p>Fund 600 carries two lanes. The appropriated lane is the one the schedule reconciles to; the non-appropriated lane reports on the same number and never nets in. A reader who takes the fund total off a statewide report and drops it here has taken both.</p>
+        <p>The split is not visible in the fund code, which is the whole difficulty. It lives in the appropriation index beside it.</p></section>
+      <section><h3 id="sec-4" class="text-lg font-semibold">Allotments</h3>
+        <p>An allotment packet is a plan, not a spend, and it is revised through the biennium. Reading a mid-biennium packet as though it were final is the most common way an out-year figure arrives here overstated.</p>
+        <p>The revision history is kept, so a figure can be shown as of any date rather than only as of now.</p></section>
+      <section><h3 id="sec-5" class="text-lg font-semibold">Objects</h3>
+        <p>Object and subobject are where a salary line becomes a benefit line and a contract becomes a service. The mix moves without the total moving, which is why a flat program can still be a program in the middle of a change.</p>
+        <p>Object A carries staff, object E carries goods and services, and the boundary between them is decided by the coding manual rather than by the transaction.</p></section>
+      <section><h3 id="sec-6" class="text-lg font-semibold">Reversions</h3>
+        <p>What is not spent by the end of the biennium reverts, and a reversion is a fact about the appropriation rather than about the program. A large one is worth reading twice: it can mean the work did not happen, or it can mean the work was cheaper than the packet assumed.</p>
+        <p>Both readings are supportable from the ledger alone, so neither is asserted here.</p></section>
+      <div class="h-40"></div>
+    </div>
+  </section>
+
+  <section class="space-y-3">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A set, and the one inside it</h2>
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="btn btn-sm btn-primary" onclick="find()">Find “allotment”</button>
+      <button class="btn btn-sm" onclick="step()">Next hit</button>
+      <span id="hitcount" class="font-mono text-[12px] text-base-content/50">nothing lit</span>
+    </div>
+    <div id="rows" class="h-[260px] overflow-y-auto border border-base-300 rounded divide-y divide-base-300 text-[15px]">
+      <div class="px-4 py-2">Recordkeeping services, quarterly true-up</div>
+      <div class="px-4 py-2" data-hit>Allotment packet A, filed October</div>
+      <div class="px-4 py-2">Actuarial valuation, contracted</div>
+      <div class="px-4 py-2">Member statements, print and postage</div>
+      <div class="px-4 py-2" data-hit>Allotment packet B, revised in January</div>
+      <div class="px-4 py-2">Employer reporting, support desk</div>
+      <div class="px-4 py-2">CORE-PAM, gated by proviso</div>
+      <div class="px-4 py-2" data-hit>Allotment variance, object A</div>
+      <div class="px-4 py-2">One Washington, statewide IT pool</div>
+      <div class="px-4 py-2">Disability determinations</div>
+      <div class="px-4 py-2" data-hit>Allotment variance, object E</div>
+      <div class="px-4 py-2">Legal services, interagency</div>
+      <div class="px-4 py-2">Audit response, prior biennium</div>
+      <div class="px-4 py-2" data-hit>Allotment reconciliation, year-end</div>
+      <div class="px-4 py-2">Reversion, unspent goods and services</div>
+    </div>
+  </section>
+
+  <section class="space-y-3">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Over a rendered page, not in the flow</h2>
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="btn btn-sm btn-primary" onclick="overlay()">Draw two marks</button>
+      <button class="btn btn-sm btn-ghost" onclick="overlayOff()">Off</button>
+      <span id="tintout" class="font-mono text-[12px] text-base-content/50">not drawn</span>
+    </div>
+    <p class="text-[13px] text-base-content/50 text-pretty">The find-and-land over a real PDF is in <code class="font-mono">kits/pdf.js</code> and needs a document and a text layer, so this draws over a mock page: the same <code class="font-mono">OVERLAY</code> string and the same <code class="font-mono">tint()</code>, at the PAGE strengths.</p>
+    <div id="pageview" class="relative bg-white text-neutral-900 border border-base-300 rounded px-8 py-6 max-w-[640px] text-[14px] leading-7">
+      <p class="font-semibold mb-2">Schedule 9, agency operating detail</p>
+      <p>Amounts shown are enacted, net of reversions. <span id="pm-1">The appropriated lane of fund 600 reconciles to the dollar</span>, and the schedule beside it does not, by construction rather than by error.</p>
+      <p class="mt-2">Object detail follows the coding manual in force at the time of the transaction. <span id="pm-2">Subobject rollups are recomputed rather than carried</span>, so a restated year moves here before it moves anywhere else.</p>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Capturing one</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>// land-demo.mjs: the tint is gone at DWELL, so shoot inside the window
+export default async (page) =&gt; {
+  await page.evaluate(() =&gt; go('sec-4'));
+  await page.waitForTimeout(700);
+};
+
+npm run shot -- lib/kits/demos/land.html --script land-demo.mjs</code></pre>
+    <p class="text-[13px] text-base-content/50 text-pretty">Reduced motion is read from the operating system, not from this page, so the <code class="font-mono">smooth</code> box above is an ask rather than a setting: the readout says which way the real one went.</p>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">From a script</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>const el = document.querySelector('#sec-4');
+Land.scrollerOf(el)                              // #doc, the only thing that moves
+Land.mark(el)                                    // 0.28 down, tinted, fading at 4000ms
+Land.mark(other, { scroll: false, current: false }) // another member of the set, weaker
+Land.mark(row, { ifNeeded: true, tint: false })   // keep it in view, say nothing
+Land.clear(document.querySelector('#doc'))       // every mark under here, off</code></pre>
+  </section>
+
+</main>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const ready = () => !!window.Land;
+
+  const opts = () => ({
+    smooth: $('#o-smooth').checked,
+    ifNeeded: $('#o-ifneeded').checked,
+    tint: $('#o-tint').checked,
+    dwell: +$('#o-dwell').value
+  });
+
+  function report(el) {
+    const box = Land.scrollerOf(el);
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    $('#readout').textContent =
+      `scrollerOf → ${box ? '#' + box.id : 'null, so the page is the scroller'}`
+      + ` · scrollTop ${box ? Math.round(box.scrollTop) : 'n/a'}`
+      + ` · window.scrollY ${Math.round(window.scrollY)}`
+      + ` · reduced motion ${reduced ? 'on, so smooth was forced off' : 'off'}`;
+  }
+
+  function go(id) {
+    if (!ready()) return;
+    const el = document.getElementById(id);
+    Land.mark(el, opts());
+    report(el);
+    setTimeout(() => report(el), 500);
+  }
+
+  let hits = [], at = 0;
+  function find() {
+    if (!ready()) return;
+    hits = [...document.querySelectorAll('#rows [data-hit]')];
+    at = 0;
+    paint();
+  }
+  function step() {
+    if (!hits.length) return find();
+    at = (at + 1) % hits.length;
+    paint();
+  }
+  function paint() {
+    Land.clear($('#rows'));
+    hits.forEach((el, i) => Land.mark(el, {
+      scroll: i === at, current: i === at, smooth: $('#o-smooth').checked, dwell: 12000
+    }));
+    $('#hitcount').textContent = `${at + 1} of ${hits.length} lit, one of them current`;
+  }
+
+  function overlay() {
+    if (!ready()) return;
+    overlayOff();
+    const host = $('#pageview');
+    const hb = host.getBoundingClientRect();
+    for (const [sel, pct] of [['#pm-1', Land.PAGE.current], ['#pm-2', Land.PAGE.rest]]) {
+      // One rectangle per line box, not one around the span: a mark over a page
+      // follows the glyphs, and a wrapped span's bounding box is mostly margin.
+      for (const r of $(sel).getClientRects()) {
+        const d = document.createElement('div');
+        d.dataset.mark = '1';
+        d.style.cssText = Land.OVERLAY
+          + `left:${r.left - hb.left}px;top:${r.top - hb.top}px;`
+          + `width:${r.width}px;height:${r.height}px;background:${Land.tint(pct)};`;
+        host.appendChild(d);
+      }
+    }
+    $('#tintout').textContent = `${Land.tint(Land.PAGE.current)} · ${Land.tint(Land.PAGE.rest)}`;
+  }
+  function overlayOff() {
+    $('#pageview').querySelectorAll('[data-mark]').forEach(n => n.remove());
+    $('#tintout').textContent = 'not drawn';
+  }
+
+  function clearAll() {
+    if (!ready()) return;
+    Land.clear(document);
+    overlayOff();
+    hits = [];
+    $('#hitcount').textContent = 'nothing lit';
+  }
+</script>
+</body>
+</html>

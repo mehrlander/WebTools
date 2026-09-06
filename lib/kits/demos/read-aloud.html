@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>read-aloud — markdown reduced to what is worth hearing</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script type="module">
+  // The chain boot, so the FAB arrives and the kit is fetched at the previewed
+  // ref; every control below calls window.readAloud directly.
+  const ref = new URLSearchParams(location.search).get('use') || 'main';
+  const base = `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@${ref}/lib`;
+  await import(`${base}/gh-api.js`);
+  await gh.load('kits/read-aloud.js');
+  document.body.dataset.ready = '1';
+</script>
+<script>
+window.demo = () => ({
+  src: '', spoken: '', pieces: [], max: 180,
+  items: [], p: null, ready: false,
+  st: { state: 'idle', i: 0, n: 0, chunk: 0, chunks: 0 },
+
+  async boot() {
+    this.src = document.getElementById('sample').value;
+    for (let i = 0; i < 100 && !window.readAloud; i++) await new Promise(r => setTimeout(r, 50));
+    if (!window.readAloud) return;
+    this.ready = true;
+    this.p = readAloud.player({ onState: (s) => { this.st = s; } });
+    this.reduce();
+  },
+
+  // speechText and chunks are pure, so this runs on every keystroke.
+  reduce() {
+    this.spoken = readAloud.speechText(this.src);
+    this.pieces = readAloud.chunks(this.spoken, Number(this.max));
+    this.items = this.sections();
+    this.p.load(this.items);
+  },
+
+  // One item per heading, which is the player's contract: item i is the thing
+  // at position i, and the label speaks when a section reduces to nothing.
+  sections() {
+    const out = [];
+    let cur = { label: 'Opening', md: '' };
+    for (const line of this.src.split('\n')) {
+      const h = /^\s{0,3}#{1,6}\s+(.*)$/.exec(line);
+      if (h) { out.push(cur); cur = { label: h[1], md: line + '\n' }; }
+      else cur.md += line + '\n';
+    }
+    out.push(cur);
+    return out.filter(s => s.md.trim()).map((s, i) => ({ key: i, label: s.label, md: s.md }));
+  },
+
+  get voiceLine() {
+    if (!this.ready) return 'loading the kit';
+    if (!readAloud.supported) return 'no speech engine in this browser';
+    const n = readAloud.voices().length;
+    return n ? n + ' voices' : 'engine present, no voices installed';
+  },
+});
+</script>
+<script defer src="https://unpkg.com/alpinejs"></script>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-7" x-data="demo()" x-init="boot()">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">read-aloud</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">readAloud.speechText(md)</code>
+    <span class="text-[13px] text-base-content/50">edit the source, the reading follows</span>
+    <span class="basis-full text-[13px] text-base-content/50">
+      Speaking needs a browser with voices installed (here: <span x-text="voiceLine">loading the kit</span>); the reduction below it is pure and runs anywhere.
+    </span>
+  </header>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">The player, one item per heading</h2>
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="btn btn-sm btn-primary" @click="p.play(0)"><i class="ph ph-play"></i> Play</button>
+      <button class="btn btn-sm" @click="p.toggle()" x-text="st.state === 'speaking' ? 'Pause' : 'Resume'">Pause</button>
+      <button class="btn btn-sm btn-ghost" @click="p.prev()"><i class="ph ph-caret-left"></i></button>
+      <button class="btn btn-sm btn-ghost" @click="p.next()"><i class="ph ph-caret-right"></i></button>
+      <button class="btn btn-sm btn-ghost" @click="p.stop()">Stop</button>
+      <select class="select select-sm w-24" @change="p.setRate($event.target.value)">
+        <option value="0.8">0.8x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.25">1.25x</option>
+        <option value="1.5">1.5x</option>
+      </select>
+      <span class="text-[13px] font-mono text-base-content/60">
+        <span x-text="st.state">idle</span>
+        · item <span x-text="st.n ? st.i + 1 : 0">0</span>/<span x-text="st.n">0</span>
+        · chunk <span x-text="st.chunks ? st.chunk + 1 : 0">0</span>/<span x-text="st.chunks">0</span>
+      </span>
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      <template x-for="(it, i) in items" :key="it.key">
+        <button class="btn btn-xs font-normal"
+                :class="st.i === i && st.state !== 'idle' ? 'btn-primary' : 'btn-ghost border border-base-300'"
+                @click="p.seek(i)" x-text="it.label"></button>
+      </template>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Source, and the reading it reduces to</h2>
+    <div class="grid gap-3 md:grid-cols-2">
+      <textarea id="sample" x-model="src" @input="reduce()" spellcheck="false"
+        class="textarea w-full h-80 font-mono text-[13.5px] leading-6 bg-base-200 border border-base-300 rounded"
+># Read-aloud, and what it drops
+
+<!-- an editor note that no listener should ever hear -->
+
+The reduction lives in `lib/kits/read-aloud.js`; the boot contract is `app/index.html`. Run `git diff origin/main...HEAD --name-only` before you wrap up.
+
+## What changed
+
+- Chunking **splits** now rather than matching, so no sentence is lost.
+- Pause is cancel-and-remember: [the header comment](https://github.com/mehrlander/web-tools/blob/main/lib/kits/read-aloud.js) says why.
+
+```js
+const p = readAloud.player({ onState: paint });
+p.load(items);
+```
+
+| Engine | Ceiling | On cancel |
+| --- | --- | --- |
+| Safari | low | refuses to resume |
+| Chrome | high | fires end late |
+
+> A repeated half-sentence is a cost worth paying for a control that always works.
+
+---
+
+🌿 [claude/read-aloud-demo](https://mehrlander.github.io/web-tools/pages/branch.html) · 3 files · [this turn](https://github.com/mehrlander/web-tools/commit/9f2c1ab)
+
+⚪ **Clean exit:** the deck reads itself now.</textarea>
+      <div class="h-80 overflow-auto whitespace-pre-wrap text-[13.5px] leading-6 bg-base-100 border border-base-300 rounded p-3"
+           x-text="spoken"></div>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <div class="flex items-baseline gap-3">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">One utterance each</h2>
+      <span class="text-[13px] text-base-content/50">max</span>
+      <select class="select select-xs w-20" x-model="max" @change="reduce()">
+        <option>80</option><option>180</option><option>300</option>
+      </select>
+      <span class="text-[13px] font-mono text-base-content/50"><span x-text="pieces.length">0</span> pieces</span>
+    </div>
+    <ol class="border border-base-300 rounded divide-y divide-base-300">
+      <template x-for="(c, i) in pieces" :key="i">
+        <li class="flex gap-3 px-3 py-1.5">
+          <span class="font-mono text-[11px] text-base-content/40 w-6 shrink-0 pt-1" x-text="i + 1"></span>
+          <span class="text-[13.5px] leading-6 text-pretty" x-text="c"></span>
+          <span class="font-mono text-[11px] text-base-content/40 ml-auto shrink-0 pt-1" x-text="c.length"></span>
+        </li>
+      </template>
+    </ol>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">From a script</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>readAloud.speechText(md)                      // the reading, with the syntax gone
+readAloud.chunks(text, 180)                   // sentence-safe pieces, one utterance each
+const p = readAloud.player({ onState: paint })
+p.load(items); p.play(0)                      // items are { key, label, md }
+p.setRate(1.5); p.next(); p.stop()</code></pre>
+  </section>
+
+</main>
+</body>
+</html>

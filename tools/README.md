@@ -281,7 +281,23 @@ changes touch:
 | `pages/**/*.html` | `npm run pages-index` | `pages/README.md`, `pages/index.html`, `pages/pages.csv` |
 | skills, `lib/`, `pages/`, `docs/` | `npm run docs-reach` | `reach` and `words` in `docs/docs.csv` |
 | `docs/docs.csv` | `npm run docs-readme` | `docs/README.md` |
+| `tools/test/` | `npm run tests-index` | derived fields in `docs/tests.csv` |
+| `tools/`, `scripts/` | `npm run tools-index` | derived fields in `docs/harness.csv` |
+| `lib/kits/`, or a file that loads a kit | `npm run kits-index` | `docs/kits.csv` |
+| `lib/`, `pages/` | `npm run registries-reach` | `renders_in` in `docs/registries.csv` |
+| `docs/SNAGS.md` | `npm run snags-index` | the index block at the top of `docs/SNAGS.md` |
+| any markdown | `npm run themes-graph` | `docs/themes.json` |
+| `docs/CONVENTIONS.md`, `docs/SURFACING.md` | `cp` | the plugin's copies under `.claude/skills/web-tools/` |
 | `tracker/tasks/` | `npm run tracker-board` | `tracker/board.md`, `tracker/board.csv`, `tracker/board-tags.csv` |
+
+Most of these files are generated whole. Four are not. `docs/docs.csv`,
+`docs/harness.csv`, `docs/tests.csv` and `docs/registries.csv` are hand-edited
+except for the fields a generator stamps. Edit a row freely and leave those
+fields alone.
+
+`docs-readme` and `docs-reach` are a cycle. `docs/README.md` is generated from
+the registry and is also a row in it, so the hook runs `docs-reach` a second
+time after `docs-readme`. One more stamp settles it.
 
 **Order is part of the contract, and it runs one way: a leg that WRITES into a
 folder precedes the leg that MEASURES it.** `docs-reach` stamps every `docs/`
