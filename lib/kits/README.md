@@ -314,13 +314,29 @@ Single-document template induction: give it one document with repeated
 structure (a log, raw HTML, structured records) and it returns the recurring
 **templates** (fixed boilerplate with variable **slots**) plus the values that
 fill each slot. Lossless: templates + slot values reconstruct the original
-exactly. Ported from [`mehrlander/wring`](https://github.com/mehrlander/wring)
-— the full source modules, test suite, and research record live at
-`archive/wring/`; the design doc is `archive/wring/ARCHITECTURE.md` (a
-five-stage pipeline: Tokenize → Grammar → Bookend Merge → Selection →
-Extraction). The kit is generated from those modules by
-`archive/wring/export/build-kit.mjs` — regenerate there rather than editing
-by hand.
+exactly.
+
+**Edit the kit directly.** It began life as a concatenation of the modules in
+[`mehrlander/wring`](https://github.com/mehrlander/wring), emitted by
+`archive/wring/export/build-kit.mjs`, and it read as one: seven banner blocks
+naming their source files, and a module preamble on each. That upstream repo is
+archived read-only and the kit has been the live copy since the import
+(`archive/wring/IMPORT.md`), so on 2026-09-06 the generation claim was dropped
+and the file normalised into stage sections. `archive/wring/` stays as the
+reference snapshot: the full source modules, the test suite, the research
+record, and the design doc `archive/wring/ARCHITECTURE.md`, which states the
+five-stage pipeline (Tokenize → Grammar → Bookend Merge → Selection →
+Extraction) the sections are named for.
+
+Two design choices the file no longer explains at length. **Stage 2 is
+Re-Pair** (Larsson & Moffat, 2000) where ARCHITECTURE.md names Sequitur: both
+build a hierarchical grammar of exact repeats, Re-Pair is offline and greedily
+replaces the most frequent digram, and the `{ start, rules, ruleUses }`
+interface takes either. **Stage 3 has two groupers** because Bookend Merge
+groups on the longest shared literal, which on a log line is an incidental
+field: records sharing a client IP group together while the real template
+fractures. `groupByAlignment` groups on positional agreement instead, the Drain
+and LogMine idea, and is what `induce(text, { group: 'align' })` selects.
 
 After loading:
 
@@ -1276,7 +1292,7 @@ examples.
 | `text-diff.js` | `pages/diff-tool.html` / the stage's Diff lens | patience line diff + word diff; pure, no renderer. `cm6-merge.js` is the other diff shelf: this one computes, that one displays |
 | `review-target.js` | `pages/review.html` | parse/mint the review address grammar (`gh=owner/repo[@ref][:path][&base=]`) |
 | `brief.js` | the FAB's "Take this page" menu | page + its own modules as one pasteable markdown brief |
-| `wring.js` | `pages/demos/wring-text.html` / `pages/demos/wring-dom.html` | template induction; generated from `archive/wring/` |
+| `wring.js` | `pages/demos/wring-text.html` / `pages/demos/wring-dom.html` | template induction; live here, reference snapshot at `archive/wring/` |
 | `treemap.js` | `pages/repo-atlas.html` | squarified treemap kernels + file taxonomy |
 | `../build.js` | `tools/build/` + the FAB export | one emitter, two consumers; `lib/` root since 2026-08-08 (extends `GH.prototype`) |
 | `export.js` | the FAB's export control | page + `read()` data as a zip |
