@@ -1642,3 +1642,69 @@ test('un-ending does not reach back across a paragraph break', () => {
   spaces.unend();
   assert.equal(spaces.text, 'a line');
 });
+
+// ── The pending stitch, painted ─────────────────────────────────────────────
+// A confirm step is only worth a tap if the marker says what the next tap will
+// do. So it is painted as the EDIT, not as a highlight: the full stop struck
+// through and the capital behind it shown in the case it would take.
+
+test('stitchSeam answers with the same seam stitch would take', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  assert.deepEqual(d.stitchSeam, { start: 21, end: 23 }, 'the newest, with no caret placed');
+  d.jumpBack(); d.jumpBack();
+  assert.deepEqual(d.stitchSeam, { start: 9, end: 11 }, 'and the caret leads it back');
+
+  // The pair has to agree, since one paints the marker and the other acts.
+  const e = withText('one thing. Two things. Three things happened');
+  const seam = e.stitchSeam;
+  e.stitch();
+  assert.equal(e.text, 'one thing. Two things three things happened');
+  assert.equal(seam.start, 21, 'the marker named the seam that went');
+});
+
+test('stitchSeam is null with nothing to close, and with a selection live', () => {
+  assert.equal(withText('no breaks here').stitchSeam, null);
+  assert.equal(withText('a trailing mark.').stitchSeam, null);
+  const sel = withText('one. Two things');
+  sel.select(0, 3);
+  assert.equal(sel.stitchSeam, null);
+});
+
+test('the marker paints the edit: the mark struck, the capital lowered', () => {
+  const { window: w } = makeWindow({ html: '<!doctype html><html><body><div id="h"></div></body></html>' });
+  const host = w.document.getElementById('h');
+  const text = 'one thing. Two things';
+  D.paint(host, { text, mend: { start: 9, end: 11 } });
+
+  const parts = [...host.childNodes].map((n) => [n.getAttribute('data-d'), n.textContent]);
+  assert.deepEqual(parts, [
+    ['text', 'one thing'],
+    ['mend-cut', '. '],
+    ['mend-case', 't'],
+    ['text', 'wo things'],
+  ], 'the capital is shown in the case the join would give it');
+  assert.match(host.querySelector('[data-d="mend-cut"]').getAttribute('style'), /line-through/);
+
+  // AND THE OFFSETS SURVIVE, which is what lets the marker ride the same host
+  // the hit test walks: every text node keeps its length.
+  assert.equal(host.textContent.length, text.length);
+  assert.equal(host.textContent, 'one thing. two things', 'one character swapped, none added or lost');
+});
+
+test('a capital the join would leave alone is painted standing', () => {
+  const { window: w } = makeWindow({ html: '<!doctype html><html><body><div id="h"></div></body></html>' });
+  const host = w.document.getElementById('h');
+  // "I" is not a capital followed by a lower-case letter, so stitch leaves it.
+  D.paint(host, { text: 'one thing. I went', mend: { start: 9, end: 11 } });
+  assert.equal(host.querySelector('[data-d="mend-case"]').textContent, 'I',
+    'promising a change the stitch will not make would be the marker lying');
+});
+
+test('the marker takes the screen from the caret while it is up', () => {
+  const { window: w } = makeWindow({ html: '<!doctype html><html><body><div id="h"></div></body></html>' });
+  const host = w.document.getElementById('h');
+  D.paint(host, { text: 'one thing. Two things', range: { start: 11, end: 11 },
+                  mend: { start: 9, end: 11 } });
+  assert.equal(host.querySelector('[data-d="caret"]'), null,
+    'a caret inside the marker is a second thing to look at in a one-question moment');
+});

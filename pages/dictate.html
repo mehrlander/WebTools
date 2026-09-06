@@ -171,7 +171,7 @@
                               (share is read as send, where it moved)
     ?dest=owner/repo[@ref]:dir   where Drop writes, overriding home/chron/dump
     ?repo=owner/repo,owner/repo2 preselected for Send, in the order given
-    ?target=share|code|chat      which of Send's rows opens selected
+    ?target=code|chat            which of Send's rows opens selected
     ?lang=en-US               recognition language, default the browser's
     ?use=<ref>                pin the lib chain to a branch for previewing
 
@@ -303,9 +303,6 @@
       // page that is only ever dictated into pays nothing for this at all. The
       // repo list is fetched on first open and never again.
       sendOpen: false,
-      // Defaults to Claude Code rather than to Share, because Share is the one
-      // row a reader already knows how to reach (it was a button until
-      // 2026-09-06) and the two beneath it are the ones this sheet exists for.
       sendTarget: q.get('target') || 'code',
       sendRepos: (q.get('repo') || '').split(',').map((x) => x.trim()).filter(Boolean),
       repoList: null,           // null = never fetched, [] = fetched and empty
@@ -348,6 +345,16 @@
         return 'No sentence break to close. A full stop at the very end is the backspace\u2019s job.';
       },
       get jumpable() { this.beat; return !!(this.d && this.d.canJumpBack); },
+      // ARMED, NOT DONE. The first tap on the stitch shows where it would
+      // happen and commits nothing; the second one does it. A repair that
+      // rewrites a sentence somewhere off screen is the one edit on this page
+      // worth a look before it lands, and the marker is a preview of the edit
+      // rather than a highlight over it, so the look is worth the tap.
+      //
+      // The seam itself is not held here: it is read from the kit each paint,
+      // so the step-back key moves the marker by moving the caret and no second
+      // notion of "where" can drift from the first.
+      mendArmed: false,
       get breakable() { this.beat; return !this.edit && !!this.text && !!(this.d && this.d.segments.length); },
       get canUndo() { this.beat; return !!(this.d && this.d.canUndo); },
       get canRedo() { this.beat; return !!(this.d && this.d.canRedo); },
@@ -392,7 +399,19 @@
         this.d = window.Dictate.create({
           lang: q.get('lang') || undefined,
           fix: (s) => this.autocorrect(s),
-          onText: (t) => { this.text = t; this.heard(); this.save(); this.paint(); },
+          // WORDS landing end the armed state: the seam they were aimed at may
+          // not be the newest any more, and a marker that survived the change
+          // would point at a break the reader has stopped thinking about.
+          //
+          // A CHANGE IN THE TEXT, not any call. The kit reports through onText
+          // after a caret move too, and the step-back key IS a caret move: a
+          // blanket disarm here would put the marker out on the very tap meant
+          // to re-aim it. Moving the caret re-derives the marker instead, which
+          // is why nothing here has to special-case the jump.
+          onText: (t) => {
+            if (t !== this.text) this.mendArmed = false;
+            this.text = t; this.heard(); this.save(); this.paint();
+          },
           onInterim: (t) => { this.interim = t; this.heard(); this.paint(); },
           onState: () => {
             this.listening = !!(this.d && this.d.listening);
@@ -432,6 +451,15 @@
           this.arrived = sent ? sent.text.length : 0;
           this.arrivedFrom = sent ? sent.at : '';
         }
+
+        // A TARGET THE SHEET NO LONGER HAS falls back rather than stranding it.
+        // `?target=share` was valid until 2026-09-06 and is a link somebody may
+        // have saved; left alone it selected no row, disabled the primary
+        // button, and printed "unknown target" as though the reader had done
+        // something wrong. Caught by a screenshot, which is the only place a
+        // dead address of this kind shows itself.
+        const keys = (window.PromptLink?.targets || []).map((t) => t.key);
+        if (keys.length && !keys.includes(this.sendTarget)) this.sendTarget = keys[0];
 
         this.loadCorrections();
         // Paint AFTER binding, not only from onText. A restored draft is
@@ -1270,6 +1298,9 @@
         window.Dictate.paint(this._host, {
           text: this.text, interim: this.interim,
           range: this.d ? this.d.range : null, armed: this.pinned ? this.armed : null,
+          // Read fresh rather than stored: the caret may have moved under the
+          // armed state (the step-back key), and the marker has to follow.
+          mend: this.mendArmed && this.d ? this.d.stitchSeam : null,
           overlay: this.$refs.layer,
           // NO ARROW CLUSTER. The pad drags an armed pin the same way it drags
           // the caret, so a pair of arrows chasing the pin around is furniture
@@ -1321,7 +1352,31 @@
       // ── The pad ───────────────────────────────────────────────────────
       shift: false,
       key(k) {
-        if (k === 'stitch') { this.d.stitch(); this.paint(); return; }
+        if (k === 'stitch') {
+          if (this.mendArmed) { this.d.stitch(); this.mendArmed = false; this.paint(); return; }
+          if (!this.d.canStitch) return;
+          // ARMING WITH NO CARET PLACED WALKS ONE BACK, rather than only
+          // lighting the marker where the reader is. Two things follow from
+          // it, and neither needs a second notion of "where".
+          //
+          // The step-back key keeps working while armed. It moves the caret
+          // to the seam BEFORE the caret's, so with the caret still resting at
+          // the end it would have landed on the very seam the marker was
+          // already showing: a tap that looked broken because it changed
+          // nothing. Measured in the browser before this line was written.
+          //
+          // And the caret it places is BORROWED (kits/dictate.js jumpBack), so
+          // committing hands it back to the end and dictation carries on where
+          // the reader is speaking. A caret they placed themselves is theirs,
+          // so the 'caret' aim arms in place and keeps the old behaviour of
+          // staying on the join.
+          if (this.d.stitchAim === 'back') this.d.jumpBack();
+          this.mendArmed = true;
+          this.paint();
+          return;
+        }
+        // The marker is derived from the caret, so stepping back while armed
+        // re-aims it rather than disarming.
         if (k === 'jump') { this.d.jumpBack(); this.paint(); return; }
         const cased = { AB: 'upper', ab: 'lower', Ab: 'title' }[k];
         if (cased) { this.d.recase(cased); this.paint(); return; }
@@ -1611,32 +1666,23 @@
           : [...this.sendRepos, slug];
       },
 
-      // SHARE IS A ROW, NOT A LINK, so it is prepended here rather than added to
-      // kits/prompt-link.js. That kit mints addresses; the system share sheet
-      // is an act the operating system performs and has no URL to mint. Mixing
-      // it in would mean a target row whose link is permanently empty.
+      // SHARE IS NOT A ROW, IT IS THE OTHER BUTTON. It was a row for one
+      // commit, which made reaching the system sheet two taps: pick the row,
+      // then confirm. That is a confirm step over a choice already made, and
+      // the sheet it opens is itself a chooser, so the second tap bought
+      // nothing at all.
       //
-      // Present whether or not it works, carrying its own absence. A desktop
-      // browser without navigator.share used to make the Share BUTTON vanish,
-      // which said nothing about why or what to do instead; a greyed row with a
-      // reason is the treatment the unavailable link target already gets.
-      get sendTargets() {
-        const share = {
-          key: 'share', label: 'Share', icon: 'ph-share-network',
-          hint: 'The system sheet: any app on this device',
-          reason: 'This browser has no share sheet. Copy the words instead.',
-          available: this.canShare, submits: false, takesRepos: false,
-        };
-        return [share, ...((window.PromptLink?.targets) || [])];
-      },
+      // It belongs at the foot beside the primary because that is what it is:
+      // a second way to finish, not a third destination. The rows above are
+      // the ones that need a repository or a warning read first; Share needs
+      // neither and should cost what Copy costs.
+      get sendTargets() { return (window.PromptLink?.targets) || []; },
       get sendTargetRow() { return this.sendTargets.find((t) => t.key === this.sendTarget) || null; },
 
       // The link, and what it could not carry. Recomputed on every change
       // rather than stored, so the sheet's own summary line cannot drift from
       // the button beside it.
       get sendLink() {
-        // Share mints nothing: the words go to the operating system, whole.
-        if (this.sendTarget === 'share') return { url: '', carried: ['the words'], dropped: [] };
         const P = window.PromptLink;
         if (!P) return { url: '', carried: [], dropped: ['prompt-link kit not loaded'] };
         return P.url(this.sendTarget, {
@@ -1649,24 +1695,15 @@
       // character boundary reads as a complete instruction and gets acted on.
       // The sheet says the number so the reader can cut it themselves, which is
       // the only edit that knows which sentence matters.
+      // The cap belongs to the query string. Share hands the buffer over as
+      // text with no address to fit it into, so it is never over.
       get sendOver() {
-        // The cap belongs to the query string, so it does not apply to Share,
-        // which hands the buffer over as text with no address to fit it into.
-        if (this.sendTarget === 'share') return false;
         const P = window.PromptLink;
         return !!P && this.outgoing().length > P.PROMPT_MAX;
       },
-
-      // Whether the button at the foot of the sheet can act at all. Share has
-      // no url and is ready whenever the browser has a sheet; everything else
-      // needs an address that fits.
-      get sendReady() {
-        if (this.sendTarget === 'share') return this.canShare;
-        return !!this.sendLink.url && !this.sendOver;
-      },
+      get sendReady() { return !!this.sendLink.url && !this.sendOver; },
 
       send() {
-        if (this.sendTarget === 'share') { this.sendOpen = false; this.share(); return; }
         const link = this.sendLink;
         if (!link.url) {
           Alpine.store('toast')('warning', link.dropped[0] || 'Nowhere to send this', 'alert-error', 5000);
@@ -1986,17 +2023,30 @@
             title="Step the caret back to the previous sentence break, without changing anything">
       <i class="ph ph-caret-double-left"></i>
     </button>
-    <!-- THE STITCH, which closes the break the caret is ON. During dictation
-         that is the full stop just written, so the ordinary repair is one tap
-         and no aiming: hear it land, tap, keep talking. Step back first and it
-         closes an older one instead, and the trailing full stop survives.
+    <!-- THE STITCH, IN TWO TAPS. The first shows where it would happen and
+         changes nothing; the second does it. This is the one edit on the page
+         that rewrites a sentence somewhere other than where the reader is
+         looking, so it is the one worth a glance before it lands, and the
+         marker is a preview of the edit rather than a highlight over it (the
+         full stop struck through, the capital behind it drawn in the case it
+         would take), which is what makes the glance worth a tap.
 
-         DIMMED RATHER THAN GONE where the caret is not on a break. A key that
+         Step back between the two taps and the marker re-aims, since it is
+         derived from the caret rather than stored.
+
+         IT LOOKS LIKE THE OTHER KEYS UNTIL IT IS ARMED. It wore a warning tint
+         whenever it was live, which at 20% over a ghost button read as a
+         disabled control rather than an available one, and it was reported as
+         a glitch. There is nothing to distinguish anyway now that it is out in
+         the open with a cell of its own; the tint is worth something only for
+         the armed state, where it means "this tap commits".
+
+         DIMMED RATHER THAN GONE where there is no break to close. A key that
          came and went in the middle of a row would move the ones beside it
          under a thumb that had already learned where they are. -->
-    <button @pointerdown.prevent="key('stitch')" :disabled="!stitchable"
+    <button @pointerdown.prevent="key('stitch')" :disabled="!stitchable && !mendArmed"
             class="btn h-14 min-h-0 grow basis-0 px-0 text-2xl"
-            :class="stitchable ? 'btn-ghost bg-warning/20 text-warning' : 'btn-ghost bg-base-200 opacity-40'"
+            :class="mendArmed ? 'btn-warning' : (stitchable ? 'btn-ghost bg-base-200' : 'btn-ghost bg-base-200 opacity-40')"
             :title="stitchNote">
       <i class="ph ph-arrows-in-line-horizontal"></i>
     </button>
@@ -2091,7 +2141,15 @@
        grounding, so there is nothing to link; omitting the row would make that
        look like an oversight every time somebody went looking for it. The
        estate dims a session that names no id for the same reason rather than
-       dropping the row.
+       dropping the row, and the Share button at the foot carries its own
+       absence the same way on a browser with no share sheet.
+
+       AND THE FOOT HOLDS TWO BUTTONS, NOT ONE. Share was a row here for one
+       commit, which made the system sheet cost two taps: pick it, then
+       confirm. That is a confirm over a choice already made, and the thing it
+       opens is itself a chooser. The rows are the links, which need a
+       repository or a warning read first; Share needs neither and costs what
+       Copy costs.
 
        AND THE ROW SAYS WHETHER IT SUBMITS. Claude Code prefills a composer and
        waits; ChatGPT is reported to send on arrival. That difference is the
@@ -2182,13 +2240,26 @@
       </template>
       </div>
 
-      <button @click="send()" :disabled="!sendReady"
-              class="btn btn-primary h-12 min-h-0 gap-2">
-        <i class="ph text-lg"
-           :class="sendTarget === 'share' ? 'ph-share-network' : 'ph-paper-plane-tilt'"></i>
-        <span x-text="sendTarget === 'share' ? 'Open the share sheet'
-                      : (sendTargetRow && sendTargetRow.submits) ? 'Open and send' : 'Open, prefilled'"></span>
-      </button>
+      <!-- TWO WAYS TO FINISH, both one tap. The rows above choose between the
+           links; Share is not one of them and never needed choosing, so it
+           stands beside the primary rather than above it. It carries its own
+           absence the way an unreachable row does: disabled with the reason in
+           its title on a browser that has no sheet, rather than vanishing and
+           leaving three buttons where there were four. -->
+      <div class="flex items-stretch gap-2">
+        <button @click="sendOpen = false; share()" :disabled="!canShare"
+                class="btn h-12 min-h-0 gap-2 shrink-0 px-4"
+                :title="canShare ? 'The system sheet: any app on this device'
+                                 : 'This browser has no share sheet. Copy the words instead.'">
+          <i class="ph ph-share-network text-lg"></i>
+          <span>Share</span>
+        </button>
+        <button @click="send()" :disabled="!sendReady"
+                class="btn btn-primary h-12 min-h-0 gap-2 grow">
+          <i class="ph ph-paper-plane-tilt text-lg"></i>
+          <span x-text="(sendTargetRow && sendTargetRow.submits) ? 'Open and send' : 'Open, prefilled'"></span>
+        </button>
+      </div>
     </div>
   </div>
 
