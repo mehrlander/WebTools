@@ -21,11 +21,13 @@
 //
 // LIVE=1 replaces the first row's hand-written prose with a lean row plus a
 // stubbed record (TURNS_RECORD below), so the card runs the real path: the
-// summarizer heads the turns, the header numbers them, and a tap can trade one
-// for the record's own text. Anything about TRUNCATION or EXPANSION has to be
-// shot this way, since a hand-written row has no record behind it to expand
-// into. With it:
-//   EXPAND=<n>   taps the nth turn (1-based) after the card opens
+// summarizer heads the turns, the header numbers them off their own instants,
+// and a tap has a record to open the deck against. Anything about TRUNCATION,
+// the header's clock or the rail's placement has to be shot this way: a
+// hand-written row carries a UTC clock string and no instants, so its rail
+// falls back to even spacing and its clock to the string. With it:
+//   TAP=<n>      taps the nth turn (1-based), which opens the session deck on
+//                that exchange; the card stays open underneath it
 //   SCROLL=<px>  scrolls the card down that far, for the header's position
 
 const SESSIONS = [
@@ -329,11 +331,11 @@ const TURNS_RECORD = {
     { at: at('13:58:00'), text: 'Reading the three surfaces before answering.' },
     { at: at('14:02:11'), text: 'Here is where it stands. The mechanisms live as data in `docs/showing-mechanisms.csv`, and the Map view renders that file directly rather than restating it in prose. What is still in CLAUDE.md is the part no table can carry: the honesty gate, which says that where no link reaches a change you say so and send a screenshot instead. That paragraph is 63% of the file and it did not stop a session with all of it in context from handing over the wrong link, which is the whole reason the data moved into the app.' },
     { at: at('14:31:07'), text: '`npm run showing` now reads the branch\'s changed files and prints the line to paste, or an honest no-link with the reason. The rule the section stated in prose is executable, so the failure mode changes shape: a session that skips the script gets nothing rather than a plausible wrong link, and a session that runs it cannot pick the mechanism by mood.' },
-    { at: at('14:58:44'), text: 'It costs the one judgement the script cannot make, and that is the right thing to leave in prose. A script can tell you which mechanism reaches a file. It cannot tell you whether the reader will read the resulting link as a claim about something the link does not actually show, which is what the honesty gate is about. So the rule stays a sentence, and the sentence is short enough to survive being read.' },
-    { at: at('15:44:29'), text: 'The Showing tab is up. It reads the CSV directly, so a new mechanism is a row rather than a paragraph, and the honesty gate survives because no script can supply it. The tab sorts by what each mechanism reaches, which is the column a reader scans, and the misses ride beside it rather than in a second table.' },
+    { at: at('14:58:44'), text: 'It costs the one judgement the script cannot make, and that is the right thing to leave in prose. A script can tell you which mechanism reaches a file. It cannot tell you whether the reader will read the resulting link as a claim about something the link does not actually show, which is what the honesty gate is about. So the rule stays a sentence, and the sentence is short enough to survive being read.\n\n🟡 **Pending:** the Map view needs the CSV to exist before the tab can read it, and the CSV is still being derived from the prose.' },
+    { at: at('15:44:29'), text: 'The Showing tab is up. It reads the CSV directly, so a new mechanism is a row rather than a paragraph, and the honesty gate survives because no script can supply it. The tab sorts by what each mechanism reaches, which is the column a reader scans, and the misses ride beside it rather than in a second table.\n\n❇️ **Ready to assess:** whether the CSV wants a column for what each mechanism misses, or whether that is already implied by what it reaches.' },
     { at: at('16:10:22'), text: 'Two readings, and they are not the same. If "misses" is the complement of "reaches" then yes, it is implied and a second column is a copy that will drift the first time one side is edited. But most of these do not have a clean complement: a toss reaches a page and misses same-repo relative dependencies, which is not the negation of anything in the reaches column. So the honest shape is one column for reach and one for the named exception, and the exception is empty for the mechanisms that have none.' },
     { at: at('16:30:40'), text: 'Done. The column is `misses`, empty where there is no named exception, and the tab renders it beside the reach rather than under it.' },
-    { at: at('16:41:18'), text: 'It survives. The tab is a renderer over the CSV with no per-row code, so a new mechanism is one row and nothing else. The one thing that does need touching is the test that holds the CSV against the prose in SURFACING.md, which is the gate that keeps a mechanism from being added to one and not the other.' },
+    { at: at('16:41:18'), text: 'It survives. The tab is a renderer over the CSV with no per-row code, so a new mechanism is one row and nothing else. The one thing that does need touching is the test that holds the CSV against the prose in SURFACING.md, which is the gate that keeps a mechanism from being added to one and not the other.\n\n⚪ **Clean exit.** The column is in, the tab renders it, and the gate holds both sides.' },
     { at: at('16:46:05'), text: 'Nothing blocking. The one open thread is that `docs/showing.md` still carries the frame and the record, and now that the app holds the mechanisms it could fold down to a pointer plus the dated decisions.' },
     { at: at('16:49:16'), text: 'The docs surfacing now runs through the **Map view** rather than through prose in `CLAUDE.md`:\n\n- `docs/showing-mechanisms.csv` is the data\n- the Showing tab renders it\n- `npm run showing` prints the line to paste\n\n```bash\nnpm run showing\n```\n\nSo the choice is executable rather than remembered.\n\n🟢 **Ready to continue.** Available on "go": folding `docs/showing.md` down to a pointer, now that the app holds the mechanisms.' },
   ],
@@ -549,17 +551,17 @@ export default async function (page) {
       await page.waitForTimeout(300);
     }
 
-    // EXPAND=<n> taps the nth turn, 1-based. A real click on the turn itself
-    // rather than a call into the component, since the guard that makes a tap
-    // on a link or a Copy button do nothing is part of what is being shot.
-    if (process.env.EXPAND) {
+    // TAP=<n> taps the nth turn, 1-based, and the session deck takes over on
+    // that exchange. A real click on the turn itself rather than a call into
+    // the component, since the guard that makes a tap on a link or a Copy
+    // button do nothing is part of what is being shot. Scoped to the
+    // transcript host, so the header's rail is not one of the tap targets.
+    if (process.env.TAP) {
       await page.evaluate((i) => {
-        const box = [...document.querySelectorAll('div.fixed.overflow-y-auto')]
-          .find(d => d.scrollHeight > d.clientHeight);
-        const turns = [...box.querySelectorAll('.cursor-pointer')];
-        turns[i - 1]?.click();
-      }, +process.env.EXPAND);
-      await page.waitForTimeout(900);
+        const host = document.querySelector('[x-ref="replyBody"]');
+        [...host.querySelectorAll('.cursor-pointer')][i - 1]?.click();
+      }, +process.env.TAP);
+      await page.waitForTimeout(2500);
     }
   }
 }

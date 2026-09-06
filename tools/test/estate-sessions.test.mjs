@@ -77,6 +77,9 @@ window.GH = FakeGH;
 let OPENED_AT = [];
 window.sessionRender = {
   open: async (r, o) => { OPENED.push(r); OPENED_AT.push(o || {}); return { close(){} }; },
+  // The deck's own dismissal, handed back so a test can fire it: the card
+  // suppresses its outside-click while a deck is up and un-suppresses here.
+  fireClose: () => OPENED_AT.at(-1)?.onClose?.(),
   // The two the estate calls to resolve a start slide. The real kit's rule is
   // "a slide begins at a user turn", which is all this has to reproduce for
   // the resolution under test; session-render.test.mjs owns the rule itself.
@@ -1563,4 +1566,46 @@ test('a scroll-back turn with no record behind it opens the deck all the same', 
   await data.openTurnDeck(middle);
   assert.equal(OPENED.length, 1, 'the deck still opens');
   assert.equal(OPENED_AT[0].start, undefined, 'at its own default slide, claiming nothing');
+});
+
+test('the card survives the deck, and dismisses normally once it is gone', async () => {
+  // A takeover is appended to the body, so every click inside it is outside
+  // the card. Unguarded, the click that closes the deck took the card with
+  // it and the reader came back to the session list rather than to the
+  // sentence they left.
+  const S = window.RepoSessionsCache;
+  const ident = { short: 'guarded1', session_id: 'guarded1-0000-0000-0000-000000000000' };
+  const body = rec({ ...ident, schema: 4,
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'the opening ask' }],
+    replies: [{ at: '2026-08-05T14:00:00Z', text: 'the closing answer' }] });
+  const row = S.summarize(body, 'guard1');
+  FILES[S.pathOf(row)] = body;
+  const c = transcriptCard(row);
+  OPENED = []; OPENED_AT = [];
+  await data.openTurnDeck(c.turns[0]);
+  assert.equal(OPENED.length, 1, 'the deck opened');
+
+  data.rowCardOutside();
+  assert.ok(data.rowCard, 'a click outside while the deck is up leaves the card alone');
+
+  window.sessionRender.fireClose();
+  data.rowCardOutside();
+  assert.ok(data.rowCard, 'and the click that closed the deck does not fall through either');
+
+  await new Promise(r => setTimeout(r, 5));      // the guard clears a tick later
+  data.rowCardOutside();
+  assert.equal(data.rowCard, null, 'once the deck is gone the card dismisses as it always did');
+});
+
+test('a deck that never opens does not leave the card undismissable', async () => {
+  const S = window.RepoSessionsCache;
+  const row = S.summarize(rec({ short: 'noopen1', session_id: 'noopen1-0000-0000-0000-000000000000' }), 'noopen');
+  const c = transcriptCard(row);
+  const real = window.sessionRender.open;
+  window.sessionRender.open = async () => { throw new Error('no deck'); };
+  try {
+    await data.openTurnDeck(c.turns[0]);
+    data.rowCardOutside();
+    assert.equal(data.rowCard, null, 'the guard is released when there is nothing to guard');
+  } finally { window.sessionRender.open = real; }
 });
