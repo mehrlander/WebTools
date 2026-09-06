@@ -94,6 +94,49 @@ test('the two sections partition the branch, and each heading counts its own', (
   assert.equal(new Set(paths).size, paths.length, 'and none of them twice');
 });
 
+// ── The reading order ───────────────────────────────────────────────────────
+//
+// Why, then what, then the documents themselves. Each of the three has been
+// first at some point in this branch and the order is the whole argument, so it
+// is asserted rather than left to whoever edits the template next.
+test('the page reads guide, then files, then the documents', () => {
+  const root = window.document.querySelector('#m > div');
+  const sections = root.lastElementChild;
+  const at = (sel) => [...sections.children].findIndex(c => c.matches(sel) || c.querySelector(sel));
+  const guide = at('[x-ref="guide"]');
+  const row = [...sections.children].findIndex(c => /sticky top-0/.test(c.className || ''));
+  const files = at('[x-ref="files"]');
+  assert.ok(guide >= 0 && row >= 0 && files >= 0, 'all three are children of the one scroller');
+  assert.ok(guide < row, 'the guide leads');
+  assert.ok(row < files, 'the heading row heads the list it belongs to');
+  // The reviewable section is last, and it is only in the tree when there is
+  // something reviewable, so it is checked where the fixture has one.
+  const rev = [...sections.children].findIndex(c => c.querySelector('[x-ref="revStrip"]'));
+  assert.ok(rev > files, 'and the documents are last');
+});
+
+// The guide is CLIPPED, not scrolled, and by the same mechanism and the same
+// height as a presented file. Leading with it only helps if leading with it is
+// cheap: a two-thousand-word body at the top of the page is the failure the
+// files had when they led.
+test('the guide is clipped to the same head as a presented file', () => {
+  const guide = window.document.querySelector('[x-ref="guide"]');
+  const clip = guide.querySelector('[x-init]');
+  assert.match(clip.getAttribute('x-init'), /watchClip\(\$el, 'guide'\)/);
+  assert.match(clip.className, /overflow-hidden/, 'clipped, not scrolled');
+  assert.match(clip.className, /max-h-\[22rem\]/);
+
+  // The clip is keyed, which is what lets one mechanism serve both. It was
+  // revOpen/watchRev while the panels were its only caller.
+  data.clipOpen = {};
+  assert.equal(data.clipExpanded('guide'), false);
+  data.toggleClip('guide');
+  assert.equal(data.clipExpanded('guide'), true, 'the guide expands on its own key');
+  assert.equal(data.clipExpanded('docs/b.md'), false, 'without touching a panel\'s');
+  data.toggleClip('guide');
+  assert.equal(data.clipExpanded('guide'), false, 'and collapses again');
+});
+
 // ── The reviewable strip ────────────────────────────────────────────────────
 //
 // The presented files share ONE container and are swiped between, rather than
@@ -286,9 +329,16 @@ test('the GitHub exits are labeled menu rows, and the plus aims the stage at thi
 //
 // Outside `roomy` a page is a page and scrolls as one: pinning its own header
 // costs a phone the URL-bar collapse. Inside it the page locks to the viewport
-// and the two sections each take a scrollbar; before that the guide began at
-// y=575 of a 983px document and reading it scrolled every control off the top
-// (2026-09-04, at 1440x900).
+// and ONE region scrolls; before the lock the guide began at y=575 of a 983px
+// document and reading it scrolled every control off the top (2026-09-04, at
+// 1440x900).
+//
+// It was two panes with a scrollbar each until 2026-09-06. The second scrollbar
+// existed so a long file list could not push the guide off the screen, and the
+// reorder answers that directly: the guide leads and is clipped, so it is
+// reachable without a pane of its own. One scroller is what a phone already
+// had, and it is what makes the heading row pin at every size rather than only
+// where the document scrolls.
 //
 // TOKEN-EXACT, not substring: `roomy:h-full` contains `h-full`, so an
 // `includes` check cannot tell the small-screen rule from the large-screen one
@@ -310,20 +360,32 @@ test('standalone: the document is left alone, and the lock is roomy-only', () =>
   assert.ok(!small.has('min-h-0'), 'and does not clamp itself to a box it was not given');
   assert.ok(!sectionsSmall.has('overflow-y-auto'), 'and owns no scroller');
 
-  // Inside it: locked, with the sections dividing the box rather than scrolling it.
+  // Inside it: locked, with ONE region scrolling inside the box.
   assert.ok(small.has(R('h-full')) && small.has(R('min-h-0')),
     'roomy, the view fills the height the page hands it');
   assert.ok(sectionsSmall.has(R('flex-1')) && sectionsSmall.has(R('min-h-0')),
-    'the sections are the box the two panes divide');
-  assert.ok(!sectionsSmall.has(R('overflow-y-auto')),
-    'and it is not itself a scroller, or the two panes would be inside a third');
+    'the sections are the box');
+  assert.ok(sectionsSmall.has(R('overflow-y-auto')),
+    'and that box is the one thing that scrolls');
 
+  // NO SECTION OWNS A SCROLLER OR A SHARE. Either one puts a scrollbar inside
+  // the scrollbar above, which is the shape this file and the house style
+  // refuse, and the height rules that used to divide the box are what the
+  // second scrollbar needed.
   const files = root.querySelector('[x-ref="files"]');
   const guide = root.querySelector('[x-ref="guide"]');
-  assert.ok(classes(files).has(R('max-h-[45%]')) && classes(files).has(R('min-h-0')),
-    'the file list takes its content height up to a share of the box');
-  assert.ok(classes(guide).has(R('overflow-y-auto')) && classes(guide).has(R('grow')),
-    'the guide takes what is left and scrolls the prose inside it');
+  for (const [name, el] of [['files', files], ['guide', guide]]) {
+    const c = classes(el);
+    assert.ok(!c.has(R('overflow-y-auto')), name + ' does not scroll itself');
+    assert.ok(!c.has(R('max-h-[45%]')) && !c.has(R('grow')),
+      name + ' does not divide the box');
+  }
+  // The guide is clipped instead, by the page's one expander, which is what
+  // makes leading with it affordable.
+  const clip = guide.querySelector('[x-init]');
+  assert.match(clip.getAttribute('x-init'), /watchClip\(\$el, 'guide'\)/,
+    'the guide is measured by the shared clip');
+  assert.match(clip.className, /max-h-\[22rem\]/, 'and clipped to the same height as a panel');
 });
 
 // WHICH COPY OF THE PAGE IS RUNNING, stated on the page itself.
