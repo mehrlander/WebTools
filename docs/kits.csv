@@ -26,7 +26,7 @@ lib/kits/export.js,exporter,"export a page to a portable, self-resolving copy: "
 lib/kits/file-deck.js,fileDeck,"a changeset's files, read one at a time.",371,no,no,10,yes
 lib/kits/github-links.js,GithubLinks,"the GitHub destinations for one repo, as menu rows.",98,no,no,3,yes
 lib/kits/guide-render.js,GuideRender,"a guide PR body, rendered as something you can walk.",289,no,no,7,yes
-lib/kits/io.js,io,,213,no,yes,20,yes
+lib/kits/io.js,io,"user data in and out of the page: file picker, file download, blob preview, and the clipboard.",216,no,yes,20,yes
 lib/kits/land.js,Land,"where the reader was just sent, and how they get told.",260,no,yes,5,yes
 lib/kits/last-write.js,LastWrite,"the copy this page just committed, for the next fold",70,no,no,2,yes
 lib/kits/md-doc.js,mdDoc,a markdown document rendered as something you can read and take pieces OUT of.,680,no,no,11,yes
@@ -64,7 +64,7 @@ lib/kits/traffic.js,Traffic,"the pure read of what a page has pulled over the ne
 lib/kits/treemap.js,treemap,pure logic for mapping a file tree as a treemap.,154,no,no,2,yes
 lib/kits/url-params.js,UrlParams,"Reading a page's own input params, fragment first, query as fallback.",149,no,no,7,yes
 lib/kits/vanilla-demo.js,demo,"the living-documentation demo format, distilled from pages/drop/live-docs-concept.html.",503,no,no,10,yes
-lib/kits/wring.js,wring,,1504,no,no,4,yes
+lib/kits/wring.js,wring,"single-document template induction: give it one document with repeated structure (a log, an HTML page) and it returns the recurring templates (fixed…",1305,no,no,4,yes
 lib/kits/wsl-core.js,wslCore,"dependency-free WSL core: the XML→record parsers (as a factory), pension classification, and the pure list/group helpers.",351,no,no,4,yes
 lib/kits/wsl.js,wsl,browser-facing WSL kit.,299,no,no,3,yes
 lib/kits/xlsx.js,xlsxKit,"OOXML (.xlsx) structural inspector: unzip, walk every XML/rels part, and surface the internal cross-references (shared strings, styles, sheet rels, comments,…",1854,no,yes,4,yes

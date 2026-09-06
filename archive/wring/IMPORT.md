@@ -19,7 +19,7 @@ mv Wring-*/ archive/wring/   # then drop this IMPORT.md in
 
 | Live file in web-tools | Built from |
 |---|---|
-| `lib/kits/wring.js` | the six engine modules + `general/bridge.js`, concatenated by `export/build-kit.mjs` (run it from this directory to regenerate) |
+| `lib/kits/wring.js` | originally the six engine modules + `general/bridge.js`, concatenated by `export/build-kit.mjs`. **No longer regenerated:** on 2026-09-06 the kit was normalised into stage sections and the generation claim in its header dropped, so `build-kit.mjs` describes the import and not the current file |
 | `pages/demos/wring-text.html` | `general/demo.html`, re-plumbed to load the kit via `gh.load` |
 | `pages/demos/wring-dom.html` | `dom/demo.html`, same re-plumbing |
 | `tools/test/wring.test.mjs` | `export/tools/test-wring.mjs`, recast onto `node:test` so it runs under `npm test` |
