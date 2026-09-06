@@ -742,6 +742,12 @@
         const lineOf = () => parseFloat(getComputedStyle(this.$refs.view).lineHeight) || 26;
         surface.addEventListener('pointerdown', (e) => {
           if (this.edit) return;
+          // ANY TOUCH ON THE WORDS ENDS A PENDING STITCH. It was reported as
+          // the missing exit: the marker went up and tapping the canvas left
+          // it there, because the only disarm was a change in the text and a
+          // tap changes none. Whatever this gesture turns out to be, a caret,
+          // a word, the keyboard, it is the reader looking somewhere else.
+          this.mendArmed = false;
           // A mouse or a keyboard means the pins can go: drag and shift-click
           // do the extending, so the handles are furniture for a job the
           // platform already does. The selection stays painted.
@@ -933,6 +939,15 @@
       // was already marking, and the offset between thumb and line is whatever
       // the reader chose by where they grabbed it.
       pinDown(e) {
+        // THE WAY OUT OF THE ARMED STATE, and it is the thing you are looking
+        // at. A confirm step with no cancel is a trap, and this one had none:
+        // the stitch key commits on its second tap, so it cannot also be the
+        // escape. Tapping the badge dismisses it and changes nothing.
+        if (e.target?.closest?.('[data-mend]')) {
+          e.preventDefault(); e.stopPropagation();
+          this.mendArmed = false; this.paint();
+          return;
+        }
         const box = e.target?.closest?.('[data-edge]');
         if (!box) return;
         e.preventDefault(); e.stopPropagation();
@@ -2027,12 +2042,15 @@
          changes nothing; the second does it. This is the one edit on the page
          that rewrites a sentence somewhere other than where the reader is
          looking, so it is the one worth a glance before it lands, and the
-         marker is a preview of the edit rather than a highlight over it (the
-         full stop struck through, the capital behind it drawn in the case it
-         would take), which is what makes the glance worth a tap.
+         marker is a badge hovering over the spot with a stem down to the line,
+         drawn in the overlay and changing nothing in the text: a first cut
+         previewed the edit in place, which read well and reflowed the whole
+         paragraph, since a capital and its lower-case twin are different
+         widths.
 
          Step back between the two taps and the marker re-aims, since it is
-         derived from the caret rather than stored.
+         derived from the caret rather than stored. Tap the badge, or anywhere
+         in the words, to back out.
 
          IT LOOKS LIKE THE OTHER KEYS UNTIL IT IS ARMED. It wore a warning tint
          whenever it was live, which at 20% over a ghost button read as a

@@ -1670,7 +1670,12 @@ test('stitchSeam is null with nothing to close, and with a selection live', () =
   assert.equal(sel.stitchSeam, null);
 });
 
-test('the marker paints the edit: the mark struck, the capital lowered', () => {
+test('the marker changes not one character of the text', () => {
+  // The first cut of this painted the edit in place, the full stop struck
+  // through and the capital behind it drawn in the case the join would give
+  // it. It read well and it moved the words: a capital and its lower-case twin
+  // are different widths, so the paragraph reflowed the moment the marker went
+  // on. A marker that moves the text it points at is worse than none.
   const { window: w } = makeWindow({ html: '<!doctype html><html><body><div id="h"></div></body></html>' });
   const host = w.document.getElementById('h');
   const text = 'one thing. Two things';
@@ -1679,25 +1684,29 @@ test('the marker paints the edit: the mark struck, the capital lowered', () => {
   const parts = [...host.childNodes].map((n) => [n.getAttribute('data-d'), n.textContent]);
   assert.deepEqual(parts, [
     ['text', 'one thing'],
-    ['mend-cut', '. '],
-    ['mend-case', 't'],
-    ['text', 'wo things'],
-  ], 'the capital is shown in the case the join would give it');
-  assert.match(host.querySelector('[data-d="mend-cut"]').getAttribute('style'), /line-through/);
-
-  // AND THE OFFSETS SURVIVE, which is what lets the marker ride the same host
-  // the hit test walks: every text node keeps its length.
-  assert.equal(host.textContent.length, text.length);
-  assert.equal(host.textContent, 'one thing. two things', 'one character swapped, none added or lost');
+    ['mend', '. '],
+    ['text', 'Two things'],
+  ], 'the seam is wrapped to be measured and styled not at all');
+  assert.equal(host.querySelector('[data-d="mend"]').getAttribute('style'), null,
+    'no style on the wrapper, so it cannot cost a pixel of layout');
+  assert.equal(host.textContent, text, 'byte for byte what was passed in');
 });
 
-test('a capital the join would leave alone is painted standing', () => {
-  const { window: w } = makeWindow({ html: '<!doctype html><html><body><div id="h"></div></body></html>' });
+test('the badge is swept when nothing is armed', () => {
+  const { window: w } = makeWindow({
+    html: '<!doctype html><html><body><div id="lay"><div id="h"></div></div></body></html>' });
   const host = w.document.getElementById('h');
-  // "I" is not a capital followed by a lower-case letter, so stitch leaves it.
-  D.paint(host, { text: 'one thing. I went', mend: { start: 9, end: 11 } });
-  assert.equal(host.querySelector('[data-d="mend-case"]').textContent, 'I',
-    'promising a change the stitch will not make would be the marker lying');
+  const lay = w.document.getElementById('lay');
+  const text = 'one thing. Two things';
+
+  // jsdom reports no client rects, so the badge itself cannot be drawn here.
+  // What IS testable, and what actually broke, is the sweep: a badge left over
+  // from an armed pass must not outlive the state that put it there.
+  const stale = w.document.createElement('div');
+  stale.setAttribute('data-mend', 'mark');
+  lay.appendChild(stale);
+  D.paint(host, { text, overlay: lay });
+  assert.equal(lay.querySelector('[data-mend]'), null);
 });
 
 test('the marker takes the screen from the caret while it is up', () => {
