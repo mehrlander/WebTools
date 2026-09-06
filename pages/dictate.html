@@ -344,8 +344,8 @@
         this.beat;
         const aim = this.d && this.d.stitchAim;
         if (aim === 'caret') return 'Close the break your caret is on: the full stop goes and the capital comes down';
-        if (aim === 'end') return 'Take back the full stop the pause just wrote, and keep the sentence running';
-        return 'Nothing at the caret to undo. Step back to a sentence break first.';
+        if (aim === 'back') return 'Close the most recent sentence break: the full stop goes and the capital comes down';
+        return 'No sentence break to close. A full stop at the very end is the backspace\u2019s job.';
       },
       get jumpable() { this.beat; return !!(this.d && this.d.canJumpBack); },
       get breakable() { this.beat; return !this.edit && !!this.text && !!(this.d && this.d.segments.length); },
@@ -2098,7 +2098,23 @@
        whole safety story of a one-tap control and cannot live in a doc. -->
   <div x-show="sendOpen" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
     <div class="absolute inset-0 bg-black/40" @click="sendOpen = false"></div>
-    <div class="relative w-full sm:max-w-md bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-3"
+    <!-- THE HEIGHT IS ESTABLISHED, NOT DERIVED FROM THE SELECTION. Measured at
+         390px before this was written: 389 for Share and ChatGPT, 433 for
+         Gemini's greyed reason, 523 with the repository chips, 611 with the
+         over-cap line too. A sheet that resizes by 222px as a thumb moves down
+         four rows puts the button that acts somewhere new each time, which is
+         the one control that must not move.
+
+         So the variable half below sits in a box with a floor under it, and the
+         panel scrolls rather than growing past the viewport. The floor is in
+         rem so it tracks the type rather than the screen; the cap is in vh
+         because what it is protecting against IS the screen.
+
+         Measured again after: 537 at every row on a 390 screen, 569 at every
+         row on a 320 one. The one state that still grows is the over-cap
+         refusal, which is an error with something to say and not a selection,
+         and it is what the scroll is for. -->
+    <div class="relative w-full sm:max-w-md max-h-[85vh] overflow-y-auto bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-3"
          style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
       <div class="flex items-center gap-2">
         <span class="font-medium">Send</span>
@@ -2124,6 +2140,12 @@
         </template>
       </div>
 
+      <!-- ── The part that varies, over a floor ────────────────────────────
+           Everything whose presence depends on which row is selected lives in
+           here: the repository chips, and the lines saying what will not ride.
+           The floor is the tallest of them, so moving between rows moves
+           nothing on screen but the ring around the row. -->
+      <div class="min-h-[8.5rem] flex flex-col gap-1.5">
       <!-- The repositories, for the one target that takes them. A session
            clones what it is given, so this is the difference between a prompt
            that can read the code and one that can only talk about it. -->
@@ -2158,6 +2180,7 @@
       <template x-for="d in sendLink.dropped" :key="d">
         <p class="text-xs opacity-60" x-text="'Not carried: ' + d"></p>
       </template>
+      </div>
 
       <button @click="send()" :disabled="!sendReady"
               class="btn btn-primary h-12 min-h-0 gap-2">

@@ -582,12 +582,36 @@ test('the stitch declines where there is no sentence break anywhere', () => {
 // buffer holds. So the reach became its own key, which changes nothing and
 // shows the target.
 
-test('the stitch acts on the break the caret is at, and reaches for nothing', () => {
+test('with no caret placed the stitch takes the newest break', () => {
   const d = withText('one thing. Two things. Three things happened');
   assert.equal(d.range, null, 'the resting state, which is where dictation leaves it');
-  assert.equal(d.canStitch, false, 'the end of the buffer is not a break here');
-  assert.equal(d.stitch(), false);
-  assert.equal(d.text, 'one thing. Two things. Three things happened');
+  assert.equal(d.stitchAim, 'back');
+  assert.equal(d.stitch(), true);
+  assert.equal(d.text, 'one thing. Two things three things happened');
+  assert.equal(d.range, null, 'and the caret is not moved, since none was placed');
+});
+
+test('a trailing full stop is not a break, because the backspace already takes it', () => {
+  // The stitch answered for one for a single commit, and that reading is what
+  // made its target ambiguous: during dictation the buffer almost always ends
+  // in the mark the pause just wrote, so the trailing case shadowed every older
+  // one. A break needs words after it.
+  const one = withText('so I went to the store.');
+  assert.equal(one.stitchAim, '', 'nothing follows the mark, so nothing to join');
+  assert.equal(one.stitch(), false);
+
+  // And the backspace does the job, continuation included, which is what makes
+  // dropping the reading free rather than a loss.
+  const d = engine();
+  d.start();
+  FakeSR.last.say([{ t: 'so I went to the store', final: true }]);
+  assert.equal(d.text, 'so I went to the store.');
+  d.backWord();
+  assert.equal(d.text, 'so I went to the store');
+  FakeSR.last.say([{ t: 'And then I came back', final: true }]);
+  assert.equal(d.text, 'so I went to the store and then I came back.',
+    'the capital comes down, so the sentence really did run on');
+  d.stop();
 });
 
 test('jumping back walks to the previous break, and again walks past it', () => {
@@ -644,18 +668,21 @@ test('placing a caret elsewhere ends the loan', () => {
   assert.deepEqual(d.range, { start: 10, end: 10 }, 'so this caret stays put');
 });
 
-test('the last break keeps its full stop unless the caret is at it', () => {
-  // The case that sent the reach back to the drawing board: with a full stop
-  // ending the buffer, one tap used to take it back, which is wrong whenever
-  // the reader meant to keep it and repair the break before it.
+test('the trailing full stop survives, because the stitch never wanted it', () => {
+  // The case that sent the first reach back to the drawing board: with a full
+  // stop ending the buffer, one tap used to take THAT back, which is wrong
+  // whenever the reader meant to keep it and repair the break before it.
   const d = withText('one thing. Two things.');
-  assert.equal(d.stitchAim, 'end', 'at rest the stitch offers the trailing mark');
+  assert.equal(d.stitchAim, 'back');
+  d.stitch();
+  assert.equal(d.text, 'one thing two things.', 'the older break went, the trailing mark stayed');
 
+  // And the walk reaches the same one, for a reader who wants to see it first.
   const e = withText('one thing. Two things.');
   e.jumpBack();
-  assert.equal(e.stitchAim, 'caret', 'and one tap back offers the earlier one instead');
+  assert.equal(e.stitchAim, 'caret');
   e.stitch();
-  assert.equal(e.text, 'one thing two things.', 'the trailing full stop survives');
+  assert.equal(e.text, 'one thing two things.');
 });
 
 test('jumping declines with nothing behind, and with a selection live', () => {
@@ -729,12 +756,12 @@ test('un-ending takes back the pause\'s full stop and the sentence runs on', () 
   FakeSR.last.say([{ t: 'so I went to the store', final: true }]);
   assert.equal(d.text, 'so I went to the store.');
   assert.equal(d.canUnend, true);
-  // The stitch key answers here too, and this is the case the reader meets
-  // most: the full stop has just landed and nothing follows it yet, so there
-  // is no seam and the repair is the un-end. Reachable from the pad now; it
-  // was bound to a tapped Control key, which is a desk and not a phone.
-  assert.equal(d.canStitch, true, 'the most recent break is the one at the end');
-  assert.equal(d.stitch(), true);
+  // Still its own verb, and still what the desk's Control tap calls. The pad
+  // reaches it through the backspace instead, which does the same thing on a
+  // buffer ending in a mark; the stitch deliberately does not, since answering
+  // for a trailing mark is what made its target ambiguous.
+  assert.equal(d.canStitch, false, 'nothing follows the mark, so there is no break');
+  assert.equal(d.unend(), true);
   assert.equal(d.text, 'so I went to the store');
 
   FakeSR.last.say([{ t: 'And then I came back', final: true }]);

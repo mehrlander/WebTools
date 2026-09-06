@@ -3058,13 +3058,11 @@ test('the stage paints through the kit and its pad turns into casing keys', asyn
   assert.equal(data.dictText, 'the QUICK brown fox.');
   data.dictDrop();
   assert.equal(data.dictSel, false);
-  // The marks face, with the stitch standing in the period's cell: the buffer
-  // ends with the full stop the pause wrote, so the key offers to take it back.
-  // Nothing is lost while it stands there, measured rather than assumed:
-  // punct('.') on a buffer already ending in a mark normalizes the spacing and
-  // adds nothing, so that cell had no second period to give.
-  assert.deepEqual(plain_(data.dictMarks), ['stitch', ',', '?'],
-    'the casing keys are gone and the marks face is back');
+  // The plain marks: the buffer ends with a full stop and nothing follows it,
+  // so there is no break to close and the stitch has nothing to offer. Taking a
+  // trailing mark off is the backspace's job, which is exactly why the stitch
+  // stopped answering for one (kits/dictate.js, stitchAim).
+  assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?'], 'and the marks came back');
   data.dictCancel();
 });
 
