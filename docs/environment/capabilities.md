@@ -867,6 +867,31 @@ dispatched successfully, and therefore never reports. Reconcile the roster
 against what actually launched, never against what was dispatched.
 `ListAgents` settles it in one call.
 
+**The Workflow tool's cap is a different number, and it is a function of the
+machine** *(measured 2026-09-06)*: min(16, CPUs minus 2) per run, per the
+authoring reference, and this container reported 4 CPUs (`nproc`), so a
+Workflow would have run two agents at a time against the Agent tool's twenty.
+Read `nproc` before choosing the venue for a fan-out; on this box the Agent
+tool wins by a factor of ten. Two more facts from the same run of 124 agents
+(62 Sonnet readers of 40 items, 62 Opus skeptics of 11 to 23 rows, 17 minutes
+at the cap):
+
+- The Agent tool has no effort parameter; only Workflow's `agent()` takes one.
+  A "low effort" instruction has to travel in the prompt.
+- **Output on disk is not agent done.** An agent that has written its file and
+  run a checker still holds its slot until it returns, so a ledger kept from
+  file arrivals overcounts free slots by one or two and the next launch is
+  refused. `ListAgents` is the count; the refusal is cheap and the relaunch is
+  the fix.
+- A validator the agent runs on its own output before returning, one script
+  named in the prompt, made 124 of 124 outputs parse and conform. It is the
+  Agent-tool equivalent of Workflow's `schema` option, and it is committed.
+- Cost lives in the transcripts, not the notification: each transcript line's
+  `message.usage` block sums to the agent's spend. That run: 91.3M tokens, of
+  which 74.4M were cache reads of the shared prompt and 300k were output;
+  readers averaged 105k tokens and about two minutes, skeptics 97k and about
+  90 seconds.
+
 ## Subagent transcripts are durable, greppable, and outside every repo
 
 Every subagent's full turn-by-turn transcript is a real file at

@@ -3,6 +3,7 @@ headless-shot-prose-flat,typography CSS misses in screenshots,3,2026-09-02,2026-
 untracked-file-invisible-to-the-suite,a local green over a file the scanner never enumerated,3,2026-08-30,2026-08-28;2026-08-29;2026-08-30,../scripts/text-carriers.py;../tools/test/text-vocabulary-conformance.test.mjs
 opacity-step-off-the-tens,"a class that generates nothing, so the text meant to recede advances",3,2026-08-19,2026-08-19;2026-08-19;2026-08-19,../skills/daisy-alpine/SKILL.md
 mcp-body-escaping,"the GitHub MCP mangles link shapes in a PR body, on write as well as read",3,2026-08-16,2026-08-05;2026-08-05;2026-08-16,SURFACING.md
+output-on-disk-is-not-agent-done,a launch was refused at the concurrency cap on a hand count of nineteen,2,2026-09-06,2026-09-06;2026-09-06,environment/capabilities.md
 merge-drops-authored-csv-cells,"taking one side of a derived registry loses the authored half, and the generator refills it blank",2,2026-09-04,2026-09-04;2026-09-04,../tools/README.md#the-refresh-model
 link-sha-not-resolved,"a commit SHA typed from memory, well-formed and pointing at nothing",2,2026-09-01,2026-08-18;2026-09-01,SURFACING.md
 phosphor-weight-is-a-family,an icon renders as nothing at all,2,2026-08-31,2026-07-28;2026-08-31,../skills/phosphor-icons/SKILL.md;../scripts/blank-icons.py
