@@ -86,7 +86,7 @@ no fact, and never reaches a phone or a screenshot. daisyUI's `tooltip`,
 
 | | Note | Card | Card, pinned |
 | --- | --- | --- | --- |
-| Holds | text that fits, nothing tappable | anything; may scroll | the same |
+| Holds | one line the page already implies; nothing tappable | anything, with a ↗ to where it came from; may scroll | the same |
 | Opens | hover, focus, tap | hover with grace, focus, tap | a deliberate click; on touch, every tap |
 | Closes | leave, its own tap, tap anywhere, Escape | leave both, ✕, tap outside, Escape | ✕, Escape, an action inside |
 | Own close target | its body: on touch, tapping the note closes it and swallows the tap | ✕, shown where the reader cannot hover | ✕, always |
@@ -124,11 +124,18 @@ where the styled box reads as more than the text deserves. Any other token is
 the page's to style through `#wt-note[data-look="<token>"]`; the sheet render
 asks for `excel` and draws Excel's comment box on a page already drawing Excel.
 
-**A note fits.** The kit caps the panel at six lines and never scrolls it;
-content past that is a card written as a note, and the kit clips it and says so
-once in the console, naming the element. `Note.fits(el)` answers the same
-question for a test. The threshold is a number chosen from the app's real notes
-and can move; the rule that a note never scrolls cannot.
+**A note is meant to be one line, and it never scrolls.** Its content is
+what the page already implies and cannot fit: a header unwrapped past its
+truncation, a unit spelled out, a code's long name. Nobody asks where such a
+note came from, because the page beside it already answers, and that is the
+second criterion, beside tappability: **where a reader might ask what the
+content rests on, it is a card, and the card says so** with a ↗ to the manifest
+or table it was drawn from (the budget-drs principle that a caption drawn from a
+table also opens that table). A note that wraps is the signal to ask that
+question. The kit caps the panel at six lines as a ceiling, not a target, and
+clips past it with a console report naming the element; `Note.fits(el)` answers
+the same question for a test. The ceiling is a number and can move; the rule
+that a note never scrolls cannot.
 
 Three behaviours the kit had to add, each found by measurement:
 

@@ -97,10 +97,11 @@ invisible to every review that happens through pixels. Every other popup is a
 **note** or a **card**, and the whole rule, the criterion that separates them,
 what each opens and closes on, and the ✕, is stated once in
 [`references/mechanics.md`, "Notes and cards"](references/mechanics.md#notes-and-cards).
-In one line: a note is text that fits and closes on its own tap, written as
-`data-note="…"` through [`kits/note.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/note.js);
-anything that scrolls or can be tapped inside is a card, and a card carries its
-✕. Do not use `cursor-help`, daisyUI's `tooltip`, or `data-tip`; this overrides
+In one line: a note is one line the page already implies (a header unwrapped, a
+unit spelled out), closes on its own tap, and is written as `data-note="…"`
+through [`kits/note.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/note.js);
+anything that scrolls, can be tapped inside, or whose source a reader might ask
+for is a card, which names that source with a ↗ and carries its ✕. Do not use `cursor-help`, daisyUI's `tooltip`, or `data-tip`; this overrides
 `references/daisyui.md`. `npm run stranded-titles` lists facts parked in a
 `title`; `Note.open('#id')` opens a note on demand for a shot.
 
