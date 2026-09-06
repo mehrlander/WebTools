@@ -92,10 +92,24 @@ test('a note that fits says so; the overflow report is a browser measurement', (
   Note.close();
 });
 
+test('an empty note advertises nothing: no underline, no tab stop', () => {
+  // A bound note whose expression resolves to '' still carries the attribute.
+  // Drawing the affordance over it promises a note that does not exist, and a
+  // tab stop on it is a stop that announces nothing. 54 of these were live on
+  // the Map's Docs tab when this was measured.
+  assert.match(Note.CSS, /\[data-note\]:not\(\[data-note=""\]\)\{[^}]*text-decoration:underline dotted/s);
+  const el = window.document.createElement('span');
+  el.setAttribute('data-note', '');
+  window.document.body.append(el);
+  Note.refresh();
+  assert.equal(el.hasAttribute('tabindex'), false, 'no tab stop for a note with nothing to say');
+  el.remove();
+});
+
 test('an element with nothing to underline opts out of the affordance', () => {
   // A table cell is the case: a spreadsheet render draws no underline anywhere
   // and the dotted rule would land on most of its numeric cells.
-  assert.match(Note.CSS, /\[data-note\]\{[^}]*text-decoration:underline dotted/s);
+  assert.match(Note.CSS, /\[data-note\]:not\(\[data-note=""\]\)\{[^}]*text-decoration:underline dotted/s);
   assert.match(Note.CSS, /\[data-note\]\[data-note-bare\]\{text-decoration:none\}/);
 });
 
