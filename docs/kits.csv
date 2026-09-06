@@ -7,7 +7,7 @@ lib/kits/card.js,Card,the CARD of the house popup rule: the ✕ and the ways out
 lib/kits/chat-archive.js,chatArchive,"the chat archive as a venue of activity, read one month at a time.",268,no,no,1,yes
 lib/kits/chat-render.js,chatRender,"chat transcript renderer: markdown in, readable conversation out, with fenced code blocks promoted to live artifacts.",1178,no,no,7,yes
 lib/kits/claude-mark.js,claudeMark,"the Claude logomark, from one path.",62,yes,no,5,yes
-lib/kits/closing-state.js,ClosingState,"the conventions' CLOSING STATE, as one vocabulary.",127,no,no,4,yes
+lib/kits/closing-state.js,ClosingState,"the conventions' CLOSING STATE, as one vocabulary.",128,no,no,4,yes
 lib/kits/cm6-merge.js,cm6Merge,framework-free CodeMirror 6 *diff* factory: read-only side-by-side and unified merge views over two versions of a text.,162,no,no,6,yes
 lib/kits/cm6.js,cm6,framework-free CodeMirror 6 editor factory.,226,no,yes,18,yes
 lib/kits/code-doc.js,codeDoc,"SOURCE CODE AS A DECLARED RENDER: the second kind, and the one that says what the contract is actually for.",92,no,no,1,yes
