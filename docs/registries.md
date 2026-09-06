@@ -190,6 +190,31 @@ being the standing examples. Model-bridged output is stored when it is expensive
 and irreproducible, regenerated when it is scripted; chat-histories' two catalog
 layers are the worked precedent.
 
+## When a registry is the wrong answer
+
+A committed CSV that inventories part of the tree is a registry, and the rule
+above ("adding one means adding a row here") reads as an instruction to create
+one. It is a rule about *declaring* a carrier, not about *needing* one, and the
+distinction has teeth: a registry beside data that already exists is the
+duplication the integrity rule exists to prevent, and it will be the copy that
+ages.
+
+**The worked case, 2026-09-06.** `lib/kits/prompt-link.js` holds the outbound
+prompt targets (a new Claude Code session, a chat, and one that cannot be
+reached, with its reason) as a `TARGETS` array. A `prompt-targets.csv` was
+proposed so the app's Map view could render them beside the showing mechanisms.
+It was not built. The array is already data, already gated by
+`tools/test/prompt-link.test.mjs`, and already carries the reasons in the kit's
+header; a CSV would have been a verbatim second copy whose only advantage was
+being readable by a view that reads CSVs.
+
+**The test is where the assertions already live, not where they would be
+convenient to read.** Where a kit or a generator holds them, the registry is the
+kit, and what is missing is a renderer, which is a smaller and more honest thing
+to want. Where the prose holds them and the CSV indexes it (`surfacing.csv`), a
+two-way gate makes the pair safe. What has no defence is a CSV transcribing an
+array in the same repository.
+
 ## What the audits keep teaching
 
 Three passes over this table, each on a different authored field, produced one

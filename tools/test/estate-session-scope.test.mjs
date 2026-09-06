@@ -195,3 +195,30 @@ test('an empty attached means the record cannot say, not that nothing was attach
   assert.deepEqual(rows.map((r) => r.name), ['web-tools']);
   assert.equal(rows[0].idle, false, 'never claim "attached but idle" from a record that cannot say');
 });
+
+// ── The same scope, spoken ──────────────────────────────────────────────────
+// The Claude mark opens a composer to type into. This one opens the dictation
+// page with the repositories already chosen, which is the surface for a thought
+// you would rather say than type, and the case a session row exists for: you are
+// reading one, an idea arrives, and the phone is better at hearing it.
+
+test('the dictation link carries the scope and lands on Send', () => {
+  const row = {
+    repos: [{ name: 'web-tools', branch: 'claude/x', lines: 10 }],
+    attached: ['home', 'web-tools'],
+    branches: ['claude/x'],
+  };
+  const u = new URL(data.sessionDictateUrl(row));
+  assert.equal(u.pathname, '/web-tools/pages/dictate.html');
+  assert.equal(u.searchParams.get('repo'), 'mehrlander/home,mehrlander/web-tools',
+    'the same union the strip shows, not the narrower `repos`');
+  assert.equal(u.searchParams.get('to'), 'send', 'painted as the lead, never acted on');
+  assert.equal(u.searchParams.get('target'), 'code');
+});
+
+test('a session with no resolvable repo mints no dictation link', () => {
+  // Absent rather than dimmed: the page is reachable on its own, so a link that
+  // preselected nothing would be the plain address with extra steps.
+  assert.equal(data.sessionDictateUrl({ repos: [], branches: [] }), '');
+  assert.equal(data.sessionDictateUrl({ repos: [{ name: 'nowhere', lines: 1 }], branches: [] }), '');
+});
