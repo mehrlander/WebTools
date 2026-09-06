@@ -151,19 +151,6 @@ fill(document, {
 });`
         },
         {
-          title: 'html.tip — rich tooltip',
-          prose: `A daisyUI tooltip with an HTML body. <code class="${c()}">mods</code> takes a position and text mods. Hover the trigger in the frame.`,
-          lang: 'js', kind: 'jsrender', inject, daisy: true,
-          code:
-`document.body.innerHTML = '<div id="t" class="flex justify-center p-2"></div>';
-
-fill(document, {
-  '#t': html.tip(['top', 'xs'],
-    '<button class="btn btn-sm">Hover me</button>',
-    '<strong>Tooltip body</strong><div class="opacity-60">rich HTML, not escaped text</div>')
-});`
-        },
-        {
           title: 'html.modal — full-screen dialog',
           prose: `Mints a <code class="${c()}">&lt;dialog&gt;</code>; open it via its <code class="${c()}">showModal()</code>. Click the button in the frame.`,
           lang: 'js', kind: 'jsrender', inject, daisy: true,
