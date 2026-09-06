@@ -76,6 +76,26 @@
     the tray /drain reads. The two that file it durably clear the buffer; the
     two that only read it leave it alone.
 
+    AND SEND, WHICH IS THE ONE THAT DOES NOT FILE THE WORDS AT ALL. It reads
+    them as an INSTRUCTION and hands them to something that can act on it: a
+    new Claude Code session with repositories preselected, or a chat. That is
+    why it is the only one of the five that opens a sheet, and why the page's
+    own rule against choosers (see THE DESTINATIONS ARE FOUR BUTTONS) does not
+    reach it: that rule forbids a sheet wrapping choices already made, and
+    which target and which repositories are choices nobody has made yet.
+
+    IT IS ALSO WHY THIS PAGE IS THE ONE THAT CAN DO IT. The composer on a page
+    (kits/annotate.js) has room for the words and nowhere to put the aiming;
+    the estate's session rows have the repositories and nowhere to write. Here
+    both fit, which is the whole reason the annotator's expand button points at
+    this page rather than growing a target picker of its own.
+
+    NOTHING IS SENT BY SENDING. The link prefills a composer at the far end and
+    the reader still presses the button there, which is the documented
+    behaviour for Claude Code and the reason a one-tap control is safe. The one
+    target that does submit on arrival is named as such in the sheet, on the row
+    itself, because a reader cannot be expected to know which is which.
+
     AUTOCORRECT, and the plain word is the right one: it is find and replace
     over a list, whole words, longest first, applied to each segment as it
     lands (kits/dictate.js `opts.fix`). It earns its place only because iOS
@@ -135,8 +155,10 @@
   moment its own gesture does.
 
   ADDRESSING
-    ?to=copy|share|jot|drop   which destination is painted as the lead
+    ?to=copy|share|jot|drop|send   which destination is painted as the lead
     ?dest=owner/repo[@ref]:dir   where Drop writes, overriding home/chron/dump
+    ?repo=owner/repo,owner/repo2 preselected for Send, in the order given
+    ?target=code|chat            which of Send's targets opens selected
     ?lang=en-US               recognition language, default the browser's
     ?use=<ref>                pin the lib chain to a branch for previewing
 
@@ -177,6 +199,31 @@
   -webkit-touch-callout: default; -webkit-user-select: text; user-select: text;
 }
 
+/* ── The destinations row below 360px ────────────────────────────────────
+   The row held four buttons and now holds five, and the fifth costs the other
+   four their labels on the narrowest phones. Measured rather than guessed, ink
+   against content box, Share being the widest label: with five across it fits
+   at 375 (75px of ink in 77) and clips below that. So 375 is the floor, and
+   under it every label goes: all five become icons at about 36px of ink in 63,
+   and a row that is uniformly iconic reads as a decision rather than as three
+   buttons that happened to get cut.
+
+   Two smaller moves bought the 375 case rather than conceding it, since the
+   labels are what the four-button row was measured for in the first place (see
+   THE DESTINATIONS ARE FOUR BUTTONS): the row's gap went from 4px to 2px, and
+   Send is 44px rather than 48, which is still the platform's minimum target.
+
+   A RULE RATHER THAN A UTILITY, which is the same reason the two rules above
+   are rules. Tailwind's smallest breakpoint is `sm` at 640px, so there is no
+   utility for "under 360" without an arbitrary variant, and this page's other
+   two rules are already here because a utility could not express them either.
+
+   Scoped by an attribute rather than by element, so nothing else on the page
+   loses text at a narrow width. */
+@media (max-width: 374px) {
+  [data-dest-row] > button > span { display: none; }
+}
+
 /* A PIN IS FURNITURE WHILE ANYTHING IS DRIVING IT, the pad or the pin's own
    drag. A pin's hit box is 32px wide, so caret-from-point keeps answering with
    the pin rather than with the word under it, and the edge does not move until
@@ -214,6 +261,12 @@
   await gh.load('gh-auth.js');
   await gh.load('gh-store.js');
   await gh.load('kits/dictate.js');
+  // The fifth destination's link minter (window.PromptLink). Not in BOOT: the
+  // only other consumer is app/index.html, and neither is on the chain every
+  // page carries.
+  await gh.load('kits/prompt-link.js');
+  // The composer-to-page carrier, read once at init. See kits/dictate-handoff.js.
+  await gh.load('kits/dictate-handoff.js');
 
   const REGISTRY = 'mehrlander/web-tools-private';
   const JOTS = 'lists/jots.json';
@@ -255,9 +308,22 @@
       breaks: false,
       menu: false, autoOpen: false,
       dest: q.get('to') || 'copy',
+      // ── Send: state ────────────────────────────────────────────────────
+      // The sheet is closed and the selection is empty until asked for, so a
+      // page that is only ever dictated into pays nothing for this at all. The
+      // repo list is fetched on first open and never again.
+      sendOpen: false,
+      sendTarget: q.get('target') || 'code',
+      sendRepos: (q.get('repo') || '').split(',').map((x) => x.trim()).filter(Boolean),
+      repoList: null,           // null = never fetched, [] = fetched and empty
+      repoErr: '',
       autoFrom: '', autoTo: '',
       corrections: [], autoRe: null,
       restored: 0,              // how many characters came back from a draft
+      // Of those, how many arrived from a composer on another page, and what
+      // that page was. Reported rather than merged silently: a buffer that
+      // gained words the reader did not speak here has to say so.
+      arrived: 0, arrivedFrom: '',
       saving: '',
       canShare: typeof navigator !== 'undefined' && !!navigator.share,
       destName: DEST.repo.split('/')[1] + '/' + DEST.dir,
@@ -334,8 +400,29 @@
         // An interrupted session comes back. A finished one does not: `save`
         // is cleared wherever the words reach somewhere durable, so a blank
         // page here means the last note was filed, not that one was lost.
+        // A HANDOFF WINS OVER A STORED DRAFT, and the order is the whole
+        // decision. Both are "words that were here before", but one of them
+        // was sent HERE, deliberately, seconds ago, and the other is whatever
+        // this page was last left holding. Restoring the older one over it
+        // would silently discard the gesture the reader just made.
+        //
+        // Nothing is lost either way: take() is one-shot, so the arriving
+        // draft is appended to a stored one rather than replacing it, and the
+        // reader sees both and cuts what they do not want. A composer draft is
+        // usually a sentence, so the join is cheap; deciding for them which
+        // one to keep would not be.
+        const sent = window.dictateHandoff?.take?.() || null;
         const held = ls.get(DRAFT);
-        if (held && held.trim()) { this.d.text = held; this.restored = held.length; this.started = true; }
+        const parts = [];
+        if (held && held.trim()) parts.push(held.replace(/\s+$/, ''));
+        if (sent) parts.push(sent.text.replace(/\s+$/, ''));
+        if (parts.length) {
+          this.d.text = parts.join('\n\n');
+          this.restored = this.d.text.length;
+          this.started = true;
+          this.arrived = sent ? sent.text.length : 0;
+          this.arrivedFrom = sent ? sent.at : '';
+        }
 
         this.loadCorrections();
         // Paint AFTER binding, not only from onText. A restored draft is
@@ -1466,6 +1553,91 @@
         }
         this.saving = '';
       },
+      // ── Send: the fifth destination ────────────────────────────────────
+      // It reads the buffer and leaves it standing, like Copy and Share and
+      // unlike Jot and Drop: nothing durable has happened here either. The
+      // words are still on this page when you come back, which matters more
+      // for this one than for the other two, since the far end may refuse
+      // them (over the cap) or the reader may change their mind about where.
+      openSend() { this.sendOpen = true; this.loadRepos(); },
+
+      // The account's repositories, most recently updated first. Fetched once,
+      // on the first open, because a page that is usually only dictated into
+      // should not spend a call on a sheet nobody opens.
+      //
+      // CAPPED, and the cap is a phone rather than an API limit: a bottom
+      // sheet holding a scrolling list of a hundred repositories is a worse
+      // control than one holding the dozen you have touched this month.
+      // Anything preselected by ?repo= is pinned above the cap, so a link can
+      // always name a repository this list would not have reached.
+      async loadRepos() {
+        if (this.repoList || !this.token) return;
+        try {
+          const inst = new window.GH({ token: this.token });
+          const acct = await inst.repos();
+          this.repoList = (Array.isArray(acct) ? acct : [])
+            .map((r) => r && r.full_name).filter(Boolean).slice(0, 15);
+        } catch (e) {
+          // Named rather than swallowed: with no list and no message the sheet
+          // reads as "you have no repositories", which is a different and
+          // wrong claim.
+          this.repoList = [];
+          this.repoErr = e?.message || String(e);
+        }
+      },
+
+      // Preselected first and in the order given, then the rest of the
+      // account's. A link's repositories are the ones its author meant.
+      get sendRepoRows() {
+        const seen = new Set();
+        const rows = [];
+        for (const slug of this.sendRepos.concat(this.repoList || []))
+          if (slug && !seen.has(slug)) { seen.add(slug); rows.push(slug); }
+        return rows;
+      },
+      toggleRepo(slug) {
+        this.sendRepos = this.sendRepos.includes(slug)
+          ? this.sendRepos.filter((x) => x !== slug)
+          : [...this.sendRepos, slug];
+      },
+
+      get sendTargets() { return (window.PromptLink?.targets) || []; },
+      get sendTargetRow() { return this.sendTargets.find((t) => t.key === this.sendTarget) || null; },
+
+      // The link, and what it could not carry. Recomputed on every change
+      // rather than stored, so the sheet's own summary line cannot drift from
+      // the button beside it.
+      get sendLink() {
+        const P = window.PromptLink;
+        if (!P) return { url: '', carried: [], dropped: ['prompt-link kit not loaded'] };
+        return P.url(this.sendTarget, {
+          prompt: this.outgoing(),
+          repos: this.sendTarget === 'code' ? this.sendRepos : [],
+        });
+      },
+
+      // Over the cap is a REFUSAL, not a truncation: a prompt cut at a
+      // character boundary reads as a complete instruction and gets acted on.
+      // The sheet says the number so the reader can cut it themselves, which is
+      // the only edit that knows which sentence matters.
+      get sendOver() {
+        const P = window.PromptLink;
+        return !!P && this.outgoing().length > P.PROMPT_MAX;
+      },
+
+      send() {
+        const link = this.sendLink;
+        if (!link.url) {
+          Alpine.store('toast')('warning', link.dropped[0] || 'Nowhere to send this', 'alert-error', 5000);
+          return;
+        }
+        this.sendOpen = false;
+        // A new tab, never this one. The words are still here and the draft is
+        // still in storage, so navigating away would be recoverable, but a page
+        // you are dictating into should not vanish because you aimed it.
+        window.open(link.url, '_blank', 'noopener');
+      },
+
       // Back to blank, and still listening if it was. The buffer goes through
       // the kit's setter, so undo can bring it back for one step, which is
       // the whole safety net a clear needs here.
@@ -1593,10 +1765,19 @@
   </div>
 
   <div x-show="err" class="shrink-0 px-4 py-1.5 text-sm bg-error/10 text-error" x-text="err"></div>
+  <!-- TWO ARRIVALS, ONE BAND, and they are told apart because they mean
+       different things. A restored draft is this page's own history; words
+       handed over by a composer on another page are somebody's sentence from
+       somewhere else, and a buffer that gained those without saying so is a
+       buffer the reader cannot trust. Same band, same Start fresh, different
+       first clause. -->
   <div x-show="restored" class="shrink-0 px-4 py-1.5 text-sm bg-warning/10 flex items-center gap-2">
-    <i class="ph ph-clock-counter-clockwise"></i>
-    <span>Picked up where you left off.</span>
-    <button @click="clear()" class="link link-hover font-medium">Start fresh</button>
+    <i class="ph" :class="arrived ? 'ph-arrows-out' : 'ph-clock-counter-clockwise'"></i>
+    <span x-show="!arrived">Picked up where you left off.</span>
+    <span x-show="arrived" class="min-w-0 truncate"
+          :title="arrivedFrom ? 'Sent from ' + arrivedFrom : 'Sent from a composer on another page'"
+          x-text="'Carried over from ' + (arrivedFrom ? arrivedFrom.split('/').pop() : 'another page') + '.'"></span>
+    <button @click="clear()" class="link link-hover font-medium shrink-0">Start fresh</button>
   </div>
 
   <!-- ── The text ────────────────────────────────────────────────────────
@@ -1748,28 +1929,131 @@
        are never in. So the tap is left live and `commit()` answers it with the
        toast it already carried and the sheet made unreachable: no token here,
        use Copy or Share. The explanation arrives when it is asked for. -->
-  <div class="shrink-0 flex items-stretch gap-1 px-1 pb-1 pt-1"
+  <div data-dest-row class="shrink-0 flex items-stretch gap-0.5 px-1 pb-1 pt-1"
        style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.25rem)">
     <button @click="copy()" :disabled="blank"
             class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
             :class="lead('copy')" title="Copy the words, to paste into a chat">
-      <i class="ph ph-clipboard-text text-lg"></i>Copy
+      <i class="ph ph-clipboard-text text-lg"></i><span>Copy</span>
     </button>
     <button x-show="canShare" @click="share()" :disabled="blank"
             class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
             :class="lead('share')" title="The system sheet: any app on the phone">
-      <i class="ph ph-share-network text-lg"></i>Share
+      <i class="ph ph-share-network text-lg"></i><span>Share</span>
     </button>
     <button @click="jot()" :disabled="blank || !!saving"
             class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
             :class="lead('jot')" title="File it in the estate's jots pile, beside the others">
-      <i class="ph ph-note-pencil text-lg"></i>Jot
+      <i class="ph ph-note-pencil text-lg"></i><span>Jot</span>
     </button>
     <button @click="drop()" :disabled="blank || !!saving"
             class="btn h-12 min-h-0 grow basis-0 px-0 gap-1.5 text-sm"
             :class="lead('drop')" :title="'Write a dated markdown file into ' + destName + ', for the next drain'">
-      <i class="ph ph-tray-arrow-down text-lg"></i>Drop
+      <i class="ph ph-tray-arrow-down text-lg"></i><span>Drop</span>
     </button>
+    <!-- SEND, AND IT IS SHAPED UNLIKE THE OTHER FOUR ON PURPOSE. Those four
+         act on the tap; this one opens, because which target and which
+         repositories are choices nobody has made yet. A control that opens
+         should not look like four controls that fire.
+
+         ICON ONLY, at a fixed width, which is the other half of the same
+         decision and is also what protects the row. The comment above measured
+         four at 92px on a 390px phone so the name could sit beside the icon; a
+         fifth full-width button takes all five to 73px, and to 59px on a 320px
+         screen, where "Share" clips. A 48px square leaves the other four at 86,
+         within a rounding of what they have now. -->
+    <button @click="openSend()" :disabled="blank"
+            class="btn h-12 min-h-0 w-11 shrink-0 px-0"
+            :class="lead('send')"
+            title="Send the words somewhere that can act on them: a new Claude Code session, or a chat">
+      <i class="ph ph-paper-plane-tilt text-lg"></i>
+    </button>
+  </div>
+
+  <!-- ── Send ─────────────────────────────────────────────────────────────
+       The aiming, which is the thing this page has room for and the composer
+       on a page does not. Three bands: where it goes, what goes with it, and
+       one line saying what will not ride.
+
+       THE UNAVAILABLE TARGET IS ON SCREEN, greyed, carrying its reason. Gemini
+       accepts no prompt parameter and AI Studio takes only model and
+       grounding, so there is nothing to link; omitting the row would make that
+       look like an oversight every time somebody went looking for it. The
+       estate dims a session that names no id for the same reason rather than
+       dropping the row.
+
+       AND THE ROW SAYS WHETHER IT SUBMITS. Claude Code prefills a composer and
+       waits; ChatGPT is reported to send on arrival. That difference is the
+       whole safety story of a one-tap control and cannot live in a doc. -->
+  <div x-show="sendOpen" x-cloak class="fixed inset-0 z-[90] flex items-end justify-center">
+    <div class="absolute inset-0 bg-black/40" @click="sendOpen = false"></div>
+    <div class="relative w-full sm:max-w-md bg-base-100 rounded-t-2xl border-t border-base-300 p-4 flex flex-col gap-3"
+         style="padding-bottom:calc(env(safe-area-inset-bottom) + 1.5rem)">
+      <div class="flex items-center gap-2">
+        <span class="font-medium">Send</span>
+        <span class="font-mono text-xs opacity-40" x-text="words + ' words'"></span>
+        <div class="grow"></div>
+        <button @click="sendOpen = false" class="btn btn-ghost btn-sm btn-square"><i class="ph ph-x text-lg"></i></button>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <template x-for="t in sendTargets" :key="t.key">
+          <button @click="t.available && (sendTarget = t.key)" :disabled="!t.available"
+                  class="flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors"
+                  :class="!t.available ? 'border-base-300 opacity-40'
+                          : sendTarget === t.key ? 'border-primary bg-primary/10' : 'border-base-300 hover:bg-base-200'">
+            <i class="ph text-xl shrink-0" :class="t.icon"></i>
+            <span class="min-w-0">
+              <span class="block text-sm font-medium" x-text="t.label"></span>
+              <span class="block text-xs opacity-60" x-text="t.available ? t.hint : t.reason"></span>
+            </span>
+            <span x-show="t.submits" class="ml-auto shrink-0 text-xs text-warning"
+                  title="This one sends on arrival rather than waiting for you">sends</span>
+          </button>
+        </template>
+      </div>
+
+      <!-- The repositories, for the one target that takes them. A session
+           clones what it is given, so this is the difference between a prompt
+           that can read the code and one that can only talk about it. -->
+      <div x-show="sendTargetRow && sendTargetRow.takesRepos" class="flex flex-col gap-1.5">
+        <div class="flex items-center gap-2">
+          <span class="text-xs uppercase tracking-wide opacity-50">Repositories</span>
+          <span x-show="sendRepos.length" class="font-mono text-xs opacity-40" x-text="sendRepos.length"></span>
+        </div>
+        <p x-show="!token" class="text-xs opacity-60">
+          No token on this browser, so the list cannot be read. A ?repo= in the address still works.</p>
+        <p x-show="repoErr" class="text-xs text-error" x-text="'Could not read the list: ' + repoErr"></p>
+        <div class="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+          <template x-for="slug in sendRepoRows" :key="slug">
+            <button @click="toggleRepo(slug)"
+                    class="badge badge-lg gap-1 cursor-pointer font-mono text-xs"
+                    :class="sendRepos.includes(slug) ? 'badge-primary' : 'badge-ghost'">
+              <i class="ph text-sm" :class="sendRepos.includes(slug) ? 'ph-check' : 'ph-plus'"></i>
+              <span x-text="slug.split('/')[1] || slug"></span>
+            </button>
+          </template>
+        </div>
+      </div>
+
+      <!-- WHAT WILL NOT RIDE, in the sheet rather than in a doc, because it is
+           different on every send. The over-cap case is a refusal and says the
+           number: a prompt cut at a character boundary reads as a complete
+           instruction and gets acted on, so the only edit worth making is the
+           reader's own. -->
+      <p x-show="sendOver" class="text-xs text-error"
+         x-text="'Too long to carry: ' + outgoing().length + ' characters against a '
+                 + (window.PromptLink ? window.PromptLink.PROMPT_MAX : 0) + ' limit. Shorten it, or Copy instead.'"></p>
+      <template x-for="d in sendLink.dropped" :key="d">
+        <p class="text-xs opacity-60" x-text="'Not carried: ' + d"></p>
+      </template>
+
+      <button @click="send()" :disabled="!!(!sendLink.url || sendOver)"
+              class="btn btn-primary h-12 min-h-0 gap-2">
+        <i class="ph ph-paper-plane-tilt text-lg"></i>
+        <span x-text="sendTargetRow && sendTargetRow.submits ? 'Open and send' : 'Open, prefilled'"></span>
+      </button>
+    </div>
   </div>
 
   <!-- ── Autocorrect ─────────────────────────────────────────────────────
