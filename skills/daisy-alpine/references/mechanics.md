@@ -100,15 +100,30 @@ the route out: for a note the route is the note itself, for a card it is the
 desktop, and on touch a card opens pinned, since a phone has no "leave". That
 one sentence is where the ✕ rule comes from.
 
-**Timing and dismissal, for a card built by hand.** Enable hover only when
+**The card's way out is built once, in
+[`kits/card.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/card.js).**
+`Card.closeHTML(pinned)` returns the ghost ✕ (no border, no fill, muted, in the
+corner) when the card is pinned or the screen has no hover, and
+`Card.wire(el, {onClose, except})` attaches every route to one callback: the ✕,
+Escape, and a capture-phase `pointerdown` outside. `except` names the control
+that toggles the card, without which the press closes it and the toggle
+reopens it. The kit owns the way out and not the geometry, since a card
+following the cursor over a chart and one anchored beside a sidebar row are the
+same rule and different placement.
+
+Two traps it answers, both of which fail silently. A capture-phase listener is
+required because a press often lands on a control whose own handler stops
+propagation, so `@click.outside` alone strands the card open. And a shell that
+is `pointer-events: none` unless pinned draws a ✕ that cannot be pressed, which
+looks correct in a screenshot and fails under a finger; `wire` measures the
+element on a coarse pointer and reports it. The shell owns that property:
+`@media (hover:none){ .<shell>.show{pointer-events:auto} }`.
+
+**What the caller still owns: opening.** Enable hover only when
 `(hover: hover) and (pointer: fine)` match: open after about 140 ms and close
 about 220 ms after leaving both the control and the card. Tapping the control
 toggles it using its actual visibility, not a separate state flag, so the two
-cannot fall out of step. Dismiss on Escape or a capture-phase `pointerdown`
-outside the control and the card; `@click.outside` alone is not enough, because
-a handler that stops propagation strands the card open. Where the reader cannot
-hover, render the ✕ (a class hidden under `@media (hover: hover)` is the
-idiom) and let the card's own taps through to its contents.
+cannot fall out of step.
 
 **The note is built once, in
 [`kits/note.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/note.js),
@@ -154,9 +169,9 @@ Three behaviours the kit had to add, each found by measurement:
 Demo, including the headless recipe that proves a note survives a screenshot
 where a `title` cannot:
 [`lib/kits/demos/note.html`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/note.html).
-The card is not yet a kit: the budget-drs app's shared caption card
-(`window.__tip` in `app/view/app.html`) is the reference implementation, and
-its rich views (lineage, stream, schema, composition) carry the pinned state.
+The budget-drs app's shared caption card (`window.__tip` in
+`app/view/app.html`) is the worked example of a card, and its rich views
+(lineage, stream, schema, composition) of the pinned state.
 
 ## References
 
