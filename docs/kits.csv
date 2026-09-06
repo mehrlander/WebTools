@@ -18,7 +18,6 @@ lib/kits/csv.js,Csv,"CSV, small and shared.",54,no,no,6,yes
 lib/kits/data-payload.js,DataPayload,Reading a data toss.,190,no,no,3,yes
 lib/kits/data-shelf.js,dataShelf,shelf record schema + helpers.,62,no,no,1,yes
 lib/kits/dictate.js,Dictate,"voice input as a plain text buffer: start the engine, speak, and read `text` back.",1407,no,yes,10,yes
-lib/kits/dispatch.js,dispatch,mint a link that starts a new session somewhere else.,274,no,no,0,yes
 lib/kits/dock-split.js,dockSplit,the drag handle between two panes.,264,no,yes,5,yes
 lib/kits/docx.js,docxKit,"WordprocessingML (.docx) preparation: what a Word file has to have done to it before a browser renderer draws it faithfully, and what it knows about itself…",497,no,no,1,yes
 lib/kits/estate-search.js,EstateSearch,"The estate's search calls, in one place, with one cache.",354,no,no,5,yes
@@ -36,6 +35,7 @@ lib/kits/pdf.js,pdf,"browser PDF extraction: text, geometry, and table structure
 lib/kits/peek.js,Peek,"what is under the pointer, and what contains it.",762,no,yes,11,yes
 lib/kits/persistence.js,persistence,idb-keyval-backed key/value persistence.,343,no,yes,6,yes
 lib/kits/portable-align.js,PortableAlign,Pure assessment of a repo's alignment with the web-tools coordination surface: which of the environmental hooks that spread the portable set (the…,68,no,no,2,yes
+lib/kits/prompt-link.js,PromptLink,mint a link that starts a new session somewhere else.,281,no,no,2,yes
 lib/kits/proof.js,proof,"sandboxed proof documents: code in, self-contained srcdoc HTML out.",83,no,no,16,yes
 lib/kits/read-aloud.js,readAloud,"markdown reduced to what is worth hearing, and a player that speaks it.",425,no,yes,3,yes
 lib/kits/record-deck.js,recordDeck,"a table's records, read one at a time.",329,no,no,2,yes

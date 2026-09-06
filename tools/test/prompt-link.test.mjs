@@ -1,4 +1,4 @@
-// dispatch.js — the outbound link minter. What matters here is not that a URL
+// prompt-link.js — the outbound link minter. What matters here is not that a URL
 // comes back but that the LOSSES do: a scope narrowed silently is the failure
 // the kit exists to remove, so every case that cannot carry an input asserts on
 // `dropped` rather than only on the address.
@@ -9,10 +9,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
-const src = readFileSync(path.join(repoRoot, 'lib/kits/dispatch.js'), 'utf8');
+const src = readFileSync(path.join(repoRoot, 'lib/kits/prompt-link.js'), 'utf8');
 const window = {};
 new Function('window', src)(window);
-const D = window.dispatch;
+const D = window.PromptLink;
 
 const params = (url) => new URL(url).searchParams;
 
