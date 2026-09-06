@@ -115,11 +115,10 @@
           <h2 class="text-xl font-semibold text-primary/80 truncate" x-text="appContext"></h2>
           <div class="flex items-center gap-1 shrink-0">
             <button @click="$dispatch('open-importer')"
-                    class="btn btn-ghost btn-sm btn-circle tooltip tooltip-bottom"
-                    data-tip="Import from IndexedDB">
+                    class="btn btn-ghost btn-sm btn-circle" title="Import from IndexedDB" aria-label="Import from IndexedDB">
               <i class="ph ph-tray-arrow-down"></i>
             </button>
-            <button @click="editItem()" class="btn btn-ghost btn-sm btn-circle tooltip tooltip-bottom" data-tip="New item">
+            <button @click="editItem()" class="btn btn-ghost btn-sm btn-circle" title="New item" aria-label="New item">
               <i class="ph ph-plus"></i>
             </button>
             <label for="sidebar-toggle"
