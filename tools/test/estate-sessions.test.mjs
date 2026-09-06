@@ -1313,3 +1313,161 @@ test('a lean row opens on the ask, reads the record once, and fills the card', a
   await new Promise(r => setTimeout(r, 20));
   assert.equal(GETS.filter(g => g === S.pathOf(row)).length, 1, 'still one read');
 });
+
+// ── Where the reader is, and one turn opened ───────────────────────────────
+// Two questions a scrolling transcript could not answer: which exchange am I
+// in, and what does the rest of this turn say. The first is arithmetic on the
+// card's own list and is tested here; the geometry that picks the turn under
+// the header is a layout read, so it belongs in a browser and not in jsdom.
+
+test('every turn carries the exchange it belongs to, counted from the end', () => {
+  const S = window.RepoSessionsCache;
+  const row = S.summarize(rec({ schema: 4, exchanges: 3, opening_ask: 'one',
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'one' },
+              { at: '2026-08-05T14:00:00Z', text: 'two' },
+              { at: '2026-08-05T15:00:00Z', text: 'three' }],
+    replies: [{ at: '2026-08-05T13:30:00Z', text: 'answering one' },
+              { at: '2026-08-05T14:30:00Z', text: 'answering two' },
+              { at: '2026-08-05T15:30:00Z', text: 'answering three' }] }), 'x');
+  const c = transcriptCard(row);
+  assert.deepEqual(plain(c.turns.map(t => [t.role[0], t.n])),
+    [['u', 1], ['a', 1], ['u', 2], ['a', 2], ['u', 3], ['a', 3]],
+    'an assistant turn takes the number of the ask above it, not one of its own');
+  assert.ok(c.turns.every(t => t.nTotal === 3), 'and every turn knows the total');
+});
+
+test('a cut front does not shift the numbering, because it counts backwards', () => {
+  // The case forward numbering gets wrong. The card holds the opening ask and
+  // the last TURNS_KEPT of the rest, so what went missing is the MIDDLE; run
+  // 1, 2, 3 down the list and every turn after the gap is short by whatever
+  // was dropped. Counted from the end the last user turn is the total by
+  // construction, which is the only version a reader can check.
+  const S = window.RepoSessionsCache;
+  const prompts = [], replies = [];
+  for (let i = 0; i < 40; i++) {
+    prompts.push({ at: '2026-08-05T13:00:' + String(i).padStart(2, '0') + 'Z', text: 'ask ' + i });
+    replies.push({ at: '2026-08-05T13:30:' + String(i).padStart(2, '0') + 'Z', text: 'answer ' + i });
+  }
+  const row = S.summarize(rec({ schema: 4, exchanges: 40, opening_ask: 'ask 0', prompts, replies }), 'x');
+  const c = transcriptCard(row);
+  assert.equal(c.priorCut, true, 'the fixture has to be cut for this to mean anything');
+  assert.equal(c.turns[0].n, 1, 'the ask is the first exchange whatever was dropped after it');
+  assert.equal(c.turns.at(-1).n, 40, 'and the last turn is the last exchange');
+  const asks = c.turns.filter(t => t.role === 'user');
+  assert.equal(asks.at(-1).n, 40);
+  assert.equal(asks.at(-2).n, 39, 'consecutive back from the end, with no off-by-one at the gap');
+});
+
+test('a row that never counted its asks numbers off what the card holds', () => {
+  // exchanges is 0 on a row summarised before the field existed. A total below
+  // the turns on screen is the one arithmetic error a reader spots instantly.
+  const S = window.RepoSessionsCache;
+  const row = S.summarize(rec({ schema: 4, exchanges: 0, opening_ask: 'one',
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'one' },
+              { at: '2026-08-05T14:00:00Z', text: 'two' }],
+    replies: [{ at: '2026-08-05T15:00:00Z', text: 'the answer' }] }), 'x');
+  const c = transcriptCard(row);
+  assert.equal(c.turns.at(-1).nTotal, 2, 'the floor is the user turns the card is holding');
+  assert.ok(c.turns.every(t => t.n >= 1 && t.n <= t.nTotal));
+});
+
+test('each turn carries the ask it answers, so the header names it', () => {
+  const S = window.RepoSessionsCache;
+  const row = S.summarize(rec({ schema: 4, opening_ask: 'the opening question',
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'the opening question' },
+              { at: '2026-08-05T14:00:00Z', text: 'the second question' }],
+    replies: [{ at: '2026-08-05T14:30:00Z', text: 'the closing answer' }] }), 'x');
+  const c = transcriptCard(row);
+  assert.equal(c.turns.at(-1).asked, 'the second question',
+    'a reply is titled by its own ask, not by the session opener');
+  assert.equal(c.turns[0].asked, 'the opening question');
+});
+
+test('the opening ask counts as expandable although it carries no dropped count', () => {
+  // The row slices it at ASK_CHARS with no marker beside it, so the most
+  // truncated turn on the card is the one a `dropped` test calls whole.
+  const S = window.RepoSessionsCache;
+  const long = 'x'.repeat(S.ASK_CHARS + 500);
+  const row = S.summarize(rec({ schema: 4, opening_ask: long,
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: long }],
+    replies: [{ at: '2026-08-05T14:00:00Z', text: 'short' }] }), 'x');
+  const c = transcriptCard(row);
+  assert.equal(c.turns[0].dropped, undefined, 'the cache reports nothing here');
+  assert.ok(data.turnHasMore(c.turns[0]), 'and the card knows to read the record anyway');
+  assert.ok(!data.turnHasMore(c.turns.at(-1)), 'a short reply is whole and stays whole');
+});
+
+test('a tap redraws one turn at full size, carrying the record\'s own text', async () => {
+  const S = window.RepoSessionsCache;
+  const drawn = [];
+  window.chatRender = {
+    ready: async () => {},
+    message: (m, o) => {
+      drawn.push({ md: m.md, dense: !!o.dense, dropped: m.dropped || 0 });
+      const el = window.document.createElement('div');
+      el.tap = o.tap;                       // what the kit would wire to a click
+      return el;
+    },
+  };
+  const ident = { short: 'tapturn1', session_id: 'tapturn1-0000-0000-0000-000000000000' };
+  const whole = 'The first sentence. ' + 'And a second one that runs on. '.repeat(30);
+  const body = rec({ ...ident, schema: 4, exchanges: 2,
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'do the thing' },
+              { at: '2026-08-05T15:00:00Z', text: 'and now this' }],
+    replies: [{ at: '2026-08-05T14:00:00Z', text: whole },
+              { at: '2026-08-05T16:00:00Z', text: 'the closing answer' }] });
+  const row = S.summarize(body, 'tap1');
+  FILES[S.pathOf(row)] = body;
+  const c = transcriptCard(row);
+  await data.mountReplyCard(c);
+  const cut = c.turns.find(t => t.dropped);
+  assert.ok(cut, 'the fixture has to hold a cut turn for this to mean anything');
+  assert.ok(drawn.every(d => d.dense), 'every turn opens dense');
+
+  drawn.length = 0;
+  await data.toggleCardTurn(cut);
+  await new Promise(r => setTimeout(r, 20));
+  assert.ok(drawn.length >= 1, 'the tapped turn is redrawn');
+  const last = drawn.at(-1);
+  assert.equal(last.dense, false, 'and redrawn at full size');
+  assert.equal(last.md, whole, 'with the whole turn, not the head the row carried');
+  assert.equal(last.dropped, 0, 'so the chip counting what is missing goes with it');
+
+  drawn.length = 0;
+  await data.toggleCardTurn(cut);
+  assert.equal(drawn.at(-1).dense, true, 'and a second tap closes it again');
+  assert.notEqual(drawn.at(-1).md, whole, 'back to the head the row carries');
+});
+
+test('a slower first mount cannot overwrite the transcript a later one drew', async () => {
+  // The race a lean row loses. The card opens holding the ask, the record
+  // lands, and fillProse republishes the same key with the whole
+  // conversation: two mounts in flight under one name, finishing in the
+  // wrong order because the first is the one that waited for the renderer.
+  // Reproduced by releasing them in reverse, which is what a cold page does.
+  const S = window.RepoSessionsCache;
+  const releases = [];
+  const drawn = [];
+  window.chatRender = {
+    ready: () => new Promise(r => releases.push(r)),
+    message: (m) => { drawn.push(m.md); return window.document.createElement('div'); },
+  };
+  const ident = { short: 'raceabc1', session_id: 'raceabc1-0000-0000-0000-000000000000' };
+  const body = rec({ ...ident, schema: 4, exchanges: 2,
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'do the thing' },
+              { at: '2026-08-05T15:00:00Z', text: 'and now this' }],
+    replies: [{ at: '2026-08-05T16:00:00Z', text: 'and here is what came of it' }] });
+  const row = S.leanRow(S.summarize(body, 'race1'));
+  FILES[S.pathOf(row)] = body;
+
+  transcriptCard(row);                       // mount one: the ask, waiting on ready()
+  await new Promise(r => setTimeout(r, 20)); // the record lands, mount two starts
+  assert.equal(releases.length, 2, 'two mounts are in flight under one key');
+  releases.pop()();                          // the LATER one finishes first
+  await new Promise(r => setTimeout(r, 5));
+  const full = drawn.length;
+  assert.ok(full > 1, 'and draws the whole conversation');
+  releases.pop()();                          // then the stale one resumes
+  await new Promise(r => setTimeout(r, 5));
+  assert.equal(drawn.length, full, 'which draws nothing, rather than the ask over the top of it');
+});

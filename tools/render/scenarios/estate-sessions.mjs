@@ -18,6 +18,15 @@
 // four do not.
 // CARDTOP=1 scrolls that card back to its first entry (it opens at the last).
 // STALE=1 puts the first row a summarizer version behind.
+//
+// LIVE=1 replaces the first row's hand-written prose with a lean row plus a
+// stubbed record (TURNS_RECORD below), so the card runs the real path: the
+// summarizer heads the turns, the header numbers them, and a tap can trade one
+// for the record's own text. Anything about TRUNCATION or EXPANSION has to be
+// shot this way, since a hand-written row has no record behind it to expand
+// into. With it:
+//   EXPAND=<n>   taps the nth turn (1-based) after the card opens
+//   SCROLL=<px>  scrolls the card down that far, for the header's position
 
 const SESSIONS = [
   {
@@ -289,6 +298,52 @@ const RECORD = {
   calls: [],
 };
 
+// ── The record behind the first row, for LIVE=1 ──────────────────────────────
+// Longer, and long on purpose. The card heads every scroll-back turn at 240
+// characters and reports what it left; a fixture whose turns all fit under the
+// cap can draw the transcript and cannot draw the one thing the reader is
+// being offered, which is the rest of the turn. So most of these run past it,
+// the opening ask included, and three of the replies are followed by tool
+// calls, which is the case the card drops as work in progress.
+//
+// Nothing here is headed by hand: the row is built from this record by the
+// real summarizer inside the page, so the fixture cannot state a cut the code
+// would not make.
+const at = (t) => '2026-08-05T' + t + 'Z';
+const TURNS_RECORD = {
+  ...RECORD,
+  opening_ask: 'We have done some significant work on surfacing our documentation in the show-repo app, and I have lost track of where it landed. Walk me through what is in place now, what is still prose in CLAUDE.md, and what the app derives. I would rather have one place that is right than three that mostly agree.',
+  prompts: [
+    { at: at('13:51:08'), text: 'We have done some significant work on surfacing our documentation in the show-repo app, and I have lost track of where it landed. Walk me through what is in place now, what is still prose in CLAUDE.md, and what the app derives. I would rather have one place that is right than three that mostly agree.' },
+    { at: at('14:19:40'), text: 'Can we get the render line printed rather than remembered? I keep handing over the wrong link, and the section that was meant to stop it is the longest one in the file, so reading it is evidently not the thing that fixes this.' },
+    { at: at('14:52:10'), text: 'Good. What does the honesty rule cost us if no script can supply it?' },
+    { at: at('15:12:44'), text: '[3 images]' },
+    { at: at('15:20:03'), text: 'Please proceed with the Map view tab.' },
+    { at: at('15:58:20'), text: 'Does the CSV need a column for what each mechanism misses, or is that already implied by what it reaches? I do not want two columns saying one thing, but I also do not want a reader inferring the gap.' },
+    { at: at('16:22:15'), text: 'Take the second option.' },
+    { at: at('16:38:02'), text: 'One more: does the tab survive a mechanism being added, or does somebody have to touch the renderer too?' },
+    { at: at('16:44:30'), text: 'That is what I wanted. Anything left open?' },
+    { at: at('16:47:10'), text: 'Wrap up.' },
+  ],
+  replies: [
+    { at: at('13:58:00'), text: 'Reading the three surfaces before answering.' },
+    { at: at('14:02:11'), text: 'Here is where it stands. The mechanisms live as data in `docs/showing-mechanisms.csv`, and the Map view renders that file directly rather than restating it in prose. What is still in CLAUDE.md is the part no table can carry: the honesty gate, which says that where no link reaches a change you say so and send a screenshot instead. That paragraph is 63% of the file and it did not stop a session with all of it in context from handing over the wrong link, which is the whole reason the data moved into the app.' },
+    { at: at('14:31:07'), text: '`npm run showing` now reads the branch\'s changed files and prints the line to paste, or an honest no-link with the reason. The rule the section stated in prose is executable, so the failure mode changes shape: a session that skips the script gets nothing rather than a plausible wrong link, and a session that runs it cannot pick the mechanism by mood.' },
+    { at: at('14:58:44'), text: 'It costs the one judgement the script cannot make, and that is the right thing to leave in prose. A script can tell you which mechanism reaches a file. It cannot tell you whether the reader will read the resulting link as a claim about something the link does not actually show, which is what the honesty gate is about. So the rule stays a sentence, and the sentence is short enough to survive being read.' },
+    { at: at('15:44:29'), text: 'The Showing tab is up. It reads the CSV directly, so a new mechanism is a row rather than a paragraph, and the honesty gate survives because no script can supply it. The tab sorts by what each mechanism reaches, which is the column a reader scans, and the misses ride beside it rather than in a second table.' },
+    { at: at('16:10:22'), text: 'Two readings, and they are not the same. If "misses" is the complement of "reaches" then yes, it is implied and a second column is a copy that will drift the first time one side is edited. But most of these do not have a clean complement: a toss reaches a page and misses same-repo relative dependencies, which is not the negation of anything in the reaches column. So the honest shape is one column for reach and one for the named exception, and the exception is empty for the mechanisms that have none.' },
+    { at: at('16:30:40'), text: 'Done. The column is `misses`, empty where there is no named exception, and the tab renders it beside the reach rather than under it.' },
+    { at: at('16:41:18'), text: 'It survives. The tab is a renderer over the CSV with no per-row code, so a new mechanism is one row and nothing else. The one thing that does need touching is the test that holds the CSV against the prose in SURFACING.md, which is the gate that keeps a mechanism from being added to one and not the other.' },
+    { at: at('16:46:05'), text: 'Nothing blocking. The one open thread is that `docs/showing.md` still carries the frame and the record, and now that the app holds the mechanisms it could fold down to a pointer plus the dated decisions.' },
+    { at: at('16:49:16'), text: 'The docs surfacing now runs through the **Map view** rather than through prose in `CLAUDE.md`:\n\n- `docs/showing-mechanisms.csv` is the data\n- the Showing tab renders it\n- `npm run showing` prints the line to paste\n\n```bash\nnpm run showing\n```\n\nSo the choice is executable rather than remembered.\n\n🟢 **Ready to continue.** Available on "go": folding `docs/showing.md` down to a pointer, now that the app holds the mechanisms.' },
+  ],
+  // Three replies are narration: a sentence announcing a step, with the calls
+  // it issued at the same stamp. The card drops these and the deck keeps them,
+  // which is the one place the two part company on purpose.
+  calls: [{ at: at('13:58:00') }, { at: at('16:30:40') }, { at: at('16:41:18') }],
+  exchanges: 10,
+};
+
 export default async function (page) {
   await page.evaluate(({ SESSIONS, ATTENTION, ACTIVITY, TODOS, JOTS }) => {
     // The estate component's own root carries its Alpine scope.
@@ -402,6 +457,41 @@ export default async function (page) {
     await page.waitForTimeout(200);
   }
 
+  // LIVE=1: the first row goes LEAN and a record stands behind it, which is
+  // the state most of the store is in since the writer stopped carrying prose
+  // on a row. The card's own ensureProse path then reads the record and
+  // summarises it, so the turns on screen are the ones the real summarizer
+  // makes, cuts and all, and a tap has somewhere to read the rest from.
+  if (process.env.LIVE) {
+    await page.evaluate((REC) => {
+      const Real = window.GH;
+      window.GH = class extends Real {
+        async get(p) {
+          if (p.startsWith('sessions/')) return { text: JSON.stringify(REC) };
+          return super.get(p);
+        }
+      };
+      const st = window.Alpine.$data(document.querySelector('[x-data^="estate"]'));
+      // The registry client is memoised on the component, so a swap of the
+      // class alone would be read through a client built before it. Dropping
+      // the key is what makes the next read go through the stub.
+      st._regKey = '';
+      const S = window.RepoSessionsCache;
+      st.sessionRows_ = st.sessionRows_.map((r, i) => {
+        if (i) return r;
+        const lean = { ...r };
+        for (const k of S.PROSE_KEYS) delete lean[k];
+        // `ask` is not a prose key (the row keeps it, cut at ASK_CHARS), so it
+        // has to be brought over from this record or the card opens on the old
+        // fixture's question and answers a different one under it.
+        return { ...lean, exchanges: REC.exchanges, messages: REC.replies.length,
+                 ask: String(REC.opening_ask || '').slice(0, S.ASK_CHARS),
+                 askAt: String(REC.prompts[0].at || '').slice(11, 19) };
+      });
+    }, TURNS_RECORD);
+    await page.waitForTimeout(200);
+  }
+
   const card = process.env.CARD;
   if (card) {
     // Anchored off the real trigger, so the panel lands where a reader's tap
@@ -436,6 +526,32 @@ export default async function (page) {
         if (el) el.scrollTop = 0;
       });
       await page.waitForTimeout(150);
+    }
+
+    // SCROLL=<px> puts the card somewhere in the middle of the transcript,
+    // which is the only place the header's position line says anything a
+    // reader could not already see. Driven as a real scroll event, so what
+    // updates the header is the page's own handler.
+    if (process.env.SCROLL) {
+      await page.evaluate((y) => {
+        const el = [...document.querySelectorAll('div.fixed.overflow-y-auto')]
+          .find(d => d.scrollHeight > d.clientHeight);
+        if (el) { el.scrollTop = +y; el.dispatchEvent(new Event('scroll')); }
+      }, process.env.SCROLL);
+      await page.waitForTimeout(300);
+    }
+
+    // EXPAND=<n> taps the nth turn, 1-based. A real click on the turn itself
+    // rather than a call into the component, since the guard that makes a tap
+    // on a link or a Copy button do nothing is part of what is being shot.
+    if (process.env.EXPAND) {
+      await page.evaluate((i) => {
+        const box = [...document.querySelectorAll('div.fixed.overflow-y-auto')]
+          .find(d => d.scrollHeight > d.clientHeight);
+        const turns = [...box.querySelectorAll('.cursor-pointer')];
+        turns[i - 1]?.click();
+      }, +process.env.EXPAND);
+      await page.waitForTimeout(900);
     }
   }
 }
