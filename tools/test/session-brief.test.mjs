@@ -544,3 +544,43 @@ test('the page tells the brief that no embedder draws its header', () => {
   // The page keeps its own flag, which still stands its address bar down.
   assert.match(page, /x-show="!framed \|\| !target"/);
 });
+
+// ── Work on this scope ──────────────────────────────────────────────────────
+// The one act this page offers, and the second attempt at placing it. The first
+// put two icons on every row of the Sessions LIST, which came off the same day:
+// a control whose value is in specifying what will happen cannot live where
+// there is no room to say it. Here there is room, so what is under test is that
+// the row carries the scope truthfully and chooses nothing else.
+
+test('the scope link carries the checkouts, owned by the mounted store', () => {
+  const u = new URL(lent().scopeUrl);
+  assert.equal(u.pathname, '/web-tools/pages/dictate.html');
+  assert.equal(u.searchParams.get('repo'), 'me/web-tools',
+    'the owner comes from the store this brief was mounted with, not a constant');
+  assert.equal(u.searchParams.get('to'), 'send', 'painted as the lead, never acted on');
+  assert.equal(u.searchParams.get('target'), 'code');
+  assert.equal(lent().scopeNames, 'web-tools');
+});
+
+test('the wider `attached` list wins where the record carries it', () => {
+  // Record schema 8. `repos` is where the shell stood and misses a checkout
+  // worked entirely through absolute paths; `attached` is what the container
+  // held. The union is what the link should preselect.
+  const d = lent();
+  const was = d.rec;
+  try {
+    d.record = { ...was, attached: ['home', 'web-tools'] };
+    assert.deepEqual([...d.scopeRepos], ['home', 'web-tools']);
+    assert.equal(new URL(d.scopeUrl).searchParams.get('repo'), 'me/home,me/web-tools');
+  } finally { d.record = was; }
+});
+
+test('a session that names no checkout offers no row', () => {
+  const d = lent();
+  const was = d.record;
+  try {
+    d.record = { ...d.rec, repos: [], attached: [] };
+    assert.deepEqual([...d.scopeRepos], []);
+    assert.equal(d.scopeUrl, '', 'absent rather than a link that preselects nothing');
+  } finally { d.record = was; }
+});
