@@ -74,7 +74,21 @@ const { window } = makeWindow({
 });
 window.TOKEN = 'tkn';
 window.GH = FakeGH;
-window.sessionRender = { open: async (r) => { OPENED.push(r); return { close(){} }; } };
+let OPENED_AT = [];
+window.sessionRender = {
+  open: async (r, o) => { OPENED.push(r); OPENED_AT.push(o || {}); return { close(){} }; },
+  // The two the estate calls to resolve a start slide. The real kit's rule is
+  // "a slide begins at a user turn", which is all this has to reproduce for
+  // the resolution under test; session-render.test.mjs owns the rule itself.
+  turns: (rec) => [...(rec.prompts || []).map(x => ({ role: 'user', at: x.at })),
+                   ...(rec.replies || []).map(x => ({ role: 'assistant', at: x.at }))]
+    .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)),
+  groups: (list) => {
+    const out = [];
+    for (const t of list) { if (!out.length || t.role === 'user') out.push([]); out.at(-1).push(t); }
+    return out;
+  },
+};
 window.gh = { load: async () => {} };
 const shell = {
   // Records what a caller asked for, the way the other estate tests stub it,
@@ -1383,62 +1397,6 @@ test('each turn carries the ask it answers, so the header names it', () => {
   assert.equal(c.turns[0].asked, 'the opening question');
 });
 
-test('the opening ask counts as expandable although it carries no dropped count', () => {
-  // The row slices it at ASK_CHARS with no marker beside it, so the most
-  // truncated turn on the card is the one a `dropped` test calls whole.
-  const S = window.RepoSessionsCache;
-  const long = 'x'.repeat(S.ASK_CHARS + 500);
-  const row = S.summarize(rec({ schema: 4, opening_ask: long,
-    prompts: [{ at: '2026-08-05T13:00:00Z', text: long }],
-    replies: [{ at: '2026-08-05T14:00:00Z', text: 'short' }] }), 'x');
-  const c = transcriptCard(row);
-  assert.equal(c.turns[0].dropped, undefined, 'the cache reports nothing here');
-  assert.ok(data.turnHasMore(c.turns[0]), 'and the card knows to read the record anyway');
-  assert.ok(!data.turnHasMore(c.turns.at(-1)), 'a short reply is whole and stays whole');
-});
-
-test('a tap redraws one turn at full size, carrying the record\'s own text', async () => {
-  const S = window.RepoSessionsCache;
-  const drawn = [];
-  window.chatRender = {
-    ready: async () => {},
-    message: (m, o) => {
-      drawn.push({ md: m.md, dense: !!o.dense, dropped: m.dropped || 0 });
-      const el = window.document.createElement('div');
-      el.tap = o.tap;                       // what the kit would wire to a click
-      return el;
-    },
-  };
-  const ident = { short: 'tapturn1', session_id: 'tapturn1-0000-0000-0000-000000000000' };
-  const whole = 'The first sentence. ' + 'And a second one that runs on. '.repeat(30);
-  const body = rec({ ...ident, schema: 4, exchanges: 2,
-    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'do the thing' },
-              { at: '2026-08-05T15:00:00Z', text: 'and now this' }],
-    replies: [{ at: '2026-08-05T14:00:00Z', text: whole },
-              { at: '2026-08-05T16:00:00Z', text: 'the closing answer' }] });
-  const row = S.summarize(body, 'tap1');
-  FILES[S.pathOf(row)] = body;
-  const c = transcriptCard(row);
-  await data.mountReplyCard(c);
-  const cut = c.turns.find(t => t.dropped);
-  assert.ok(cut, 'the fixture has to hold a cut turn for this to mean anything');
-  assert.ok(drawn.every(d => d.dense), 'every turn opens dense');
-
-  drawn.length = 0;
-  await data.toggleCardTurn(cut);
-  await new Promise(r => setTimeout(r, 20));
-  assert.ok(drawn.length >= 1, 'the tapped turn is redrawn');
-  const last = drawn.at(-1);
-  assert.equal(last.dense, false, 'and redrawn at full size');
-  assert.equal(last.md, whole, 'with the whole turn, not the head the row carried');
-  assert.equal(last.dropped, 0, 'so the chip counting what is missing goes with it');
-
-  drawn.length = 0;
-  await data.toggleCardTurn(cut);
-  assert.equal(drawn.at(-1).dense, true, 'and a second tap closes it again');
-  assert.notEqual(drawn.at(-1).md, whole, 'back to the head the row carries');
-});
-
 test('a slower first mount cannot overwrite the transcript a later one drew', async () => {
   // The race a lean row loses. The card opens holding the ask, the record
   // lands, and fillProse republishes the same key with the whole
@@ -1535,4 +1493,74 @@ test('the clock is the reader\'s, and names the date only across one', () => {
 test('a turn with no instant still prints something rather than nothing', () => {
   assert.equal(data.localClock(0, '13:51:08'), '13:51:08', 'the row\'s own string is the floor');
   assert.equal(data.localClock(0, ''), '');
+});
+
+// ── A tap opens the session's deck, at the exchange that was tapped ────────
+// The card is a scan; reading one turn whole is a different act, and the deck
+// is already the surface for it. What has to hold is the handover: the deck
+// must open on the exchange the reader touched rather than at the top.
+
+test('deckSlideAt picks the exchange the instant falls inside', () => {
+  const g = [
+    [{ role: 'user', at: '2026-08-05T13:00:00Z' }, { role: 'assistant', at: '2026-08-05T13:10:00Z' }],
+    [{ role: 'user', at: '2026-08-05T14:00:00Z' }, { role: 'assistant', at: '2026-08-05T14:20:00Z' }],
+    [{ role: 'user', at: '2026-08-05T15:00:00Z' }],
+  ];
+  const at = (v) => Date.parse(v);
+  assert.equal(data.deckSlideAt(g, at('2026-08-05T13:00:00Z')), 0, 'the ask that starts a slide');
+  assert.equal(data.deckSlideAt(g, at('2026-08-05T14:20:00Z')), 1,
+    'a reply lands on the exchange it belongs to, not the one after it');
+  assert.equal(data.deckSlideAt(g, at('2026-08-05T15:00:00Z')), 2);
+  assert.equal(data.deckSlideAt(g, at('2026-08-05T12:00:00Z')), 0, 'before the first, the first');
+  assert.equal(data.deckSlideAt(g, 0), undefined, 'no instant, no claim about a slide');
+  assert.equal(data.deckSlideAt([], at('2026-08-05T13:00:00Z')), undefined);
+});
+
+test('tapping a turn opens the record at that exchange', async () => {
+  const S = window.RepoSessionsCache;
+  const ident = { short: 'deckabc1', session_id: 'deckabc1-0000-0000-0000-000000000000' };
+  const body = rec({ ...ident, schema: 4, exchanges: 3,
+    started: '2026-08-05T13:00:00Z', ended: '2026-08-05T15:30:00Z',
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'the opening ask' },
+              { at: '2026-08-05T14:00:00Z', text: 'the second ask' },
+              { at: '2026-08-05T15:00:00Z', text: 'the third ask' }],
+    replies: [{ at: '2026-08-05T13:30:00Z', text: 'answering the first' },
+              { at: '2026-08-05T14:30:00Z', text: 'answering the second' },
+              { at: '2026-08-05T15:30:00Z', text: 'the closing answer' }] });
+  const row = S.summarize(body, 'deck1');
+  FILES[S.pathOf(row)] = body;
+  data._records[row.id] = body;
+  const c = transcriptCard(row);
+  OPENED = []; OPENED_AT = [];
+  const second = c.turns.find(t => t.n === 2 && t.role === 'user');
+  assert.ok(second, 'the fixture has to hold a second exchange');
+  await data.openTurnDeck(second);
+  assert.equal(OPENED.length, 1, 'one tap reaches the deck');
+  assert.equal(OPENED[0].short, 'deckabc1', 'with this session\'s record');
+  assert.equal(OPENED_AT[0].start, 1, 'opened on the exchange that was tapped');
+  data._records[row.id] = undefined;
+});
+
+test('a scroll-back turn with no record behind it opens the deck all the same', async () => {
+  // The instants come from the record, so a card drawn before it lands has
+  // none for its middle turns; the ask and the reply keep theirs, since the
+  // row carries `started` and `ended`. The tap must still work, and must not
+  // invent a slide.
+  const S = window.RepoSessionsCache;
+  const ident = { short: 'deckdef2', session_id: 'deckdef2-0000-0000-0000-000000000000' };
+  const body = rec({ ...ident, schema: 4,
+    prompts: [{ at: '2026-08-05T13:00:00Z', text: 'the opening ask' },
+              { at: '2026-08-05T14:00:00Z', text: 'the second ask' }],
+    replies: [{ at: '2026-08-05T13:30:00Z', text: 'answering the first' },
+              { at: '2026-08-05T15:00:00Z', text: 'the closing answer' }] });
+  const row = S.summarize(body, 'deck2');
+  FILES[S.pathOf(row)] = body;
+  const c = transcriptCard(row);          // no record cached, so no instants
+  const middle = c.turns.find(t => (t.at || [])[0] === 'turn');
+  assert.ok(middle, 'the fixture has to hold a scroll-back turn');
+  assert.equal(middle.atMs, 0, 'and it has no instant without the record');
+  OPENED = []; OPENED_AT = [];
+  await data.openTurnDeck(middle);
+  assert.equal(OPENED.length, 1, 'the deck still opens');
+  assert.equal(OPENED_AT[0].start, undefined, 'at its own default slide, claiming nothing');
 });
