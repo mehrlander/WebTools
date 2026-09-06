@@ -63,6 +63,7 @@ const skillsCsv = readFileSync(path.join(repoRoot, 'skills', 'manifest.csv'), 'u
 const textFieldsCsv = readFileSync(path.join(repoRoot, 'docs', 'text-fields.csv'), 'utf8');
 const testsCsv = readFileSync(path.join(repoRoot, 'docs', 'tests.csv'), 'utf8');
 const kitsCsv = readFileSync(path.join(repoRoot, 'docs', 'kits.csv'), 'utf8');
+const explainCsv = readFileSync(path.join(repoRoot, 'data', 'checks-reading', 'explanations.csv'), 'utf8');
 // The private registry's sessions cache, trimmed to the rollup the Docs tab
 // reads. Paths are repo-qualified there and hub-relative in the registry, which
 // is the join the readership column has to get right.
@@ -97,6 +98,7 @@ window.GH = class {
     if (p === 'docs/text-fields.csv') return { text: textFieldsCsv };
     if (p === 'docs/tests.csv') return { text: testsCsv };
     if (p === 'docs/kits.csv') return { text: kitsCsv };
+    if (p === 'data/checks-reading/explanations.csv') return { text: explainCsv };
     if (p === 'state/sessions.json') return { text: JSON.stringify(sessions) };
     return { text: toCsv(manifest.items) };
   }
@@ -517,6 +519,52 @@ test('a deep-linked tab opens on that tab and fetches its manifest', async () =>
   const d3 = Alpine.$data(el3);
   assert.equal(d3.mapTab, 'tests');
   assert.ok(d3.testsReg, 'the deep-linked tab loaded without a tap');
+  // The comparison-grain reading rides the same load, non-fatally, and joins
+  // on the test file named first in each row's `check`.
+  assert.ok(d3.testExplain, 'the explanations carrier loaded beside the registry');
+  assert.ok(d3.explainOf({ path: 'tools/test/tests-registry.test.mjs' }).length >= 2,
+    'the registry test carries its two comparisons (membership, drift)');
+  assert.equal(d3.explainOf({ path: 'tools/test/no-such.test.mjs' }).length, 0);
+  // Attachment is asserted, not counted: every row's script must be a registry
+  // path. The first cut counted rows and called them attached, and a trailing
+  // comma in one row's join column made the count true and the claim false.
+  const tot = d3.testExplainTotals;
+  const rowsInCarrier = window.Csv.rows(explainCsv).filter(r => r.script && r.kind).length;
+  assert.equal(tot.rows, rowsInCarrier, 'every carrier row is folded');
+  assert.equal(tot.attached, tot.rows, 'every row names a registry file: ' +
+    [...d3.testExplain.keys()].filter(k => !d3.testsReg.tests.some(t => t.path === k)).join(', '));
+  assert.equal(tot.files + tot.unexplained, d3.testsReg.tests.length, 'explained plus unexplained is the registry');
+  // Grouping keeps every comparison: the sum over kinds is the row count.
+  const grouped = d3.groupsOf(d3.explainOf({ path: 'tools/test/derived-artifacts.test.mjs' }));
+  assert.equal(grouped.reduce((n, g) => n + g.rows.length, 0),
+    d3.explainOf({ path: 'tools/test/derived-artifacts.test.mjs' }).length);
+  // The estate sources: the crawl's declared key, then the address override,
+  // which replaces a crawl entry for the same repo rather than duplicating it.
+  const cache = { repos: {
+    'mehrlander/web-tools': { config: { checking: { files: 'x', comparisons: 'y' } } },
+    'mehrlander/home': { config: { checking: { files: 'r.csv', comparisons: 'e.csv' } } },
+    'mehrlander/other': { config: {} },
+  } };
+  const srcs = d3.checkingSources(cache, 'mehrlander/home@abc123:r2.csv,e2.csv;mehrlander/third:f.csv,c.csv');
+  // Compared as JSON: the arrays are built in the jsdom realm, whose Array
+  // prototype is not node's, and strict deep-equality checks prototypes.
+  assert.equal(JSON.stringify(srcs.map(x => [x.repo, x.ref, x.files, x.comparisons, x.from])), JSON.stringify([
+    ['mehrlander/home', 'abc123', 'r2.csv', 'e2.csv', 'query'],
+    ['mehrlander/third', 'main', 'f.csv', 'c.csv', 'query'],
+  ]), 'the hub is excluded, an undeclared repo contributes nothing, the override wins');
+  assert.equal(JSON.stringify(d3.checkingSources(cache, '').map(x => x.repo)), JSON.stringify(['mehrlander/home']));
+  // The drift signal: a script whose blob hash moved since its rows were
+  // written is named; an unchanged one and an unstamped one are not, and a
+  // script the tree no longer carries is not called changed either.
+  const byPath = new Map([
+    ['a.mjs', [{ script_sha: 'aaa' }]], ['b.mjs', [{ script_sha: 'bbb' }]],
+    ['c.mjs', [{ script_sha: '' }]], ['gone.mjs', [{ script_sha: 'ggg' }]],
+  ]);
+  const now = new Map([['a.mjs', 'aaa'], ['b.mjs', 'b2b'], ['c.mjs', 'ccc']]);
+  assert.equal(JSON.stringify([...d3.changedSet(byPath, now)]), JSON.stringify(['b.mjs']));
+  // Every committed row carries the hash it was read at.
+  const stamped = window.Csv.rows(explainCsv).filter(r => r.script && /^[0-9a-f]{40}$/.test(r.script_sha)).length;
+  assert.equal(stamped, rowsInCarrier, 'every row is stamped with its script blob hash');
   window.__shell = undefined;
 });
 
