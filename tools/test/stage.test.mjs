@@ -3058,6 +3058,10 @@ test('the stage paints through the kit and its pad turns into casing keys', asyn
   assert.equal(data.dictText, 'the QUICK brown fox.');
   data.dictDrop();
   assert.equal(data.dictSel, false);
+  // The plain marks: the buffer ends with a full stop and nothing follows it,
+  // so there is no break to close and the stitch has nothing to offer. Taking a
+  // trailing mark off is the backspace's job, which is exactly why the stitch
+  // stopped answering for one (kits/dictate.js, stitchAim).
   assert.deepEqual(plain_(data.dictMarks), ['.', ',', '?'], 'and the marks came back');
   data.dictCancel();
 });

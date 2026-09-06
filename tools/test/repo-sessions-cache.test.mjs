@@ -78,6 +78,19 @@ test('summarize keeps the scan fields and drops the bulk', () => {
   assert.ok(!('calls' in record() && row.callBodies), 'no call bodies in a row');
 });
 
+test('summarize carries `attached`, and an older record gets [] not a guess', () => {
+  // Record schema 8. It is the container's repo list, so it is wider than
+  // `repos` (which is where the shell stood) and the two disagree by design.
+  const row = S.summarize(record({ attached: ['home', 'web-tools'] }), 'x');
+  assert.deepEqual(row.attached, ['home', 'web-tools']);
+
+  // Every record written before schema 8 stays empty permanently, since records
+  // are never revisited. Empty must read as "cannot say", so nothing here may
+  // fill it in from `repos`: a consumer that did would claim a scope the
+  // session never reported.
+  assert.deepEqual(S.summarize(record(), 'x').attached, []);
+});
+
 test('summarize ranks tools and files busiest-first, ties by name', () => {
   const row = S.summarize(record(), 'x');
   assert.deepEqual(row.tools[0], ['Bash', 132]);

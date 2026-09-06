@@ -554,27 +554,149 @@ test('the whole gap is one target, since a thumb cannot aim at one offset', () =
     'whatever the gap held, the join is one space');
 });
 
-test('the stitch declines where there is no seam to close', () => {
-  const away = withText('so I went to the store. And then I came back');
-  away.caretAt(10);
-  assert.equal(away.canStitch, false, 'a caret four words off reaches nothing');
-  assert.equal(away.stitch(), false);
-  assert.equal(away.text, 'so I went to the store. And then I came back');
-
-  const end = withText('this sentence ends here.');
-  end.caretAt(24);
-  assert.equal(end.canStitch, false, 'a mark at the end of the buffer joins to nothing');
-
-  const resting = withText('this sentence ends here.');
-  assert.equal(resting.canStitch, false, 'and neither does the resting null range');
-
+test('the stitch declines where there is no sentence break anywhere', () => {
+  // Narrowed on 2026-09-06 to what STILL declines. A caret away from the seam
+  // and a buffer ending in a pause period both used to be refusals; both are
+  // now readings of their own, covered in "reaching back" below.
   const tight = withText('nasa.gov is a site');
   tight.caretAt(5);
   assert.equal(tight.canStitch, false, 'no gap means the join is already tight');
+  assert.equal(tight.stitch(), false);
 
   const bare = withText('. A stray mark');
   bare.caretAt(1);
   assert.equal(bare.canStitch, false, 'a mark with no sentence in front of it is not an ending');
+  assert.equal(bare.stitch(), false);
+
+  const none = withText('nothing to undo here');
+  assert.equal(none.canStitch, false);
+  assert.equal(none.stitch(), false);
+});
+
+// ── Walking back through the breaks ─────────────────────────────────────────
+// The stitch reached backwards by itself for a few hours on 2026-09-06 and no
+// ordering of its targets could be right: during dictation the buffer almost
+// always ends in a full stop the pause just wrote, so "the most recent break"
+// is that one, and whether the reader wants it gone or wants to keep it and
+// repair an earlier one is a fact about what they are about to say, not one the
+// buffer holds. So the reach became its own key, which changes nothing and
+// shows the target.
+
+test('with no caret placed the stitch takes the newest break', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  assert.equal(d.range, null, 'the resting state, which is where dictation leaves it');
+  assert.equal(d.stitchAim, 'back');
+  assert.equal(d.stitch(), true);
+  assert.equal(d.text, 'one thing. Two things three things happened');
+  assert.equal(d.range, null, 'and the caret is not moved, since none was placed');
+});
+
+test('a trailing full stop is not a break, because the backspace already takes it', () => {
+  // The stitch answered for one for a single commit, and that reading is what
+  // made its target ambiguous: during dictation the buffer almost always ends
+  // in the mark the pause just wrote, so the trailing case shadowed every older
+  // one. A break needs words after it.
+  const one = withText('so I went to the store.');
+  assert.equal(one.stitchAim, '', 'nothing follows the mark, so nothing to join');
+  assert.equal(one.stitch(), false);
+
+  // And the backspace does the job, continuation included, which is what makes
+  // dropping the reading free rather than a loss.
+  const d = engine();
+  d.start();
+  FakeSR.last.say([{ t: 'so I went to the store', final: true }]);
+  assert.equal(d.text, 'so I went to the store.');
+  d.backWord();
+  assert.equal(d.text, 'so I went to the store');
+  FakeSR.last.say([{ t: 'And then I came back', final: true }]);
+  assert.equal(d.text, 'so I went to the store and then I came back.',
+    'the capital comes down, so the sentence really did run on');
+  d.stop();
+});
+
+test('jumping back walks to the previous break, and again walks past it', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  assert.equal(d.canJumpBack, true);
+  assert.equal(d.jumpBack(), true);
+  assert.deepEqual(d.range, { start: 23, end: 23 }, 'on the front of "Three"');
+  assert.equal(d.stitchAim, 'caret', 'and the stitch is now aimed');
+
+  d.jumpBack();
+  assert.deepEqual(d.range, { start: 11, end: 11 }, 'on the front of "Two"');
+  assert.equal(d.canJumpBack, false, 'and there is nothing older to reach');
+});
+
+test('the walk changes nothing until the stitch is tapped', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  // The setter itself records one step, so the claim is that the two jumps add
+  // none: one undo has to reach past them to the buffer being set.
+  d.jumpBack(); d.jumpBack();
+  assert.equal(d.text, 'one thing. Two things. Three things happened');
+  d.undo();
+  assert.equal(d.text, '', 'one undo reaches the empty buffer, so no jump left a step of its own');
+  assert.equal(d.canUndo, false);
+});
+
+test('a jumped caret is handed back to the end, so dictation keeps appending', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  d.jumpBack();
+  d.stitch();
+  assert.equal(d.text, 'one thing. Two things three things happened');
+  assert.equal(d.range, null,
+    'the caret was on loan for the repair; leaving it mid-buffer would land the next sentence inside this one');
+
+  d.start();
+  FakeSR.last.say([{ t: 'and more', final: true }]);
+  assert.match(d.text, /three things happened and more\.$/, 'the words land at the end');
+  d.stop();
+});
+
+test('a caret the reader placed is theirs, and stays on the join', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  d.caretAt(23);                          // the same seam, placed by hand
+  d.stitch();
+  assert.equal(d.text, 'one thing. Two things three things happened');
+  assert.deepEqual(d.range, { start: 22, end: 22 }, 'the caret stays where the work is');
+});
+
+test('placing a caret elsewhere ends the loan', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  d.jumpBack();                           // borrowed
+  d.caretAt(11);                          // and handed back by the reader's own move
+  d.stitch();
+  assert.equal(d.text, 'one thing two things. Three things happened');
+  assert.deepEqual(d.range, { start: 10, end: 10 }, 'so this caret stays put');
+});
+
+test('the trailing full stop survives, because the stitch never wanted it', () => {
+  // The case that sent the first reach back to the drawing board: with a full
+  // stop ending the buffer, one tap used to take THAT back, which is wrong
+  // whenever the reader meant to keep it and repair the break before it.
+  const d = withText('one thing. Two things.');
+  assert.equal(d.stitchAim, 'back');
+  d.stitch();
+  assert.equal(d.text, 'one thing two things.', 'the older break went, the trailing mark stayed');
+
+  // And the walk reaches the same one, for a reader who wants to see it first.
+  const e = withText('one thing. Two things.');
+  e.jumpBack();
+  assert.equal(e.stitchAim, 'caret');
+  e.stitch();
+  assert.equal(e.text, 'one thing two things.');
+});
+
+test('jumping declines with nothing behind, and with a selection live', () => {
+  assert.equal(withText('no breaks at all').canJumpBack, false);
+  assert.equal(withText('no breaks at all').jumpBack(), false);
+
+  const one = withText('one thing. Two things');
+  one.jumpBack();
+  assert.equal(one.canJumpBack, false, 'the only break is the one we are on');
+
+  const sel = withText('one thing. Two things');
+  sel.select(0, 3);
+  assert.equal(sel.canJumpBack, false, 'a selection means the reader is aiming at a word');
+  assert.equal(sel.jumpBack(), false);
 });
 
 test('a live selection is not a stitch: the pad is showing casing keys then', () => {
@@ -633,8 +755,12 @@ test('un-ending takes back the pause\'s full stop and the sentence runs on', () 
   d.start();
   FakeSR.last.say([{ t: 'so I went to the store', final: true }]);
   assert.equal(d.text, 'so I went to the store.');
-  assert.equal(d.canStitch, false, 'nothing follows the mark, so there is no seam');
   assert.equal(d.canUnend, true);
+  // Still its own verb, and still what the desk's Control tap calls. The pad
+  // reaches it through the backspace instead, which does the same thing on a
+  // buffer ending in a mark; the stitch deliberately does not, since answering
+  // for a trailing mark is what made its target ambiguous.
+  assert.equal(d.canStitch, false, 'nothing follows the mark, so there is no break');
   assert.equal(d.unend(), true);
   assert.equal(d.text, 'so I went to the store');
 
@@ -1495,4 +1621,90 @@ test('starting twice is one engine, and toggle reads the intent', async () => {
   d.toggle();
   assert.equal(d.listening, true);
   d.stop();
+});
+
+test('un-ending does not reach back across a paragraph break', () => {
+  // `endSentence` refuses to write a full stop after a paragraph mark, so a
+  // buffer ending "line.\n\n" holds a pause period the reader then deliberately
+  // broke after. Taking the mark back would take their paragraph with it.
+  //
+  // Latent while `unend` was bound to a tapped Control key and nothing else;
+  // the pads reached the stitch instead. Offering it on the pad made the case
+  // ordinary, and the stage's own pad test is what caught it.
+  const d = withText('a line.\n\n');
+  assert.equal(d.canUnend, false);
+  assert.equal(d.canStitch, false, 'and the pad does not offer it either');
+  assert.equal(d.unend(), false);
+  assert.equal(d.text, 'a line.\n\n');
+
+  const spaces = withText('a line.   ');
+  assert.equal(spaces.canUnend, true, 'trailing spaces are not a break');
+  spaces.unend();
+  assert.equal(spaces.text, 'a line');
+});
+
+// ── The pending stitch, painted ─────────────────────────────────────────────
+// A confirm step is only worth a tap if the marker says what the next tap will
+// do. So it is painted as the EDIT, not as a highlight: the full stop struck
+// through and the capital behind it shown in the case it would take.
+
+test('stitchSeam answers with the same seam stitch would take', () => {
+  const d = withText('one thing. Two things. Three things happened');
+  assert.deepEqual(d.stitchSeam, { start: 21, end: 23 }, 'the newest, with no caret placed');
+  d.jumpBack(); d.jumpBack();
+  assert.deepEqual(d.stitchSeam, { start: 9, end: 11 }, 'and the caret leads it back');
+
+  // The pair has to agree, since one paints the marker and the other acts.
+  const e = withText('one thing. Two things. Three things happened');
+  const seam = e.stitchSeam;
+  e.stitch();
+  assert.equal(e.text, 'one thing. Two things three things happened');
+  assert.equal(seam.start, 21, 'the marker named the seam that went');
+});
+
+test('stitchSeam is null with nothing to close, and with a selection live', () => {
+  assert.equal(withText('no breaks here').stitchSeam, null);
+  assert.equal(withText('a trailing mark.').stitchSeam, null);
+  const sel = withText('one. Two things');
+  sel.select(0, 3);
+  assert.equal(sel.stitchSeam, null);
+});
+
+test('the marker paints the edit: the mark struck, the capital lowered', () => {
+  const { window: w } = makeWindow({ html: '<!doctype html><html><body><div id="h"></div></body></html>' });
+  const host = w.document.getElementById('h');
+  const text = 'one thing. Two things';
+  D.paint(host, { text, mend: { start: 9, end: 11 } });
+
+  const parts = [...host.childNodes].map((n) => [n.getAttribute('data-d'), n.textContent]);
+  assert.deepEqual(parts, [
+    ['text', 'one thing'],
+    ['mend-cut', '. '],
+    ['mend-case', 't'],
+    ['text', 'wo things'],
+  ], 'the capital is shown in the case the join would give it');
+  assert.match(host.querySelector('[data-d="mend-cut"]').getAttribute('style'), /line-through/);
+
+  // AND THE OFFSETS SURVIVE, which is what lets the marker ride the same host
+  // the hit test walks: every text node keeps its length.
+  assert.equal(host.textContent.length, text.length);
+  assert.equal(host.textContent, 'one thing. two things', 'one character swapped, none added or lost');
+});
+
+test('a capital the join would leave alone is painted standing', () => {
+  const { window: w } = makeWindow({ html: '<!doctype html><html><body><div id="h"></div></body></html>' });
+  const host = w.document.getElementById('h');
+  // "I" is not a capital followed by a lower-case letter, so stitch leaves it.
+  D.paint(host, { text: 'one thing. I went', mend: { start: 9, end: 11 } });
+  assert.equal(host.querySelector('[data-d="mend-case"]').textContent, 'I',
+    'promising a change the stitch will not make would be the marker lying');
+});
+
+test('the marker takes the screen from the caret while it is up', () => {
+  const { window: w } = makeWindow({ html: '<!doctype html><html><body><div id="h"></div></body></html>' });
+  const host = w.document.getElementById('h');
+  D.paint(host, { text: 'one thing. Two things', range: { start: 11, end: 11 },
+                  mend: { start: 9, end: 11 } });
+  assert.equal(host.querySelector('[data-d="caret"]'), null,
+    'a caret inside the marker is a second thing to look at in a one-question moment');
 });

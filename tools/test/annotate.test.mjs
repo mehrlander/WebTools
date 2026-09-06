@@ -2159,3 +2159,54 @@ test('the staged-passage guard never compares against the raw selection string',
   assert.match(guard[0], /target\.quote\.exact/,
     'compare through targetForRange on both sides');
 });
+
+// ── Out of the card: the handoff to pages/dictate.html ─────────────────────
+// The card is where a note is spoken and the dictation page is where it is
+// read back and aimed. What crosses is assembled TEXT, not a note, because the
+// far end is a text buffer and teaching it this kit's target model would be a
+// second implementation of something owned here. So the assembly is what is
+// worth pinning: the address has to LEAD, since a prompt aimed at a coding
+// session is read from the top and where-to-look is the half nobody would type.
+
+test('the handoff leads with where, then the words', () => {
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  S.dict = { text: 'this heading is doing two jobs', stop() {} };
+  S.editing = false;
+  // Aim at a real element, the way an Element note does.
+  S.aimEl = doc.getElementById('li1');
+  S.aimKind = 'el';
+
+  const out = A.handoffText();
+  const lines = out.split('\n');
+  assert.match(lines[0], /^On https?:\/\//, 'the page comes first');
+  assert.match(out, /#li1|li:nth|li\b/, 'the aim resolves to something addressable');
+  assert.ok(out.trimEnd().endsWith('this heading is doing two jobs'),
+    'the words are last, so a reader edits the top and speaks at the bottom');
+  A.disable();
+});
+
+test('with nothing aimed the handoff is still the words plus the page', () => {
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  S.dict = { text: 'just a thought', stop() {} };
+  S.editing = false;
+  S.aimEl = null; S.aimRect = null; S.holdEl = null; S.holdRect = null;
+
+  const out = A.handoffText();
+  assert.match(out, /just a thought/);
+  assert.equal(out.includes('undefined'), false, 'an unresolved aim costs the line, not the handoff');
+  A.disable();
+});
+
+test('an empty draft assembles to nothing worth carrying', () => {
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const S = A._state;
+  S.dict = { text: '   ', stop() {} };
+  S.editing = false;
+  S.aimEl = null; S.aimRect = null; S.holdEl = null; S.holdRect = null;
+  // The header may still render, but goDictate checks the whole string for
+  // words and refuses on the button rather than navigating to a blank page.
+  assert.equal(A.handoffText().replace(/^On .*$/m, '').trim(), '');
+  A.disable();
+});
