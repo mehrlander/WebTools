@@ -14,7 +14,7 @@
   <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
     <h1 class="text-2xl font-semibold">note</h1>
     <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">data-note="…"</code>
-    <span class="text-[13px] text-base-content/50">hover · tap · Tab</span>
+    <span class="text-[13px] text-base-content/50">hover · tap · Tab · tap the note to close it</span>
     <span class="ml-auto flex gap-2">
       <button class="btn btn-sm" onclick="Note.open('#ext')">Open one</button>
       <button class="btn btn-sm btn-ghost" onclick="Note.close()">Close</button>
@@ -64,6 +64,23 @@
     </table>
   </section>
 
+  <section class="space-y-2" data-note-look="plain">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">The plain look, set once on the section</h2>
+    <table class="text-[13px] border border-base-300">
+      <thead class="bg-base-200">
+        <tr>
+          <th class="text-left font-medium px-3 py-1.5 border-b border-base-300">Fund</th>
+          <th class="text-right font-medium px-3 py-1.5 border-b border-base-300" data-note="Full-time equivalents">FTE</th>
+          <th class="text-right font-medium px-3 py-1.5 border-b border-base-300" data-note="Thousands of dollars">$K</th>
+          <th class="text-left font-medium px-3 py-1.5 border-b border-base-300 max-w-24 truncate" data-note="Non-appropriated lane of fund 600">Non-approp…</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="px-3 py-1.5">600</td><td class="px-3 py-1.5 font-mono text-right">312.4</td><td class="px-3 py-1.5 font-mono text-right">92,118</td><td class="px-3 py-1.5">yes</td></tr>
+      </tbody>
+    </table>
+  </section>
+
   <section class="space-y-2">
     <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Capturing one</h2>
     <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>// open-note.mjs
@@ -81,11 +98,11 @@ npm run shot -- lib/kits/demos/note.html --script open-note.mjs</code></pre>
       <tbody>
         <tr class="border-b border-base-300">
           <td class="px-3 py-2 font-medium align-top w-40">note</td>
-          <td class="px-3 py-2"><code class="font-mono text-[0.9em]">pointer-events:none</code>, so nothing in it can be tapped. A string the reader looks at.</td>
+          <td class="px-3 py-2">Text that fits: nothing tappable, no scrollbar. On touch, tapping the note closes it. Six lines at most; past that the console says so.</td>
         </tr>
         <tr>
-          <td class="px-3 py-2 font-medium align-top">panel</td>
-          <td class="px-3 py-2">Anything the reader taps inside: a link, a copy button, a table. Build it per <code class="font-mono text-[0.9em]">daisy-alpine/references/mechanics.md</code>.</td>
+          <td class="px-3 py-2 font-medium align-top">card</td>
+          <td class="px-3 py-2">Anything the reader taps inside, or scrolls: a link, a copy button, a table. Carries its ✕ on touch. The rule, once: <code class="font-mono text-[0.9em]">daisy-alpine/references/mechanics.md</code>, "Notes and cards".</td>
         </tr>
       </tbody>
     </table>

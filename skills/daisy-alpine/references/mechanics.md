@@ -68,37 +68,69 @@ or `marked` turns opening metadata into the first paragraph. Existing `prose
 prose-sm` surfaces may stay; prefer the guide renderer for new work, and do not
 convert working pages for symmetry.
 
-## A compliant tooltip
+## Notes and cards
 
-The house style forbids `cursor-help`, daisyUI's `tooltip`, and `data-tip`, and
-requires that a custom one work on every screen size. Enable hover only when
+**This section is the one statement of the house popup rule.** Rule 11 of the
+style guide points here; the note kit's header, the budget-drs app's README and
+any page comment point here rather than restating it. Edit this section, not a
+copy.
+
+A popup is a **note** or a **card**, and one question decides which: **can the
+reader tap anything inside it?** A link, a ↗ reference, a copy button, a table,
+or a scrollbar, since a box that scrolls has to take the pointer. If yes, it is
+a card. If no, it is a note. Size and importance do not enter into it. A
+`title` attribute is neither: it is the label of an icon-only control, carries
+no fact, and never reaches a phone or a screenshot. daisyUI's `tooltip`,
+`data-tip` and `cursor-help` are not used at all; this overrides
+`references/daisyui.md`.
+
+| | Note | Card | Card, pinned |
+| --- | --- | --- | --- |
+| Holds | text that fits, nothing tappable | anything; may scroll | the same |
+| Opens | hover, focus, tap | hover with grace, focus, tap | a deliberate click; on touch, every tap |
+| Closes | leave, its own tap, tap anywhere, Escape | leave both, ✕, tap outside, Escape | ✕, Escape, an action inside |
+| Own close target | its body: on touch, tapping the note closes it and swallows the tap | ✕, shown where the reader cannot hover | ✕, always |
+| Looks | `plain` (the browser's tooltip redrawn) or the styled default | one shell | the same shell, marked pinned |
+| Standard term | ARIA `role="tooltip"` | popover with light dismiss | popover with manual dismiss |
+
+**Every popup carries its own close target.** Tap-outside stays as a courtesy
+and lets the tap through to what was tapped, so on a dense page it is never
+the route out: for a note the route is the note itself, for a card it is the
+✕. A pinned card is a state of a card, not a third component: click pins on a
+desktop, and on touch a card opens pinned, since a phone has no "leave". That
+one sentence is where the ✕ rule comes from.
+
+**Timing and dismissal, for a card built by hand.** Enable hover only when
 `(hover: hover) and (pointer: fine)` match: open after about 140 ms and close
-about 220 ms after leaving both the control and the tooltip. Tapping the control
-must toggle it using its actual visibility, not a separate state flag, so the two
+about 220 ms after leaving both the control and the card. Tapping the control
+toggles it using its actual visibility, not a separate state flag, so the two
 cannot fall out of step. Dismiss on Escape or a capture-phase `pointerdown`
-outside the control and tooltip; `@click.outside` alone is not enough, because a
-handler that stops propagation strands the panel open. A `pointer-events-none`
-panel cannot be entered, which collapses "leaving both" to leaving the control.
+outside the control and the card; `@click.outside` alone is not enough, because
+a handler that stops propagation strands the card open. Where the reader cannot
+hover, render the ✕ (a class hidden under `@media (hover: hover)` is the
+idiom) and let the card's own taps through to its contents.
 
-**Do not write that twice.** Rule 11's middle tier is
+**The note is built once, in
 [`kits/note.js`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/note.js),
-which implements every line above for the non-interactive case: `data-note="…"`
-where a `title` would have gone, one shared panel, delegated listeners so markup
-written later by `innerHTML` needs no re-init. Load the kit and write the
-attribute. Reach for a hand-built panel only where the content must be tapped,
-which is the same boundary rule 11 states.
+and not again.** `data-note="…"` where a `title` would have gone, one shared
+panel, delegated listeners so markup written later by `innerHTML` needs no
+re-init. Load the kit and write the attribute. Beside it: `data-note-title`
+for a bold lead line, `data-note-bare` to drop the dotted underline where there
+is no room for one, and `data-note-look`, resolved with `closest()` so a page
+sets its default once on `<body>`. The kit ships two looks: the styled default,
+and `plain`, the browser's own tooltip redrawn (square, no shadow, one size
+smaller) for a note of a few words, a header unwrapped, a unit spelled out,
+where the styled box reads as more than the text deserves. Any other token is
+the page's to style through `#wt-note[data-look="<token>"]`; the sheet render
+asks for `excel` and draws Excel's comment box on a page already drawing Excel.
 
-**A page reproducing a document styles its own notes, and does not fork the
-kit.** `data-note-look="<token>"` stamps the token on the shared panel as
-`data-look`, and the page answers `#wt-note[data-look="<token>"]` with an
-unscoped rule. The kit ships one look and no variants, because it serves every
-page and only the page knows what it is imitating; the sheet render in
-`alpineComponents/viewer.js` asks for `excel` and draws Excel's comment box,
-square corners and info-tip yellow, on a page already drawing Excel. Since the
-kit clears the token on the next note, the unscoped rule reaches nothing else.
+**A note fits.** The kit caps the panel at six lines and never scrolls it;
+content past that is a card written as a note, and the kit clips it and says so
+once in the console, naming the element. `Note.fits(el)` answers the same
+question for a test. The threshold is a number chosen from the app's real notes
+and can move; the rule that a note never scrolls cannot.
 
-Three behaviours the kit had to add that the paragraph above does not cover,
-each found by measurement:
+Three behaviours the kit had to add, each found by measurement:
 
 - **`focusin` alone leaves the panel open when focus goes nowhere.** A bare
   `blur()`, or a click on dead space, fires `focusout` with no `focusin` behind
@@ -115,6 +147,9 @@ each found by measurement:
 Demo, including the headless recipe that proves a note survives a screenshot
 where a `title` cannot:
 [`lib/kits/demos/note.html`](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/note.html).
+The card is not yet a kit: the budget-drs app's shared caption card
+(`window.__tip` in `app/view/app.html`) is the reference implementation, and
+its rich views (lineage, stream, schema, composition) carry the pinned state.
 
 ## References
 

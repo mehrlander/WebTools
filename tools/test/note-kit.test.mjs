@@ -1,13 +1,12 @@
-// kits/note.js — the middle tooltip tier, held at the two edges that decide
-// whether a fact reaches the reader at all.
+// kits/note.js — the note of the house popup rule (daisy-alpine mechanics.md,
+// "Notes and cards"), held at the edges that decide whether a fact reaches
+// the reader at all.
 //
-// The kit exists because the house style has three tiers and only two of them
-// used to be built: `title` for a label carrying no fact, a built panel for
-// anything the reader taps inside, and nothing in between for the common case,
-// a sentence a reader looks at. What is checked here is the pair of properties
-// that make it the middle tier rather than a restyled `title`: the text is in
-// the DOM (so a screenshot captures it), and the panel cannot be entered (so it
-// stays a note and does not quietly become a panel).
+// What is checked here is the pair of properties that make it a note rather
+// than a restyled `title`: the text is in the DOM (so a screenshot captures
+// it), and the panel holds nothing tappable and never scrolls (so it stays a
+// note and does not quietly become a card). Plus the two touch consequences
+// the rule draws from that: the note closes on its own tap, and it fits.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -59,10 +58,38 @@ test('a blank line in a note survives to the reader', () => {
   Note.close();
 });
 
-test('the panel cannot be entered, which is the line between a note and a panel', () => {
-  // The moment its content needs a tap, a link or a copy button, it is a panel
-  // and the full rule in daisy-alpine/references/mechanics.md applies instead.
+test('the panel holds nothing tappable and never scrolls, which is the line between a note and a card', () => {
+  // The moment its content needs a tap, a link or a copy button, or a
+  // scrollbar, it is a card and the card half of the rule applies instead.
   assert.match(Note.CSS, /#wt-note\{[^}]*pointer-events:none/s);
+  assert.match(Note.CSS, /#wt-note\{[^}]*overflow:hidden/s);
+  assert.match(Note.CSS, new RegExp(`max-height:calc\\(${Note.LINES} \\* 1\\.45em`));
+});
+
+test('on a screen with no hover the open note takes its own tap and closes on it', () => {
+  // The route out never depends on finding a tap-safe spot around the note:
+  // the panel is the neutral ground. Under hover:none only, so where the
+  // pointer can hover the box never sits between the pointer and the control.
+  assert.match(Note.CSS, /@media \(hover:none\)\{#wt-note\[data-open\]\{pointer-events:auto\}\}/);
+  Note.open('#a');
+  const panel = window.document.getElementById('wt-note');
+  let reached = false;
+  window.document.body.addEventListener('pointerdown', () => { reached = true; });
+  const ev = new window.Event('pointerdown', { bubbles: true, cancelable: true });
+  panel.dispatchEvent(ev);
+  assert.equal(panel.hasAttribute('data-open'), false, 'the tap on the note closed it');
+  assert.equal(ev.defaultPrevented, true, 'and was swallowed');
+  assert.equal(reached, false, 'nothing under the note saw it');
+});
+
+test('a note that fits says so; the overflow report is a browser measurement', () => {
+  // jsdom lays nothing out, so every note fits here; what is held is the
+  // contract, that fits() reads the open panel and answers for the element
+  // asked about.
+  Note.open('#a');
+  assert.equal(Note.fits($('#a')), true);
+  assert.equal(Note.fits($('#b')), true, 'a note that is not open cannot be overflowing');
+  Note.close();
 });
 
 test('an element with nothing to underline opts out of the affordance', () => {
@@ -109,8 +136,26 @@ test('a look token is stamped on the panel and cleared by the next note', () => 
   Note.close();
 });
 
-test('the kit ships no look of its own beyond the default', () => {
-  // A page reproducing something owns what that looks like; the kit owns the
-  // hook. Excel's box lives in the sheet render, next to the code asking.
-  assert.doesNotMatch(Note.CSS, /data-look/);
+test('the kit ships exactly one look beyond the default, plain, and no imitation of anything', () => {
+  // `plain` is the browser's own tooltip redrawn, a house need rather than a
+  // page's. A page reproducing something else (Excel's box, in the sheet
+  // render) owns that look, next to the code asking; the kit owns the hook.
+  const looks = [...Note.CSS.matchAll(/data-look="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(looks, ['plain']);
+});
+
+test('a look set on an ancestor is the default for the notes under it', () => {
+  // `<body data-note-look="plain">` makes every note on a table page plain in
+  // one word; a note that names its own look still wins, since closest()
+  // finds the element itself first.
+  const panel = window.document.getElementById('wt-note');
+  window.document.body.setAttribute('data-note-look', 'plain');
+  Note.open('#a');
+  assert.equal(panel.getAttribute('data-look'), 'plain');
+  Note.open('#c');
+  assert.equal(panel.getAttribute('data-look'), 'excel', 'the note\'s own token outranks the page default');
+  window.document.body.removeAttribute('data-note-look');
+  Note.open('#a');
+  assert.equal(panel.hasAttribute('data-look'), false);
+  Note.close();
 });
