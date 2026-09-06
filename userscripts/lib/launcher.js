@@ -46,7 +46,7 @@
 // knowing which copy ran. The stamp buys that back, and the drawer shows it.
 const BUILD = '107ebdd';
 const BUILT = '2026-09-06T14:31:53Z';
-const REF = 'claude/bookmarklets-shortcuts-iphone-safari-rjakex';
+const REF = 'main';
 
 // Where the current build id is published. The launcher compares its own stamp
 // against this and says so when they differ, which is the only way a reader

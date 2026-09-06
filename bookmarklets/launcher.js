@@ -1,1 +1,1 @@
-javascript:(s=>{s.src='https://cdn.jsdelivr.net/gh/mehrlander/web-tools@claude/bookmarklets-shortcuts-iphone-safari-rjakex/userscripts/lib/launcher.js';s.onload=()=>wtLauncher();document.body.appendChild(s)})(document.createElement('script'))
+javascript:(s=>{s.src='https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/userscripts/lib/launcher.js';s.onload=()=>wtLauncher();document.body.appendChild(s)})(document.createElement('script'))

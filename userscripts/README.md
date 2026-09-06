@@ -18,11 +18,15 @@ changes and the phone never sees it again after the first install. Editing is:
 
 ```bash
 vim userscripts/lib/launcher.js
-python3 scripts/userscript-stub.py launcher --name 'wt launcher' \
+python3 scripts/userscript-stub.py launcher --ref main --name 'wt launcher' \
     --description '...' --match '*://*/*'      # re-stamps the body
 git commit && git push
-# then tap the purge URL the generator printed
 ```
+
+**Pin `main`, not a working branch.** A branch pin is right while a script is
+being built and wrong the moment its branch merges: deleting the branch 404s the
+`@require`, and the installed script stops running with nothing on screen to say
+why. Re-pin to main before merging, which costs one last install.
 
 No purge, because the `@require` reads **raw.githubusercontent**, whose cache is
 five minutes. jsDelivr was the first answer and was the wrong one for a file
