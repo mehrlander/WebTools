@@ -119,12 +119,22 @@ test('the page reads guide, then files, then the documents', () => {
 // height as a presented file. Leading with it only helps if leading with it is
 // cheap: a two-thousand-word body at the top of the page is the failure the
 // files had when they led.
-test('the guide is clipped to the same head as a presented file', () => {
+test('the guide is clipped shorter than a presented file, by the same mechanism', () => {
   const guide = window.document.querySelector('[x-ref="guide"]');
   const clip = guide.querySelector('[x-init]');
   assert.match(clip.getAttribute('x-init'), /watchClip\(\$el, 'guide'\)/);
   assert.match(clip.className, /overflow-hidden/, 'clipped, not scrolled');
-  assert.match(clip.className, /max-h-\[22rem\]/);
+
+  // SHORTER THAN A PANEL, and the difference is deliberate. A panel in the
+  // strip IS the document, which is what the page exists to show; the guide is
+  // a preview of prose whose full text is one tap away. Read as rem off the
+  // classes so the two cannot silently converge.
+  const rem = (el) => Number((/max-h-\[(\d+)rem\]/.exec(el.className || '') || [])[1]);
+  const panel = [...window.document.querySelectorAll('[x-init*="watchClip"]')]
+    .find(e => !/'guide'/.test(e.getAttribute('x-init')));
+  assert.equal(rem(clip), 18);
+  assert.ok(panel && rem(panel) > rem(clip),
+    'a presented document gets more room than the guide preview');
 
   // The clip is keyed, which is what lets one mechanism serve both. It was
   // revOpen/watchRev while the panels were its only caller.
@@ -385,7 +395,7 @@ test('standalone: the document is left alone, and the lock is roomy-only', () =>
   const clip = guide.querySelector('[x-init]');
   assert.match(clip.getAttribute('x-init'), /watchClip\(\$el, 'guide'\)/,
     'the guide is measured by the shared clip');
-  assert.match(clip.className, /max-h-\[22rem\]/, 'and clipped to the same height as a panel');
+  assert.match(clip.className, /max-h-\[18rem\]/, 'and clipped');
 });
 
 // WHICH COPY OF THE PAGE IS RUNNING, stated on the page itself.
