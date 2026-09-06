@@ -163,7 +163,13 @@ of the truth, and the tempting next step is to delete the class. Caught
 2026-09-06 on a `-mt-2` that measured as a no-op twice.
 The corrected move is `npm run build:lib` in the same command as the edit,
 before any shot of a page that imports the pre-build; `grep -n "dist/" <page>`
-says which pages those are. *(seen: 2026-09-06)*
+says which pages those are. Sibling of
+`page-skips-the-loader-ignores-use`, and the boundary between them is who is
+looking: that one is a READER handed `?use=` by a page that skips the loader,
+this one is the SESSION shooting a page that imports the pre-build. Same
+sentence either way, "the lib you edited is not the lib on screen", with a
+different cause and a different fix. *(seen: 2026-09-06)*
+→ [tools/README.md](../tools/README.md#the-pre-build)
 
 ### toss-carries-no-page-address: a render link that resolved, rendered, and opened an empty form
 `npm run showing` builds a toss address and stops at the page path.

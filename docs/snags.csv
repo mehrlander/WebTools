@@ -14,7 +14,7 @@ cached-read-feeds-a-write,a fresh-looking read hands back the sha it just replac
 mcp-approval-is-often-routing,an approval prompt that is really a wall,2,2026-08-15,2026-07-15;2026-08-15,github/mcp-server-routing.md
 ci-watch-on-blocked-api,a curl watch loop on the GitHub API waits forever,2,2026-08-14,2026-08-10;2026-08-14,environment/capabilities.md
 x-data-scope-shadows-component-names,"a mount's config read a component, not the host's field",2,2026-08-14,2026-08-14;2026-08-14,show-repo.md;../skills/daisy-alpine/SKILL.md
-shot-of-a-prebuilt-page-ignores-lib,a break-check that proved nothing,1,2026-09-06,2026-09-06,
+shot-of-a-prebuilt-page-ignores-lib,a break-check that proved nothing,1,2026-09-06,2026-09-06,../tools/README.md#the-pre-build
 id-called-the-filename-stem,a session id read off the store's own directory listing found no record,1,2026-09-05,2026-09-05,../lib/alpineComponents/session-brief.js;../tools/test/session-brief.test.mjs
 toss-carries-no-page-address,"a render link that resolved, rendered, and opened an empty form",1,2026-09-05,2026-09-05,showing.md;../scripts/showing.py
 consumer-tag-outlives-the-merge,a lib file loaded by a plain `<script src>` at `@main` in another repo showed the old code a day after the merge,1,2026-09-04,2026-09-04,loader.md#consumers-in-other-repos
