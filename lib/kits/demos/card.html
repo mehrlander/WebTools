@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>card — the way out of a card</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script src="../card.js"></script>
+<style>
+  /* The caller owns the shell. The kit owns nothing here but the ✕ inside it. */
+  #demo-card{position:fixed;z-index:60;width:min(22rem,92vw);display:none}
+  #demo-card.show{display:block}
+  /* The shell's half of the contract: on a screen with no hover the open card
+     has to take the pointer, or its ✕ is drawn and the tap goes through it. */
+  @media (hover:none){#demo-card.show{pointer-events:auto}}
+</style>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-8">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">card</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">Card.wire(el, {onClose})</code>
+    <span class="text-[13px] text-base-content/50">hover · click to pin · ✕ · Escape · press outside</span>
+  </header>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A row of funds</h2>
+    <table class="text-[13px] border border-base-300">
+      <thead class="bg-base-200">
+        <tr>
+          <th class="text-left font-medium px-3 py-1.5 border-b border-base-300">Fund</th>
+          <th class="text-left font-medium px-3 py-1.5 border-b border-base-300">Lane</th>
+          <th class="text-right font-medium px-3 py-1.5 border-b border-base-300">FY25 ($K)</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Where the line is</h2>
+    <table class="text-[13.5px] border border-base-300">
+      <tbody>
+        <tr class="border-b border-base-300">
+          <td class="px-3 py-2 font-medium align-top w-40">note</td>
+          <td class="px-3 py-2">One line the page already implies, so nobody asks where it came from. Nothing tappable. <code class="font-mono text-[0.9em]">kits/note.js</code>.</td>
+        </tr>
+        <tr>
+          <td class="px-3 py-2 font-medium align-top">card</td>
+          <td class="px-3 py-2">Anything tapped inside or scrolled, and anything whose source a reader might ask for, which it names with a ↗.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<div id="demo-card" class="rounded-lg border border-base-300 bg-base-100 shadow-xl p-2.5 text-xs leading-relaxed"></div>
+
+<script>
+// The caller owns the content, the placement, and the open state. It calls the
+// kit for the ✕ and for every way out, which is the half that was written five
+// times across this estate before the kit existed.
+const FUNDS = [
+  { fund: '600-1', lane: 'appropriated', amt: '92,118',
+    note: 'The appropriated lane of fund 600. Reconciles to the enacted ledger to the dollar, which the non-appropriated lane on the same fund number never does.' },
+  { fund: '600-2', lane: 'non-appropriated', amt: '41,006',
+    note: 'Reported on the same fund number as the lane above and never nets into it. Plan 3 recordkeeping sits here.' },
+  { fund: '888-6', lane: 'gated', amt: '252',
+    note: 'Released by proviso rather than appropriated outright, so the balance moves only when the gate opens.' },
+];
+
+const el = document.getElementById('demo-card');
+let openKey = null, pinned = false, anchor = null;
+
+const paint = () => {
+  const row = FUNDS.find(f => f.fund === openKey);
+  if (!row) return;
+  // closeHTML decides for itself: the ✕ shows when pinned, and on any screen
+  // with no hover, since a touch opens this card through a hover it never leaves.
+  el.innerHTML = Card.closeHTML(pinned)
+    + `<div class="font-semibold pr-6">${row.fund} · ${row.lane}</div>`
+    + `<div class="text-base-content/70 mt-1">${row.note}</div>`
+    + `<div class="mt-1.5 pt-1.5 border-t border-base-300 text-base-content/55">`
+    + `Authored in <a class="link link-primary" href="#funds" onclick="return false">funds.csv</a>`
+    + ` <span class="text-primary/60">↗</span></div>`;
+};
+
+const place = () => {
+  const r = anchor.getBoundingClientRect();
+  const w = el.offsetWidth || 320;
+  el.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
+  el.style.top = (r.bottom + 6) + 'px';
+};
+
+const open = (key, at, pin) => {
+  openKey = key; anchor = at; pinned = !!pin;
+  el.classList.add('show');
+  paint(); place();
+};
+const close = () => { openKey = null; pinned = false; el.classList.remove('show'); };
+
+// Every way out, wired once: the ✕, Escape, and a press outside. `except` keeps
+// the row that opened the card from counting as "outside", or the press would
+// close the card and the row's own handler reopen it.
+Card.wire(el, { onClose: close, except: ['[data-fund]'] });
+
+// Opening stays the caller's, which is the split the kit makes: hover only
+// where the reader can hover, and a tap pins, since a phone has no leave.
+const fine = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
+let openT = 0;
+
+document.getElementById('rows').innerHTML = FUNDS.map(f => `
+  <tr data-fund="${f.fund}" class="cursor-pointer hover:bg-base-200/60">
+    <td class="px-3 py-1.5 font-mono">${f.fund}</td>
+    <td class="px-3 py-1.5">${f.lane}</td>
+    <td class="px-3 py-1.5 font-mono text-right">${f.amt}</td>
+  </tr>`).join('');
+
+document.addEventListener('pointerover', e => {
+  if (!fine() || pinned) return;
+  const tr = e.target.closest && e.target.closest('[data-fund]');
+  if (!tr || tr.dataset.fund === openKey) return;
+  clearTimeout(openT);
+  openT = setTimeout(() => open(tr.dataset.fund, tr, false), 140);
+});
+document.addEventListener('pointerout', e => {
+  if (!fine() || pinned) return;
+  const tr = e.target.closest && e.target.closest('[data-fund]');
+  if (!tr) return;
+  clearTimeout(openT);
+  setTimeout(() => { if (!pinned && !el.matches(':hover')) close(); }, 220);
+});
+document.addEventListener('click', e => {
+  const tr = e.target.closest && e.target.closest('[data-fund]');
+  if (!tr) return;
+  // Toggle off the card's actual visibility, never a flag beside it.
+  const shown = el.classList.contains('show') && openKey === tr.dataset.fund && pinned;
+  shown ? close() : open(tr.dataset.fund, tr, true);
+});
+</script>
+</body>
+</html>

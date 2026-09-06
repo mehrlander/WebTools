@@ -111,6 +111,7 @@ the link-dense text twin of the visual index above.
 | Page | Title | Links |
 |---|---|---|
 | `annotate` | annotate — notes pinned to pieces of a page | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/annotate.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/annotate.html) |
+| `card` | card — the way out of a card | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/card.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/card.html) |
 | `cm6` | cm6 — a CodeMirror 6 editor, framework free | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/cm6.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/cm6.html) |
 | `compression` | compression — living demo | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/compression.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/compression.html) |
 | `dictate` | dictate — voice input as a plain text buffer | [view](https://mehrlander.github.io/web-tools/lib/kits/demos/dictate.html) · [code](https://github.com/mehrlander/web-tools/blob/main/lib/kits/demos/dictate.html) |
