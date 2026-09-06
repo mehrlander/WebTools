@@ -1,1 +1,1 @@
-javascript:(s=>{s.src='https://cdn.jsdelivr.net/gh/mehrlander/web-tools@3b03ea015f42f4267792bc3c506945c3dc6bb72f/userscripts/lib/launcher.js';s.onload=()=>wtLauncher({ref:'3b03ea015f42f4267792bc3c506945c3dc6bb72f'});document.body.appendChild(s)})(document.createElement('script'))
+javascript:(s=>{s.src='https://cdn.jsdelivr.net/gh/mehrlander/web-tools@54978a655295a47a5b7fc24e62e0516d238c1260/userscripts/lib/launcher.js';s.onload=()=>wtLauncher({ref:'54978a655295a47a5b7fc24e62e0516d238c1260'});document.body.appendChild(s)})(document.createElement('script'))

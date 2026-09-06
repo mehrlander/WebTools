@@ -59,6 +59,15 @@ refuse the same way.
   | Links | every off-page link, deduped by address, each one tickable |
   | Text | the page's own prose, from its `<article>` or the densest block |
 
+  **It measures the visible area, not the page.** iOS resolves `position: fixed`
+  against the layout viewport, which on a page carrying an unclamped table, a
+  wide ad slot or a pinch-zoom is wider than the screen; `vw` measures the same
+  wrong thing, so a right-anchored panel hangs off the side and `max-width`
+  does not save it. Everything is positioned inside one root sized from
+  `visualViewport` and re-measured on its resize and scroll. Chromium already
+  anchors fixed to the visual viewport, so this is not reproducible headless and
+  was reasoned from a phone.
+
   **Two routes out, matched to size.** Send hands the capture to `Log-Repo` and
   it lands in the repo, but it rides inside a `shortcuts://` URL whose true
   ceiling nobody has measured (14,190 characters is known to work, and the
