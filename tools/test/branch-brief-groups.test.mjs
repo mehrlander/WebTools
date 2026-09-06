@@ -94,6 +94,98 @@ test('the two sections partition the branch, and each heading counts its own', (
   assert.equal(new Set(paths).size, paths.length, 'and none of them twice');
 });
 
+// ── The reviewable strip ────────────────────────────────────────────────────
+//
+// The presented files share ONE container and are swiped between, rather than
+// stacking. Stacked, three documents were three screens before the file list
+// and the deck button under it; the strip put that row back above the fold.
+const withReviewable = async (fn) => {
+  const keep = data.brief.files;
+  data.brief = { ...data.brief, files: [...keep,
+    { path: 'docs/c.md', status: 'modified', additions: 2, deletions: 0 },
+    { path: 'pages/d.html', status: 'added', additions: 5, deletions: 0 }] };
+  // Ten flushes, not four. The x-for repopulates on the first and the sibling
+  // x-show re-reads later, so a shorter wait reads a populated pager inside a
+  // row still carrying display:none, which is a fixture artifact and not what
+  // the browser does.
+  await tick(10);
+  try { return await fn(); } finally { data.brief = { ...data.brief, files: keep }; await tick(10); }
+};
+
+test('the presented files are one swiped container, not a stack', () => withReviewable(async () => {
+  assert.equal(data.reviewableFiles.length, 3, 'three to page between');
+  const strip = window.document.querySelector('[x-ref="revStrip"]');
+  assert.ok(strip, 'the strip is mounted');
+  // Native scroll-snap, no kit: the browser owns the momentum and the landing.
+  for (const c of ['snap-x', 'snap-mandatory', 'overflow-x-auto'])
+    assert.match(strip.className, new RegExp(c.replace(/[-/]/g, '\\$&')), 'strip is ' + c);
+  // overflow-y is explicit because a box scrolling on one axis computes the
+  // other from visible to auto, which is a second scrollbar nobody asked for.
+  assert.match(strip.className, /overflow-y-hidden/, 'and it does not scroll vertically');
+
+  const panels = data.revPanels();
+  assert.equal(panels.length, 3, 'one panel per reviewable file');
+  for (const k of panels) {
+    assert.match(k.className, /w-full/, 'a panel is the strip wide');
+    assert.match(k.className, /shrink-0/, 'and does not shrink to fit its neighbours');
+    assert.match(k.className, /snap-center/, 'and is a snap point');
+  }
+  // NOT strip.children. x-for leaves its <template> in the DOM as the
+  // insertion anchor, and a template is an element with an all-zero rect, so
+  // reading children put it at index 0: every panel off by one, and goRev(0)
+  // scrolling to a garbage offset. Caught in the browser, held here.
+  assert.ok(strip.children.length > panels.length,
+    'the x-for template is a child of the strip, which is why panels are named');
+  assert.ok(!panels.some(k => k.tagName === 'TEMPLATE'), 'and it is not one of them');
+}));
+
+test('the dots are the position and the only way off an iframe panel',
+  () => withReviewable(async () => {
+    // A touch inside an iframe never reaches the parent scroller, so on the
+    // html panel a swipe does nothing and these are the whole navigation.
+    const dots = [...window.document.querySelectorAll('[data-rev-pager] button')];
+    assert.equal(dots.length, 3, 'one per file');
+    assert.deepEqual(dots.map(b => b.getAttribute('title')),
+      data.reviewableFiles.map(f => f.path), 'each naming its file');
+    const row = window.document.querySelector('[data-rev-pager]');
+    assert.equal(row.style.display, '', 'the row is shown while there are several');
+  }));
+
+// One file is not a set to page through, so the row that says which of them
+// you are on has nothing to say.
+test('with one reviewable file there is no pager', async () => {
+  await tick(4);
+  assert.equal(data.reviewableFiles.length, 1);
+  const row = window.document.querySelector('[data-rev-pager]');
+  assert.equal(row.querySelectorAll('button').length, 1, 'x-for still draws it');
+  assert.equal(row.style.display, 'none', 'and x-show hides the row');
+});
+
+test('the strip reads its position and is driven to one', () => withReviewable(async () => {
+  const strip = window.document.querySelector('[x-ref="revStrip"]');
+  const panels = data.revPanels();
+  // jsdom does no layout, so the strip is given one: 300px panels with a 12px
+  // gap, scrolled to wherever scrollLeft says.
+  const W = 300, GAP = 12;
+  strip.scrollLeft = 0;
+  strip.getBoundingClientRect = () => ({ left: 0, width: W });
+  panels.forEach((k, i) => { k.getBoundingClientRect = () => ({ left: i * (W + GAP) - strip.scrollLeft, width: W }); });
+  strip.scrollTo = ({ left }) => { strip.scrollLeft = left; };
+
+  assert.equal(data.revX(1), W + GAP, 'a panel offset counts the gap');
+  data.goRev(2);
+  assert.equal(strip.scrollLeft, 2 * (W + GAP), 'and driving one scrolls there');
+  assert.equal(data.revAt, 2, 'the state follows the drive');
+
+  // A swipe lands between two panels; the nearer one is where it is.
+  strip.scrollLeft = W + GAP + 40;
+  data.revScroll();
+  assert.equal(data.revAt, 1, 'a partly-swiped strip still has a position');
+  strip.scrollLeft = 2 * (W + GAP) - 30;
+  data.revScroll();
+  assert.equal(data.revAt, 2, 'and it is the nearest panel, not a division');
+}));
+
 // A generated .md is machine output whatever its extension, so promoting one
 // would put a generator's docs above the work someone did.
 test('a mechanical file is never reviewable, whatever the extension', async () => {
