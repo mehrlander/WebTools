@@ -47,11 +47,25 @@ refuse the same way.
   `window.__fabHosted`, `data-no-fab`, and an observer that removes it if the
   real launcher boots after `document-end`.
 
-  **What does not travel is the drawer**, and that is the destination's limit
-  rather than an unfinished job. Render reads the GitHub API through a token
-  held in localStorage on the web-tools origin, which a foreign origin does not
-  have and must not be given; Inspect lists what `gh.load()` fetched, which on a
-  foreign page is nothing. Traffic and the annotator could travel later.
+  **The drawer is not the fab's**, and cannot be: Render reads the GitHub API
+  through a token held on the web-tools origin, which a foreign origin does not
+  have and must not be given, and Inspect lists what `gh.load()` fetched, which
+  on a foreign page is nothing. What a foreign page does hold is its own
+  content, so the three panes are the three answers it can give.
+
+  | Pane | Holds |
+  | --- | --- |
+  | Page | title, address, description, and the selection, read on each open |
+  | Links | every off-page link, deduped by address, each one tickable |
+  | Text | the page's own prose, from its `<article>` or the densest block |
+
+  **Two routes out, matched to size.** Send hands the capture to `Log-Repo` and
+  it lands in the repo, but it rides inside a `shortcuts://` URL whose true
+  ceiling nobody has measured (14,190 characters is known to work, and the
+  failure past it would be a truncated payload arriving complete-looking). So
+  Send is capped well under that and says `Copy only` when it stands down; Copy
+  takes anything, the clipboard having no such limit. The cap is on the
+  delivery, never on the selection.
 
 ## What the probe settled (2026-09-05)
 
