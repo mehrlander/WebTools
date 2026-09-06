@@ -1250,7 +1250,7 @@ test('the title, the count and the way in are one control', () => {
   S.expandBtn.dispatchEvent(new window.Event('click', { bubbles: true }));
   assert.equal(A.expanded, true);
   assert.match(S.expandBtn.title, /^Put the set away/, 'and it says which way it is going');
-  assert.equal(S.expandBtn.style.background, 'rgb(250, 204, 21)', 'lit while open, the way a live mode chip is');
+  assert.equal(S.expandBtn.style.backgroundColor, 'rgb(250, 204, 21)', 'lit while open, the way a live mode chip is');
 
   // AND THE WORD YIELDS THE ROW. Expanding is what brings the readings strip
   // and the copy key, taking this header from three controls to five: at 390px
@@ -1974,10 +1974,55 @@ test('the copy key reports on itself, since the card has no status line', async 
   await new Promise(r => setTimeout(r, 0));
   assert.equal(S.serialCopy._icon.className, 'ph ph-warning', 'the other answer, not silence');
 
-  // And no border to carry: a box beside the segmented group read as a fourth
-  // chip in it, which is the one thing this control is not.
+  // And no border to carry, which is now true of the whole row rather than of
+  // this key alone. See the header-uniformity test below.
   assert.equal(S.serialCopy.style.border, '0px');
   assert.equal(S.serialCopy.style.backgroundColor, 'transparent');
+  A.clear();
+  A.disable();
+});
+
+// ── One key shape for the whole header row ──────────────────────────────────
+//
+// The row carried two vocabularies until 2026-09-06: the readings strip and the
+// copy key were bare glyphs on transparent ground, while the title, the eye and
+// the aim button were outlined pills with a white fill. Nothing distinguished
+// the groups except when each was built, and an outline at rest was drawing a
+// box to say what the spacing already said. Reported as the outlines not being
+// typical of what this estate does.
+//
+// The gate is on the SHAPE, not on a count, so a sixth key added later has to
+// join the shape rather than bring a sixth reading of it.
+test('every key in the header row wears one shape, and states on with a fill', () => {
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  A.clear();
+  A.add({ type: 'page' }, 'one');
+  const S = A._state;
+  A.expand(true);
+  A.setReading('md');
+
+  const keys = [S.expandBtn, S.placeBtn, ...Object.values(S.readChips), S.serialCopy, S.aimBtn];
+  for (const b of keys) {
+    const css = b.getAttribute('style');
+    assert.match(css, /min-height:\s*30px/, 'one height: ' + (b.title || b.textContent));
+    assert.equal(b.style.border, '0px', 'no outline at rest: ' + (b.title || b.textContent));
+    assert.equal(b.style.borderRadius, '7px', 'one corner: ' + (b.title || b.textContent));
+  }
+
+  // ON IS A FILL AND AN INK, and nothing else, wherever it appears. Three keys
+  // are lit here: the expander (the set is open), the md reading (it is
+  // showing) and neither the eye nor the aim button, which are at rest.
+  const lit = (b) => b.style.backgroundColor === 'rgb(250, 204, 21)'
+                  && b.style.color === 'rgb(24, 24, 27)';
+  const dark = (b) => b.style.backgroundColor === 'transparent';
+  assert.ok(lit(S.expandBtn), 'the expander is lit while the set is open');
+  assert.ok(lit(S.readChips.md), 'and the reading that is showing');
+  assert.ok(dark(S.readChips.json), 'not the ones that are not');
+  assert.ok(dark(S.placeBtn), 'nor the eye, which is at rest');
+  assert.ok(dark(S.aimBtn), 'nor the aim button on the default aim');
+
+  A.startRegion();
+  assert.ok(lit(S.aimBtn), 'and it lights on an armed aim, by the same pair');
   A.clear();
   A.disable();
 });
