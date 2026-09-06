@@ -22,14 +22,14 @@
   </header>
 
   <section class="space-y-2">
-    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A tab strip</h2>
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A tab strip (a caption longer than this is a card, with a ↗ to its source)</h2>
     <div class="flex items-center gap-4 border-b border-base-300 pb-2 text-[15px]">
       <span class="font-medium border-b-2 border-primary pb-2 -mb-2.5">Levels</span>
       <span class="text-base-content/60">By item</span>
       <span class="text-base-content/60">Requests</span>
       <span class="w-px h-4 bg-base-300"></span>
       <span id="ext" class="text-[10px] uppercase tracking-wider text-base-content/40"
-            data-note="This tab fetches its content from the repository when you open it, rather than loading it with the page. It is gated on your GitHub token, so it can be unavailable when the rest of the view is fine.">External</span>
+            data-note="Fetched from the repository when opened">External</span>
       <span class="text-base-content/60"><i class="ph ph-cloud-arrow-down align-[-2px]"></i> Budget bill</span>
     </div>
   </section>
@@ -38,9 +38,9 @@
     <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Running text</h2>
     <p class="text-[15px] leading-relaxed">
       The schedule reconciles to the
-      <span data-note="Fund 600, appropriated lane only. The non-appropriated lane is reported on the same fund number and never nets into this figure.">appropriated ledger</span>
+      <span data-note="Fund 600, appropriated lane only">appropriated ledger</span>
       to the dollar, and the
-      <span data-note="Audited, on a wider perimeter than AEF05. It never ties to the appropriated ledger, by construction.">ACFR schedule</span>
+      <span data-note="Annual Comprehensive Financial Report">ACFR schedule</span>
       does not.
     </p>
   </section>
@@ -52,14 +52,14 @@
         <tr>
           <th class="text-left font-medium px-3 py-1.5 border-b border-base-300">Item</th>
           <th class="text-left font-medium px-3 py-1.5 border-b border-base-300"
-              data-note="Net of reversions, so a session that reverted more than it added shows negative.">Net</th>
+              data-note="Net of reversions">Net</th>
         </tr>
       </thead>
       <tbody>
         <tr><td class="px-3 py-1.5">Recordkeeping</td><td class="px-3 py-1.5 font-mono">1,204</td></tr>
         <tr><td class="px-3 py-1.5">CORE-PAM</td>
             <td class="px-3 py-1.5 font-mono" data-note-bare
-                data-note="Gated funding: released by proviso rather than appropriated outright.">—</td></tr>
+                data-note="Gated: released by proviso, not appropriated">—</td></tr>
       </tbody>
     </table>
   </section>
