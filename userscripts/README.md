@@ -67,6 +67,16 @@ refuse the same way.
   | Links | every off-page link, deduped by address, each one tickable |
   | Text | the page's own prose, from its `<article>` or the densest block |
 
+  The header carries a **refresh**, because a read is a moment and a news front
+  page is not. **Collect** answers the harder version: a virtual-scroll feed
+  removes rows as you pass them, so a read taken at the end sees the last screen
+  and calls it the page. While Collect is on, every change to the document is a
+  chance to keep blocks and links not kept yet, so scrolling accumulates.
+  Measured against a list that never holds more than five rows: 45 items and 45
+  links survived 40 passing through. Turning it off stops the watcher and keeps
+  the tape; links accumulate whether or not it is on, so a refresh can never
+  drop one you had ticked.
+
   **It measures the visible area, not the page.** iOS resolves `position: fixed`
   against the layout viewport, which on a page carrying an unclamped table, a
   wide ad slot or a pinch-zoom is wider than the screen; `vw` measures the same

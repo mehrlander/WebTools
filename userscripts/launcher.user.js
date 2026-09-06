@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        wt launcher
-// @description The Web Tools launcher on pages that have none of their own. Tap for a drawer: what this page is, what it links to, what it says. Copy it, or Send it to the Log-Repo shortcut.
+// @description The Web Tools launcher on pages that have none of their own. Tap for a drawer: what this page is, what it links to, what it says. Collect keeps gathering as you scroll a feed.
 // @match       *://*/*
 // @require     https://cdn.jsdelivr.net/gh/mehrlander/web-tools@claude/bookmarklets-shortcuts-iphone-safari-rjakex/userscripts/lib/launcher.js
 // @run-at      document-end

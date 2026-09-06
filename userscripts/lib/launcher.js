@@ -44,7 +44,7 @@
 // the stub is pinned to a BRANCH and never changes again: that is what removes
 // the reinstall, and it costs the one thing a SHA pin gave for free, namely
 // knowing which copy ran. The stamp buys that back, and the drawer shows it.
-const BUILD = '49762dc';
+const BUILD = 'fd15eda';
 
 window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {}) => {
   const ID = 'wt-launcher';
@@ -75,16 +75,23 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
   // destinations is a list nobody reads. Anchors with no visible text are kept
   // and labelled by their address, since an image link is still a link; ones
   // that go nowhere a reader could follow are dropped.
+  //
+  // It MERGES rather than replaces, and that is not an optimisation. A read
+  // returns what is in the DOM now, so on a recycling feed a second read would
+  // drop everything the first one found, ticks included; the first pass over
+  // this returned five links after forty-five had gone by.
   const readLinks = () => {
-    const seen = new Map();
     for (const a of document.querySelectorAll('a[href]')) {
       const href = a.href;
       if (!/^https?:/.test(href) || href === location.href) continue;
+      if (state.seenLinks.has(href)) continue;
       const text = clean(a.innerText) || clean(a.getAttribute('aria-label')) ||
                    clean(a.querySelector('img')?.alt) || href.replace(/^https?:\/\//, '');
-      if (!seen.has(href)) seen.set(href, text.slice(0, 120));
+      state.seenLinks.set(href, text.slice(0, 120));
     }
-    return [...seen].map(([href, text]) => ({ href, text }));
+    const before = state.links.length;
+    state.links = [...state.seenLinks].map(([href, text]) => ({ href, text }));
+    return state.links.length - before;
   };
 
   // The page's own text. The container is asked for by name first, because a
@@ -115,6 +122,30 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
       .slice(0, 100000);
   };
 
+  // Paragraph-level collection, which is what a VIRTUAL SCROLL needs and the
+  // extractor above cannot give. readText picks one container and reads it
+  // whole; a feed that recycles its rows has already thrown away what you
+  // scrolled past, so reading at the end returns the last screen and nothing
+  // else. Collecting reads the blocks currently present and keeps the ones it
+  // has not seen, so scrolling accumulates rather than replaces.
+  const BLOCKS = 'p, li, h1, h2, h3, h4, blockquote, dd, figcaption, td';
+  const collectBlocks = () => {
+    let added = 0;
+    for (const el of document.querySelectorAll(BLOCKS)) {
+      if (el.closest('nav, header, footer, aside')) continue;
+      const t = clean(el.innerText);
+      // 40 characters is a paragraph rather than a label, and the cap keeps an
+      // infinite feed from becoming an infinite capture.
+      if (t.length < 40 || state.seen.has(t)) continue;
+      if (state.blockChars > 200000) break;
+      state.seen.add(t);
+      state.blocks.push(t);
+      state.blockChars += t.length;
+      added++;
+    }
+    return added;
+  };
+
   const page = {
     title: document.title || location.hostname,
     href: location.href,
@@ -125,7 +156,9 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
   // The selection is read when the drawer OPENS, not when the launcher mounts:
   // a page load has no selection, and the one the reader made a moment ago is
   // the whole reason to reach for capture.
-  const state = { tab: 'page', links: [], text: '', picked: new Set(), withText: false, sel: '' };
+  const state = { tab: 'page', links: [], text: '', picked: new Set(), withText: false,
+                  sel: '', collect: false, seen: new Set(), blocks: [], blockChars: 0,
+                  seenLinks: new Map() };
 
   // One markdown document, assembled from whatever is currently ticked. It is
   // markdown because the destination is a repo, where a capture that renders is
@@ -134,7 +167,10 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
     const out = [`# ${page.title}`, '', page.href];
     if (page.description) out.push('', page.description);
     if (state.sel) out.push('', '> ' + state.sel.replace(/\n+/g, '\n> '));
-    if (state.withText && state.text) out.push('', '---', '', state.text);
+    // Once anything has been collected the collected set is the text: turning
+    // the switch off stops the watcher, it does not throw the tape away.
+    const body = state.blocks.length ? state.blocks.join('\n\n') : state.text;
+    if (state.withText && body) out.push('', '---', '', body);
     if (state.picked.size) {
       out.push('', '## Links', '');
       for (const { href, text } of state.links) {
@@ -213,7 +249,16 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
              box-shadow: 0 25px 50px -12px #00000040;
              pointer-events: auto; overscroll-behavior: contain; }
     .panel.open { transform: translateX(0); }
-    .head { padding: .625rem .875rem; border-bottom: 1px solid var(--wt-b300); }
+    .head { padding: .625rem .875rem; border-bottom: 1px solid var(--wt-b300);
+            display: flex; align-items: center; gap: .5rem; }
+    .head > div { min-width: 0; flex: 1; }
+    .reread { flex: none; width: 2rem; height: 2rem; border: 0; border-radius: .5rem;
+              background: none; cursor: pointer; display: flex;
+              align-items: center; justify-content: center; }
+    .reread:active { background: var(--wt-b200); }
+    .reread svg { width: 1.125rem; height: 1.125rem; color: ${mix(P, 70)}; }
+    .bar button.on { color: var(--wt-p); }
+    .bar button.on::before { content: '● '; }
     .head b { display: block; font-size: .875rem; font-weight: 600;
               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .head small { font: 11px ui-monospace, monospace; color: ${mix('var(--wt-bc)', 60)}; }
@@ -273,6 +318,7 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
     note: 'M229.66,58.34l-32-32a8,8,0,0,0-11.32,0l-96,96A8,8,0,0,0,88,128v32a8,8,0,0,0,8,8h32a8,8,0,0,0,5.66-2.34l96-96A8,8,0,0,0,229.66,58.34ZM124.69,152H104V131.31l64-64L188.69,88ZM200,76.69,179.31,56,192,43.31,212.69,64ZM224,128v80a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V48A16,16,0,0,1,48,32h80a8,8,0,0,1,0,16H48V208H208V128a8,8,0,0,1,16,0Z',
     out: 'M224,104a8,8,0,0,1-16,0V59.32l-66.33,66.34a8,8,0,0,1-11.32-11.32L196.68,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z',
     hide: 'M53.92,34.62A8,8,0,1,0,42.08,45.38L61.32,66.55C25,88.84,9.38,123.2,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208a127.11,127.11,0,0,0,52.07-10.83l22,24.21a8,8,0,1,0,11.84-10.76Zm47.33,75.84,41.67,45.85a32,32,0,0,1-41.67-45.85ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.16,133.16,0,0,1,25,128c4.69-8.79,19.66-33.39,47.35-49.38l18,19.75a48,48,0,0,0,63.66,70l14.73,16.2A112,112,0,0,1,128,192Zm6-95.43a8,8,0,0,1,3-15.72,48.16,48.16,0,0,1,38.77,42.64,8,8,0,0,1-7.22,8.71,6.39,6.39,0,0,1-.75,0,8,8,0,0,1-8-7.26A32.09,32.09,0,0,0,134,96.57Zm113.28,34.69c-.42.94-10.55,23.37-33.36,43.8a8,8,0,1,1-10.67-11.92A132.77,132.77,0,0,0,231.05,128a133.15,133.15,0,0,0-23.12-30.77C185.67,75.19,158.78,64,128,64a118.37,118.37,0,0,0-19.36,1.57A8,8,0,1,1,106,49.79,134,134,0,0,1,128,48c34.88,0,66.57,13.26,91.66,38.35,18.83,18.83,27.3,37.62,27.65,38.41A8,8,0,0,1,247.31,131.26Z',
+    refresh: 'M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z',
     check: 'M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z',
   };
 
@@ -280,7 +326,10 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
   layer.className = 'layer';
   layer.innerHTML = `
     <div class="panel">
-      <div class="head"><b></b><small></small></div>
+      <div class="head">
+        <div><b></b><small></small></div>
+        <button class="reread" aria-label="Read this page again">${svg(ICON.refresh)}</button>
+      </div>
       <div class="tabs">
         <button class="tab on" data-tab="page">Page</button>
         <button class="tab" data-tab="links">Links</button>
@@ -295,7 +344,11 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
         <div data-list></div>
       </div>
       <div class="pane" data-pane="text" hidden>
-        <div class="bar"><button data-toggle-text></button><span class="count"></span></div>
+        <div class="bar">
+          <button data-toggle-text></button>
+          <button data-collect></button>
+          <span class="count"></span>
+        </div>
         <div class="text"></div>
       </div>
       <div class="foot">
@@ -365,7 +418,12 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
     q('[data-pane="links"] .count').textContent = `${state.picked.size}/${state.links.length}`;
     const t = q('[data-toggle-text]');
     t.textContent = state.withText ? 'Included' : 'Include';
-    q('[data-pane="text"] .count').textContent = `${state.text.length} chars`;
+    const c = q('[data-collect]');
+    c.textContent = state.collect ? 'Collecting' : 'Collect';
+    c.classList.toggle('on', state.collect);
+    q('[data-pane="text"] .count').textContent = state.blocks.length
+      ? `${state.blocks.length} blocks · ${state.blockChars} chars`
+      : `${state.text.length} chars`;
   };
 
   const renderLinks = () => {
@@ -387,21 +445,71 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
         : '<span class="none">Nothing selected. Select text on the page, then reopen.</span>'}</p>`;
   };
 
+  const showText = () => {
+    q('[data-pane="text"] .text').textContent = state.blocks.length
+      ? state.blocks.join('\n\n')
+      : (state.collect ? 'Nothing collected yet. Scroll the page.'
+                       : (state.text || 'No readable text found.'));
+  };
+
+  // One read of the page, run on the first open and by the header's refresh.
+  // Ticked links survive it: state.picked holds addresses, so a link still on
+  // the page comes back ticked and one that has gone simply stops being listed.
+  // The one read path: the first open, the header's refresh, and each pass of
+  // the watcher all come through here, so there is one answer to what a read
+  // does rather than three that drift.
+  const readPage = () => {
+    const newLinks = readLinks();
+    if (!state.blocks.length) state.text = readText();
+    const newBlocks = state.collect || state.blocks.length ? collectBlocks() : 0;
+    if (newLinks) renderLinks();
+    if (newBlocks || newLinks) showText();
+    refresh();
+  };
+
   // Built on the first open rather than at mount, for the reason the fab builds
   // its own body late: the launcher is on every page, the drawer on few.
   let read = false;
   const openDrawer = () => {
     state.sel = clean(String(getSelection() || ''));
-    if (!read) {
-      state.links = readLinks();
-      state.text = readText();
-      renderLinks();
-      read = true;
-    }
+    if (!read) { readPage(); read = true; }
     renderPage();
     refresh();
     panel.classList.add('open');
     btn.classList.add('on');
+  };
+
+  q('.reread').onclick = () => {
+    readPage();
+    renderPage();
+    const b = q('.reread');
+    b.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(360deg)' }], 400);
+  };
+
+  // COLLECTING, which is the answer to a page that changes under you. A lazy
+  // feed adds rows as you scroll and a virtual one also REMOVES them, so a read
+  // taken at the end sees the last screen and calls it the page. While this is
+  // on, every change to the document is a chance to keep what has not been kept
+  // yet, and scrolling accumulates.
+  //
+  // The observer only raises a flag; the scan runs on a timer. A busy page
+  // mutates continuously, and re-reading every block on each mutation would
+  // make the launcher the reason the page stutters.
+  let dirty = false, timer = 0, watcher = null;
+  const startCollecting = () => {
+    collectBlocks();
+    watcher = new MutationObserver(() => {
+      if (dirty) return;
+      dirty = true;
+      timer = setTimeout(() => { dirty = false; readPage(); }, 700);
+    });
+    watcher.observe(document.body, { childList: true, subtree: true, characterData: true });
+  };
+  const stopCollecting = () => {
+    watcher?.disconnect();
+    watcher = null;
+    clearTimeout(timer);
+    dirty = false;
   };
   const closeDrawer = () => { panel.classList.remove('open'); btn.classList.remove('on'); };
 
@@ -425,7 +533,17 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
   q('[data-all]').onclick = () => { state.links.forEach(l => state.picked.add(l.href)); renderLinks(); refresh(); };
   q('[data-none]').onclick = () => { state.picked.clear(); renderLinks(); refresh(); };
   q('[data-toggle-text]').onclick = () => { state.withText = !state.withText; refresh(); };
-  q('[data-pane="text"] .text').textContent = '';
+  q('[data-collect]').onclick = () => {
+    state.collect = !state.collect;
+    // Turning it on seeds from what is on screen now, so the first thing you
+    // see is a count rather than an empty pane; turning it off freezes what was
+    // gathered rather than discarding it, since discarding a scroll nobody can
+    // repeat is the one unrecoverable move here.
+    state.collect ? startCollecting() : stopCollecting();
+    if (state.collect) state.withText = true;
+    showText();
+    refresh();
+  };
 
   root.querySelectorAll('.tab').forEach(t => t.onclick = () => {
     state.tab = t.dataset.tab;
@@ -434,10 +552,7 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
     // The extract is dropped in only when its pane is first looked at: it can
     // run to a hundred thousand characters, and laying that out behind a tab
     // nobody opened is work for nothing.
-    if (state.tab === 'text') {
-      const el = q('[data-pane="text"] .text');
-      if (!el.textContent) el.textContent = state.text || 'No readable text found.';
-    }
+    if (state.tab === 'text' && !q('[data-pane="text"] .text').textContent) showText();
   });
 
   // The clipboard is the route with no ceiling, and it needs the user gesture
@@ -452,7 +567,7 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
   };
   sendEl.addEventListener('click', () => setTimeout(closeDrawer, 300));
 
-  q('[data-hide]').onclick = () => { host.remove(); };
+  q('[data-hide]').onclick = () => { stopCollecting(); host.remove(); };
   menu.addEventListener('click', e => { if (e.target.closest('.row')) setMenu(false); });
   addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
@@ -525,6 +640,7 @@ window.wtLauncher = ({ app = 'https://mehrlander.github.io/web-tools/app/' } = {
   // by side. Ten seconds is a boot that has plainly not happened.
   const watch = new MutationObserver(() => {
     if (!realFab()) return;
+    stopCollecting();
     host.remove();
     watch.disconnect();
   });
