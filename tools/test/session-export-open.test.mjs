@@ -1,17 +1,20 @@
-// kits/session-export.js — the outline, and carrying one exchange out of it.
+// kits/session-export.js — the outline, and what a row does not do.
 //
 // This list ran a selection MODE until 2026-09-06: a pick control on every row,
 // a "Pick all / Clear" bar above them, and an export bar below carrying seven
-// render toggles, a Preview pane, a live size readout, Download and Copy. It
-// went through three designs in a week and the reported objection never moved.
-// The invariant those tests guarded was that three doors into one boolean (a
-// tap, a bulk chip, and `startCard`) reach the same state, which is exactly
-// where a DOM-held flag drifts from the set that decides the output.
+// render toggles, a Preview pane, a live size readout, Download and Copy. The
+// invariant those tests guarded was that three doors into one boolean (a tap, a
+// bulk chip, and `startCard`) reach the same state, which is where a DOM-held
+// flag drifts from the set that decides the output.
 //
-// There is no boolean now. The unit is the card, the control is one copy button
-// in the row's rail, and what lands on the clipboard is derived at the moment
-// of the tap from the card it sits on. So the tests below are about the row and
-// the panel, plus one about what that button copies.
+// A per-row copy button replaced all of it and lasted one commit, on the report
+// that a control per item for a thing a reader would not do here is the same
+// objection one size smaller. There is no copy control now, so the tests that
+// were about picking and copying are the two absence gates below: nothing
+// operates the list, and nothing on a row writes to a clipboard.
+//
+// What is left is a reading surface, and the rest of this file is about the row
+// and the panel.
 //
 // jsdom with no Alpine: this is a DOM-rendering kit and its element is the
 // whole product, so the assertions read the element rather than an internal.
@@ -70,12 +73,6 @@ window.esc = window.esc || (s => String(s ?? '').replace(/[&<>"']/g, c => ESC[c]
 for (const f of KITS) new window.Function(readFileSync(path.join(repoRoot, f), 'utf8'))();
 const SE = window.sessionExport;
 
-// The clipboard, as a log. session-export delegates every write to kits/io.js
-// (held to it by clipboard-one-owner.test.mjs) and falls back to the async API
-// where that kit never arrived, which is the case here: the fallback is what
-// jsdom can be given. What is asserted is the TEXT handed over, not the route.
-const clipboard = [];
-window.navigator.clipboard = { writeText: async (t) => { clipboard.push(t); } };
 // The estate's Claude colour, in the form jsdom normalizes the hex to.
 const CLAY = 'rgb(217, 119, 87)';   // #d97757
 
@@ -116,104 +113,77 @@ const mark = (n = 1) => rowOf(n)?.querySelector('.ph-sparkle');
 const lead = (n = 1) => rowOf(n)?.querySelector('i.ph');
 const askOf = (n = 1) => rowOf(n)?.querySelector(':scope > div');
 
-// The row's own two controls, read off the element the way a finger would find
-// them. One per destination: the copy button carries the exchange out, the deck
-// glyph goes to the deck, and the row itself opens the panel.
-const copies = () => [...window.document.querySelectorAll('button[aria-label^="Copy card"]')];
+// The row's controls, read off the element the way a finger would find them.
+// Two destinations: the row itself opens the panel, and the glyph goes to the
+// deck. There is no third.
 const decks = () => [...window.document.querySelectorAll('button[aria-label*="in the deck"]')];
 // The panel, and the trigger that opens it: the ROW, since one panel carries
 // the whole exchange rather than one per half.
 const peekOf = (n = 1) => boxOf(n)?.querySelector('.shadow-xl');
 const trig = (n = 1) => rowOf(n);
 
-test('every row carries a copy, and there is nothing else to operate', () => {
-  build();
-  assert.equal(copies().length, 2, 'one per card, which is what a reader taps');
-  // NOTHING PINNED ABOVE OR BELOW THE LIST. A "Pick all / Clear" bar sat over
-  // the rows and an export bar under them, and between them they were the top
-  // and bottom of the phone's screen. The list is the whole element now.
-  const labels = [...window.document.querySelectorAll('button')].map(b => b.textContent.trim());
+test('a row offers the panel and the deck, and nothing else', () => {
+  // With a host that takes onOpen, the deck glyph is the row's ONLY button. The
+  // panel needs none: the row itself is the trigger, a role="button" div,
+  // because Safari sizes a real button from its unclipped content and the row
+  // is a two-line clamp.
+  build({ onOpen: () => {} });
+  const buttons = [...window.document.querySelectorAll('button')];
+  assert.equal(decks().length, 2, 'one deck glyph per card');
+  assert.equal(buttons.length, decks().length, 'and every button on the list is one');
+
+  // NOTHING PINNED ABOVE OR BELOW THE LIST either. A "Pick all / Clear" bar sat
+  // over the rows and an export bar under them, and between them they were the
+  // top and bottom of the phone's screen. The list is the whole element.
+  const labels = buttons.map(b => b.textContent.trim());
   for (const gone of ['Pick all', 'Clear', 'Options', 'Preview', 'Outline', 'Copy'])
-    assert.ok(!labels.includes(gone), gone + ' is not a control here any more');
+    assert.ok(!labels.includes(gone), gone + ' is not a control here');
 });
 
-test('the copy button carries its own card, and only that card', async () => {
+test('a host that names no destination gets a list with no buttons at all', () => {
+  // `onOpen` is the deck's door and the kit draws no glyph without one, which
+  // is the documented contract and now the whole of it: with the copy button
+  // gone there is no control left that a row draws unconditionally.
   build();
-  clipboard.length = 0;
-  copies()[0].click();
-  await new Promise(r => setTimeout(r, 0));
-  assert.equal(clipboard.length, 1, 'one tap, one write');
-  const md = clipboard[0];
-  assert.match(md, /First ask/);
-  assert.doesNotMatch(md, /Second ask/, 'the neighbouring exchange stayed out');
-
-  clipboard.length = 0;
-  copies()[1].click();
-  await new Promise(r => setTimeout(r, 0));
-  assert.match(clipboard[0], /Second ask/);
-  assert.match(clipboard[0], /Short reply/);
-  // Not "First ask" in the body: the header block titles the excerpt with the
-  // session's OPENING ask whatever is copied, so the body is what to read.
-  assert.doesNotMatch(clipboard[0], /The reply runs on/, 'card 1 stayed out');
+  assert.deepEqual([...window.document.querySelectorAll('button')], []);
+  assert.ok(rowOf(1), 'the rows are still there, and still open their panels');
 });
 
-test('what is copied says it is a fragment of a bounded capture', async () => {
-  // The header block is not decoration and is not optional on this route. A
-  // record stores prompts to 400 characters and result bodies to 1 or 2 KB and
-  // drops some by policy, and an excerpt pasted into another session carries
-  // none of that: a reader there cannot tell a quiet turn from an elided one.
+test('nothing on the list writes to a clipboard', () => {
+  // A copy button per row was the picker's replacement and lasted one commit:
+  // reported as a control per item for something a reader would not do from a
+  // list they came to read. The kit's pure `markdown()` is untouched; what went
+  // is any way to reach it from a row.
   build();
-  clipboard.length = 0;
-  copies()[0].click();
-  await new Promise(r => setTimeout(r, 0));
-  const md = clipboard[0];
-  assert.match(md, /captured session record, not a full transcript/);
-  assert.match(md, /Excerpt: \d+ of \d+ turns/, 'and says how much of it this is');
+  assert.equal(window.document.querySelector('button[aria-label^="Copy card"]'), null);
+  assert.equal(window.document.querySelector('.ph-clipboard-text'), null);
+  assert.equal(window.document.querySelector('.ph-copy'), null);
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/session-export.js'), 'utf8');
+  assert.doesNotMatch(src, /navigator\.clipboard/, 'and no clipboard write survives in the kit');
 });
 
-test('the copy answers, because a clipboard write is silent', async () => {
-  build();
-  const btn = copies()[0];
-  assert.ok(btn.querySelector('.ph-clipboard-text'), 'at rest it is a clipboard');
-  // NOT ph-copy, which is two overlapping squares and sits 4px from
-  // ph-cards-three, three stacked ones: at 18px that pair reads as one
-  // silhouette twice. Measured on the first render of this button.
-  assert.equal(btn.querySelector('.ph-copy'), null);
-  btn.click();
-  await new Promise(r => setTimeout(r, 0));
-  assert.ok(btn.querySelector('.ph-check'), 'and it says so for a moment after');
-});
+test('the pure markdown still takes an arbitrary selection, flags and all', () => {
+  // It is the half both removals kept, and nothing in the estate calls it, so
+  // this is the only thing holding its contract. The role flags decide which
+  // turns come along and the render flags decide how much of each: emit() gives
+  // a tool turn a heading whatever the render flags say, falling back to
+  // "(call only)", so dropping a call is the SELECTION's job and not a flag's.
+  const m = SE.model(RECORD);
+  const card0 = m.cards[0].map((_, k) => m.cardStart[0] + k);
+  const whole = SE.markdown(RECORD, card0);
+  assert.match(whole, /First ask/);
+  assert.match(whole, /ls -la/, 'a tool call rides along by default');
+  assert.doesNotMatch(whole, /Second ask/, 'and the neighbouring exchange is not in this selection');
+  assert.match(whole, /captured session record, not a full transcript/,
+    'the header says what the excerpt is a fragment of');
 
-test('the role flags still DROP a turn rather than reducing it to a stub', async () => {
-  // The split the file's header states: the first three flags say which roles
-  // come along, the rest say how much of each renders. It is not cosmetic.
-  // emit() gives a tool turn a heading whatever the render flags say, falling
-  // back to "(call only)", so a card holding 34 Bash calls cannot be reduced to
-  // its ask by rendering alone; something has to drop the turn.
-  //
-  // That was the selection's job. Removing the selection moved it to `cardMd`,
-  // and this test is what says the flags did not quietly change meaning: they
-  // are no longer on screen, and they still work.
-  const grab = async () => {
-    clipboard.length = 0;
-    copies()[0].click();
-    await new Promise(r => setTimeout(r, 0));
-    return clipboard[0] || '';
-  };
+  const noTools = card0.filter(i => m.flat[i].role !== 'tool');
+  assert.doesNotMatch(SE.markdown(RECORD, noTools), /call only/,
+    'a turn left out of the selection is absent, not stubbed');
+  assert.match(SE.markdown(RECORD, noTools), /First ask/);
 
-  build();
-  assert.match(await grab(), /ls -la/, 'a tool call rides along by default');
-
-  build({ args: false, bodies: false });
-  const dropped = await grab();
-  assert.doesNotMatch(dropped, /ls -la/);
-  assert.doesNotMatch(dropped, /call only/, 'the turn is dropped, not reduced to a stub heading');
-  assert.match(dropped, /First ask/, 'and the ask is still there');
-
-  build({ replies: false, args: false, bodies: false });
-  const asksOnly = await grab();
-  assert.match(asksOnly, /First ask/);
-  assert.doesNotMatch(asksOnly, /The reply runs on/);
+  assert.doesNotMatch(SE.markdown(RECORD, card0, { args: false, bodies: false }), /ls -la/,
+    'and the render flags still strip a call kept in the selection');
 });
 
 test('the turn count is a readout and does not dress as a control', () => {
@@ -282,23 +252,16 @@ test('there is one list, and no route from the deck to a second copy of it', () 
   assert.equal(typeof SE.index, 'function');
 });
 
-test('one control per destination: the text peeks, the glyph decks, the clipboard copies', async () => {
+test('one control per destination: the text peeks, the glyph decks', () => {
   // It was the other way round, with the title AND the glyph both entering the
   // deck and a pill doing the expanding: two doors to one place, and the third
-  // hidden behind a chip. Three destinations, and each has exactly one.
+  // hidden behind a chip. Two destinations, and each has exactly one.
   const opened = [];
   const v = SE.index(RECORD, { onOpen: (i) => opened.push(i) });
   window.document.body.replaceChildren(v.el);
 
   trig(1).click();
   assert.deepEqual(opened, [], 'tapping the row does not leave for the deck');
-
-  clipboard.length = 0;
-  copies()[0].click();
-  await new Promise(r => setTimeout(r, 0));
-  assert.equal(clipboard.length, 1, 'the button is what copies');
-  assert.deepEqual(opened, [], 'and copying does not leave for the deck either');
-
   decks()[1].click();
   assert.deepEqual(opened, [1], 'the glyph is the only way out to the deck');
 });
@@ -413,9 +376,10 @@ test('the gutter carries the role, and the number is gone from the page', () => 
   // column of digits the eye skipped to reach the sentence.
   assert.doesNotMatch(rowOf().textContent, /^\s*\d/, 'no number opens the row');
   // It survives where it was doing work: `data-card` on the row, and the
-  // aria-labels of the two buttons in the rail beside it.
+  // aria-label of the deck glyph in the rail beside it.
   assert.equal(rowOf().getAttribute('data-card'), '1');
-  assert.equal(copies()[0].getAttribute('aria-label'), 'Copy card 1 as markdown');
+  buildWith(MD_RECORD, { onOpen: () => {} });
+  assert.equal(decks()[0].getAttribute('aria-label'), 'Read card 1 in the deck');
 });
 
 test('a card with no ask takes its own role glyph, and the heavier line', () => {
