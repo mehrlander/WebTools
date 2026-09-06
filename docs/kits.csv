@@ -16,7 +16,7 @@ lib/kits/console.js,consoleKit,console retention + filter + subscribe layer.,115
 lib/kits/content-registry.js,ContentRegistry,"the epistemic content registry, read in the browser.",111,no,no,4,yes
 lib/kits/crawl-runs.js,CrawlRuns,The `runs` ring: the few facts about a crawl that its output cannot show.,89,no,no,2,yes
 lib/kits/csv.js,Csv,"CSV, small and shared.",54,no,no,6,yes
-lib/kits/data-payload.js,DataPayload,Reading a data toss.,190,no,no,3,yes
+lib/kits/data-payload.js,DataPayload,Reading a data toss.,190,no,no,4,yes
 lib/kits/data-shelf.js,dataShelf,shelf record schema + helpers.,62,no,no,1,yes
 lib/kits/dictate.js,Dictate,"voice input as a plain text buffer: start the engine, speak, and read `text` back.",1407,no,yes,10,yes
 lib/kits/dock-split.js,dockSplit,the drag handle between two panes.,264,no,yes,5,yes
@@ -40,7 +40,7 @@ lib/kits/proof.js,proof,"sandboxed proof documents: code in, self-contained srcd
 lib/kits/read-aloud.js,readAloud,"markdown reduced to what is worth hearing, and a player that speaks it.",425,no,yes,3,yes
 lib/kits/record-deck.js,recordDeck,"a table's records, read one at a time.",329,no,no,2,yes
 lib/kits/repo-activity-cache.js,RepoActivityCache,Activity aggregate for the web-tools ecosystem.,215,no,no,5,yes
-lib/kits/repo-address.js,RepoAddress,"The `owner/repo[@ref]:path` address, in one place.",149,yes,no,12,yes
+lib/kits/repo-address.js,RepoAddress,"The `owner/repo[@ref]:path` address, in one place.",149,yes,no,13,yes
 lib/kits/repo-checks.js,RepoChecks,"Declared staleness checks for a repo, evaluated on sight.",319,no,no,3,yes
 lib/kits/repo-config-cache.js,RepoConfigCache,Config aggregate + history + alignment grade for the web-tools ecosystem.,120,no,no,3,yes
 lib/kits/repo-mailbox.js,RepoMailbox,"Private mailbox: an async, git-backed request/response channel between an agent session (limited repo scope) and show-repo in the browser (the user's…",133,no,no,2,yes
