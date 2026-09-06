@@ -76,9 +76,13 @@ const MIXED = {
 };
 
 const params = (url) => new URL(url).searchParams;
+// Everything read back through Alpine's $data is a reactive proxy: structurally
+// equal to a literal and never reference-equal. estate-sessions.test.mjs keeps
+// the same helper for the same reason.
+const plain = (v) => JSON.parse(JSON.stringify(v));
 
 test('the scope strip keeps a repo sitting on the default branch', () => {
-  const names = data.sessionRepoRows(MIXED).map((r) => r.name);
+  const names = plain(data.sessionRepoRows(MIXED)).map((r) => r.name);
   assert.deepEqual(names, ['shortcut-tools', 'web-tools', 'web-tools-private']);
   // The point of the strip: `branches` drops main, `repos` does not, so a repo
   // the session only read from is visible here and nowhere else on the card.
@@ -95,7 +99,7 @@ test('each repo carries its branch and its share in the title', () => {
 });
 
 test('checkout names resolve to owner/repo slugs', () => {
-  assert.deepEqual(data.sessionRepoSlugs(MIXED), [
+  assert.deepEqual(plain(data.sessionRepoSlugs(MIXED)), [
     'mehrlander/shortcut-tools', 'mehrlander/web-tools', 'mehrlander/web-tools-private',
   ]);
 });
@@ -138,13 +142,56 @@ test('an unresolvable checkout is left out of the link and named in the note', (
   const odd = { repos: [{ name: 'web-tools', branch: 'main', lines: 5 },
                         { name: 'some-other-clone', branch: 'main', lines: 2 }],
                 branches: [] };
-  assert.deepEqual(data.sessionRepoSlugs(odd), ['mehrlander/web-tools']);
+  assert.deepEqual(plain(data.sessionRepoSlugs(odd)), ['mehrlander/web-tools']);
   assert.equal(params(data.newSessionFor(odd).url).get('repositories'), 'mehrlander/web-tools');
   assert.match(data.newSessionNote(odd), /some-other-clone.*no repository of that name/);
 });
 
 test('a session that named no repo mints nothing to hang a button on', () => {
   const bare = { repos: [], branches: [] };
-  assert.deepEqual(data.sessionRepoSlugs(bare), []);
+  assert.deepEqual(plain(data.sessionRepoSlugs(bare)), []);
   assert.equal(params(data.newSessionFor(bare).url).has('repositories'), false);
+});
+
+// ── `attached`: scope, beside where the shell stood ─────────────────────────
+// Record schema 8 added the container's own repo list, which is the honest
+// answer to "what was this session's scope". The strip is the union of the two
+// fields, so neither reading can hide the other.
+
+test('a repo attached but never entered still shows, and says which it is', () => {
+  const row = {
+    repos: [{ name: 'web-tools', branch: 'claude/x', lines: 40 }],
+    attached: ['home', 'web-tools'],
+    branches: ['claude/x'],
+  };
+  const rows = plain(data.sessionRepoRows(row));
+  assert.deepEqual(rows.map((r) => r.name), ['home', 'web-tools']);
+  assert.equal(rows[0].idle, true, 'home was attached and never the cwd');
+  assert.equal(rows[1].idle, false);
+  assert.match(data.sessionRepoNote(rows[0]), /attached, but never the working directory/);
+});
+
+test('the wider scope is what the new-session link carries', () => {
+  const row = {
+    repos: [{ name: 'web-tools', branch: 'claude/x', lines: 40 }],
+    attached: ['home', 'web-tools'],
+    branches: ['claude/x'],
+  };
+  data.entries = data.entries.concat([{ repo: 'mehrlander/home' }]);
+  const r = data.newSessionFor(row);
+  assert.equal(params(r.url).get('repositories'), 'mehrlander/home,mehrlander/web-tools');
+  // Two repos now, so the branch cannot ride, and that is the whole reason the
+  // note exists rather than the link silently being narrower than it looks.
+  assert.equal(params(r.url).has('branch'), false);
+  assert.match(data.newSessionNote(row), /2 repositories/);
+});
+
+test('an empty attached means the record cannot say, not that nothing was attached', () => {
+  // Every record written before schema 8, permanently: they are never
+  // revisited, so `repos` is the only answer they will ever have and the strip
+  // must fall back to it rather than showing a session no scope at all.
+  const old = { schema: 3, repos: [{ name: 'web-tools', branch: 'main', lines: 9 }], branches: [] };
+  const rows = plain(data.sessionRepoRows(old));
+  assert.deepEqual(rows.map((r) => r.name), ['web-tools']);
+  assert.equal(rows[0].idle, false, 'never claim "attached but idle" from a record that cannot say');
 });
