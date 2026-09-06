@@ -55,40 +55,14 @@ See [`docs/loader.md`](../../docs/loader.md) for the full loader contract.
 
 ## Current kits
 
-The long-form sections below predate the 2026-08-08 migration and cover the
-original shelf. The 22 kits that moved in from `lib/` root that day are listed
-here with their namespace and role; each carries its full story in its own
-header comment, which is the authoritative doc for this group. **(boot)** marks
-membership in gh-boot.js's declared BOOT manifest, a fact about cost that the
-folder deliberately no longer encodes.
+Open the [Kits tab](https://mehrlander.github.io/web-tools/app/?view=map&tab=kits)
+for the full list. Each row gives the namespace, the first line of the header
+comment, how many files load the kit, whether it loads on every page, and
+whether it has a demo. The data is in [`docs/kits.csv`](../../docs/kits.csv).
+A script rebuilds that file from the kits.
 
-| Kit | Namespace | Role |
-|---|---|---|
-| `branch-status.js` | `BranchStatus` | branch-estate scan math: the content-level landed/stranded signal |
-| `chat-render.js` | `chatRender` | chat transcript renderer; fenced code promoted to live artifacts |
-| `claude-mark.js` | `claudeMark` | the Claude logomark, as markup or a node, from one path |
-| `content-registry.js` | `ContentRegistry` | the epistemic content registry (`data/design/content.csv`), read in the browser |
-| `data-payload.js` | `DataPayload` | reading a data toss: one rule for what a payload is |
-| `estate-search.js` | `EstateSearch` | the estate's search calls (tree, names, code, sessions), one cache |
-| `github-links.js` | `GithubLinks` | the GitHub destinations for one repo, as menu rows |
-| `portable-align.js` | `PortableAlign` | pure assessment of a repo's alignment with the portable set |
-| `repo-activity-cache.js` | `RepoActivityCache` | per-repo activity snapshots folded into one cache |
-| `repo-address.js` | `RepoAddress` | the `owner/repo[@ref]:path` address grammar **(boot)** |
-| `repo-checks.js` | `RepoChecks` | declared staleness checks for a repo, evaluated on sight |
-| `repo-config-cache.js` | `RepoConfigCache` | `.web-tools.json` aggregate, history, and alignment grade |
-| `repo-mailbox.js` | `RepoMailbox` | the private git-backed request/response channel |
-| `repo-proposals.js` | `RepoProposals` | cross-repo edit proposals, the mailbox's write side |
-| `repo-sessions-cache.js` | `RepoSessionsCache` | session-record aggregate over the private registry |
-| `row-menu.js` | `rowMenu` | the row tap on a Tabulator grid: read from here, and the two copies |
-| `session-render.js` | `sessionRender` | a session record as a readable, paged conversation |
-| `shorter-payload.js` | `ShorterPayload` | reading a shorter toss |
-| `source-peek.js` | `SourcePeek` | the hover card behind an exact-file GitHub jump-over **(boot;** the manifest calls `install()`, the kit no longer self-installs**)** |
-| `subject-channel.js` | `subjectChannel` | telling the FAB sidebar which file a surface is showing, and giving the page its own back |
-| `surface.js` | `Surface` | the surface envelope, in one place **(boot)** |
-| `swipe-deck.js` | `swipeDeck` | the house swipe format and its fullscreen takeover |
-| `traffic.js` | `Traffic` | the pure read over the traffic ledger gh-boot collects **(boot)** |
-| `url-params.js` | `UrlParams` | a page's own input params, fragment first, query fallback |
-| `vanilla-demo.js` | `demo` | the living-documentation demo format |
+The sections below cover only some kits. They were written before the
+2026-08-08 migration. Each kit is documented in its own header comment.
 
 ### compression.js
 

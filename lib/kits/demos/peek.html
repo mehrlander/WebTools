@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>peek — the region under the pointer</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script type="module">
+  // The chain boot, so the FAB arrives and its Region take aims at this page;
+  // the kit itself is loaded by name so the buttons below work without it.
+  const ref = new URLSearchParams(location.search).get('use') || 'main';
+  const base = `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@${ref}/lib`;
+  await import(`${base}/gh-api.js`);
+  await gh.load('kits/peek.js');
+  // Peek escapes panel text through window.esc, which vanilla-bundle puts
+  // there and gh-boot loads first; the page's own header waits for both.
+  document.body.dataset.ready = '1';
+</script>
+<script defer src="https://unpkg.com/alpinejs"></script>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-8">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">peek</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">Peek.enable({ view })</code>
+    <span class="text-[13px] text-base-content/50">tap · tap again for the parent · ▲▼ · Esc</span>
+    <span class="ml-auto flex gap-2">
+      <button class="btn btn-sm" onclick="Peek.enable()">Arm</button>
+      <button class="btn btn-sm btn-primary" onclick="Peek.enable({ view: 'render' })">Pick a region</button>
+      <button class="btn btn-sm btn-ghost" onclick="Peek.disable()">Off</button>
+    </span>
+  </header>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A card with state</h2>
+    <div class="card bg-base-200 border border-base-300 max-w-md" x-data="{ open: false, n: 3 }">
+      <div class="card-body gap-2">
+        <div class="flex items-center gap-2">
+          <h3 class="card-title text-base">Recordkeeping</h3>
+          <span class="badge badge-info badge-sm" x-text="n + ' open'">3 open</span>
+          <button class="btn btn-xs btn-ghost ml-auto" @click="open = !open" x-text="open ? 'Less' : 'More'">More</button>
+        </div>
+        <p class="text-[14px] text-base-content/70">Fund 600, appropriated lane. The non-appropriated lane reports on the same fund number and never nets in.</p>
+        <ul class="text-[13px] space-y-1" x-show="open">
+          <li><i class="ph ph-check text-success"></i> Allotment packet filed</li>
+          <li><i class="ph ph-clock text-warning"></i> Biennialization pending</li>
+          <li><i class="ph ph-x text-error"></i> Object mix not reconciled</li>
+        </ul>
+        <div class="card-actions justify-end">
+          <button class="btn btn-sm btn-outline" @click="n++">Add one</button>
+          <button class="btn btn-sm btn-primary">Submit</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A table</h2>
+    <table class="table table-sm max-w-lg border border-base-300">
+      <thead><tr><th>Bill</th><th>Sponsor</th><th class="text-right">Four-year</th></tr></thead>
+      <tbody>
+        <tr><td><a class="link link-primary" href="#">HB 1044</a></td><td>Ormsby</td><td class="text-right font-mono">1,204</td></tr>
+        <tr><td><a class="link link-primary" href="#">SB 5187</a></td><td>Rolfes</td><td class="text-right font-mono">318</td></tr>
+        <tr class="bg-base-200"><td>Total</td><td></td><td class="text-right font-mono font-semibold">1,522</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A nested list, where the second tap matters</h2>
+    <ul class="menu bg-base-200 rounded-box w-64 text-[14px]">
+      <li><a>One</a>
+        <ul>
+          <li><a>One point one</a>
+            <ul><li><a>One point one point one</a></li></ul>
+          </li>
+          <li><a>One point two</a></li>
+        </ul>
+      </li>
+      <li><a>Two</a></li>
+    </ul>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A strip that inherits from its parent</h2>
+    <div class="flex items-center gap-4 border-b border-base-300 pb-2 text-[15px] group">
+      <span class="font-medium border-b-2 border-primary pb-2 -mb-2.5">Levels</span>
+      <span class="text-base-content/60 group-hover:text-primary">By item</span>
+      <span class="text-base-content/60">Requests</span>
+      <span class="ml-auto text-[10px] uppercase tracking-wider text-base-content/40">External</span>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">The five readings</h2>
+    <table class="text-[13.5px] border border-base-300">
+      <tbody>
+        <tr class="border-b border-base-300"><td class="px-3 py-2 font-medium align-top w-24">Facts</td><td class="px-3 py-2">The selector, how many nodes it matches, the box, the layout, the tree position.</td></tr>
+        <tr class="border-b border-base-300"><td class="px-3 py-2 font-medium align-top">Tree</td><td class="px-3 py-2">The subtree as an outline, attributes dropped.</td></tr>
+        <tr class="border-b border-base-300"><td class="px-3 py-2 font-medium align-top">HTML</td><td class="px-3 py-2">The exact outerHTML, whole on copy.</td></tr>
+        <tr class="border-b border-base-300"><td class="px-3 py-2 font-medium align-top">JSON</td><td class="px-3 py-2">The facts as a record, with the chain.</td></tr>
+        <tr><td class="px-3 py-2 font-medium align-top">Render</td><td class="px-3 py-2">The subtree wrapped as a page that renders alone (theme and vendor tags carried, <code class="font-mono text-[0.9em]">x-*</code> stripped), shown in a frame; Copy takes the same string. A region that renders wrong in the frame was given something by an ancestor: step up one rung.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">From a script</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>const el = document.querySelector('.card');
+Peek.facts(el).selector      // '.card', with the match count beside it
+Peek.tree(el)                // the outline
+Peek.wrapInfo(el)            // { html, tags, skipped, theme, nodes, bytes }
+await Peek.copy('render')    // the wrapped page, on the clipboard</code></pre>
+  </section>
+
+</main>
+</body>
+</html>

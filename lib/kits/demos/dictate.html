@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dictate — voice input as a plain text buffer</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script type="module">
+  // The chain boot, so the FAB arrives; the kit itself is loaded by name so the
+  // controls below work at the previewed ref.
+  const ref = new URLSearchParams(location.search).get('use') || 'main';
+  const base = `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@${ref}/lib`;
+  await import(`${base}/gh-api.js`);
+  await gh.load('kits/dictate.js');
+  document.body.dataset.ready = '1';
+</script>
+<script>
+  // A STAND-IN RECOGNIZER. `create({ win })` takes the window holding the
+  // engine, or an accessor for one, which is the seam this page uses: point it
+  // at a fake window and every composition rule in the kit runs with no
+  // microphone, no permission and no network. The real engine is one toggle
+  // away and needs both.
+  const stage = { rec: null };
+  class Scripted {
+    start() { stage.rec = this; }
+    stop() { if (stage.rec === this) stage.rec = null; if (this.onend) this.onend(); }
+    abort() { this.stop(); }
+  }
+  const SANDBOX = { SpeechRecognition: Scripted, navigator: { language: 'en-US' } };
+
+  // What the engine hands back, verbatim, gaps included. `mark` is a tap on the
+  // punctuation row rather than something said.
+  const SCRIPT = [
+    { say: 'The board met on Tuesday and took up recordkeeping' },
+    { gap: 700, say: 'The schedule reconciles to the dollar' },
+    { mark: ',' },
+    { gap: 500, say: 'And the ACFR one does not' },
+    { gap: 2600, say: 'Ways and Means takes it up on Thursday.' },
+  ];
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // The injected clock, so a 2.6 second silence costs no wall time. It starts
+  // well past zero because the kit reads a zero `lastFinalAt` as "nothing has
+  // landed yet" and would record every gap as none.
+  let clock = 1e6;
+
+  const feed = (t, isFinal) => {
+    const rec = stage.rec;
+    if (!rec || !rec.onresult) return;
+    rec.onresult({ resultIndex: 0, results: [{ 0: { transcript: t }, isFinal, length: 1 }] });
+  };
+
+  function dictateDemo() {
+    return {
+      d: null, host: null, beat: 0,
+      here: false, mode: 'script', playing: false, at: -1,
+      text: '', interim: '', err: '', gapMs: 1500,
+
+      async init() {
+        while (!window.Dictate) await wait(30);
+        this.here = window.Dictate.available();
+        this.d = window.Dictate.create({
+          win: () => (this.mode === 'script' ? SANDBOX : window),
+          now: () => (this.mode === 'script' ? clock : Date.now()),
+          onText: (t) => { this.text = t; this.repaint(); },
+          onInterim: (t) => { this.interim = t; this.repaint(); },
+          onState: () => this.repaint(),
+          onError: (m) => { this.err = m; this.repaint(); },
+        });
+        this.host = this.$refs.buf;
+        this.repaint();
+        this.play();
+      },
+
+      repaint() {
+        this.beat++;
+        if (!this.host || !this.d) return;
+        window.Dictate.paint(this.host, {
+          text: this.text, interim: this.interim, range: this.d.range,
+          endCaret: true, handles: false,
+        });
+      },
+
+      // Read through `beat` so Alpine re-evaluates when the buffer moves.
+      get listening() { this.beat; return !!(this.d && this.d.listening); },
+      get live() { this.beat; return !!(this.d && this.d.live); },
+      get sel() { this.beat; return !!(this.d && this.d.hasSelection); },
+      get canStitch() { this.beat; return !!(this.d && this.d.canStitch); },
+      get canUnend() { this.beat; return !!(this.d && this.d.canUnend); },
+      get canUndo() { this.beat; return !!(this.d && this.d.canUndo); },
+      get canRedo() { this.beat; return !!(this.d && this.d.canRedo); },
+      get armed() { this.beat; return !!(this.d && this.d.capitalArmed); },
+      get segs() { this.beat; return this.d ? this.d.segments : []; },
+      get proposal() { this.beat; return this.d ? this.d.paragraphs(this.gapMs) : ''; },
+
+      async play() {
+        if (this.playing) return;
+        this.playing = true;
+        this.err = '';
+        this.d.stop();
+        this.mode = 'script';
+        this.d.text = '';
+        clock = 1e6;
+        this.d.start();
+        await wait(60);
+        for (let i = 0; i < SCRIPT.length; i++) {
+          const step = SCRIPT[i];
+          this.at = i;
+          if (step.mark) { this.d.punct(step.mark); await wait(280); continue; }
+          clock += step.gap || 0;
+          const w = step.say.split(' ');
+          for (let k = 3; k < w.length; k += 3) { feed(w.slice(0, k).join(' '), false); await wait(150); }
+          feed(step.say, true);
+          await wait(220);
+        }
+        this.at = -1;
+        this.d.stop();
+        this.playing = false;
+      },
+
+      speak() {
+        if (this.playing) return;
+        if (this.listening) return this.d.stop();
+        this.err = '';
+        this.mode = 'live';
+        this.d.start();
+      },
+
+      // A tap places a caret, a double tap takes the word: the offsets are the
+      // kit's, so the hit test and the mapping are too.
+      point(e) {
+        const D = window.Dictate;
+        if (!D.hitsText(this.host, e.clientX, e.clientY)) return this.d.clearRange();
+        let node = null, off = 0;
+        if (document.caretRangeFromPoint) {
+          const r = document.caretRangeFromPoint(e.clientX, e.clientY);
+          if (r) { node = r.startContainer; off = r.startOffset; }
+        } else if (document.caretPositionFromPoint) {
+          const p = document.caretPositionFromPoint(e.clientX, e.clientY);
+          if (p) { node = p.offsetNode; off = p.offset; }
+        }
+        if (!node) return;
+        const i = D.offsetAt(this.host, node, off);
+        if (e.type === 'dblclick') this.d.selectWordAt(i); else this.d.caretAt(i);
+      },
+
+      // The keyboard's two ops, character at a time, at the caret.
+      key(e) {
+        if (e.key === 'Backspace') return this.d.erase();
+        if (e.key === 'Enter') return this.d.punct('¶');
+        if (e.key.length === 1) this.d.type(e.key);
+      },
+    };
+  }
+</script>
+<script defer src="https://unpkg.com/alpinejs"></script>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-8" x-data="dictateDemo()">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">dictate</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">Dictate.create({ onText })</code>
+    <span class="text-[13px] text-base-content/50">tap the text for a caret · double tap for a word</span>
+    <span class="ml-auto flex gap-2">
+      <button class="btn btn-sm" :class="listening &amp;&amp; mode === 'live' ? 'btn-error' : ''"
+              :disabled="!!(!here || playing)" @click="speak()"
+              x-text="listening &amp;&amp; mode === 'live' ? 'Stop the mic' : 'Speak'">Speak</button>
+      <button class="btn btn-sm btn-primary" :disabled="playing" @click="play()">Play the transcript</button>
+      <button class="btn btn-sm btn-ghost" :disabled="playing" @click="d.text = ''">Clear</button>
+    </span>
+  </header>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">The buffer</h2>
+
+    <p class="text-[13.5px] text-base-content/60 text-pretty" x-show="here">
+      Speech recognition is in this browser, and <span class="font-medium">Speak</span> asks for microphone permission on the first tap. Everything else on this page runs without either.
+    </p>
+    <p class="text-[13.5px] text-base-content/60 text-pretty" x-show="!here">
+      This browser ships no speech recognition, so <span class="font-medium">Speak</span> is off. Everything else on this page runs without it, driven by the scripted engine below.
+    </p>
+
+    <div class="border border-base-300 rounded bg-base-100">
+      <div class="h-40 overflow-y-auto px-4 py-3">
+        <div x-ref="buf" class="whitespace-pre-wrap break-words select-none text-lg leading-8"
+             @click="point($event)" @dblclick="point($event)"></div>
+      </div>
+      <div class="flex flex-wrap items-center gap-1 border-t border-base-300 px-3 py-2">
+        <template x-for="p in ['.', ',', '?', ';', '!', '¶']" :key="p">
+          <button class="btn btn-sm btn-ghost font-mono w-9" @click="d.punct(p)" x-text="p"></button>
+        </template>
+        <span class="w-px h-5 bg-base-300 mx-1"></span>
+        <button class="btn btn-sm btn-ghost" @click="d.backWord()">Back word</button>
+        <button class="btn btn-sm btn-ghost" :disabled="!canStitch" @click="d.stitch()">Stitch</button>
+        <button class="btn btn-sm btn-ghost" :disabled="!canUnend" @click="d.unend()">Un-end</button>
+        <button class="btn btn-sm btn-ghost" :class="armed ? 'btn-active' : ''"
+                @click="d.armCapital(!armed); beat++">Arm capital</button>
+        <span class="w-px h-5 bg-base-300 mx-1"></span>
+        <button class="btn btn-sm btn-ghost" :disabled="!sel" @click="d.recase('upper')">AB</button>
+        <button class="btn btn-sm btn-ghost" :disabled="!sel" @click="d.recase('lower')">ab</button>
+        <button class="btn btn-sm btn-ghost" :disabled="!sel" @click="d.recase('title')">Ab</button>
+        <span class="w-px h-5 bg-base-300 mx-1"></span>
+        <button class="btn btn-sm btn-ghost" :disabled="!canUndo" @click="d.undo()">Undo</button>
+        <button class="btn btn-sm btn-ghost" :disabled="!canRedo" @click="d.redo()">Redo</button>
+        <input class="input input-sm w-44 ml-auto" placeholder="type at the caret"
+               @keydown.prevent="key($event)">
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-x-5 gap-y-1 text-xs font-mono text-base-content/50">
+      <span>listening <span class="text-base-content/80" x-text="listening"></span></span>
+      <span>live <span class="text-base-content/80" x-text="live"></span></span>
+      <span>relaunches <span class="text-base-content/80" x-text="d ? d.relaunches : 0"></span></span>
+      <span>range <span class="text-base-content/80" x-text="d &amp;&amp; d.range ? d.range.start + '–' + d.range.end : 'null'"></span></span>
+      <span>text.length <span class="text-base-content/80" x-text="text.length"></span></span>
+      <span class="text-error" x-text="err"></span>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">What the engine hands over</h2>
+    <table class="text-[14px] border border-base-300 w-full">
+      <thead class="bg-base-200 text-[11px] uppercase tracking-wider text-base-content/50">
+        <tr><th class="text-right font-medium px-3 py-1.5 w-24">Silence</th><th class="text-left font-medium px-3 py-1.5">Returned</th></tr>
+      </thead>
+      <tbody>
+        <template x-for="(s, i) in SCRIPT" :key="i">
+          <tr class="border-t border-base-300" :class="at === i ? 'bg-warning/20' : ''">
+            <td class="px-3 py-1.5 text-right font-mono text-xs text-base-content/50" x-text="s.gap ? s.gap + ' ms' : ''"></td>
+            <td class="px-3 py-1.5" x-text="s.mark ? 'tapped ' + s.mark + ' on the row' : s.say"></td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Pauses, and the breaks they propose</h2>
+    <div class="flex flex-wrap items-center gap-3">
+      <input type="range" min="400" max="3000" step="100" x-model.number="gapMs" class="range range-xs w-64">
+      <span class="font-mono text-xs text-base-content/60" x-text="'paragraphs(' + gapMs + ')'"></span>
+      <span class="font-mono text-xs text-base-content/40" x-text="segs.length + ' segments held'"></span>
+    </div>
+    <div class="flex flex-wrap gap-6 items-start">
+      <table class="text-[13.5px] border border-base-300">
+        <tbody>
+          <template x-for="(s, i) in segs" :key="i">
+            <tr class="border-b border-base-300 last:border-0">
+              <td class="px-3 py-1.5 font-mono text-xs text-base-content/50 text-right" x-text="s.gap + ' ms'"></td>
+              <td class="px-3 py-1.5" x-text="s.text"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+      <pre class="text-[13.5px] leading-7 whitespace-pre-wrap bg-base-200 border border-base-300 rounded p-3 flex-1 min-w-64" x-text="proposal"></pre>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">From a script</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>const d = Dictate.create({ onText: (t) =&gt; paint(t) });
+d.start()               // needs a recognizer and microphone permission
+d.punct(',')            // a real mark; the engine's own arrive as words
+d.backWord()            // the last word, or the mark clinging to it
+d.paragraphs(1500)      // the buffer with breaks proposed at the long pauses
+d.flush()               // commit the running hypothesis, return the buffer</code></pre>
+  </section>
+
+</main>
+</body>
+</html>
