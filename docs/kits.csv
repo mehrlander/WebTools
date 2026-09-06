@@ -1,0 +1,69 @@
+path,namespace,gloss,lines,boot,demo,users,tested
+lib/kits/annotate.js,Annotate,"notes pinned to pieces of a page: select text (or pick an element, or drag a rectangle), write a note, and carry the set out as markdown for a chat model, as…",4834,no,yes,12,yes
+lib/kits/branch-brief.js,BranchBrief,"a branch as a subject, not a row.",377,no,no,7,yes
+lib/kits/branch-status.js,BranchStatus,"Branch-scan math: the content-level landed/stranded signal, ported from home's tools/unmerged-branches.sh (the CLI reference instrument).",532,no,no,5,yes
+lib/kits/brief.js,brief,"assemble a page into a review brief: one markdown document holding the page source plus the source of the modules the page itself loaded, sized for pasting…",238,no,no,3,yes
+lib/kits/chat-archive.js,chatArchive,"the chat archive as a venue of activity, read one month at a time.",268,no,no,1,yes
+lib/kits/chat-render.js,chatRender,"chat transcript renderer: markdown in, readable conversation out, with fenced code blocks promoted to live artifacts.",1149,no,no,7,yes
+lib/kits/claude-mark.js,claudeMark,"the Claude logomark, from one path.",62,yes,no,5,yes
+lib/kits/closing-state.js,ClosingState,"the conventions' CLOSING STATE, as one vocabulary.",127,no,no,4,yes
+lib/kits/cm6-merge.js,cm6Merge,framework-free CodeMirror 6 *diff* factory: read-only side-by-side and unified merge views over two versions of a text.,162,no,no,6,yes
+lib/kits/cm6.js,cm6,framework-free CodeMirror 6 editor factory.,226,no,yes,18,yes
+lib/kits/code-doc.js,codeDoc,"SOURCE CODE AS A DECLARED RENDER: the second kind, and the one that says what the contract is actually for.",92,no,no,1,yes
+lib/kits/compression.js,compression,Brotli/Gzip/Acorn wrappers + bookmarklet packer.,365,no,yes,5,yes
+lib/kits/console.js,consoleKit,console retention + filter + subscribe layer.,115,yes,no,7,yes
+lib/kits/content-registry.js,ContentRegistry,"the epistemic content registry, read in the browser.",111,no,no,4,yes
+lib/kits/crawl-runs.js,CrawlRuns,The `runs` ring: the few facts about a crawl that its output cannot show.,89,no,no,2,yes
+lib/kits/csv.js,Csv,"CSV, small and shared.",54,no,no,6,yes
+lib/kits/data-payload.js,DataPayload,Reading a data toss.,190,no,no,3,yes
+lib/kits/data-shelf.js,dataShelf,shelf record schema + helpers.,62,no,no,1,yes
+lib/kits/dictate.js,Dictate,"voice input as a plain text buffer: start the engine, speak, and read `text` back.",1407,no,yes,10,yes
+lib/kits/dock-split.js,dockSplit,the drag handle between two panes.,264,no,yes,5,yes
+lib/kits/docx.js,docxKit,"WordprocessingML (.docx) preparation: what a Word file has to have done to it before a browser renderer draws it faithfully, and what it knows about itself…",497,no,no,1,yes
+lib/kits/estate-search.js,EstateSearch,"The estate's search calls, in one place, with one cache.",354,no,no,5,yes
+lib/kits/export.js,exporter,"export a page to a portable, self-resolving copy: ""download this page plus the data it read()s"" as one zip, optionally with its code inlined.",199,no,yes,8,yes
+lib/kits/file-deck.js,fileDeck,"a changeset's files, read one at a time.",371,no,no,10,yes
+lib/kits/github-links.js,GithubLinks,"the GitHub destinations for one repo, as menu rows.",98,no,no,3,yes
+lib/kits/guide-render.js,GuideRender,"a guide PR body, rendered as something you can walk.",296,no,no,7,yes
+lib/kits/io.js,io,,213,no,yes,20,yes
+lib/kits/land.js,Land,"where the reader was just sent, and how they get told.",260,no,yes,5,yes
+lib/kits/last-write.js,LastWrite,"the copy this page just committed, for the next fold",70,no,no,2,yes
+lib/kits/md-doc.js,mdDoc,a markdown document rendered as something you can read and take pieces OUT of.,680,no,no,11,yes
+lib/kits/messaging.js,messaging,string-path pub/sub.,68,no,yes,4,yes
+lib/kits/note.js,Note,"the small tooltip: `data-note=""…""` in place of `title=""…""`.",289,no,yes,4,yes
+lib/kits/pdf.js,pdf,"browser PDF extraction: text, geometry, and table structure.",2063,no,no,6,yes
+lib/kits/peek.js,Peek,"what is under the pointer, and what contains it.",762,no,yes,11,yes
+lib/kits/persistence.js,persistence,idb-keyval-backed key/value persistence.,343,no,yes,6,yes
+lib/kits/portable-align.js,PortableAlign,Pure assessment of a repo's alignment with the web-tools coordination surface: which of the environmental hooks that spread the portable set (the…,68,no,no,2,yes
+lib/kits/proof.js,proof,"sandboxed proof documents: code in, self-contained srcdoc HTML out.",83,no,no,16,yes
+lib/kits/read-aloud.js,readAloud,"markdown reduced to what is worth hearing, and a player that speaks it.",425,no,yes,3,yes
+lib/kits/record-deck.js,recordDeck,"a table's records, read one at a time.",329,no,no,2,yes
+lib/kits/repo-activity-cache.js,RepoActivityCache,Activity aggregate for the web-tools ecosystem.,215,no,no,5,yes
+lib/kits/repo-address.js,RepoAddress,"The `owner/repo[@ref]:path` address, in one place.",149,yes,no,12,yes
+lib/kits/repo-checks.js,RepoChecks,"Declared staleness checks for a repo, evaluated on sight.",319,no,no,3,yes
+lib/kits/repo-config-cache.js,RepoConfigCache,Config aggregate + history + alignment grade for the web-tools ecosystem.,120,no,no,3,yes
+lib/kits/repo-mailbox.js,RepoMailbox,"Private mailbox: an async, git-backed request/response channel between an agent session (limited repo scope) and show-repo in the browser (the user's…",133,no,no,2,yes
+lib/kits/repo-proposals.js,RepoProposals,Proposals: the write-side counterpart to the read-only mailbox (lib/kits/repo-mailbox.js).,658,no,no,2,yes
+lib/kits/repo-sessions-cache.js,RepoSessionsCache,Sessions aggregate for the web-tools ecosystem.,1417,no,no,2,yes
+lib/kits/review-target.js,reviewTarget,parse and mint the address grammar for the review page (pages/review.html).,133,no,no,3,yes
+lib/kits/route-activity.js,routeActivity,"rank the app's own routes by when the code behind each last moved, and join each to the work in flight against it.",320,no,no,4,yes
+lib/kits/row-menu.js,rowMenu,"a tap on a row, and what you can do with it",242,no,yes,2,yes
+lib/kits/session-export.js,sessionExport,"take part of a session out: pick the turns, say how much of each to include, copy the markdown.",1150,no,no,6,yes
+lib/kits/session-render.js,sessionRender,a session record as a readable conversation.,877,no,no,3,yes
+lib/kits/shorter-payload.js,ShorterPayload,Reading a shorter toss.,76,no,no,1,yes
+lib/kits/source-peek.js,SourcePeek,the hover card behind an exact-file GitHub jump-over.,477,yes,yes,10,yes
+lib/kits/src-doc.js,srcDoc,"A RENDERED VIEW OF A SOURCE FILE SAYS SO, AND SAYS WHICH FILE.",97,no,no,8,yes
+lib/kits/stage-handoff.js,StageHandoff,"one paste, two documents",126,no,no,3,no
+lib/kits/standoff.js,Standoff,"The standoff annotation: its invariants, the six edits it admits, and the one serialization both of its writers must agree on.",471,no,no,1,yes
+lib/kits/subject-channel.js,subjectChannel,telling the FAB sidebar what you are looking at.,140,no,no,6,yes
+lib/kits/surface.js,Surface,"the surface envelope, in one place.",205,no,no,1,yes
+lib/kits/swipe-deck.js,swipeDeck,"the house swipe format: a snap-scrolling track of slides, and the fullscreen takeover that frames it.",1269,no,yes,17,yes
+lib/kits/text-diff.js,textDiff,"patience diff over lines, plus word-level diff inside a changed line pair.",318,no,no,4,yes
+lib/kits/traffic.js,Traffic,"the pure read of what a page has pulled over the network, and the vocabulary the FAB's Traffic tab renders.",394,yes,no,3,yes
+lib/kits/treemap.js,treemap,pure logic for mapping a file tree as a treemap.,154,no,no,2,yes
+lib/kits/url-params.js,UrlParams,"Reading a page's own input params, fragment first, query as fallback.",149,no,no,7,yes
+lib/kits/vanilla-demo.js,demo,"the living-documentation demo format, distilled from pages/drop/live-docs-concept.html.",503,no,no,10,yes
+lib/kits/wring.js,wring,,1504,no,no,4,yes
+lib/kits/wsl-core.js,wslCore,"dependency-free WSL core: the XML→record parsers (as a factory), pension classification, and the pure list/group helpers.",351,no,no,4,yes
+lib/kits/wsl.js,wsl,browser-facing WSL kit.,299,no,no,3,yes
+lib/kits/xlsx.js,xlsxKit,"OOXML (.xlsx) structural inspector: unzip, walk every XML/rels part, and surface the internal cross-references (shared strings, styles, sheet rels, comments,…",1854,no,yes,4,yes

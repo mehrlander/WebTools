@@ -124,8 +124,9 @@ test('the two sub-tab encodings, counted', () => {
   // Stage's Saved pill went and `surfaces` became an alias rather than a key
   // of its own: an alias is not a sub-tab, since nothing addresses it.
   assert.equal(flattened, 5, 'sub-tabs addressed as their own ?view= key');
-  // 13 to 14 on 2026-08-29: the Map view gained an Aims tab.
-  assert.equal(params, 14, 'sub-tabs addressed as ?view=<parent>&tab=');
+  // 13 to 14 on 2026-08-29: the Map view gained an Aims tab. 14 to 15 on
+  // 2026-09-05: it gained a Kits tab.
+  assert.equal(params, 15, 'sub-tabs addressed as ?view=<parent>&tab=');
 });
 
 test('an alias is a retired key, so it never doubles as a live one', () => {

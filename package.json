@@ -70,6 +70,7 @@
     "test:shot-warnings": "node tools/test/shot-warnings.mjs",
     "test:data-view-links": "node tools/test/data-view-links.mjs",
     "tests-index": "node tools/build/tests-index.mjs",
+    "kits-index": "node tools/build/kits-index.mjs",
     "test:shortcut-log": "node tools/test/shortcut-log-page.mjs",
     "test:bench-page": "node tools/test/bench-page.mjs",
     "test:playground": "node tools/test/playground-pass.mjs",

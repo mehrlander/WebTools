@@ -33,6 +33,7 @@ tools/build/graph.mjs,the static resolver for a page's gh.load chain; feeds buil
 tools/build/graphql-schema.mjs,regenerate the pruned GitHub GraphQL schema the suite typechecks queries against,tools/build,230,npm:graphql-schema,yes,no,no
 tools/build/injection-measure.mjs,"measure what reaches a session at start and through which channel, into docs/injection.json",tools/build,168,argv,yes,no,no
 tools/build/kit-shim.mjs,run a browser-shaped gh.load kit inside Node; the bridge build.mjs and the suite share,tools/build,19,imported,no,yes,no
+tools/build/kits-index.mjs,"restamp docs/kits.csv, the kit shelf registry, every field read off lib/kits/ and the files that load it",tools/build,162,npm:kits-index,yes,no,yes
 tools/build/pages-index.mjs,regenerate both page catalogs: pages/README.md and pages/index.html,tools/build,457,npm:pages-index,yes,yes,yes
 tools/build/pages-shots.mjs,"regenerate pages/thumbs/*.png, one screenshot per page for the visual index",tools/build,85,npm:pages-shots,no,yes,no
 tools/build/registries-load.mjs,"read and write the registry pair (docs/registries.csv, docs/properties.csv): the CSV parse, the path/fragment split, and the column order a restamp must preserve",tools/build,103,imported,no,no,yes
@@ -148,6 +149,7 @@ tools/render/scenarios/map-showing.mjs,"the Map's Showing tab: how content moves
 tools/render/scenarios/map-skill-uses.mjs,"the Map's Skills tab with the invocation column: which skills actually fire, and which have never fired at all",tools/render/scenarios,80,driver,no,no,no
 tools/render/scenarios/map-skills.mjs,"the Map's Skills tab with all three sets live: the committed library and plugin manifests served through a stubbed GH, plus a fixture config cache for the estate; SKILLS_SET and SKILLS_Q drive the control and the search",tools/render/scenarios,95,driver,no,no,no
 tools/render/scenarios/map-surfacing-read.mjs,"the Surfacing tab's two header doors: the Read deck (filled, docked, and on its index slide) and the peek card over the doc's own mark",tools/render/scenarios,97,driver,no,no,no
+tools/render/scenarios/map-tests-compared.mjs,"the Map view's Tests tab with the compared toggle on: the comparison-grain reading under each explained file, and the estate section fed by home's own carrier",tools/render/scenarios,97,driver,no,no,no
 tools/render/scenarios/map-tests.mjs,the Map view's Tests tab: the test registry rendered live with assertion names expanded,tools/render/scenarios,63,driver,no,no,no
 tools/render/scenarios/nest-probe.mjs,"probe: a nested self-toss's address bar, and the FAB's actions at depth two",tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/open-drawer.mjs,the FAB drawer open with the take grid scrolled into view,tools/render/scenarios,20,driver,no,no,no

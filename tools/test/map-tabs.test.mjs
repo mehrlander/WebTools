@@ -36,7 +36,8 @@ const TABS = [...src.matchAll(/\{ k: '([a-z]+)', n: '([A-Za-z]+)', i: '(ph-[a-z-
   .map(m => ({ k: m[1], n: m[2], i: m[3], g: m[4].replace(/\\'/g, "'") }));
 
 test('every tab in the strip is one entry in the array that generates it', () => {
-  assert.equal(TABS.length, 12, 'twelve tabs, or this test is reading the wrong literal');
+  // 12 to 13 on 2026-09-05: the Kits tab.
+  assert.equal(TABS.length, 13, 'thirteen tabs, or this test is reading the wrong literal');
   // One x-for, not twelve hand-copied buttons: the copies are what let a tab
   // ship without a sentence, and what let the Injection tab ship without an icon.
   const buttons = src.match(/role="tab" @click="setTab\(/g) || [];

@@ -38,22 +38,18 @@ test('CLAUDE.md delegates the showing material to its carrier and frame', () => 
 // threshold is deliberate rather than derived: 1600 was set when the file fell
 // to 1,117 words, leaving room to grow but not to sprawl.
 //
-// The remedy when this fires is extraction, never shaving. Move a section into
-// a doc or into data and link it, the way the showing material went to
-// routes.json and the manifest field list went to docs/manifest-fields.csv. Trimming
-// adjectives off unrelated paragraphs buys a few words, teaches the next
-// session that the number is the goal, and leaves the file just as long.
+// If this fails, see docs/CONVENTIONS.md ("Prose that describes state is
+// unimplemented"). Look to trim redundant state details, enforced rules, or
+// duplicated content. Material could also be moved. Sessions load this every
+// turn, so use the skills/state-the-rule pass.
 //
-// Raising the number is a real option, but it is a decision about how much a
-// session should be asked to read before it starts, so make it deliberately
-// and not in the same commit that tripped the check.
+// Raising the limit requires user approval.
 const LIMIT = 1600;
 
 test('CLAUDE.md stays short', () => {
   const words = claude.split(/\s+/).length;
   assert.ok(words < LIMIT,
     `CLAUDE.md is ${words} words, over its ${LIMIT}-word ceiling. ` +
-    'The fix is extraction, not shaving: move a section into a doc or into ' +
-    'data and link it. Raising the ceiling is a deliberate decision about how ' +
-    'much a session reads before starting, so do it on its own, not here.');
+    'See docs/CONVENTIONS.md ("Prose that describes state is unimplemented"). ' +
+    'Raising the limit requires user approval.');
 });
