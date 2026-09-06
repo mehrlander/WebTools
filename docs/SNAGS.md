@@ -289,10 +289,13 @@ second time after the `max-height` fix had already landed). The half that
 worked is what identified it: a mask reaching the body proves the style applied,
 so whatever is still tall is upstream of it. The corrected move is that a
 clipped box lives in a plain `div` and a `<button>` holds only the small thing
-you tap. Chrome cannot show this, so the gate asserts the structure: the element
-carrying the inline height has no `button` ancestor. →
-[`lib/alpineComponents/session-brief.js`](../lib/alpineComponents/session-brief.js),
-gated in `tools/test/session-brief.test.mjs`.
+you tap. Chrome cannot show this, so the gate asserts the structure rather than
+measuring pixels. The block it was found on was removed on 2026-09-06 for the
+space it cost, so the gate moved to the estate's other clamped trigger: the
+outline row's title, a two-line `line-clamp` that is a `role="button"` div for
+exactly this reason. →
+[`lib/kits/session-export.js`](../lib/kits/session-export.js) at `asTrigger`
+carries the live case, gated in `tools/test/session-brief.test.mjs`.
 
 ### line-clamp-is-not-a-height: the utility collided with a display four times in one branch, then failed only on the phone
 `line-clamp-N` sets `display`, so a second display utility on the same element
@@ -306,10 +309,11 @@ cannot show: the clamp counts LINE BOXES, so a container of `<p>` blocks is
 outside what it does. Chrome clamps anyway; iOS Safari keeps the box at the full
 height of every paragraph and hides only the spill, which is how the session
 brief's closing reply reached a phone as three lines over an inch of empty card.
-A container of blocks takes a `max-height` with a mask, never a clamp. →
-[`lib/alpineComponents/session-brief.js`](../lib/alpineComponents/session-brief.js)
-carries the worked case; `tools/test/session-brief.test.mjs` and
-`tools/test/session-export-open.test.mjs` gate both halves.
+A container of blocks takes a `max-height` with a mask, never a clamp. That
+fourth case was removed with its block on 2026-09-06 and the rule is kept for
+the next container of blocks that wants clamping; the first three are live. →
+[`lib/kits/session-export.js`](../lib/kits/session-export.js) carries the worked
+cases, gated in `tools/test/session-export-open.test.mjs`.
 
 ### untracked-file-invisible-to-the-suite: a local green over a file the scanner never enumerated
 `npm test` passed twice, 2707/0, over a brand-new `docs/routes-paste.csv`
