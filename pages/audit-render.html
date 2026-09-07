@@ -862,6 +862,26 @@ window.__audit = {
       : `no faults · ${kits.length} kits loaded (${kits.join(', ')})`;
   };
   window.__auditSettled = () => { window.__auditReady = true; paintFaults(); };
+
+  // THE CRASH THE READOUT ABOVE CANNOT SEE. Safari's "A problem repeatedly
+  // occurred" is the WEB PROCESS dying, not a JS exception: no handler runs, so
+  // every watcher above stays silent and the page that would report it is gone.
+  // The one channel that outlives the process is storage, so the fab writes the
+  // stage it is entering (alpineComponents/fab.js, _crumb) and drops the trail
+  // when the tap completes. A key still there on the next load is a tap that
+  // never finished, and naming the stage is the whole diagnosis. Read once and
+  // cleared, so it reports the crash rather than every load after it.
+  window.__fabCrumbRead = true;
+  try {
+    const crumb = localStorage.getItem('fab:step');
+    if (crumb) {
+      localStorage.removeItem('fab:step');
+      const [stage, at] = crumb.split(' @');
+      const ago = Number(at) ? Math.round((Date.now() - Number(at)) / 1000) : null;
+      fault(`previous fab tap never finished: ${stage}` + (ago === null ? '' : ` (${ago}s ago)`));
+    }
+  } catch {}
+
   addEventListener('DOMContentLoaded', paintFaults);
   // Capture phase, because a resource that fails to load fires its error on
   // the element and never reaches window in the bubble phase. Those events
@@ -1098,6 +1118,7 @@ window.__audit = {
         this.push.length > 1 && 'keep1',                  // an edit keeps the reader's subject selected
         typeof this.absorbTo === 'function' && 'reach2',  // a boundary reaches past its pair, both ways
         Array.isArray(window.__auditFaults) && 'faults3', // says so either way, clean or not
+        window.__fabCrumbRead && 'crumb1',                // a fab tap that crashed names its stage next load
       ].filter(Boolean);
       return `build ${has.join('·') || 'base'} · lib ${(this.ref || 'main').slice(0, 7)}`;
     },
