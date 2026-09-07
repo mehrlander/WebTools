@@ -564,6 +564,46 @@ test('a filled card pins its control row; an unfilled one has nothing to pin to'
   assert.match(wrap('page').className, /bg-base-200\/20/, 'unfilled keeps the wash');
 });
 
+// THE REF IT NAMES IS AN ARBITRARY BRANCH NAME, not a short base: the sidebar
+// picks it, so it can be any branch in the repo. Unshrinkable and untruncated,
+// claude/bookmarklets-shortcuts-iphone-safari-rjakex took 362px of a 398px row
+// and pushed the layouts 88px past the right edge and copy 120px, off the
+// screen (measured 2026-09-07 in the browser, since jsdom computes no layout;
+// the standing measurement is in tools/render/scenarios/sidebar-compare.mjs).
+// What is holdable here is the four classes that let it happen, and their
+// weights: the picker shrinks HARDER than the path beside it, because between
+// the file's own name and the ref it is compared against, the name is the one
+// a reader needs whole.
+test('the compare picker shrinks before the path does, and truncates', () => {
+  const det = window.document.getElementById('page').querySelector('details[x-ref="cmpMenu"]');
+  assert.ok(det, 'the picker');
+  assert.match(det.className, /min-w-0/, 'it can shrink below its content: ' + det.className);
+  assert.match(det.className, /shrink-\[9999\]/, 'and hardest of anything on the row');
+
+  // A btn is inline-flex, which sizes to content and overflows a parent that
+  // shrank under it, so capping the summary is a second rule and not a repeat.
+  const sum = det.querySelector('summary');
+  assert.match(sum.className, /max-w-full/, 'the summary is capped at it: ' + sum.className);
+  assert.match(sum.className, /min-w-0/);
+
+  const name = [...sum.querySelectorAll('span')]
+    .find(e => (e.getAttribute('x-text') || '') === 'baseName');
+  assert.ok(name, 'the ref beside the glyph');
+  assert.match(name.className, /truncate/, 'which is what actually cuts it');
+  assert.match(name.className, /min-w-0/);
+  // The glyph never shrinks: an icon narrowed to nothing is worse than a ref
+  // cut short, since the ref has a tooltip and a menu behind it and the icon
+  // is the only thing saying what the control is.
+  assert.match(sum.querySelector('i').className, /shrink-0/, 'the glyph holds its size');
+
+  // The path's own shrink is the weight this one is set against; if that ever
+  // matches, the two shrink together and neither wins.
+  const path = window.document.getElementById('page')
+    .querySelector('[x-text="dirPart"]');
+  assert.match(path.className, /shrink-\[9999\]/,
+    'dirPart carries the same weight, which is what makes the pair legible');
+});
+
 // COPY IS THE WHOLE UTILITY GROUP on a reading card, so dropping it is what
 // frees the end of the row for the layouts. A panel in the branch page's strip
 // is a place to read; taking the text is a different errand, and Raw in the

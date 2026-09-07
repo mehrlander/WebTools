@@ -207,7 +207,11 @@ of the truth, and the tempting next step is to delete the class. Caught
 2026-09-06 on a `-mt-2` that measured as a no-op twice.
 The corrected move is `npm run build:lib` in the same command as the edit,
 before any shot of a page that imports the pre-build; `grep -n "dist/" <page>`
-says which pages those are. Sibling of
+says which pages those are. **`build:lib` alone is not enough where the shot is
+of the APP**, which serves `dist/app.js`, its own bundle: on 2026-09-07 a
+compare-picker fix read as having no effect through two measurement passes,
+because the run rebuilt `lib` and shot `app/index.html`. Build both, or read
+the page's own import before deciding which. Sibling of
 `page-skips-the-loader-ignores-use`, and the boundary between them is who is
 looking: that one is a READER handed `?use=` by a page that skips the loader,
 this one is the SESSION shooting a page that imports the pre-build. Same

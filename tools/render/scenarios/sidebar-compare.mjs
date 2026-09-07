@@ -27,6 +27,10 @@ export default async function (page, ctx) {
 
   const out = await page.evaluate(async () => {
     const wait = (ms) => new Promise(r => setTimeout(r, ms));
+    // A REAL branch name, not a short one. The sidebar picks any branch in the
+    // repo, so the card's picker renders whatever it is handed, and the length
+    // that broke the row on 2026-09-07 is ordinary here.
+    const LONG = 'claude/bookmarklets-shortcuts-iphone-safari-rjakex';
     // Not real repo paths: gh.load() fetches the shell's own kits through the
     // same client, so a get() stub that answers everything hands the loader
     // prose where it expected JavaScript.
@@ -94,7 +98,7 @@ export default async function (page, ctx) {
 
     // Pick another branch to compare against.
     const before = reads.length;
-    fab.compareWith('claude/elsewhere');
+    fab.compareWith(LONG);
     await wait(1200);
     const picked = { strip: strip(), base: card().base, baseName: card().baseName,
                      patch: !!card().patch, tab: card().tab,
@@ -130,7 +134,27 @@ export default async function (page, ctx) {
       crumb: window.swipeDeck.top()?.el.querySelector('h1 + p')?.textContent || '',
     };
 
-    return { announced, opened, barText, picked, off, back, reref };
+    // DOES THE ROW STILL FIT with that name in it? The card's picker draws the
+    // ref beside its glyph only on the diff pane, so that is where to look.
+    // jsdom holds the four classes that make this work; only a browser can say
+    // whether they do (file-review-card, "the compare picker shrinks").
+    fab.compareWith(LONG);
+    await wait(1200);
+    fab.open = false;
+    const c2 = card();
+    c2.setTab('diff');
+    await wait(900);
+    const d2 = window.swipeDeck.top();
+    const el2 = d2.deck.track.children[d2.deck.active()].querySelector('[x-data^="fileReview"]');
+    const row = [...el2.querySelectorAll('div')].find(e =>
+      /\bflex items-center gap-1\b/.test(e.className || '') && e.querySelector('details[x-ref="ghMenu"]'));
+    const rw = row.getBoundingClientRect();
+    const past = [...row.children].filter(k => k.style.display !== 'none')
+      .filter(k => k.getBoundingClientRect().right - rw.right > 0.5).length;
+    const fits = { width: Math.round(rw.width), content: row.scrollWidth,
+                   controlsPastTheEdge: past };
+
+    return { announced, opened, barText, picked, off, back, reref, fits };
   });
 
   console.log('\n── the sidebar owns the second ref ' + '─'.repeat(26));
@@ -141,6 +165,7 @@ export default async function (page, ctx) {
   console.log('   after turning it off    : ' + JSON.stringify(out.off));
   console.log('   back to the merge base  : ' + JSON.stringify(out.back));
   console.log('   after picking a ref     : ' + JSON.stringify(out.reref));
+  console.log('   a long ref still fits   : ' + JSON.stringify(out.fits));
   console.log('─'.repeat(60) + '\n');
 
   // Where the shot is pointed. Default is the bar in place under the ref bar;
@@ -155,7 +180,7 @@ export default async function (page, ctx) {
       // The deck was left at main, where the merge base is the same commit and
       // there is nothing to compare. Point it at a ref that differs, so the
       // shot shows the pane rather than the identical-content note.
-      fab.compareWith('claude/elsewhere');
+      fab.compareWith(LONG);
       await new Promise(r => setTimeout(r, 1200));
       fab.open = false;
       const d = window.swipeDeck.top();
