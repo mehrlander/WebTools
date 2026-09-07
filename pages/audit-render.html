@@ -870,8 +870,8 @@ window.__audit = {
     // may be the head or tail of the DOCUMENT, which has a unit on one side
     // only, so there is nothing to relocate it between. The second arrived with
     // insert, which needs one side where shift needs two, and it is the case
-    // where the drag button is absent from a boundary the reader can plainly
-    // see and can plainly put text at.
+    // where a boundary the reader can plainly see, and can plainly put text at,
+    // still cannot be moved.
     get noDrag() {
       const e = this.unpinned;
       // x-text evaluates whether or not x-show is displaying it, so the empty
@@ -1449,19 +1449,6 @@ window.__audit = {
       const i = Standoff.offsetAt(document, x, y);
       return i == null ? null : snapWord(this.a.text, i);
     },
-    // The inverse, for placing a pinhead: a collapsed Range at the offset,
-    // measured against the doc container so the pins scroll with the text.
-    pointAt(at) {
-      const host = this.$refs.doc;
-      const hit = Standoff.nodeAt(host, at);
-      if (!hit) return null;
-      const r = document.createRange();
-      r.setStart(hit.node, hit.offset);
-      r.collapse(true);
-      const b = r.getBoundingClientRect(), h = host.getBoundingClientRect();
-      if (!b.height && !b.width) return null;
-      return { x: b.left - h.left, y: b.top - h.top, h: b.height || 20 };
-    },
     // The client rect of the collapsed range at a document offset, which is
     // what the pin painter measures from.
     rectAt(at, which) {
@@ -1764,8 +1751,8 @@ window.__audit = {
         ay = Math.min(b.bottom - EDGE, Math.max(b.top + EDGE, ay));
         const i = this.offsetAt(ax, ay);
         if (i == null) return;
-        // Moved live and recorded once, the same rule the pad follows: one drag
-        // is one judgment.
+        // Moved live and recorded once: one drag is one judgment, so the patch
+        // gets a single shift when the finger lifts.
         if (Standoff.ops.shift(this.so, this.a.text, { after, to: i }) === null) return;
         landed = i;
         this.paint();
@@ -1812,67 +1799,6 @@ window.__audit = {
       addEventListener('resize', () => this.placePins());
     },
 
-    // ── THE PAD ──────────────────────────────────────────────────────────────
-    // A relative pointer, not a scrubber. The drag moves a VIRTUAL POINT that
-    // starts at the armed pin, and each move asks the browser what offset sits
-    // under it, so wrapped lines and proportional type come out right without
-    // arithmetic over the buffer.
-    //
-    // The gain depends on how fast the finger moves: creep and the boundary
-    // creeps, well under 1:1, which is the precision the pad exists for; flick
-    // and it runs ahead. Overshoot on a flick, crawl back a character at a time,
-    // both without lifting. The four numbers are the whole feel of the control,
-    // and they are lib/kits/annotate.js's, which is where they were tuned.
-    padding_: false, padPt: null, padBase: null,
-    PAD: { slow: 0.45, fast: 2.4, v0: 0.12, v1: 1.5 },
-    padDown(ev) {
-      const e = this.edges.find(x => x.edge === this.armed);
-      if (!e) return;
-      const p = this.pointAt(e.at), h = this.$refs.doc.getBoundingClientRect();
-      if (!p) return;
-      ev.target.setPointerCapture?.(ev.pointerId);
-      this.padding_ = true;
-      this.padPt = { x: p.x + h.left, y: p.y + h.top + p.h / 2 };
-      this.padBase = { after: e.after, from: e.at, last: ev, t: performance.now() };
-      document.body.style.userSelect = 'none';
-    },
-    padMove(ev) {
-      if (!this.padding_) return;
-      ev.preventDefault();
-      const b = this.padBase, now = performance.now();
-      const dx = ev.clientX - b.last.clientX, dy = ev.clientY - b.last.clientY;
-      const dt = Math.max(1, now - b.t);
-      const v = Math.hypot(dx, dy) / dt, P = this.PAD;
-      const t = Math.min(1, Math.max(0, (v - P.v0) / (P.v1 - P.v0)));
-      const gain = P.slow + t * (P.fast - P.slow);
-      this.padPt = { x: this.padPt.x + dx * gain, y: this.padPt.y + dy * gain };
-      b.last = ev; b.t = now;
-      // Nothing under the point is not a failure: the point keeps moving and
-      // the boundary holds until text is under it again. Walking x back to the
-      // line end was tried and is the wrong reading, since past the end of a
-      // line the next character is on the NEXT line, and the point reaches it
-      // by moving down the way a finger would.
-      const off = this.offsetAt(this.padPt.x, this.padPt.y);
-      if (off != null) {
-        // Moved on the live annotation, not recorded: one drag is one judgment,
-        // so the patch gets a single `shift` when the finger lifts.
-        if (Standoff.ops.shift(this.so, this.a.text, { after: b.after, to: off }) !== null) {
-          this.paint();
-        }
-      }
-    },
-    padUp() {
-      if (!this.padding_) return;
-      this.padding_ = false;
-      document.body.style.userSelect = '';
-      const b = this.padBase, e = this.edges.find(x => x.edge === this.armed);
-      const to = e ? e.at : b.from;
-      // Put it back, then let push() make the one real operation, so the page
-      // and a patch replayed by ops.py end in the same place.
-      Standoff.ops.shift(this.so, this.a.text, { after: b.after, to: b.from });
-      if (to !== b.from) this.push({ op: 'shift', after: b.after, to });
-      else this.paint();
-    },
     // The deck is a CONTAINER, not a viewer: one section per slide, same units,
     // same paint(). Nothing about the audit changes to ride it.
     deck() {
@@ -1982,10 +1908,10 @@ window.__audit = {
       <!-- The pin layer. It overlays the doc box exactly, takes no taps of its
            own, and hands each pin back its own: the painter writes the box's
            whole style attribute, so the exception is a rule here rather than
-           an inline property there. While the pad is driving, the pins stop
-           hit-testing entirely, since the virtual point starts on one. -->
+           an inline property there. While a pin is being dragged the pins stop
+           hit-testing, so the aim point reads the text and not the pin on it. -->
       <div x-ref="pins" class="absolute inset-0 pointer-events-none"
-           :data-audit-drag="(padding_ || pinDrag) ? '' : null"
+           :data-audit-drag="pinDrag ? '' : null"
            @pointerdown="pinDown($event)"></div>
     </div>
 
@@ -2099,11 +2025,6 @@ window.__audit = {
            hold text and not enough to relocate. -->
       <div class="mt-2" x-show="armed" x-cloak>
         <div class="flex items-center gap-2" x-show="armedEdge?.shiftable" x-cloak>
-          <button class="btn btn-sm btn-primary touch-none select-none"
-                  @pointerdown="padDown($event)" @pointermove="padMove($event)"
-                  @pointerup="padUp()" @pointercancel="padUp()">
-            <i class="ph ph-crosshair"></i> drag the edge
-          </button>
           <span class="opacity-60 font-mono" x-text="armedEdge?.at"></span>
         </div>
         <input class="input input-xs input-bordered w-full mt-2"
