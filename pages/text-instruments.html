@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Instruments</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔬</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  text-instruments.html — the estate's text-analysis and NLP work as one
+  reading surface. Three panes over one subject, in the order a reader wants
+  them: what we tried, what we have, what we produced.
+
+    probes       projects/local-models/probes/probes.json. One record per
+                 bounded question: question, method, corpus, result, verdict,
+                 what it opens. Failures are recorded at the same weight as
+                 successes, so the standing counts lead the header rather than
+                 being tucked behind a total.
+    instruments  projects/local-models/INSTRUMENTS.md, rendered. Organised by
+                 unit of analysis (word, term of art, named entity, speaker,
+                 sentence, document), because that is the question a session
+                 actually arrives with: I have text at this grain.
+    runs         the five dated runs, each pointing at whatever it actually
+                 produced. A run with no page says "no page" instead of
+                 pretending, which is the same honesty the probe log keeps.
+
+  Data contract. Everything is read live from mehrlander/home through the
+  viewer's token (gh-api + gh-auth). This page holds no copy of the probe
+  records or the register, so it cannot drift from them; the cost is that home
+  is private, so a tokenless reader meets the auth prompt, exactly as
+  links.html does over the same repo.
+
+  Standing is derived here from the first sentence of the verdict, by the same
+  rule probes/build-index.py uses to derive it for the generated README. Two
+  readings of one field, so the page and the README cannot disagree.
+
+  Colour appears on one thing: a probe's standing. Nothing else takes an
+  accent, so any colour on this page is a verdict and nothing else. The four
+  values are a scale, not four decorations.
+
+  Two params:
+    ?use=<ref>   pins this page's own lib chain to a ref.
+    ?data=<ref>  pins which ref of home is read (defaults to main).
+-->
+
+<style>[x-cloak]{display:none!important}</style>
+
+<script type="module">
+  const params = new URLSearchParams(location.search);
+  const ref = params.get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  }
+  await gh.load('gh-auth.js');
+  await gh.load('kits/guide-render.js');
+  await gh.load('kits/source-peek.js');
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('textInstruments', () => ({
+      REPO: 'mehrlander/home',
+      ROOT: 'projects/local-models',
+      TOSS: 'https://mehrlander.github.io/web-tools/pages/toss-render.html',
+      DATA_REF: params.get('data') || 'main',
+
+      // The page's only coloured dimension.
+      STANDINGS: {
+        worked: { bar: 'bg-success', text: 'text-success' },
+        mixed:  { bar: 'bg-warning', text: 'text-warning' },
+        failed: { bar: 'bg-error',   text: 'text-error'   },
+        open:   { bar: 'bg-info',    text: 'text-info'    },
+      },
+
+      // Dated runs, newest first. `page` is what a reader can open; a run that
+      // produced results and prose but no page carries an empty one, and the
+      // row says so rather than linking its folder twice.
+      RUNS: [
+        { date: '2026-08-26', title: 'The scare-quote test',
+          line: 'Whether a reader\'s urge to put quotation marks round a term detects the term doing unearned work.',
+          dir: 'projects/local-models/runs/2026-08-26-scare-quote', page: '' },
+        { date: '2026-08-19', title: 'Model voice',
+          line: 'Which words and phrases each speaker owns, and which phrases every model overuses against a human control corpus.',
+          dir: 'projects/local-models/runs/2026-08-19-model-voice',
+          page: 'projects/local-models/runs/2026-08-19-model-voice/report.html' },
+        { date: '2026-08-18', title: 'Claim strength',
+          line: 'Measuring how far a claim reaches and how sharply it resolves, and which lexical features carry neither.',
+          dir: 'projects/local-models/runs/2026-08-18-claim-strength',
+          page: 'projects/local-models/runs/2026-08-18-claim-strength/report.html' },
+        { date: '2026-08-04', title: 'Pension classification',
+          line: 'A local open-weight model set against Haiku\'s reads of the same pension bills.',
+          dir: 'projects/local-models/runs/2026-08-04-pension-classification',
+          page: 'projects/local-models/runs/2026-08-04-pension-classification/deck.html' },
+        { date: '2026-06-09', title: 'Document audit',
+          line: 'Reading one document unit by unit: redundancy, drift, and what a receipt cannot see.',
+          dir: 'projects/doc-audit', page: 'projects/doc-audit/demo/index.html' },
+      ],
+
+      home: null,
+      pane: params.get('pane') || 'probes',
+      probes: [],
+      concept: '',
+      filterStanding: '',
+      open: null,
+      guideHtml: '',
+      loading: true,
+      error: '',
+      framed: window.self !== window.top,
+
+      async init() {
+        this.home = new window.GH({ token: window.TOKEN || '', repo: this.REPO, ref: this.DATA_REF });
+        try {
+          const res = await this.home.get(`${this.ROOT}/probes/probes.json`);
+          this.probes = JSON.parse(res.text).probes
+            .sort((a, b) => (b.date + b.id).localeCompare(a.date + a.id));
+        } catch (e) {
+          this.error = `${e.message || e} — ${this.REPO}@${this.DATA_REF}`;
+        }
+        this.loading = false;
+        if (this.pane === 'instruments') this.showPane('instruments');
+      },
+
+      // build-index.py's rule, on one probe's own verdict: open wins, then
+      // worked, then failed, and anything else is mixed.
+      standingOf(p) {
+        const v = (p.verdict || '').split('.')[0].toLowerCase();
+        return v.startsWith('open') ? 'open'
+             : v.startsWith('work') ? 'worked'
+             : v.startsWith('fail') ? 'failed' : 'mixed';
+      },
+
+      get counts() {
+        const c = { worked: 0, mixed: 0, failed: 0, open: 0 };
+        this.probes.forEach(p => c[this.standingOf(p)]++);
+        return c;
+      },
+
+      // The field's own vocabulary, which is what the log is indexed by, so a
+      // term from the literature lands somewhere.
+      get concepts() {
+        const m = new Map();
+        this.probes.forEach(p => p.concepts.forEach(c => m.set(c, (m.get(c) || 0) + 1)));
+        return [...m].sort((a, b) => a[0].localeCompare(b[0]));
+      },
+
+      get shown() {
+        return this.probes.filter(p =>
+          (!this.filterStanding || this.standingOf(p) === this.filterStanding)
+          && (!this.concept || p.concepts.includes(this.concept)));
+      },
+
+      async showPane(name) {
+        this.pane = name;
+        if (name !== 'instruments' || this.guideHtml) return;
+        const res = await this.home.get(`${this.ROOT}/INSTRUMENTS.md`);
+        await window.GuideRender.needMarked();
+        const src = window.SourcePeek.fenceFrontmatter(res.text);
+        this.guideHtml = window.GuideRender.render(src, { knownRefs: [this.DATA_REF, 'main'] }).html;
+      },
+      get guideBodyClass() { return window.GuideRender.bodyClass('page') },
+
+      // An artifact is either an absolute URL or a path relative to probes/.
+      // The relative form resolves into a blob at the ref being read, so the
+      // link is correct from wherever the page was opened.
+      artifactUrl(a) {
+        if (/^https?:/.test(a)) return a;
+        const out = [];
+        for (const seg of `${this.ROOT}/probes/${a}`.split('/')) {
+          if (seg === '..') out.pop();
+          else if (seg && seg !== '.') out.push(seg);
+        }
+        return `https://github.com/${this.REPO}/blob/${this.DATA_REF}/${out.join('/')}`;
+      },
+      artifactName(a) { return a.split('/').filter(Boolean).pop() },
+
+      tossUrl(path) { return `${this.TOSS}#gh=${this.REPO}@${this.DATA_REF}:${path}` },
+      treeUrl(path) { return `https://github.com/${this.REPO}/tree/${this.DATA_REF}/${path}` },
+      shut() { document.activeElement?.blur() },
+    }));
+  });
+
+  await gh.load('alpine-bundle.js');   // starts Alpine
+</script>
+</head>
+
+<body class="bg-base-100 min-h-dvh text-base-content">
+
+<div x-data="textInstruments" x-cloak>
+
+  <!-- ── chrome ───────────────────────────────────────────────────────────
+       Sticky rather than fixed: this page is a tenant, embedded as an app
+       view in show-repo, and a fixed root measures against the outer viewport
+       inside a narrower frame. -->
+  <header class="sticky top-0 z-20 bg-base-100 border-b border-base-300">
+    <div class="px-5 sm:px-7 py-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+
+      <h1 x-show="!framed" class="font-serif text-xl sm:text-2xl tracking-tight">Text Instruments</h1>
+
+      <nav class="flex gap-4 font-mono text-xs">
+        <template x-for="[key, label] in [['probes','probes'],['instruments','instruments'],['runs','runs']]" :key="key">
+          <button class="hover:opacity-100 transition-opacity"
+                  :class="pane === key ? 'opacity-100 font-medium' : 'opacity-40'"
+                  @click="showPane(key)" x-text="label"></button>
+        </template>
+      </nav>
+
+      <div class="grow"></div>
+
+      <!-- The counts are the filter. A number that does nothing is a stat
+           card with the border removed. -->
+      <div x-show="pane === 'probes'" class="flex items-baseline gap-x-3 font-mono text-xs">
+        <template x-for="key in ['worked','mixed','failed','open']" :key="key">
+          <button class="hover:opacity-100 transition-opacity"
+                  :class="filterStanding === key ? [STANDINGS[key].text, 'opacity-100', 'font-medium'] : 'opacity-40'"
+                  @click="filterStanding = filterStanding === key ? '' : key">
+            <span x-text="counts[key]"></span>
+            <span x-text="key"></span>
+          </button>
+        </template>
+      </div>
+
+      <div x-show="pane === 'probes'" class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="font-mono text-xs opacity-40 hover:opacity-100 transition-opacity"
+             :class="concept && 'opacity-100 font-medium'">
+          <span x-text="concept || 'all concepts'"></span>
+          <i class="ph ph-caret-down"></i>
+        </div>
+        <ul tabindex="0" class="dropdown-content menu flex-nowrap bg-base-100 border border-base-300 rounded-box z-30 w-72 max-h-[70vh] overflow-y-auto shadow-lg">
+          <li><a class="font-mono text-xs" @click="concept = ''; shut()">all concepts</a></li>
+          <template x-for="[name, n] in concepts" :key="name">
+            <li>
+              <a class="font-mono text-xs justify-between" :class="concept === name && 'font-medium'"
+                 @click="concept = name; shut()">
+                <span x-text="name"></span>
+                <span class="opacity-40" x-text="n"></span>
+              </a>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <main class="px-5 sm:px-7 py-7 max-w-[72rem] mx-auto">
+
+    <div x-show="loading" class="py-24 text-center">
+      <span class="loading loading-dots loading-md opacity-20"></span>
+    </div>
+    <div x-show="error" class="font-mono text-sm text-error py-6" x-text="error"></div>
+
+    <!-- ── probes ─────────────────────────────────────────────────────── -->
+    <section x-show="pane === 'probes' && !loading">
+      <template x-for="p in shown" :key="p.id">
+        <article class="border-b border-base-300 py-5">
+
+          <button class="w-full text-left flex items-start gap-3" @click="open = open === p.id ? null : p.id">
+            <span class="mt-2.5 w-1 h-5 rounded-sm shrink-0" :class="STANDINGS[standingOf(p)].bar"></span>
+            <span class="grow min-w-0">
+              <span class="block text-lg leading-7 text-pretty" x-text="p.question"></span>
+              <span class="block mt-1 font-mono text-xs opacity-40">
+                <span x-text="p.date"></span> ·
+                <span :class="STANDINGS[standingOf(p)].text" x-text="standingOf(p)"></span> ·
+                <span x-text="p.id"></span>
+              </span>
+            </span>
+            <i class="ph shrink-0 mt-2 opacity-30" :class="open === p.id ? 'ph-caret-down' : 'ph-caret-right'"></i>
+          </button>
+
+          <div x-show="open === p.id" class="pl-4 mt-4 grid gap-4">
+            <template x-for="field in [['Method', p.method], ['Corpus', p.corpus], ['Result', p.result], ['Verdict', p.verdict], ['Opens', p.opens]]" :key="field[0]">
+              <div x-show="!!field[1]">
+                <div class="font-mono text-xs uppercase tracking-wide opacity-40" x-text="field[0]"></div>
+                <p class="text-lg leading-7 text-pretty mt-0.5" x-text="field[1]"></p>
+              </div>
+            </template>
+
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-xs pt-1">
+              <template x-for="a in p.artifacts" :key="a">
+                <a class="opacity-40 hover:opacity-100 transition-opacity"
+                   :href="artifactUrl(a)" target="_blank" rel="noopener">
+                  <span x-text="artifactName(a)"></span><i class="ph ph-arrow-square-out ml-1"></i>
+                </a>
+              </template>
+              <span class="opacity-40" x-show="!!p.cost">cost: <span x-text="p.cost"></span></span>
+            </div>
+
+            <div class="flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs">
+              <template x-for="c in p.concepts" :key="c">
+                <button class="opacity-40 hover:opacity-100 underline decoration-dotted underline-offset-2 transition-opacity"
+                        @click="concept = c" x-text="c"></button>
+              </template>
+            </div>
+          </div>
+        </article>
+      </template>
+
+      <p x-show="!shown.length && !error" class="py-16 text-center font-mono text-xs opacity-40">
+        no probe carries that combination
+      </p>
+    </section>
+
+    <!-- ── instruments ────────────────────────────────────────────────── -->
+    <section x-show="pane === 'instruments'">
+      <div x-show="!guideHtml" class="py-24 text-center">
+        <span class="loading loading-dots loading-md opacity-20"></span>
+      </div>
+      <div :class="guideBodyClass" x-html="guideHtml"></div>
+    </section>
+
+    <!-- ── runs ───────────────────────────────────────────────────────── -->
+    <section x-show="pane === 'runs'">
+      <template x-for="r in RUNS" :key="r.dir">
+        <article class="border-b border-base-300 py-5 flex items-start gap-5">
+          <div class="grow min-w-0">
+            <div class="text-lg leading-7 font-medium text-balance" x-text="r.title"></div>
+            <div class="text-lg leading-7 text-pretty" x-text="r.line"></div>
+            <div class="mt-1 font-mono text-xs opacity-40" x-text="r.date"></div>
+          </div>
+          <div class="flex flex-col items-end gap-1 font-mono text-xs shrink-0">
+            <a class="opacity-40 hover:opacity-100 transition-opacity"
+               :href="treeUrl(r.dir)" target="_blank" rel="noopener">files<i class="ph ph-arrow-square-out ml-1"></i></a>
+            <a x-show="!!r.page" class="opacity-40 hover:opacity-100 transition-opacity"
+               :href="tossUrl(r.page)" target="_blank" rel="noopener">open<i class="ph ph-arrow-square-out ml-1"></i></a>
+            <span x-show="!r.page" class="opacity-30">no page</span>
+          </div>
+        </article>
+      </template>
+    </section>
+
+  </main>
+</div>
+
+</body>
+</html>
