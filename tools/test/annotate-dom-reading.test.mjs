@@ -103,11 +103,41 @@ test('reading: says so when the note resolves to nothing', () => {
   assert.match(pane(A), /does not resolve to an element/);
 });
 
-test('reading: with no note and no draft it says where a subject comes from', () => {
+test('reading: with no note and no draft it offers the control, not just a sentence', () => {
+  // It said "Aim at something", which reads as an instruction to tap the page
+  // and is not one: nothing is armed in this state, so a tap does nothing.
+  // Reported 2026-09-07. Aiming takes a control the reader has to find first,
+  // so the empty reading carries that control.
   const w = boot();
-  w.Annotate.setReading('dom');
-  // The aim leads the sentence because it leads the fallback chain.
-  assert.match(pane(w.Annotate), /Aim at something, or select a note/);
+  const A = w.Annotate;
+  A.setReading('dom');
+  assert.match(pane(A), /Nothing aimed at yet/);
+  assert.doesNotMatch(pane(A), /Aim at something/);
+
+  const pick = [...A._state.domBody.querySelectorAll('button')]
+    .find(b => /Pick an aim/.test(b.textContent));
+  assert.ok(pick, 'the offer is a key, not a pointer to one elsewhere');
+  assert.equal(A._state.aimMenu.style.display, 'none');
+  pick.dispatchEvent(new w.Event('click', { bubbles: true }));
+  assert.equal(A._state.aimMenu.style.display, 'block', 'and it opens the same menu the header does');
+});
+
+// A SENTENCE IS NOT A ROW LABEL. The pane's prose was built out of DS.lab three
+// times over, and every copy inherited white-space:nowrap, which is right for
+// `BOX` in a two-column grid and runs a full sentence off the card's edge with
+// no wrap and no scroll. Reported from a phone the same day.
+test('the pane\'s prose wraps, and its row labels do not', () => {
+  const w = boot();
+  const A = w.Annotate;
+  A.setReading('dom');
+  const line = A._state.domBody.firstElementChild;
+  assert.match(line.getAttribute('style'), /white-space:\s*normal/);
+
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/annotate.js'), 'utf8');
+  assert.match(src, /say: 'font:italic[^']*white-space:normal;',/,
+    'one named style for a sentence, rather than four properties overridden per site');
+  assert.equal((src.match(/DS\.lab\}text-transform:none/g) || []).length, 0,
+    'and no site builds prose out of the label style any more');
 });
 
 test('empty set: the dom reading still shows, where md and json go bare', () => {

@@ -62,6 +62,13 @@ async function mountPage(html) {
   return host;
 }
 
+// Wait for an x-show binding to settle, bounded. Alpine applies effects on its
+// own schedule and a test that counts flushes is measuring the scheduler.
+const shown = async (get) => {
+  for (let i = 0; i < 20 && (!get() || get().style.display === 'none'); i++) await tick(1);
+  return get();
+};
+
 const clearPages = () => {
   [...doc.body.children].forEach(el => {
     if (!el.querySelector('[x-data*="fab()"]')) el.remove();
@@ -429,8 +436,12 @@ test('the hide row appears only where there is a card, and puts it away', async 
   assert.deepEqual(calls, ['enable', 'page']);
 
   d.openFabMenu();
-  await tick(2);
   assert.equal(d.annOn, true, 'a card is up, read at open time');
+  // x-show applies on Alpine's own schedule, so this waits for the condition
+  // rather than for a fixed number of flushes: asserting after tick(2) passed
+  // and then did not, which is a gate that reports the scheduler rather than
+  // the behaviour.
+  await shown(off);
   assert.notEqual(off().style.display, 'none');
   off().click();
   await tick(2);
