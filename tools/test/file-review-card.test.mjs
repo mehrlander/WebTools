@@ -570,20 +570,35 @@ test('a filled card pins its control row; an unfilled one has nothing to pin to'
 // menu beside the name still reaches it. The file deck's slides are reading
 // cards too and keep theirs, having no other route to a clipboard.
 test('a filled card drops copy, and the layouts take the end it leaves', async () => {
-  // These cards share a window, and an earlier case leaves the comparison off
-  // through the channel every card listens on. Off, there is nothing to lay
-  // out and the picker is the only way back, which is a row shape of its own;
-  // put it back, assert, and leave the state as it was found.
-  const d = data('filled'), was = d.compareOff;
+  // THE LAYOUTS ARE ONLY DRAWN OVER A COMPARISON, so the row shape this asserts
+  // has a precondition, and these cards share a window: the sidebar channel
+  // every reading card listens on carries an earlier case's choice to this one,
+  // which can leave it with the comparison off or its base moved onto its own
+  // head, and neither draws a layout. Setting compareOff by hand is not the way
+  // back, since the bytes went with it. Drive the card home through its own
+  // door, refetch, and wait for the precondition rather than for the shape:
+  // a failure then names which half is missing.
+  const d = data('filled');
+  d.adoptCompare({ repo: d.repo, ref: d.ref, base: d._homeBase, baseName: d._homeBaseName });
   d.compareOff = false;
-  try {
-    const want = ['name', 'github', 'spacer', 'layouts'];
-    const filled = await settlesTo(() => rowOrder(controlRow('filled')), want);
-    assert.deepEqual(filled, want, 'filled order: ' + JSON.stringify(filled));
-    assert.ok(d.copyable, 'not for want of anything to copy: the pane holds text');
-    assert.ok(rowOrder(controlRow('page')).includes('copy'),
-      'an unfilled reading card keeps it, and its second spacer with it');
-  } finally { d.compareOff = was; await tick(2); }
+  // Adopting a base the card had left starts a base-only refetch of its own.
+  // Let that finish before forcing a full load, or the two race and one lands
+  // its null over the other's bytes.
+  await settlesTo(() => d.loading, false);
+  d.loaded = false;
+  await d.load();
+  assert.ok(await settlesTo(() => d.comparable, true),
+    'precondition: a comparison to lay out (loaded ' + d.loaded
+      + ', diffable ' + d.diffable + ', off ' + d.compareOff + ')');
+
+  const want = ['name', 'github', 'spacer', 'layouts'];
+  const filled = await settlesTo(() => rowOrder(controlRow('filled')), want);
+  assert.deepEqual(filled, want, 'filled order: ' + JSON.stringify(filled));
+  assert.ok(d.copyable, 'not for want of anything to copy: the pane holds text');
+  assert.ok(rowOrder(controlRow('page')).includes('copy'),
+    'an unfilled reading card keeps it, and its second spacer with it');
+  // Left comparable on purpose, not restored to what it was found in. Handing
+  // the next case a card whose bytes are gone is what put this one in CI.
 });
 
 // The list is untouched by all of that: there the top row is the LIST ROW,
