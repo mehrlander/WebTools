@@ -795,6 +795,25 @@ window.__audit = {
     return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   };
 
+  // WHAT THE PAGE THROWS, WHERE THE READER CAN SEE IT. Until now an uncaught
+  // error left the document rendered and the controls dead, with nothing on
+  // screen to say so: the text comes from an inline payload and marked, so a
+  // page whose interaction is broken still LOOKS right. Six rounds of reports
+  // were spent on symptoms of that shape, each one diagnosed as if the page
+  // were otherwise well. It may be, and this is how a reader finds out either
+  // way, on the device rather than by handing observations back and forth.
+  //
+  // Registered before the load chain rather than inside the component, since
+  // the failure most worth catching is one that stops the component mounting.
+  window.__auditFaults = [];
+  const fault = (what) => {
+    window.__auditFaults.push(String(what).slice(0, 200));
+    const box = document.getElementById('audit-faults');
+    if (box) box.textContent = window.__auditFaults.join(' · ');
+  };
+  addEventListener('error', (e) => fault(e.message || 'script error'));
+  addEventListener('unhandledrejection', (e) => fault('unhandled: ' + (e.reason?.message || e.reason)));
+
   const snapWord = (text, i) => {
     if (i <= 0 || i >= text.length) return i;
     if (!WORD.test(text[i - 1]) || !WORD.test(text[i])) return i;   // already between words
@@ -972,6 +991,18 @@ window.__audit = {
     // absorbed in its own words. A driver reads `trace` directly, so the
     // evidence survives without the scaffolding.
     say(s) { this.trace.push(s); if (this.trace.length > 8) this.trace.shift(); },
+    // THE KITS THIS PAGE CANNOT WORK WITHOUT, named rather than assumed. Each
+    // one loads over the network through gh.load, and inside a toss that chain
+    // is re-pointed through the shell's fetch shim, which is the arrangement
+    // this page is read in and the one that has never been testable from the
+    // sandbox. A kit that fails to arrive takes its controls with it and
+    // leaves the text rendering perfectly.
+    get missing() {
+      const want = { Standoff: 'boundaries', mdDoc: 'the document render',
+                     Dictate: 'the pins', marked: 'markdown' };
+      const gone = Object.keys(want).filter(k => !window[k]);
+      return gone.length ? `not loaded: ${gone.map(k => `${k} (${want[k]})`).join(', ')}` : '';
+    },
     get build() {
       const has = [
         typeof this.pinUnder === 'function' && 'pins2',   // the nearest-bar pin hit test
@@ -980,6 +1011,7 @@ window.__audit = {
         'tap2',                                           // a click must carry its own tap
         this.push.length > 1 && 'keep1',                  // an edit keeps the reader's subject selected
         typeof this.absorbTo === 'function' && 'reach2',  // a boundary reaches past its pair, both ways
+        Array.isArray(window.__auditFaults) && 'faults1', // the page reports what it throws
       ].filter(Boolean);
       return `build ${has.join('·') || 'base'} · lib ${(this.ref || 'main').slice(0, 7)}`;
     },
@@ -1965,6 +1997,8 @@ window.__audit = {
         <a class="text-xs link link-primary" :href="so.target.url" x-show="so.target.url">source</a>
         <span class="text-xs font-mono opacity-60" x-text="build"
               title="what this page file carries, and the ref its lib came from"></span>
+        <span id="audit-faults" class="text-xs font-mono text-error w-full"></span>
+        <span class="text-xs font-mono text-error w-full" x-text="missing" x-show="missing"></span>
 
         <div class="join ml-auto">
           <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
