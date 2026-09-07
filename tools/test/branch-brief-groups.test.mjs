@@ -158,11 +158,18 @@ test('the content containers share one corner, and grouping is spacing', () => {
   assert.ok(!/\bpy-\d/.test(row.className), 'no vertical padding on the row: ' + row.className);
   assert.match(row.className, /px-4/, 'the horizontal padding stays, since it cancels the full bleed');
 
-  // The head is one section holding two strips, so it takes the control gap.
-  // TWO, not three: the ahead/behind figures ride the chip strip since
-  // 2026-09-07, because a 190px run of numbers beside a strip that scrolls is
-  // one band's worth of content taking two.
-  const head = doc.querySelector('#m > div').firstElementChild;
+  // ONE GAP VALUE. The page ran 8 between sections and 4 inside one until the
+  // sections came down to 2 on 2026-09-07, and a control gap looser than a
+  // section gap is a scale with its meaning inverted. Every surviving gap is
+  // gap-0.5, and grouping is said by flushness instead.
+  const shell = doc.querySelector('#m > div');
+  const head = shell.firstElementChild;
+  for (const [name, el] of [['shell', shell], ['head', head], ['sections', shell.lastElementChild]])
+    assert.match(el.className, /\bgap-0\.5\b/, name + ' takes the one gap: ' + el.className);
+
+  // TWO strips in the head, not three: the ahead/behind figures ride the chip
+  // strip, because a 190px run of numbers beside a strip that scrolls is one
+  // band's worth of content taking two.
   assert.equal(head.children.length, 2, 'an identity block and one scrolling strip');
   const look = head.children[1];
   assert.match(look.className, /flex-nowrap/, 'the strip scrolls rather than wrapping');
@@ -172,7 +179,6 @@ test('the content containers share one corner, and grouping is spacing', () => {
   for (const kid of look.children)
     assert.ok(!/\bflex-wrap\b/.test(kid.className || ''),
       'nothing inside the strip wraps: ' + kid.className);
-  assert.match(head.className, /\bgap-1\b/, 'the head spaces its strips as controls: ' + head.className);
   // AND NO EXCEPTION INSIDE IT. A margin on one line of a block that already
   // spaces its lines is a rhythm with a hole in it; the identity block carried
   // mt-1 on the third of three and nothing on the first two.
