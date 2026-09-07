@@ -805,14 +805,51 @@ window.__audit = {
   //
   // Registered before the load chain rather than inside the component, since
   // the failure most worth catching is one that stops the component mounting.
+  // FOUR WAYS A PAGE GOES WRONG, and window.onerror sees one of them. It was
+  // the only one watched, so a page reporting itself healthy meant only that
+  // nothing had been thrown uncaught: a console.error, a script or stylesheet
+  // that 404ed, and a rejected promise all passed in silence. On a phone there
+  // is no console to open, so silence there is indistinguishable from health,
+  // which is exactly the gap that let six rounds of "it is broken" go
+  // unanswered.
   window.__auditFaults = [];
   const fault = (what) => {
-    window.__auditFaults.push(String(what).slice(0, 200));
+    const line = String(what).replace(/\s+/g, ' ').slice(0, 160);
+    // Repeats are counted rather than stacked: one failing call in a loop
+    // would otherwise push everything else off a four-line readout.
+    const seen = window.__auditFaults.find(f => f.line === line);
+    if (seen) seen.n++;
+    else window.__auditFaults.push({ line, n: 1 });
+    // THE FIRST FOUR, not the last: the earliest fault is usually the cause and
+    // the ones after it the consequences, so a readout that scrolls keeps the
+    // wrong end. What overflows is counted rather than dropped silently.
     const box = document.getElementById('audit-faults');
-    if (box) box.textContent = window.__auditFaults.join(' · ');
+    if (!box) return;
+    const all = window.__auditFaults;
+    const shown = all.slice(0, 4).map(f => f.line + (f.n > 1 ? ` ×${f.n}` : ''));
+    if (all.length > 4) shown.push(`+${all.length - 4} more`);
+    box.textContent = shown.join('\n');
   };
-  addEventListener('error', (e) => fault(e.message || 'script error'));
-  addEventListener('unhandledrejection', (e) => fault('unhandled: ' + (e.reason?.message || e.reason)));
+  // Capture phase, because a resource that fails to load fires its error on
+  // the element and never reaches window in the bubble phase. Those events
+  // carry no message, so the target's own address is the report.
+  addEventListener('error', (e) => {
+    const el = e.target;
+    if (el && el !== window && (el.src || el.href))
+      return fault('failed to load: ' + String(el.src || el.href).replace(/^https?:\/\//, ''));
+    fault(e.message || 'script error');
+  }, true);
+  addEventListener('unhandledrejection',
+    (e) => fault('unhandled: ' + (e.reason?.message || e.reason)));
+  // console.error and console.warn, kept passing through to the real console so
+  // a desktop reader loses nothing.
+  for (const level of ['error', 'warn']) {
+    const was = console[level].bind(console);
+    console[level] = (...a) => {
+      fault(level + ': ' + a.map(x => x?.message || (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(' '));
+      was(...a);
+    };
+  }
 
   const snapWord = (text, i) => {
     if (i <= 0 || i >= text.length) return i;
@@ -1011,7 +1048,7 @@ window.__audit = {
         'tap2',                                           // a click must carry its own tap
         this.push.length > 1 && 'keep1',                  // an edit keeps the reader's subject selected
         typeof this.absorbTo === 'function' && 'reach2',  // a boundary reaches past its pair, both ways
-        Array.isArray(window.__auditFaults) && 'faults1', // the page reports what it throws
+        Array.isArray(window.__auditFaults) && 'faults2', // console, resources, rejections and throws
       ].filter(Boolean);
       return `build ${has.join('·') || 'base'} · lib ${(this.ref || 'main').slice(0, 7)}`;
     },
@@ -1997,7 +2034,8 @@ window.__audit = {
         <a class="text-xs link link-primary" :href="so.target.url" x-show="so.target.url">source</a>
         <span class="text-xs font-mono opacity-60" x-text="build"
               title="what this page file carries, and the ref its lib came from"></span>
-        <span id="audit-faults" class="text-xs font-mono text-error w-full"></span>
+        <div id="audit-faults" class="text-xs font-mono text-error w-full whitespace-pre-line
+                    leading-tight" @click="window.__auditFaults.length = 0; $el.textContent = ''"></div>
         <span class="text-xs font-mono text-error w-full" x-text="missing" x-show="missing"></span>
 
         <div class="join ml-auto">
