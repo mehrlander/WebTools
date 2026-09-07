@@ -1,9 +1,12 @@
 # Capabilities: what the box can run and reach
 
-What the Claude Code web sandbox can *do* — its toolchain, what hosts it can
-reach, and the browser it ships with. For what the box *is* and what persists,
-see [container.md](container.md); for how to use these to test HTML/JS, see
-[testing.md](testing.md).
+What the Claude Code web sandbox can *do*: its toolchain, git transport, what it
+can reach, the browser it ships with, and how subagents share it. For what the
+box *is* and what persists, see [container.md](container.md); for how to use
+these to test HTML and JS, see [testing.md](testing.md). What the **GitHub MCP
+layer** does to a call and to the text it carries is
+[`../github/mcp.md`](../github/mcp.md), moved out of here on 2026-09-07 having
+grown to half this file.
 
 > **Probing discipline (read first).** Most of the errors this doc has carried
 > came from one habit: letting a *status code* or a *failed command* stand in for
@@ -169,108 +172,70 @@ the private estate (`local-models/instruments/concept-lab/findings.md`) on
 2026-08-25.
 Heavier stacks (torch, sentence-transformers) untested.
 
-## Network access: a curated allowlist, not open egress
+## Network access: two gates, and a browser with no egress
 
-*(verified 2026-05-30; **the allowlist half is superseded, see the 2026-08-05
-re-measurement immediately below**)*
+*(host reachability re-measured 2026-08-05, superseding the 2026-05-30 allowlist
+table; the browser finding is from the same probe)*
 
-> [!WARNING]
-> **Stale 2026-08-05 (the host allowlist, not the two-gates structure):** the
-> general proxy no longer denies the hosts marked ❌ in the table below. Ten
-> hosts were re-probed with `curl -D -`, including every ❌ row: all answered
-> with the origin's own status and **none** carried `x-deny-reason`.
-> `cdn.jsdelivr.net`, `unpkg.com`, `esm.sh`, `cdnjs.cloudflare.com`,
-> `example.com`, `developer.mozilla.org`, `en.wikipedia.org` and
-> `docs.anthropic.com` are all reachable from the shell now. Treat the ❌
-> column as a record of 2026-05-30, not as current.
->
-> **The headless browser is the opposite case, and it is the one that governs
-> rendering.** Chromium reaches **no** external host, including the ✅ ones:
-> `raw.githubusercontent.com`, `api.github.com` and `cdn.jsdelivr.net` all fail
-> with `net::ERR_CONNECTION_RESET`, whether the proxy is passed through
-> Playwright's `proxy:` option or `--proxy-server`, with `ignoreHTTPSErrors`
-> and `--ignore-certificate-errors` set. The cause was not chased.
->
-> So the practical rule below is **unchanged but load-bearing for a new
-> reason**: a repo page still cannot be booted as-is in the headless browser,
-> and not because a CDN is denied. The browser has no egress at all, so
-> [tools/render/cdn.mjs](../../tools/render/cdn.mjs)'s interception is what
-> every render depends on, for every host, not only the CDN ones. What *did*
-> change is the shell: a session can now `curl` an arbitrary URL, which this
-> section previously said it could not.
+**The shell reaches arbitrary hosts.** Ten were re-probed with `curl -D -`,
+including every one the original table marked denied: all answered with the
+origin's own status and none carried `x-deny-reason`. The JS CDNs, MDN,
+Wikipedia and `docs.anthropic.com` are reachable.
 
-Outbound traffic goes through a TLS-inspecting proxy that enforces a host
-allowlist. **The tell for a true denial is the `x-deny-reason: host_not_allowed`
-response header, not the HTTP status.** A blocked host returns that header (with a
-403); an *allowed* host returns whatever the origin says (200, 301, 400, 404, even
-a 403 of the origin's own) and carries **no** deny header. Probe with `curl -D -`
-so you see it.
+**The headless browser reaches none of them**, including the hosts the shell
+gets. `raw.githubusercontent.com`, `api.github.com` and `cdn.jsdelivr.net` all
+fail with `net::ERR_CONNECTION_RESET`, whether the proxy is passed through
+Playwright's `proxy:` option or `--proxy-server`, with `ignoreHTTPSErrors` and
+`--ignore-certificate-errors` set. The cause was not chased.
 
-**Two gates, not one.** The allowlist above is the *general* proxy. GitHub git
-traffic goes through a **separate** GitHub proxy that scopes operations to the one
-authorized repo (and limits push to the current branch). So a sibling repo like
+That asymmetry is the load-bearing half. A repo page cannot be booted as-is in
+the headless browser, and not because a CDN is denied: the browser has no egress
+at all, so [tools/render/cdn.mjs](../../tools/render/cdn.mjs)'s interception is
+what every render depends on, for every host rather than only the CDN ones. The
+technique in portable form is [`../headless-vendoring.md`](../headless-vendoring.md),
+and where the interceptor still falls short of jsDelivr's value-adds
+(default-entry selection, generated `.min.*`, server-side CJS to ESM bundling)
+is catalogued in [testing.md](testing.md).
+
+**Two gates, not one.** Traffic goes through a TLS-inspecting proxy, and GitHub
+git traffic goes through a **separate** GitHub proxy that scopes operations to
+the authorized repo and limits push to the current branch. A sibling repo like
 `<repo>.wiki.git` returns `Proxy error: repository not authorized` (502) even
-though `github.com` itself is allowed: a different failure mode than
-`x-deny-reason: host_not_allowed`.
+though `github.com` itself is allowed, which is a different failure mode from a
+host denial.
 
-| Host | Reachable? | Notes |
-|---|---|---|
-| `registry.npmjs.org`, `registry.yarnpkg.com` | ✅ | `npm install` works |
-| `pypi.org`, `files.pythonhosted.org` | ✅ | pip works |
-| `rubygems.org`, `proxy.golang.org` | ✅ | gem / go module fetches |
-| `github.com`, `api.github.com`, `codeload.github.com` | ✅ | `api.github.com` 403s without auth/UA, but no deny header → reachable |
-| `raw.githubusercontent.com` | ✅ | raw source files: the reliable fetch path |
-| `docs.github.com` | ✅ | *(2026-07-30)* static documents, no token. The published GraphQL SDL (`/public/fpt/schema.docs.graphql`, 1.5 MB) is the one we fetch. Intermittent 503, twice in about twenty tries from both `curl` and node, so retry before calling it unreachable |
-| `objects.githubusercontent.com`, `release-assets.githubusercontent.com` | ✅ | release-asset binaries |
-| `storage.googleapis.com`, `s3.amazonaws.com` | ✅ | object storage. 400 at root = reached; a 403 on a *bucket path* is GCS's own, not a denial |
-| `fonts.googleapis.com`, `fonts.gstatic.com` | ✅ | Google Fonts load |
-| `api.anthropic.com` | ✅ | but auth is session-bound; don't assume arbitrary scripts can call it |
-| `cdn.jsdelivr.net`, `unpkg.com`, `esm.sh`, `cdnjs.cloudflare.com` | ❌ | `x-deny-reason: host_not_allowed`. The JS CDNs our pages use at runtime |
-| `cdn.playwright.dev`, chrome-for-testing download CDNs | ❌ | browser-binary download hosts (moot: binary is pre-installed) |
-| `docs.anthropic.com`, `console.anthropic.com` | ❌ | denied (the API host is allowed; the docs host isn't) |
-| `developer.mozilla.org`, `en.wikipedia.org`, `stackoverflow.com`, `example.com` | ❌ | the open web is not reachable |
-
-**Implication that bites:** our pages load Alpine / Tailwind / daisyUI / Phosphor
-from **jsDelivr + unpkg at runtime**, both denied. So a repo page **cannot be
-booted as-is**, but it *can* be rendered if you vendor those deps first (see
-[Rendering a repo page](testing.md)). npm and GitHub-raw are the reliable fetch
-paths. *(2026-06-11)* Note the block is **per-host, not per-package**: those CDNs
-serve the same npm-published files that `registry.npmjs.org` does, so any page
-dep can be vendored with `npm i -D` and served to the browser by the render
-harness's interceptor (`tools/render/cdn.mjs`). What the raw tarball *doesn't*
-include are jsDelivr's value-adds — default-entry selection, auto-generated
-`.min.*` files, server-side CJS→ESM bundling — which `cdn.mjs` emulates (its
-remaining gaps are catalogued in [testing.md](testing.md)). The portable form of
-this whole vendor-and-intercept technique is [`../headless-vendoring.md`](../headless-vendoring.md);
-this section owns the environment facts it builds on.
-
-Re-check (note the `-D -` and the deny-header grep, that's the whole point):
+**If a denial does appear, the tell is a header, not a status:**
+`x-deny-reason: host_not_allowed`. An allowed host returns whatever the origin
+says, including a 403 of its own, and carries no deny header. Three origin
+behaviours that get misread as denials: `api.github.com` 403s without auth or a
+user agent, a 403 on a Google Cloud Storage *bucket path* is the origin's own,
+and `docs.github.com` throws intermittent 503s (twice in about twenty tries), so
+retry before calling it unreachable.
 
 ```bash
 probe () { echo "== $1 =="; curl -sS -o /dev/null -D - --max-time 12 "$1" \
   | grep -iE '^HTTP/|x-deny-reason' | tr -d '\r'; }
-for h in https://registry.npmjs.org/alpinejs \
-  https://raw.githubusercontent.com/mehrlander/web-tools/main/lib/gh-api.js \
-  https://storage.googleapis.com/ https://cdn.jsdelivr.net/ https://esm.sh/ ; do
-  probe "$h"; done
+for h in https://registry.npmjs.org/alpinejs https://cdn.jsdelivr.net/ ; do probe "$h"; done
 ```
+
 
 ## GraphQL: cannot be sent, can be typechecked
 
 *(measured 2026-07-30)*
 
 The box cannot POST GraphQL. The proxy serves only a pinned set of operations
-(`This GraphQL query is not enabled for this session`), and direct REST via
-`curl` is gated too, so a query written here ships without ever having run.
+(`This GraphQL query is not enabled for this session`), and repository-scoped
+REST is refused on the same shell ([../github/mcp.md](../github/mcp.md)), so a
+query written here ships without ever having run.
 
 The shape question does not need the network, though, and this is the general
 move rather than a GitHub trick: an API that publishes a **static schema** turns
 "will this be accepted" into a typecheck. GitHub's SDL is a plain document on
-`docs.github.com` (allowed, see the table above), and `graphql`'s `parse` +
-`validate` answer offline, catching the failure this code actually hits: a wrong
-field name, a wrong nesting, a missing required argument. `npm run graphql-schema`
-prunes the 1.5 MB document to the ~2 KB slice the repo's queries reach, which is
-what makes it committable; [`tools/test/graphql-schema.test.mjs`](../../tools/test/graphql-schema.test.mjs)
+`docs.github.com`, and `graphql`'s `parse` + `validate` answer offline, catching
+the failure this code actually hits: a wrong field name, a wrong nesting, a
+missing required argument. `npm run graphql-schema` prunes the 1.5 MB document to
+the ~2 KB slice the repo's queries reach, which is what makes it committable;
+[`tools/test/graphql-schema.test.mjs`](../../tools/test/graphql-schema.test.mjs)
 runs the check in the normal suite.
 
 What stays out of reach is semantics: whether a field holds what we assume, how
@@ -317,8 +282,8 @@ broken file. Check the file itself with `ffprobe` before believing the pixels.
 feature detection works; only playback is missing. Neither WebM nor VP9 was
 tested, so an all-open-codec file may well render.
 
-**Driving it** — launching Playwright, screenshotting, the TLS-proxy launch flag,
-and rendering a full repo page — is in [testing.md](testing.md).
+**Driving it** is in [testing.md](testing.md): launching Playwright,
+screenshotting, the TLS-proxy launch flag, and rendering a full repo page.
 
 ## Surfacing files to the user: the file card
 
@@ -340,479 +305,6 @@ agent gets back a bare "delivered" with no view of the chip, so this is one of
 the few capabilities here that can't be self-verified by rendering. Treat the
 list above as observed, not exhaustive, and extend it (re-date) as more types
 are confirmed.
-
-## Reading a PR body back: the GitHub MCP readback strips HTML
-
-*(measured 2026-07-28)*
-
-The GitHub MCP tools are the only path to the GitHub API from this box: a direct
-`curl` to `api.github.com` with the session's `GITHUB_TOKEN` returns 403 with
-`"GitHub access is not enabled for this session"`, from the agent proxy rather
-than from GitHub. That matters here because it removes the obvious way to check
-what the API actually stored.
-
-The token is not inert, which is what makes this worth stating precisely
-(*sharpened 2026-07-29*): `GET /user` returns 200 and identifies the account.
-Only repository-scoped paths are refused, and account-wide ones are refused
-separately with `sessions are bound to their configured repositories`. So the
-token reaches identity and nothing else, and an authenticated probe against
-`/user` is not evidence that the API is usable.
-
-**Reading a pull request body through `pull_request_read` does not return the
-body as written.** The readback strips HTML comments and HTML tags, and it does
-so anywhere in the string, including inside code spans and fenced blocks, which
-is what makes it a raw-text strip rather than markdown-aware sanitization. It
-also entity-encodes text, so an apostrophe comes back as `&#39;`.
-
-Probe results, written with `update_pull_request` and read with
-`pull_request_read`:
-
-| Written | Read back |
-| --- | --- |
-| a plain sentinel word | survives |
-| `'` in ordinary prose | `&#39;` |
-| an HTML comment | removed |
-| the same comment inside a code span | removed, leaving empty backticks |
-| the same comment inside a fence | removed, leaving an empty fence |
-| `[//]: # (label)` | **survives** |
-| `<a name="x"></a>` | removed |
-| `<tip>` as a placeholder in an address *(2026-08-22)* | removed |
-
-The last row is the same rule and the worst case of it, which is why it is worth
-a line of its own: a placeholder is not markup anybody meant as markup, and it
-is the natural way to write an address in prose. `app/?use=<sha>&view=<key>`
-reads back as `app/?use=&view=`, an address that looks complete, looks wrong in
-a way that reads as a bug in the thing being described, and invites a session to
-"fix" a body that was never broken. PR #481's own body did exactly that. Write
-placeholders as plain words.
-
-**Why this is a readback fault and not a write fault.** The same content written
-through `create_or_update_file` and read back with `git show` from a fetched ref,
-with no MCP in the read, round-trips byte for byte. So tool arguments arrive
-intact and the write path does not sanitize. Rule 1 of the probing discipline
-above, in a new costume: one observation through one tool looked like a corrupted
-PR body, and a control through a second, non-MCP read path localized the fault to
-the reader.
-
-**The honest limit.** The stored body could not be observed directly, because the
-REST API is proxy-blocked and the session's two GitHub MCP servers ship identical
-instructions, so their agreement is not independent confirmation. That the store
-is intact is an inference from the file-write control. Viewing the PR's source in
-a browser would settle it.
-
-**Consequence for the guide region, since fixed.** [SURFACING.md](../SURFACING.md)
-and the `caption` skill used to delimit the managed region of a PR body with
-`<!-- guide -->` and `<!-- /guide -->`. An agent reading the body through this
-path saw no delimiters and therefore no region, and a sync that cannot find its
-region appends a second one or overwrites hand-written prose, which is the
-outcome the delimiters exist to prevent. A human editing in the GitHub UI was
-unaffected throughout.
-
-The markdown link-label form `[//]: # (guide)` survives the round trip and also
-renders as nothing, so it is now what gets written. Recognition accepts both, in
-`SURFACING.md` and the `caption` skill, because every body written before
-2026-07-28 carries the HTML pair and would otherwise orphan its region.
-(A third reader, `scripts/build-merge-guide.py`, was retired with the merge
-guide on 2026-08-05.) The constraint the new form brings: a link label is a
-reference definition, so it must start a line and sit between blank lines, and
-inside a list item or a blockquote it can render literally.
-
-The generalizable half is worth more than the fix. A delimiter is only as good
-as its worst reader, and this one was chosen for how GitHub renders it without
-anyone checking how an agent reads it back. When a marker exists so that a
-machine can find something later, test the round trip through the path that
-machine will actually use.
-
-## Writing a PR body: a `#gh=` toss URL comes back code-fenced
-
-*(measured 2026-07-29)*
-
-A 🥏 toss link written into a pull request body as ordinary markdown does not
-stay a link. Written as `[label](https://mehrlander.github.io/web-tools/pages/toss-render.html#gh=owner/repo@ref:path)`,
-it is stored with the URL wrapped in double backticks, `[label](``https://…``)`,
-which GitHub then renders as plain text. The label survives; the link does not.
-This matters because [SURFACING.md](../SURFACING.md) makes a branch toss the
-guide PR's "thing to open" whenever the change is a page shell, so the body's
-most important link is exactly the one that breaks.
-
-Controls, all in the same body or an adjacent one:
-
-| URL in a markdown link | Result |
-| --- | --- |
-| `github.com/…/blob/<ref>/<path>` | link survives |
-| `github.com/…/compare/main...<branch>` | link survives |
-| `github.com/…/blob/main/<path>#<heading-anchor>` | link survives |
-| `mehrlander.github.io/…/toss-render.html#gz=<base64url>` | link survives (measured against PR bodies merged through 2026-07-12) |
-| `mehrlander.github.io/…/toss-render.html#gh=owner/repo@ref:path` | **URL wrapped in double backticks** |
-| the same, percent-encoded as `%40` and `%3A` | **still wrapped** |
-| `github.com/…/blob/main/<path>#<long-hyphenated-anchor>` | **wrapped** *(2026-07-29)* |
-| `[main](<blob url>)/[diff](<compare url>)`, the caption's own pair | **wrapped from `[main](` to the end** *(2026-07-29)* |
-| a bare `blob/<branch>/<path>`, siblings in the same folder unaffected | **wrapped, inconsistently** *(2026-07-29)* |
-
-So it is neither the host, nor the fragment, nor a fragment-bearing link in
-general, and it is not the `@` or the `:` as literal characters, since encoding
-them changes nothing. **Superseded 2026-08-09 by the subsection below:** the
-sentence that stood here said the trigger was not isolated further and that
-separating the two remaining candidates would cost a write per probe for no gain
-in what to do about it. Eight probes across two writes separated them, and there
-was a gain: the workaround is one character of the address, not a different link.
-
-### Isolated: a slash in the ref, plus a `:path`
-
-*(measured 2026-08-09, PR #388, two writes of eight probe links, each read back
-through the MCP)*
-
-> [!WARNING]
-> **Stale 2026-08-25 → "The trigger is length, not shape" below:** this
-> conclusion does not reproduce. A 132-character `#gh=` address carrying both a
-> slashed ref and a `:path` survives today, so the trigger is the URL's length
-> and not the scp-style ambiguity argued for here. Whether the behavior changed
-> or this probe's real URLs were longer than the abbreviated forms in the table
-> suggest cannot be told from what was recorded.
-
-| Address | Result |
-| --- | --- |
-| `toss-render.html#gh=o/r@claude/some-branch:pages/p.html` | **wrapped** |
-| the same plus `?view=map&tab=claims` | **wrapped** |
-| the same plus a second `#view=map` fragment | **wrapped** |
-| `toss-render.html#gh=o/r@claude/some-branch` (ref, no `:path`) | survives |
-| `toss-render.html#gh=o/r:pages/p.html` (`:path`, no ref) | survives |
-| `toss-render.html#gh=o/r@848d92e:pages/p.html` (slash-free ref, `:path`) | survives |
-| `branch.html#gh=o/r@main:pages/p.html` | survives |
-| `branch.html#gh=o/r@claude/some-branch` | survives |
-
-The trigger is **a ref containing a slash together with a `:path`**, and neither
-half alone. `owner/repo@claude/a-branch:pages/p.html` is the scp-style
-`user@host:path` remote that git itself accepts, so a sanitizer treating it as a
-URL with a non-web scheme is behaving sensibly on a string that genuinely is
-ambiguous. Nothing about the query, a second fragment, or the page being
-addressed matters; the earlier table's `#gh=owner/repo@ref:path` row happened to
-use a slash-bearing ref and read as though the whole form was doomed.
-
-It hits nearly every guide PR, because Claude Code names every branch
-`claude/<something>`. Two workarounds, and the first is what
-[SURFACING.md](../SURFACING.md) already asks for: **address the commit SHA**
-rather than the branch, which is slash-free and is also what the guide template
-means by "branch preview w/ commit SHA". Or link the branch page, which carries
-no `:path` at all. A chat reply is unaffected; this is a write-path fault in one
-API.
-
-**The store is at fault, not only the readback.** The section above could not
-observe the stored body, because the REST API is proxy-blocked, and it named a
-browser view as what would settle it. `WebFetch` of the PR's own HTML page is
-that view, and it agrees with the readback: the link renders as plain text on
-GitHub. For this construct the mangling is therefore in what got stored, which
-is a different fault from the HTML-stripping readback and has to be worked
-around at write time rather than tolerated at read time.
-
-**It is not only the toss URL, and the anchor row above has a counterexample.**
-*(measured 2026-07-29)* Two further constructs mangle, both confirmed at the
-render level by `WebFetch` of the PR's own page, not merely in the readback. A
-blob URL carrying a long hyphenated heading anchor wraps, though the table's
-short-anchor row says such links survive, so anchor length or content matters and
-"survives with an anchor" is too strong. And the surfacing caption's own
-`[main](…)/[diff](…)` pair wraps as one span running from `[main](` to the end of
-the bullet, which matters more than the rest of this section: [SURFACING.md](../SURFACING.md)
-makes that pair the standard shape of every Changed row, so the default caption
-does not survive being written into a body.
-
-The trigger still is not isolated, and the earlier judgment that isolating it is
-not worth a write per probe stands. Rewriting a body into plain standalone
-`[label](url)` rows, no pairs and no anchors, cut it from every row to one of
-nine, so it **reduces incidence and does not eliminate it**: in that rewritten
-body a bare `blob/<branch>/<path>` link wrapped while two sibling links to files
-in the same folder did not. So there is no known-safe form to prescribe, and any
-rule of the shape "this construct is fine" would be the overclaim this file's
-probing discipline warns about.
-
-What survives as guidance is a procedure, not a form: **after writing a body,
-read it back and look for `` `` `` around a URL, then rewrite or drop whatever
-wrapped.** Restructuring usually clears it (linking a folder once instead of
-three files in it). The full caption, pairs and all, still belongs in chat, where
-it renders correctly.
-
-**What to do.** Put the tappable 🥏 in **chat**, where the same markdown links
-correctly. In the body, state the toss address as a code span, which is what it
-is going to become anyway, and let the reader copy it; or reach for a form that
-survives, a `#gz=` toss or a `[new]` blob link, keeping the honesty gate in mind
-(a blob is a view, not a render).
-
-### The caption's own habits, isolated
-
-*(measured 2026-08-08, PR #372, probe lines written and read back)*
-
-Three of the shapes the surfacing caption writes by default were separated from
-the toss findings above by their own probes. A `](url)/[` pair joined by a bare
-slash wraps **even with clean URLs on both sides**, which pins the 2026-07-29
-caption-pair row above on the joining slash rather than on either link. A
-compare URL carrying a `#diff-<hex>` per-file anchor wraps, while the plain
-compare URL survives. And the toss form carrying both `?use=` and `#gh=` wraps
-while the `#gh=`-only form passes; under `#gh` a page's relative dependencies
-already load from the addressed ref, so dropping `?use=` loses nothing. The
-substitutions (`, ` between links, plain compare URLs, no `?use=` on a body's
-toss) are rules in [SURFACING.md](../SURFACING.md)'s caption primitive; this
-entry is their evidence.
-
-### Path depth: at most one slash, and the SHA fix does not clear it
-
-*(measured 2026-08-10, PR #385, eight probes over two comments)*
-
-> [!WARNING]
-> **Stale 2026-08-25 → "The trigger is length, not shape" below:** depth was the
-> correlate and length was the cause. Every observation here is retrodicted
-> exactly by the 150-character rule: `:pages/annotate.html` on a SHA ref is 146
-> characters and passed, `:docs/envelopes/data-view.md` is 154 and wrapped,
-> `:pages/show-repo/show-repo.html` is 157 and wrapped. A deeper path is a
-> longer URL, which is why counting slashes worked as far as it did.
-
-On a `#gh=` address the `:path` may carry **at most one slash**.
-`:pages/annotate.html` passes and `:pages/show-repo/show-repo.html` is wrapped,
-on the same SHA ref; so is `:docs/envelopes/data-view.md`, which shares no name
-with anything, so the trigger is depth and not a repeated segment. The query is
-not involved, and was ruled out first: the same address passed and failed
-identically with and without `?view=stage`, while a plain deployed URL carrying
-a query passed.
-
-This trigger and the slash-in-ref trigger above **compound rather than
-substitute**, which is the trap: switching a wrapped link to the SHA fixes a
-one-slash path and leaves a two-slash one exactly as broken, so the fix appears
-not to have worked. A nested page therefore cannot be tossed from a body at
-all; link the branch page, which carries no `:path` and passed clean, or hand
-the reader a `#gz=`.
-
-### The trigger is length, not shape
-
-*(measured 2026-08-25, PR #497, five rounds: four written into the PR body, one
-into an issue comment, each read back through the MCP)*
-
-**A URL of 150 characters or more inside a markdown link is wrapped. 149 or
-fewer survives.** Nothing else about the URL matters, and the threshold is the
-same on both write paths, a PR body and an issue comment alike.
-
-| round | held fixed | varied | result |
-| --- | --- | --- | --- |
-| 1 | base URL | at-sign, slashed ref, percent-encoding, bare text | all six intact; only the original (168) wrapped |
-| 2 | at-sign present | 40-hex SHA, branch length, param count | 130, 131, 143 intact; 155 wrapped |
-| 3 | 40-hex SHA present | length, and the at-sign swapped for a hyphen at equal length | 138, 144, 148 intact; **both** 155 rows wrapped |
-| 4 | everything else | length, one character apart | 148, 149 intact; 150 to 156 wrapped |
-| 5 | length under 150 | `#gh=` with a slashed ref and a `:path`, ref only, path only, plain blob | all four intact, including 132 with both |
-
-Round 3's hyphen control is what carries the argument. The same 155-character
-URL wraps whether or not it contains the `owner/repo@ref` that the two
-subsections above name as the trigger, so the ref cannot be doing the work.
-Round 5 is the other side of it: the exact shape those subsections say is
-doomed passes when it is short enough.
-
-The prior findings are not wrong observations, they are correctly observed
-correlates. The 2026-08-10 depth measurement is retrodicted exactly by the
-threshold, all three of its cases falling on the right side of it, which is a
-stronger check than any of my own rows: a deeper `:path` is a longer URL, and
-counting slashes was counting characters by proxy. A toss carrying `?use=` adds
-a 40-character SHA. A `claude/…` branch is longer than the SHA that replaces it.
-Every substitution SURFACING.md prescribed works, and works because it shortens.
-
-Two things this does not settle, and the subsection below settles both. The
-caption's `](url)/[` pair wrapped in 2026-08-08's probe **with clean short URLs
-on both sides**, which no length rule explains, so that row stands on its own and
-was not re-tested here. And the threshold is a count of the URL, not of the whole
-link: whether the label or the surrounding line contributes was not varied, since
-every round held the label at `row`.
-
-The practical form: **count the URL.** Under 150 and the link lives.
-
-### What gets counted, and the slash-joined pair is one URL
-
-*(measured 2026-08-25, issue #498, three comments of probe rows read back through
-the MCP; the arithmetic below retrodicts all nine pair rows exactly)*
-
-Three questions the section above left open. Each was measured against a control
-at equal length, on a real resolvable URL padded to an exact character count with
-a `?x=` query string.
-
-**The label does not count. The URL alone does.** Round 6 held the URL fixed and
-varied only the label across the boundary:
-
-| row | URL | label | whole `[label](url)` | result |
-| --- | --- | --- | --- | --- |
-| 6a | 149 | 1 | 154 | intact |
-| 6b | 149 | 60 | 213 | intact |
-| 6c | 149 | 120 | 273 | intact |
-| 6d | 100 | 60 | 164 | intact |
-| 6e | 150 | 1 | 155 | **wrapped** |
-| 6f | 150 | 60 | 214 | **wrapped** |
-
-A 149-character URL survives carrying a 120-character label, and a 150-character
-URL wraps carrying a one-character label. So "count the URL" was exactly right,
-and a construct running well past 150 is fine as long as its URL does not.
-
-**The boundary is inclusive at 150.** Round 7 held the label at one character and
-stepped the URL one character at a time: 146, 147, 148 and 149 intact; 150, 151
-and 152 wrapped. 150 is the first length that wraps, and 149 the last that
-survives, which is what the rule already said and had not bracketed.
-
-**The slash-joined pair is not an exception. It is the same rule over a longer
-span.** `)/[` does not end the URL token, so the sanitizer measures from the
-first URL's first character through the second URL's last character, the joining
-punctuation and the *second label* included:
-
-```
-span = len(url1) + len(")/[label2](") + len(url2)
-```
-
-Round 8 used pairs whose URLs were individually far under the boundary, and round
-9 bracketed the span itself one character apart:
-
-| row | url1 | label2 | url2 | span | result |
-| --- | --- | --- | --- | --- | --- |
-| 9c | 45 | `diff` | 45 | 99 | intact |
-| 9a | 70 | `diff` | 70 | **149** | intact |
-| 9b | 70 | `diff` | 71 | **150** | **wrapped** |
-| 8d | 72 | `diff` | 73 | 154 | **wrapped** |
-| 9e | 70 | `diffdiffdiffdiffdiff` | 70 | 165 | **wrapped** |
-| 8a | 80 | `diff` | 81 | 170 | **wrapped** |
-| 8c | 100 | `diff` | 101 | 210 | **wrapped** |
-
-The 9a/9b pair is what pins it: one character apart, on the same 149/150
-boundary the lone URL obeys, which also fixes the span's extent exactly (had the
-trailing `)` been inside it, 9a would have measured 150 and wrapped). 8d is the
-row that made the pair look like an exception, since 72 and 73 characters are
-less than half the threshold, yet their span is 154. And 9e is why the second
-label counts while the first does not: the first label sits *before* the token
-starts, the second sits *inside* it.
-
-Comma-joined controls at identical URLs, 8b (80, 81) and 9d (70, 71), are intact,
-as is 8e, a lone 80-character link. `, ` ends the run, so each URL is measured on
-its own.
-
-So `[main](…), [diff](…)` remains the rule, and it is now an instance of the
-arithmetic rather than a standing exception to it. The 2026-08-08 observation
-that a pair wraps "with clean URLs on both sides" was true and its conclusion was
-one measurement short: two clean URLs of 70-odd characters make one dirty span of
-150-odd.
-
-**Both write paths agree, confirmed rather than assumed.** Rounds 6 through 9
-ran on issue comments; round 10 put the two discriminating rows into PR #499's
-body and got the same answers: a 149-character URL under a 120-character label
-intact, a 150-character URL under a one-character label wrapped, a pair at span
-149 intact and at span 150 wrapped, and the comma control intact. The earlier
-150 bracket was measured on a PR body and this one on an issue comment, so each
-finding now stands on both paths.
-
-**A code span is rewritten too, so it is not the safe harbour it looks like.**
-*(measured 2026-08-25, issue #498 round 11, after five repaired PR bodies showed
-it incidentally)* The threshold applies to a URL **anywhere in the markdown**,
-not only inside a link. A plain single-backtick code span holding a 148 or
-149-character URL comes back untouched; at 150 and 151 it is stored as
-`` ``'URL'`` ``, double-backticked with single quotes added around the address.
-Nothing dies, since a code span was never a link, but a reader copying it picks
-up the quotes. So "state the toss address as a code span" further up this file
-still beats a defanged link and is still not a way to write a long URL that the
-write path leaves alone. The only untouched forms are a URL under 150 and a
-chat reply.
-
-**One caveat on the wrapped form.** Where the span opens and closes is not
-consistent in the stored body. 9b came back with the backtick opening after
-`[main](` and closing before the final `)`, while 8a's closing backtick fell
-after it and 8c's opening backtick fell before `[main](`. The measured length is
-stable across all of them; only the re-serialization wanders. Look for a backtick
-anywhere near a URL, not at a fixed offset.
-
-**An angle-bracket placeholder is eaten, backticks included.**
-*(one observation, 2026-08-29, PR #546's body; not bracketed the way the length
-rows above are)* A body written through the MCP had `` `stale -> <id>` `` in it
-and read back as `` `stale -> ` ``, the placeholder gone and the `>` of the
-arrow escaped to `&gt;`. That is HTML sanitization rather than the length rule:
-`<id>` parses as an unknown tag and is dropped, while a bare `>` survives as
-text. A code span did not protect it, which is the part worth knowing, since
-the length rule's safe harbour is the same construct.
-
-Distinct from wrapping in the way that matters: a wrapped URL is disfigured but
-still there, and a dropped placeholder leaves a sentence that reads as finished
-and says nothing. Write a concrete example (`stale -> ccb6cfc`) rather than a
-placeholder in any body or comment written this way. Chat replies are untouched,
-as with everything else in this section.
-
-## MCP: two servers can share a tool name, and only one may work
-
-*(measured 2026-07-29)*
-
-A session carries both **built-in** MCP servers and **connectors** installed
-through claude.ai. The two can expose identical tool names, and tool discovery
-returns either. Connector calls in a web session fail:
-
-```
-MCP error -32003: MCP tool call requires approval
-```
-
-Server-level approval validation fires before Claude Code's own permission
-logic, and no approval UI is reachable from here. One tool, two servers, minutes
-apart in the same session:
-
-| Server | Log directory | `update_pull_request` |
-| --- | --- | --- |
-| `mcp__github__` (built-in) | `mcp-logs-github` | completed in 1s |
-| `mcp__8d0009e2-…__` (a GitHub connector) | `mcp-logs-8d0009e2-…` | `-32003` |
-
-**Telling them apart.** A connector is surfaced under a UUID, which names
-nothing. Its per-server log resolves it: `mcp-logs-<id>/` under
-`~/.cache/claude-cli-nodejs/<root>/` records each call under the server's real
-name (`tool_name=mcp__mehrlander__update_pull_request`). One grep, and it is
-worth making the first triage step rather than the last.
-
-**`-32003` is not the only symptom** *(added 2026-08-15, same connector id)*. The
-connector can also answer a plain **`403 Resource not accessible by
-integration`**, GitHub's own wording for an app missing a permission, which reads
-as a settled fact rather than as a routing question. `create_pull_request` on
-`mcp__8d0009e2-…__` returned it for three repositories in a row; the identical
-call on `mcp__github__create_pull_request` opened all three. Reads on the
-connector were unaffected (`list_pull_requests` and `pull_request_read` both
-worked), so the asymmetry looked exactly like `pull_requests: read` without
-`write`, which is the wrong diagnosis it invites.
-
-What sealed it was a second probe that appeared to confirm it: a direct `curl` to
-`api.github.com` with `GITHUB_TOKEN` also returned 403. That is the **agent
-proxy's** refusal, documented under "Reading a PR body back" above, and it says
-nothing about any installation's permissions. Two independent-looking 403s
-agreed and neither was about scope. So: read that curl result as "the API is
-unreachable from the shell," never as a permission finding, and treat **any**
-unexpected refusal on a UUID server as a routing candidate first.
-
-**The rules.** On `-32003` or an unexplained 403, call the built-in equivalent
-rather than whatever discovery returned first: reload it explicitly with
-ToolSearch (`select:mcp__github__<tool>`) instead of reissuing whatever is
-already in hand, since discovery is what routed you wrong in the first place. Do not re-approve
-on the failing server; approving does not clear the already-errored call, which
-is what makes the approval flow itself look broken. A capability that exists
-*only* on a connector has no in-session workaround, which for `add_repo` means
-attaching repositories when the session is created.
-
-**Generalize it past GitHub.** Whenever a provider has more than one server
-connected, a permission surprise on one of them is more often a routing problem
-than a permission wall. Check for a sibling server exposing the same tool before
-treating the wall as real. This is the durable rule; the specific reshuffle that
-spawns a UUID-named twin is incidental and will look different next time.
-
-**Allowlisting is not the fix, and the reason matters.** Permission entries key
-on the exact server name, and a connector wears a per-connection UUID, so next
-session's name differs and nothing can be pinned. That is separate from the
-upstream finding below, which is that allowlisting fails even when you can name
-the server. Two independent reasons, same conclusion. This section supersedes
-[github/mcp-server-routing.md](../github/mcp-server-routing.md), a 2026-07-15
-observation kept as a record: it reached the same operative move from a
-different and less well-evidenced account of the cause.
-
-Upstream reports the same failure for Gmail, Calendar, and Microsoft 365
-connectors in scheduled runs, and calls it a regression:
-[#61044](https://github.com/anthropics/claude-code/issues/61044) (open) and
-[#61027](https://github.com/anthropics/claude-code/issues/61027) (closed as a
-duplicate of #61015). Reconnecting the connector, allowlisting its tools in
-`settings.json`, and `CLAUDE_PERMISSION_MODE=bypassPermissions` were all tried
-there and all failed.
-
-**A `No token data found` line in these logs is not the tell,** though it reads
-like one. It appears throughout the log of a server whose calls succeed.
-Probing-discipline rule 1 in another costume: the conspicuous log line was the
-visible thing, and the working control was the fact.
 
 ## WebSearch is metered per session and shared across every subagent
 

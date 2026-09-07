@@ -7,8 +7,11 @@ extended — split by concern so each page answers one question.
   sessions: the ephemeral container, the baked-image working tree, resource
   ceilings, and the provenance of state (what persists, what's isolated).
 - **[capabilities.md](capabilities.md)** — what the box can *run* and *reach*:
-  the toolchain, the network allowlist, and the pre-installed Chromium
-  inventory. The lookup you consult when you hit a wall.
+  the toolchain, git transport, network egress, the pre-installed Chromium, and
+  the session and subagent mechanics. The lookup you consult when you hit a
+  wall. What the **GitHub MCP layer** does to a call and its text moved to
+  [`../github/mcp.md`](../github/mcp.md) on 2026-09-07, having grown to half
+  this file; look there before adding GitHub-API behavior here.
 - **[testing.md](testing.md)** — the sensible way to *test* HTML/JS here:
   choosing the lightest tool that proves the thing, driving Chromium for
   screenshots, rendering a repo page, and the jsdom + Alpine logic recipe.
