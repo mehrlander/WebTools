@@ -820,16 +820,40 @@ window.__audit = {
     const seen = window.__auditFaults.find(f => f.line === line);
     if (seen) seen.n++;
     else window.__auditFaults.push({ line, n: 1 });
-    // THE FIRST FOUR, not the last: the earliest fault is usually the cause and
-    // the ones after it the consequences, so a readout that scrolls keeps the
-    // wrong end. What overflows is counted rather than dropped silently.
+    paintFaults();
+  };
+
+  // IT SAYS SO EITHER WAY, because silence cannot tell "checked and clean" from
+  // "the check never ran". It opens as `checking…`, so a page that half-boots
+  // is left saying that forever, which is itself the report; it turns green
+  // naming the kits that arrived once the component has mounted and painted,
+  // and red the moment anything faults.
+  //
+  // THE FIRST FOUR, not the last: the earliest fault is usually the cause and
+  // the ones after it the consequences, so a readout that scrolls keeps the
+  // wrong end. What overflows is counted rather than dropped silently.
+  window.__auditReady = false;
+  const paintFaults = () => {
     const box = document.getElementById('audit-faults');
     if (!box) return;
     const all = window.__auditFaults;
-    const shown = all.slice(0, 4).map(f => f.line + (f.n > 1 ? ` ×${f.n}` : ''));
-    if (all.length > 4) shown.push(`+${all.length - 4} more`);
-    box.textContent = shown.join('\n');
+    if (all.length) {
+      const shown = all.slice(0, 4).map(f => f.line + (f.n > 1 ? ` ×${f.n}` : ''));
+      if (all.length > 4) shown.push(`+${all.length - 4} more`);
+      box.className = box.className.replace(/text-\S+/g, '') + ' text-error';
+      box.textContent = shown.join('\n');
+      return;
+    }
+    const kits = ['Standoff', 'mdDoc', 'Dictate', 'marked'];
+    const gone = kits.filter(k => !window[k]);
+    box.className = box.className.replace(/text-\S+/g, '')
+                  + (window.__auditReady && !gone.length ? ' text-success' : ' text-base-content/50');
+    box.textContent = !window.__auditReady ? 'checking…'
+      : gone.length ? `not loaded: ${gone.join(', ')}`
+      : `no faults · ${kits.length} kits loaded (${kits.join(', ')})`;
   };
+  window.__auditSettled = () => { window.__auditReady = true; paintFaults(); };
+  addEventListener('DOMContentLoaded', paintFaults);
   // Capture phase, because a resource that fails to load fires its error on
   // the element and never reaches window in the bubble phase. Those events
   // carry no message, so the target's own address is the report.
@@ -881,7 +905,7 @@ window.__audit = {
       this.a.standoff = Standoff.adopt(this.a.standoff, this.a.text);
       this.sections = mdDoc.split(this.a.text);
       this.base = JSON.parse(JSON.stringify(this.a.standoff));
-      this.$nextTick(() => { this.bindDoc(); this.paint(); });
+      this.$nextTick(() => { this.bindDoc(); this.paint(); window.__auditSettled?.(); });
       // Clicking off every unit clears the selection. Until now the only way
       // out was the panel's own close button, which is the one control a
       // reader is not looking at once they have decided they are done. Capture
@@ -1048,7 +1072,7 @@ window.__audit = {
         'tap2',                                           // a click must carry its own tap
         this.push.length > 1 && 'keep1',                  // an edit keeps the reader's subject selected
         typeof this.absorbTo === 'function' && 'reach2',  // a boundary reaches past its pair, both ways
-        Array.isArray(window.__auditFaults) && 'faults2', // console, resources, rejections and throws
+        Array.isArray(window.__auditFaults) && 'faults3', // says so either way, clean or not
       ].filter(Boolean);
       return `build ${has.join('·') || 'base'} · lib ${(this.ref || 'main').slice(0, 7)}`;
     },
@@ -2034,9 +2058,9 @@ window.__audit = {
         <a class="text-xs link link-primary" :href="so.target.url" x-show="so.target.url">source</a>
         <span class="text-xs font-mono opacity-60" x-text="build"
               title="what this page file carries, and the ref its lib came from"></span>
-        <div id="audit-faults" class="text-xs font-mono text-error w-full whitespace-pre-line
-                    leading-tight" @click="window.__auditFaults.length = 0; $el.textContent = ''"></div>
-        <span class="text-xs font-mono text-error w-full" x-text="missing" x-show="missing"></span>
+        <div id="audit-faults" class="text-xs font-mono w-full whitespace-pre-line leading-tight
+                    text-base-content/50"
+             @click="window.__auditFaults.length = 0; window.__auditSettled()">checking…</div>
 
         <div class="join ml-auto">
           <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
