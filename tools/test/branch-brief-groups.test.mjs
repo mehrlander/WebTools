@@ -325,16 +325,29 @@ test('a panel hands its card the bounding, and the expander goes with the clip',
 // The presented files share ONE container and are swiped between, rather than
 // stacking. Stacked, three documents were three screens before the file list
 // and the deck button under it; the strip put that row back above the fold.
+// WAIT FOR THE STATE, NOT FOR A NUMBER. Growing the strip is a chain: the
+// x-for repopulates on the first flush and the sibling x-show re-reads later,
+// so a wait that ends too early reads a populated pager inside a row still
+// carrying display:none, which is a fixture artifact and not what the browser
+// does. This was ten flushes, and ten was enough until a card grew one more
+// effect, at which point the pager test failed about one run in six, and only
+// when the file ran beside another (2026-09-07). A count is a guess at the
+// length of a chain nobody is counting; the condition is not.
+const settle = async (ok, n = 60) => {
+  for (let i = 0; i < n && !ok(); i++) await tick(1);
+  return ok();
+};
+const stripReady = () => {
+  const row = window.document.querySelector('[data-rev-pager]');
+  const dots = window.document.querySelectorAll('[data-rev-pager] button').length;
+  return dots === data.reviewableFiles.length && !!row && row.style.display === '';
+};
 const withReviewable = async (fn) => {
   const keep = data.brief.files;
   data.brief = { ...data.brief, files: [...keep,
     { path: 'docs/c.md', status: 'modified', additions: 2, deletions: 0 },
     { path: 'pages/d.html', status: 'added', additions: 5, deletions: 0 }] };
-  // Ten flushes, not four. The x-for repopulates on the first and the sibling
-  // x-show re-reads later, so a shorter wait reads a populated pager inside a
-  // row still carrying display:none, which is a fixture artifact and not what
-  // the browser does.
-  await tick(10);
+  await settle(stripReady);
   try { return await fn(); } finally { data.brief = { ...data.brief, files: keep }; await tick(10); }
 };
 

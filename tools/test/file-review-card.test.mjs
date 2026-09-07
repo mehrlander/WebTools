@@ -368,31 +368,49 @@ test('a reading card puts its name, its layouts and one menu on a single row', (
 
 // The row reads left to right as identity, then arrangement, then the one
 // utility: who and which copy on the left, what shape in the middle, take it
+// Read off flex `order`, not DOM position, because one element serves both
+// surfaces: a second copy of the github menu would be forty lines of markup
+// twice, so which end it sits at is a class and nothing moves in the tree.
+const controlRow = (id) => {
+  // Not anchored with $: a filled card's row takes its sticky classes from
+  // Alpine, so the runtime className has more on the end than the literal does.
+  const row = [...window.document.getElementById(id).querySelectorAll('div')].find(e =>
+    /\bflex items-center gap-1\b/.test(e.className || '') &&
+    e.querySelector('details[x-ref="ghMenu"]'));
+  assert.ok(row, id + ': the single control row');
+  return row;
+};
+const rowPart = (el) => {
+  if (el.querySelector('.ph-github-logo')) return 'github';
+  if (el.querySelector('.ph-git-diff')) return 'compare';
+  if (el.querySelector('.ph-copy')) return 'copy';
+  if (el.querySelector('.ph-square')) return 'layouts';
+  if (el.querySelector('[x-text="namePart"]')) return 'name';
+  if (/\bgrow\b/.test(el.className || '')) return 'spacer';
+  return el.tagName.toLowerCase();
+};
+const rowOrder = (row) => [...row.children]
+  .filter(el => el.style.display !== 'none')
+  .map(el => ({ n: rowPart(el), o: Number((/\border-(\d+)\b/.exec(el.className || '') || [])[1]) }))
+  .sort((a, b) => a.o - b.o)
+  .map(e => e.n);
+// The row's x-shows are a CHAIN, not one binding: compareOff decides panes,
+// panes decide viewModes, viewModes decide whether the layouts draw, and each
+// link costs its own Alpine flush. A fixed tick count is a guess at how many,
+// and the guess was three when the answer was past six. Poll instead, and fail
+// with whatever it settled on.
+const settlesTo = async (read, want, n = 40) => {
+  for (let i = 0; i < n && JSON.stringify(read()) !== JSON.stringify(want); i++) await tick(1);
+  return read();
+};
+
 // with you at the end. The middle group is centred by a grow spacer on each
 // side rather than pushed against whichever end is shorter, which is only
 // visible above about 500px and is the reason for the second spacer.
 test('a reading card orders its row identity, arrangement, utility', async () => {
-  const card = window.document.getElementById('page');
   const d = data('page');
-  const row = [...card.querySelectorAll('div')].find(e =>
-    /flex items-center gap-1$/.test(e.className || '') &&
-    e.querySelector('details[x-ref="ghMenu"]'));
-  assert.ok(row, 'the single control row');
-
-  const name = (el) => {
-    if (el.querySelector('.ph-github-logo')) return 'github';
-    if (el.querySelector('.ph-git-diff')) return 'compare';
-    if (el.querySelector('.ph-copy')) return 'copy';
-    if (el.querySelector('.ph-square')) return 'layouts';
-    if (el.querySelector('[x-text="namePart"]')) return 'name';
-    if (/\bgrow\b/.test(el.className || '')) return 'spacer';
-    return el.tagName.toLowerCase();
-  };
-  const order = () => [...row.children]
-    .filter(el => el.style.display !== 'none')
-    .map(el => ({ n: name(el), o: Number((/\border-(\d+)\b/.exec(el.className || '') || [])[1]) }))
-    .sort((a, b) => a.o - b.o)
-    .map(e => e.n);
+  const row = controlRow('page');
+  const order = () => rowOrder(row);
 
   // THE COMPARE PICKER IS NOT HERE AT REST, since 2026-09-07: it belongs to a
   // comparison, and a card being read is not one. It rode every reading card
@@ -514,6 +532,58 @@ test('fill hands the bounding to the host, and nothing bounds twice', async () =
   hostFrame.setTab(hostFrame.panes[0].id);
   ownFrame.setTab(ownFrame.panes[0].id);
   await tick(2);
+});
+
+// THE ROW IS THE CARD'S HEADER, so on a filled card it pins to the scroller the
+// host owns. Left in the flow it goes with the prose, and a screen into a long
+// document the reader has neither the file's name nor the three layouts. There
+// is nowhere to pin it on an unfilled reading card: the PANE is the scroller
+// there and the row sits outside it, so sticky would pin the row to the page.
+test('a filled card pins its control row; an unfilled one has nothing to pin to', () => {
+  const filled = controlRow('filled'), own = controlRow('page');
+  // The RESOLVED className, never the :class attribute: the expression names
+  // every branch, so reading it would find "sticky" on the card that does not
+  // get it.
+  const cls = (el) => el.className || '';
+  assert.match(cls(filled), /\bsticky\b/, 'filled: ' + cls(filled));
+  assert.match(cls(filled), /\btop-0\b/);
+  // Opaque, or the prose slides through it; full-bleed against the wrapper's
+  // px-3, since the pane under it is -mx-3 and would otherwise show at both
+  // edges of a band three units narrow.
+  assert.match(cls(filled), /bg-base-100/, 'and opaque');
+  assert.match(cls(filled), /-mx-3/, 'and as wide as the pane beneath it');
+  assert.doesNotMatch(cls(own), /sticky/, 'unfilled: ' + cls(own));
+
+  // The tint under an opened body is what a filled card drops with it: the card
+  // IS the panel, so there is no collapsed row above for the wash to separate
+  // it from, and an opaque row over a washed ground reads as a seam.
+  const wrap = (id) => window.document.getElementById(id)
+    .querySelector('div[\\:class*="bare ?"]');
+  assert.match(wrap('filled').className, /bg-base-100/, 'filled ground: ' + wrap('filled').className);
+  assert.doesNotMatch(wrap('filled').className, /bg-base-200\/20/);
+  assert.match(wrap('page').className, /bg-base-200\/20/, 'unfilled keeps the wash');
+});
+
+// COPY IS THE WHOLE UTILITY GROUP on a reading card, so dropping it is what
+// frees the end of the row for the layouts. A panel in the branch page's strip
+// is a place to read; taking the text is a different errand, and Raw in the
+// menu beside the name still reaches it. The file deck's slides are reading
+// cards too and keep theirs, having no other route to a clipboard.
+test('a filled card drops copy, and the layouts take the end it leaves', async () => {
+  // These cards share a window, and an earlier case leaves the comparison off
+  // through the channel every card listens on. Off, there is nothing to lay
+  // out and the picker is the only way back, which is a row shape of its own;
+  // put it back, assert, and leave the state as it was found.
+  const d = data('filled'), was = d.compareOff;
+  d.compareOff = false;
+  try {
+    const want = ['name', 'github', 'spacer', 'layouts'];
+    const filled = await settlesTo(() => rowOrder(controlRow('filled')), want);
+    assert.deepEqual(filled, want, 'filled order: ' + JSON.stringify(filled));
+    assert.ok(d.copyable, 'not for want of anything to copy: the pane holds text');
+    assert.ok(rowOrder(controlRow('page')).includes('copy'),
+      'an unfilled reading card keeps it, and its second spacer with it');
+  } finally { d.compareOff = was; await tick(2); }
 });
 
 // The list is untouched by all of that: there the top row is the LIST ROW,
