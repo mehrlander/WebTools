@@ -73,13 +73,14 @@ await tick(6);
 
 const cards = () => [...window.document.querySelectorAll('[x-data^="fileReview"]')];
 
-test('the branch renders the cards of the group that is open', () => {
-  // One of the two, not both: since 2026-09-05 the list lifts pages and docs
-  // into their own group and starts everything else collapsed, and a collapsed
-  // group mounts no cards (branch-brief-groups holds that rule). Here that is
-  // docs/b.md open and lib/a.js shut.
-  assert.equal(cards().length, 1);
-  assert.equal(Alpine.$data(cards()[0]).path, 'docs/b.md');
+test('the branch renders a card per drawn row, from both panels', () => {
+  // Two panels, and which tab is up decides whether the first one draws. This
+  // branch carries no pull request, so the Guide tab is not drawn and Files is
+  // the only tab there is: the list draws, and its one open group mounts a card
+  // for lib/a.js. docs/b.md is reviewable, so its card sits in the strip below
+  // the tabs and mounts whichever tab is up. The list is first in the tree.
+  assert.deepEqual(cards().map(el => Alpine.$data(el).path),
+    ['lib/a.js', 'docs/b.md']);
 });
 
 test('each card gets the repo as a string, not the repo data provider', () => {

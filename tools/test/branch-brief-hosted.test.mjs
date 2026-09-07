@@ -508,7 +508,7 @@ test('a compare that lands after a step does not overwrite the newer branch', as
 // 2026-09-07: the list is SHUT, so it costs a heading row rather than a screen,
 // and the guide keeps the clip that made leading with it affordable.
 
-test('both sections render at once, the files above the guide', async () => {
+test('files and the guide are tabs over one pane, files first in the tree', async () => {
   window.BranchBrief.forget();
   reset();
   const d = await mount('feat/a');
@@ -531,13 +531,18 @@ test('both sections render at once, the files above the guide', async () => {
   const list = d.$el.querySelector('[x-ref="fileList"]');
   assert.ok(list && list.style.display !== 'none', 'the file list is on screen');
   assert.ok(list.textContent.includes('a.js'), 'carrying the branch\'s one changed file');
-  assert.ok(guide.textContent.includes('#443'), 'and the guide is under it, without a tap');
-  // Asking for one hides nothing. That is the whole difference from a tab, and
-  // the assertion the switch could never have passed.
+  assert.ok(guide.textContent.includes('#443'), 'and the guide is in the tree beside it');
+  // ASKING FOR ONE HIDES THE OTHER, since 2026-09-07. This asserted the
+  // opposite, which was the whole difference from a tab while both sections
+  // shared one scroll; they ARE tabs now, over one pane the locked layout can
+  // divide, so the swap is the point rather than the thing being avoided.
   d.setPane('guide');
-  await tick(2);
-  assert.ok(d.$el.querySelector('[x-ref="fileList"]').style.display !== 'none',
-    'going to the guide leaves the list where it was');
+  await tick(6);
+  assert.equal(files.style.display, 'none', 'the list steps aside');
+  assert.notEqual(guide.style.display, 'none', 'and the guide has the pane');
+  d.setPane('files');
+  await tick(6);
+  assert.notEqual(files.style.display, 'none', 'and back');
 });
 
 test('with no PR, the commits are the account, and they are read without asking', async () => {

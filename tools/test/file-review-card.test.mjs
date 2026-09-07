@@ -56,6 +56,9 @@ const { window, problems } = makeWindow({
     <div id="srcRead" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'mb-sha',
          baseName: 'main', path: 'lib/d.js', status: 'modified', patch: '@@ -1 +1 @@',
          read: true, bare: true, open: true })"></div>
+    <div id="filled" x-data="fileReview({ repo: 'mehrlander/web-tools', ref: 'feat/x', base: 'main',
+         path: 'pages/a.html', status: 'modified', patch: '@@ -1 +1 @@',
+         read: true, open: true, fill: true })"></div>
   </body></html>`,
 });
 
@@ -368,8 +371,9 @@ test('a reading card puts its name, its layouts and one menu on a single row', (
 // with you at the end. The middle group is centred by a grow spacer on each
 // side rather than pushed against whichever end is shorter, which is only
 // visible above about 500px and is the reason for the second spacer.
-test('a reading card orders its row identity, arrangement, utility', () => {
+test('a reading card orders its row identity, arrangement, utility', async () => {
   const card = window.document.getElementById('page');
+  const d = data('page');
   const row = [...card.querySelectorAll('div')].find(e =>
     /flex items-center gap-1$/.test(e.className || '') &&
     e.querySelector('details[x-ref="ghMenu"]'));
@@ -384,14 +388,34 @@ test('a reading card orders its row identity, arrangement, utility', () => {
     if (/\bgrow\b/.test(el.className || '')) return 'spacer';
     return el.tagName.toLowerCase();
   };
-  const seen = [...row.children]
+  const order = () => [...row.children]
     .filter(el => el.style.display !== 'none')
     .map(el => ({ n: name(el), o: Number((/\border-(\d+)\b/.exec(el.className || '') || [])[1]) }))
     .sort((a, b) => a.o - b.o)
     .map(e => e.n);
-  assert.deepEqual(seen,
+
+  // THE COMPARE PICKER IS NOT HERE AT REST, since 2026-09-07: it belongs to a
+  // comparison, and a card being read is not one. It rode every reading card
+  // and put a git-diff glyph over a page nobody was diffing.
+  const resting = order();
+  assert.deepEqual(resting,
+    ['name', 'github', 'spacer', 'layouts', 'spacer', 'copy'],
+    'read order: ' + JSON.stringify(resting));
+
+  // On a comparison it takes its place, between the identity cluster and the
+  // layouts, which is where it was when it rode every card. The tick is not
+  // decoration: x-show settles on Alpine's flush, so reading the row in the
+  // same turn as the tab change reads the row before the change.
+  d.setTab('diff');
+  await tick(3);
+  const diffing = order();
+  assert.deepEqual(diffing,
     ['name', 'github', 'compare', 'spacer', 'layouts', 'spacer', 'copy'],
-    'read order: ' + JSON.stringify(seen));
+    'diff order: ' + JSON.stringify(diffing));
+  // Put it back, in a finally-shaped way: a throw above must not leave the card
+  // on a diff for whatever runs next.
+  d.setTab(d.panes[0].id);
+  await tick(2);
 });
 
 // ── The comparison, as a control ────────────────────────────────────────────
@@ -400,12 +424,23 @@ test('a reading card orders its row identity, arrangement, utility', () => {
 // true, and inert, since the pair is chosen in a sidebar that is closed on a
 // phone. The fact the reader met in the one place they could do nothing about
 // it is a dropdown now, and the row it took is back.
-test('what a file is compared against is a control, not a caption', () => {
+test('what a file is compared against is a control, not a caption', async () => {
   const card = window.document.getElementById('page');
   const d = data('page');
   assert.ok(!/against\s*<span/.test(card.innerHTML), 'the caption line is gone');
-  assert.ok(d.comparePicker, 'and the picker is offered in its place');
-  assert.ok(card.querySelector('details[x-ref="cmpMenu"]'), 'as a dropdown on the row');
+  assert.ok(card.querySelector('details[x-ref="cmpMenu"]'), 'a dropdown on the row in its place');
+
+  // OFFERED WHERE THERE IS A COMPARISON, and nowhere else. A card being read is
+  // not one, and the ref beside the glyph was already conditional on the diff
+  // tab, so the icon was half-hidden already.
+  d.setTab(d.panes[0].id);
+  await tick(2);
+  assert.equal(d.comparePicker, false, 'not while the reader is reading the file');
+  d.setTab('diff');
+  await tick(2);
+  assert.ok(d.comparePicker, 'and offered on the comparison it names');
+  d.setTab(d.panes[0].id);
+  await tick(2);
 
   const choices = JSON.parse(JSON.stringify(d.compareChoices));
   assert.ok(choices.some(c => c.base === 'main' && c.on), 'the base it was mounted with, and it is the one on');
@@ -443,6 +478,42 @@ test('the picker survives the comparison being off', async () => {
     assert.ok(d.comparePicker, 'but the picker is still there to turn it back on');
     assert.ok(d.compareChoices.some(c => c.off && c.on), 'and says which state it is in');
   } finally { d.compareOff = false; await tick(2); }
+});
+
+// ── Who bounds the card ─────────────────────────────────────────────────────
+//
+// A reading card normally bounds its own pane at 70vh and scrolls it, because
+// nothing above it has a height. `fill` is the host saying it does: a panel
+// with a definite height and its own overflow. Both bounds at once is not
+// belt-and-braces, it is a scrollbar the reader cannot reach, since 70vh is
+// 591px of pane inside the branch page's 352px panel and the pane's own bar
+// lands below the panel's cut. The more/less expander over the pane was
+// standing in for exactly that, and it went with the second bound.
+test('fill hands the bounding to the host, and nothing bounds twice', async () => {
+  const host = data('filled'), own = data('page');
+
+  assert.match(own.paneClass, /max-h-\[70vh\]/, 'unfilled, the card bounds itself');
+  assert.match(own.paneClass, /overflow-auto/, 'and scrolls what it bounded');
+  assert.doesNotMatch(host.paneClass, /max-h-|overflow-/,
+    'filled, it does neither: ' + host.paneClass);
+
+  // The render pane is the same question asked of an iframe, which has no
+  // content height of its own to grow to.
+  const frame = (id) => {
+    const d = data(id);
+    d.setTab('render');
+    return d;
+  };
+  const hostFrame = frame('filled'), ownFrame = frame('page');
+  await tick(3);
+  const cls = (id) => window.document.getElementById(id)
+    .querySelector('iframe').className;
+  assert.match(cls('page'), /h-\[60vh\]/, 'unfilled, the frame takes a slice of the viewport');
+  assert.match(cls('filled'), /h-full/, 'filled, it takes the panel');
+  assert.doesNotMatch(cls('filled'), /60vh/);
+  hostFrame.setTab(hostFrame.panes[0].id);
+  ownFrame.setTab(ownFrame.panes[0].id);
+  await tick(2);
 });
 
 // The list is untouched by all of that: there the top row is the LIST ROW,
