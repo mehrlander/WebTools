@@ -958,6 +958,7 @@ window.__audit = {
         typeof this.pinUnder === 'function' && 'pins2',   // the nearest-bar pin hit test
         typeof this.toShorter === 'function' && 'shorter1', // the projection handoff
         Array.isArray(this.trace) && 'trace1',            // the on-screen gesture trace
+        'tap2',                                           // a click must carry its own tap
       ].filter(Boolean);
       return `build ${has.join('·') || 'base'} · lib ${(this.ref || 'main').slice(0, 7)}`;
     },
@@ -1390,18 +1391,38 @@ window.__audit = {
     // A tap in the text is two different requests, and which one is a state the
     // reader set by tapping a pinhead. Armed: put this boundary here. Otherwise:
     // make that unit the active one.
+    // A CLICK IS NOT ALWAYS A TAP, and on a touch screen the difference is what
+    // broke this. Measured 2026-09-07 with a real finger: tapping a pin puts
+    //
+    //   click(touch), pointerdown(touch), touchstart, pointerup, touchend, click
+    //
+    // on the document. The FIRST click arrives before any pointerdown, because
+    // a tap on the pin synthesizes a click into the document underneath it, and
+    // hit() runs on click while lastTapOffset is recorded on pointerdown. So
+    // that phantom ran with no offset of its own: it consumed the arming and,
+    // where an earlier tap had left an offset standing, placed the boundary at
+    // a point the reader had tapped for some other reason entirely. A mouse
+    // orders pointerdown before click always, so none of it is visible there.
+    //
+    // The offset is therefore CONSUMED, once, by the click that follows its own
+    // pointerdown. A click carrying none is a phantom: it does nothing at all
+    // and leaves the pin armed, rather than spending the arming on a placement
+    // nobody asked for.
     hit(u) {
+      const off = this.lastTapOffset;
+      this.lastTapOffset = null;
       if (this.armed) {
-        const e = this.armedEdge, off = this.lastTapOffset;
+        const e = this.armedEdge;
         this.say(`tap@${off} with ${this.armed} armed`
                + `, after ${e ? e.after : 'no edge'}${e && !e.shiftable ? ' (not shiftable)' : ''}`);
+        if (off == null) { this.say('ignored: a click with no tap behind it'); return; }
         this.armed = null;
         // A tap relocates a boundary that HAS two sides. The head and the tail
         // have one, so there is nothing to relocate them between: the tap falls
         // through and selects, which is what it would have done unarmed, rather
         // than pushing a shift both implementations would refuse.
         if (e && e.shiftable) {
-          if (off != null) this.push({ op: 'shift', after: e.after, to: off });
+          this.push({ op: 'shift', after: e.after, to: off });
           return;
         }
       }
