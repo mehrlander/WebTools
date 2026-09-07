@@ -307,6 +307,16 @@ B="$PLAYWRIGHT_BROWSERS_PATH/chromium-1194/chrome-linux/chrome"
   --dump-dom 'data:text/html,<h1>ok</h1>' 2>/dev/null | grep -o '<h1>ok</h1>'
 ```
 
+**It decodes no H.264, so a page carrying video cannot be verified here**
+*(measured 2026-09-05)*. `canPlayType('video/mp4; codecs="avc1.42E01E"')` returns
+the empty string: this is an open-source Chromium build, which ships without the
+proprietary codecs. A `<video>` element then never learns its intrinsic size, so
+a screenshot shows a 300x150 default box and no frame, which reads exactly like a
+broken file. Check the file itself with `ffprobe` before believing the pixels.
+`document.pictureInPictureEnabled` is true, so the PiP *API* is present and
+feature detection works; only playback is missing. Neither WebM nor VP9 was
+tested, so an all-open-codec file may well render.
+
 **Driving it** — launching Playwright, screenshotting, the TLS-proxy launch flag,
 and rendering a full repo page — is in [testing.md](testing.md).
 

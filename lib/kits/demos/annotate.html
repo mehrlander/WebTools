@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>annotate — notes pinned to pieces of a page</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script type="module">
+  // The chain boot, then the trio: dictate is the composer's voice buffer and
+  // peek is the card's DOM reading, both read at the point of use, both before
+  // annotate so its card never mounts deciding it has neither.
+  const ref = new URLSearchParams(location.search).get('use') || 'main';
+  const base = `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@${ref}/lib`;
+  await import(`${base}/gh-api.js`);
+  await gh.load('kits/dictate.js');
+  await gh.load('kits/peek.js');
+  await gh.load('kits/annotate.js');
+  document.body.dataset.ready = '1';
+</script>
+<script defer src="https://unpkg.com/alpinejs"></script>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-8">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">annotate</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">Annotate.enable()</code>
+    <span class="text-[13px] text-base-content/50">select text · + note · type · save</span>
+    <span class="ml-auto flex flex-wrap gap-2">
+      <button class="btn btn-sm btn-primary" onclick="Annotate.enable()">Arm</button>
+      <button class="btn btn-sm" onclick="Annotate.enable(); Annotate.notePage({ listen: false })">Page</button>
+      <button class="btn btn-sm" onclick="Annotate.enable(); Annotate.startPick()">Element</button>
+      <button class="btn btn-sm" onclick="Annotate.enable(); Annotate.startRegion()">Region</button>
+      <button class="btn btn-sm btn-ghost" onclick="Annotate.disable()">Off</button>
+    </span>
+  </header>
+
+  <p class="text-[13px] text-base-content/50 text-pretty">
+    Loaded as a trio. Drop <code class="font-mono">kits/dictate.js</code> and the composer keeps working with no microphone;
+    drop <code class="font-mono">kits/peek.js</code> and the card loses its DOM reading. Either absence is silent.
+  </p>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Prose to select</h2>
+    <p class="text-[15px] leading-relaxed text-pretty">
+      Fund 600 is reported as one number and read as two. The appropriated lane carries recordkeeping and the
+      agency's own operations, and it is the lane a budget bill moves. The non-appropriated lane carries what the
+      plans pay for directly, reports on the same fund number, and never nets into the appropriated total. A
+      schedule that adds the two lanes has produced a figure nobody in either lane recognises.
+    </p>
+    <p class="text-[15px] leading-relaxed text-pretty">
+      Carry-forward level is the base a request is measured against, not the base an agency spends from.
+      Maintenance level lands on top of it and policy level on top of that, and only the third is discretionary in
+      the sense a reader assumes. Anyone comparing a request against last biennium's enacted total is comparing
+      two different bases, and will find a swing that is not there.
+    </p>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A component to pick</h2>
+    <div class="card bg-base-200 border border-base-300 max-w-md" x-data="{ open: false, n: 3 }">
+      <div class="card-body gap-2">
+        <div class="flex items-center gap-2">
+          <h3 class="card-title text-base">Recordkeeping</h3>
+          <span class="badge badge-info badge-sm" x-text="n + ' open'">3 open</span>
+          <button class="btn btn-xs btn-ghost ml-auto" @click="open = !open" x-text="open ? 'Less' : 'More'">More</button>
+        </div>
+        <p class="text-[14px] text-base-content/70">Plan 3 recordkeeping sits in the appropriated lane. The vendor invoice does not.</p>
+        <ul class="text-[13px] space-y-1" x-show="open">
+          <li><i class="ph ph-check text-success"></i> Allotment packet filed</li>
+          <li><i class="ph ph-clock text-warning"></i> Biennialization pending</li>
+          <li><i class="ph ph-x text-error"></i> Object mix not reconciled</li>
+        </ul>
+        <div class="card-actions justify-end">
+          <button class="btn btn-sm btn-outline" @click="n++">Add one</button>
+          <button class="btn btn-sm btn-primary">Submit</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">An area to drag a box over</h2>
+    <div class="border border-base-300 rounded p-4 space-y-3 max-w-lg">
+      <div class="flex items-baseline gap-3">
+        <span class="text-[15px] font-medium">Fund 600, by object</span>
+        <span class="text-[11px] uppercase tracking-wider text-base-content/40">2025-27, thousands</span>
+      </div>
+      <div class="space-y-1.5 text-[13px]">
+        <div class="flex items-center gap-3"><span class="w-24">Salaries</span><span class="h-3 bg-primary rounded-sm" style="width:62%"></span><span class="font-mono">41,208</span></div>
+        <div class="flex items-center gap-3"><span class="w-24">Benefits</span><span class="h-3 bg-primary/70 rounded-sm" style="width:24%"></span><span class="font-mono">15,930</span></div>
+        <div class="flex items-center gap-3"><span class="w-24">Contracts</span><span class="h-3 bg-primary/40 rounded-sm" style="width:11%"></span><span class="font-mono">7,441</span></div>
+        <div class="flex items-center gap-3"><span class="w-24">Goods</span><span class="h-3 bg-primary/20 rounded-sm" style="width:3%"></span><span class="font-mono">1,802</span></div>
+      </div>
+      <p class="text-[13px] text-base-content/60">A rectangle drawn across these rows is anchored in document coordinates and carries the text of every block it covers.</p>
+    </div>
+  </section>
+
+  <section class="space-y-2" x-data="{
+      kind: 'md',
+      n: 0,
+      out: '',
+      refresh() {
+        const A = window.Annotate;
+        if (!A) return;
+        this.n = A.items.length;
+        this.out = this.kind === 'json' ? JSON.stringify(A.toJSON(), null, 2) : A.toMarkdown();
+      }
+    }" x-init="refresh(); addEventListener('annotate:change', () => refresh())">
+    <div class="flex flex-wrap items-baseline gap-3">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">The set, as it is handed over</h2>
+      <span class="text-[13px] text-base-content/50" x-text="n + (n === 1 ? ' note' : ' notes')">0 notes</span>
+      <span class="ml-auto flex flex-wrap gap-2">
+        <button class="btn btn-xs" :class="kind === 'md' && 'btn-active'" @click="kind = 'md'; refresh()">Markdown</button>
+        <button class="btn btn-xs" :class="kind === 'json' && 'btn-active'" @click="kind = 'json'; refresh()">JSON</button>
+        <button class="btn btn-xs btn-ghost" @click="refresh()">Re-read</button>
+        <button class="btn btn-xs btn-ghost" onclick="Annotate.enable(); Annotate.setReading('md')">Same thing in the card</button>
+        <button class="btn btn-xs btn-ghost" onclick="Annotate.enable(); Annotate.showInPlace(!Annotate.inPlace)">Draw them on the page</button>
+      </span>
+    </div>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 max-h-72 overflow-auto"><code x-text="out"></code></pre>
+    <p class="text-[13px] text-base-content/50">Copy goes through the clipboard API. The card's jot key writes one entry to the estate registry over the GitHub API, so it needs a token this page does not have.</p>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">Five aims, one note shape</h2>
+    <table class="text-[13.5px] border border-base-300">
+      <tbody>
+        <tr class="border-b border-base-300"><td class="px-3 py-2 font-medium align-top w-24">text</td><td class="px-3 py-2">A selection, anchored as a quote: the exact words plus the characters either side of them. It survives a re-render, and a session holding the same file re-finds it by grep.</td></tr>
+        <tr class="border-b border-base-300"><td class="px-3 py-2 font-medium align-top">element</td><td class="px-3 py-2">A picked node. Hover outlines, tap selects, tap again takes the parent. Anchored by a css path and the text inside it.</td></tr>
+        <tr class="border-b border-base-300"><td class="px-3 py-2 font-medium align-top">region</td><td class="px-3 py-2">A dragged rectangle in document coordinates, carrying the text of the blocks it covers, and the width it was drawn at.</td></tr>
+        <tr class="border-b border-base-300"><td class="px-3 py-2 font-medium align-top">page</td><td class="px-3 py-2">No anchor. The serialization already names the document and the address it was read at, so a complaint written here arrives knowing where it was taken.</td></tr>
+        <tr><td class="px-3 py-2 font-medium align-top">section</td><td class="px-3 py-2">A part of a rendered markdown document, carrying that section's source and its line span, so what travels is markdown that can be revised and put back. It needs a declared render (<code class="font-mono text-[0.9em]">kits/md-doc.js</code>): this page is hand-written HTML, so the card hides its Section chip.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">From a script</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>Annotate.enable({ subject: { title: 'Fund 600 notes', url: blobUrl } })
+Annotate.notePage({ listen: false })      // a draft pinned to nothing, microphone off
+Annotate.add({ type: 'element', selector: '.card', excerpt: 'Recordkeeping' },
+              'Check which lane this sits in')
+Annotate.toMarkdown()                     // the whole set, ready to paste
+await Annotate.copy('json')               // annotate/1, on the clipboard</code></pre>
+    <p class="text-[13px] text-base-content/50">The composer opens listening. Where the browser has no speech recognition, and in every headless shot, it opens with the microphone simply absent.</p>
+  </section>
+
+</main>
+</body>
+</html>

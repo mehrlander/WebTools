@@ -7,7 +7,18 @@ This hub holds behavior that applies whether or not anything is being surfaced. 
 - **[SURFACING.md](SURFACING.md)**: the surfacing system, the primitives that make session work visible in chat (no setup) plus the surfacing course (the guide-PR lifecycle, idle until you open a PR).
 - **[PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md)**: installation, the plugin, and the full catalog of what travels from the hub to any repo.
 
-**Prose style:** zero em dashes. Use colons, commas, semicolons, parentheses, or new sentences.
+## Qualified writing
+
+Qualify noun phrases to increase clarity, strengthen claims, highlight questions, and support narrative direction. No em dashes: use colons, commas, semicolons, parentheses, or new sentences.
+
+1. **Introduce before you refer.** Use *this*, *it*, or a definite phrase only when the immediate context identifies a single referent.
+   *Not:* This exacerbated the problem. *But:* The delayed handoff increased the reporting errors.
+2. **Use plain language.** Avoid in-group phrasings, and pin terms to what you mean by them.
+   *Not:* The log keeps two properties. *But:* /incidents.csv has two columns.
+3. **Extend from what has been established.** Develop the current point, or clearly name the earlier point you are resuming.
+   *Not:* The solution is to increase funding. *But:* Since the $2M budget gap cannot be closed by contract renegotiation, we turn to increased funding.
+4. **Qualify noun phrases.** Attach the words that say which one, whose, or how many of what. A bare quantifier is the common case.
+   *Not:* Both are good. *But:* Both restructuring proposals are good.
 
 ## Scope and precedence
 

@@ -23,7 +23,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { makeWindow, startAlpine, tick } from './bootstrap.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const { window } = makeWindow({ html: '<!doctype html><html><body></body></html>' });
 const doc = window.document;
@@ -56,6 +61,13 @@ async function mountPage(html) {
   await tick(2);
   return host;
 }
+
+// Wait for an x-show binding to settle, bounded. Alpine applies effects on its
+// own schedule and a test that counts flushes is measuring the scheduler.
+const shown = async (get) => {
+  for (let i = 0; i < 20 && (!get() || get().style.display === 'none'); i++) await tick(1);
+  return get();
+};
 
 const clearPages = () => {
   [...doc.body.children].forEach(el => {
@@ -373,7 +385,97 @@ test('a declared render puts its own name on the row', async () => {
   // aim_label and kits/md-doc.js carries it onto the declaration.
   assert.equal(d.annKind.aimLabel, 'Markdown section');
   assert.ok(rowLabels(d.$root).includes('Note a markdown section'));
+
+  // AND ITS OWN GLYPH, for the same reason and from the same row. This file
+  // wrote out ph-text-align-left until 2026-09-06, so the next kind to declare
+  // would have arrived wearing markdown's icon under its own name.
+  assert.equal(d.annKind.aimIcon, 'ph-file-md');
+  const btn = [...d.$root.querySelectorAll('button')]
+    .find(b => (b.getAttribute('aria-label') || '') === 'Note a markdown section');
+  assert.ok(btn, 'the declared aim has a button');
+  assert.match(btn.querySelector('i').className, /\bph-file-md\b/,
+    'the row draws the glyph the kind declared');
+  assert.doesNotMatch(btn.querySelector('i').className, /text-align-left/);
   box.remove();
+});
+
+// ── The row raises the card, and it is the only thing that puts it down ─────
+//
+// The card had a collapsed state that read as putting it away and was not: it
+// stayed, smaller, still over the page. Nothing anywhere called disable(), so a
+// card raised by a long press could not be put down by one. With the collapsed
+// state gone (2026-09-06) this row owns both halves.
+
+test('the hide row appears only where there is a card, and puts it away', async () => {
+  clearPages();
+  const calls = [];
+  let live = false;
+  window.Annotate = {
+    get enabled() { return live; },
+    enable() { live = true; calls.push('enable'); },
+    disable() { live = false; calls.push('disable'); },
+    notePage() { calls.push('page'); },
+  };
+  const d = await mountFab();
+
+  d.openFabMenu();
+  await tick(2);
+  assert.equal(d.annOn, false, 'nothing running, so nothing to put away');
+  const off = () => [...d.$root.querySelectorAll('button')]
+    .find(b => (b.getAttribute('aria-label') || '') === 'Hide the note card');
+  assert.equal(off().style.display, 'none', 'and the row is not offered');
+
+  // ITS OWN ROW, not a fifth glyph on the aims. A fifth key overflowed the
+  // w-56 menu and was clipped away entirely, and an X at the end of four aims
+  // reads as a fifth aim.
+  const aims = d.$root.querySelector('[aria-label="Note the page"]').parentElement;
+  assert.ok(!aims.contains(off()), 'it does not ride the aims group');
+  assert.match(off().textContent, /Hide notes/, 'it is a labelled row like every other verb here');
+
+  await d.annAim('page');
+  assert.deepEqual(calls, ['enable', 'page']);
+
+  d.openFabMenu();
+  assert.equal(d.annOn, true, 'a card is up, read at open time');
+  // x-show applies on Alpine's own schedule, so this waits for the condition
+  // rather than for a fixed number of flushes: asserting after tick(2) passed
+  // and then did not, which is a gate that reports the scheduler rather than
+  // the behaviour.
+  await shown(off);
+  assert.notEqual(off().style.display, 'none');
+  off().click();
+  await tick(2);
+  assert.deepEqual(calls, ['enable', 'page', 'disable'], 'and the tap unmounts the card');
+  assert.equal(d.annOn, false);
+  delete window.Annotate;
+});
+
+// The three that are not declared are this component's own, and they have to
+// keep matching kits/annotate.js's AIM_ICON glyph for glyph: one aim, one mark,
+// whichever control starts it.
+test('the built-in aims wear the same glyphs the card does', async () => {
+  clearPages();
+  const d = await mountFab();
+  d.openFabMenu();
+  await tick(2);
+  const glyph = (label) => {
+    const b = [...d.$root.querySelectorAll('button')]
+      .find(x => (x.getAttribute('aria-label') || '') === label);
+    assert.ok(b, 'no row: ' + label);
+    return b.querySelector('i').className;
+  };
+  assert.match(glyph('Note the page'), /\bph-file\b/);
+  assert.match(glyph('Note an element'), /\bph-crosshair-simple\b/);
+  assert.match(glyph('Note a region'), /\bph-frame-corners\b/);
+
+  const card = readFileSync(path.join(repoRoot, 'lib/kits/annotate.js'), 'utf8');
+  const lit = card.match(/const AIM_ICON = \{([\s\S]*?)\};/);
+  assert.ok(lit, 'kits/annotate.js no longer carries AIM_ICON');
+  for (const [key, g] of [['page', 'ph-file'], ['pick', 'ph-crosshair-simple'],
+                          ['region', 'ph-frame-corners']]) {
+    assert.match(lit[1], new RegExp(key + ":\\s*'" + g + "'"),
+      'the card and the launcher disagree about the ' + key + ' aim');
+  }
 });
 
 test('a declaration with no sections offers no row', async () => {

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>row-menu — a tap on a row, and what you can do with it</title>
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5,npm/tabulator-tables@6.5/dist/css/tabulator_simple.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web,npm/tabulator-tables@6.5/dist/js/tabulator.min.js"></script>
+<script type="module">
+  // The chain boot, so the FAB arrives and the kit is fetched at the ref under
+  // preview. row-menu pulls kits/io.js itself, at load time, for the clipboard.
+  const ref = new URLSearchParams(location.search).get('use') || 'main';
+  const base = `https://cdn.jsdelivr.net/gh/mehrlander/web-tools@${ref}/lib`;
+  await import(`${base}/gh-api.js`);
+  await gh.load('kits/row-menu.js');
+  // The deck item is in the menu only where record-deck is already loaded, so a
+  // host that wants it loads it. This page does; the plain table below does not.
+  await gh.load('kits/swipe-deck.js');
+  await gh.load('kits/record-deck.js');
+
+  const KITS = [
+    { kit: 'annotate.js',      ns: 'Annotate',    lines: 4834, users: 10 },
+    { kit: 'branch-brief.js',  ns: 'BranchBrief', lines: 377,  users: 7 },
+    { kit: 'record-deck.js',   ns: 'recordDeck',  lines: 329,  users: 1 },
+    { kit: 'repo-address.js',  ns: 'RepoAddress', lines: 149,  users: 11 },
+    { kit: 'repo-checks.js',   ns: 'RepoChecks',  lines: 319,  users: 3 },
+    { kit: 'row-menu.js',      ns: 'rowMenu',     lines: 242,  users: 0 },
+    { kit: 'session-export.js',ns: 'sessionExport', lines: 950, users: 6 },
+    { kit: 'source-peek.js',   ns: 'SourcePeek',  lines: 477,  users: 8 },
+    { kit: 'src-doc.js',       ns: 'srcDoc',      lines: 97,   users: 8 },
+    { kit: 'swipe-deck.js',    ns: 'swipeDeck',   lines: 1043, users: 5 },
+  ].map(r => ({ ...r, url: 'https://github.com/mehrlander/web-tools/blob/main/lib/kits/' + r.kit }));
+
+  const table = new Tabulator('#grid', {
+    data: KITS, maxHeight: '280px', layout: 'fitColumns',
+    columns: [
+      { title: 'Kit', field: 'kit', minWidth: 150 },
+      { title: 'Namespace', field: 'ns', minWidth: 120 },
+      { title: 'Lines', field: 'lines', sorter: 'number', hozAlign: 'right', width: 90 },
+      { title: 'Loaded by', field: 'users', sorter: 'number', hozAlign: 'right', width: 110 },
+      { title: 'Source', field: 'url', width: 100, headerSort: false,
+        formatter: c => `<a class="link link-primary" target="_blank" rel="noopener" href="${c.getValue()}">GitHub</a>` },
+    ],
+  });
+
+  const pins = document.getElementById('pins');
+  table.on('tableBuilt', () => {
+    rowMenu.attach(table, {
+      noun: 'kit',
+      deck: { title: 'Kits', icon: 'ph-package' },
+      items: [{
+        label: 'Pin it below', icon: 'ph-push-pin',
+        run: ({ data }) => {
+          const b = document.createElement('span');
+          b.className = 'badge badge-outline badge-sm font-mono';
+          b.textContent = data.kit;
+          pins.append(b);
+          return 'Pinned';
+        },
+      }],
+    });
+  });
+
+  // The count in the menu's label is the count of what the filter left, so
+  // typing here changes what "Copy N kits" promises.
+  document.getElementById('q').addEventListener('input', (e) => {
+    const v = e.target.value.trim().toLowerCase();
+    table.setFilter(d => !v || (d.kit + ' ' + d.ns).toLowerCase().includes(v));
+  });
+
+  const say = (btn, word) => { const was = btn.textContent; btn.textContent = word; setTimeout(() => { btn.textContent = was; }, 900); };
+  const copy = (text) => (window.io ? io.copy(text) : navigator.clipboard.writeText(text).then(() => true, () => false));
+  document.getElementById('copy-all').addEventListener('click', (e) => {
+    const cols = rowMenu.columnsOf(table);
+    const rows = table.getRows('active').map(r => r.getData());
+    copy(rowMenu.tsv(cols, rows)).then(ok => say(e.target, ok ? 'Copied' : 'Copy failed'));
+  });
+  document.getElementById('shut').addEventListener('click', () => rowMenu.close());
+
+  // ── the same menu over a plain table, no grid library anywhere ────────────
+  const PCOLS = [{ field: 'page', title: 'Page' }, { field: 'route', title: 'Route' }, { field: 'kind', title: 'Kind' }];
+  const trs = [...document.querySelectorAll('#plain tbody tr')];
+  const all = trs.map(tr => ({ ...tr.dataset }));
+  const out = document.getElementById('tsv');
+  for (const tr of trs) {
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('a,button')) return;
+      const data = { ...tr.dataset };
+      rowMenu.open({
+        x: e.clientX, y: e.clientY, mark: tr,
+        items: [
+          { label: 'Copy this page', icon: 'ph-copy',
+            run: () => copy(rowMenu.tsv(PCOLS, [data])).then(ok => ok ? 'Copied' : 'Copy failed') },
+          { label: `Copy ${all.length} pages`, icon: 'ph-table',
+            run: () => copy(rowMenu.tsv(PCOLS, all)).then(ok => ok ? 'Copied' : 'Copy failed') },
+          { label: 'Show the TSV', icon: 'ph-text-align-left', keep: true,
+            run: () => { out.textContent = rowMenu.tsv(PCOLS, [data]); return 'Shown'; } },
+        ],
+      });
+    });
+  }
+
+  document.body.dataset.ready = '1';
+</script>
+</head>
+<body class="bg-base-100 text-base-content">
+<main class="px-6 py-8 space-y-8">
+
+  <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+    <h1 class="text-2xl font-semibold">row-menu</h1>
+    <code class="font-mono text-[13px] bg-base-200 border border-base-300 rounded px-1.5 py-0.5">rowMenu.attach(table, opts)</code>
+    <span class="text-[13px] text-base-content/50">tap a row · Esc, a tap outside, a scroll or a resize closes it</span>
+    <span class="ml-auto flex gap-2">
+      <button id="copy-all" class="btn btn-sm">Copy the visible rows</button>
+      <button id="shut" class="btn btn-sm btn-ghost">Close</button>
+    </span>
+  </header>
+
+  <section class="space-y-2">
+    <div class="flex flex-wrap items-center gap-3">
+      <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A Tabulator grid</h2>
+      <input id="q" class="input input-sm input-bordered w-56" placeholder="Filter, and watch the count">
+      <span id="pins" class="flex flex-wrap gap-1"></span>
+    </div>
+    <div id="grid" class="text-[14px] border border-base-300 rounded"></div>
+    <p class="text-[13px] text-base-content/50">
+      The GitHub cell is a link, so a tap there stays a link and raises nothing.
+      A clipboard write needs a real tap on a secure page: in a headless shot the copy items report a failure instead of copying.
+    </p>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">A plain table, calling open() itself</h2>
+    <div class="flex flex-wrap items-start gap-4">
+      <table id="plain" class="table table-sm w-auto text-[14px] border border-base-300">
+        <thead><tr><th>Page</th><th>Route</th><th>Kind</th></tr></thead>
+        <tbody>
+          <tr data-page="branch.html" data-route="#gh=owner/repo@branch" data-kind="branch"><td>branch.html</td><td class="font-mono text-[13px]">#gh=owner/repo@branch</td><td>branch</td></tr>
+          <tr data-page="review.html" data-route="#gh=owner/repo@branch&amp;base=main" data-kind="diff"><td>review.html</td><td class="font-mono text-[13px]">#gh=owner/repo@branch&amp;base=main</td><td>diff</td></tr>
+          <tr data-page="data-view.html" data-route="#data=owner/repo:path" data-kind="data"><td>data-view.html</td><td class="font-mono text-[13px]">#data=owner/repo:path</td><td>data</td></tr>
+          <tr data-page="toss-render.html" data-route="#gz=payload" data-kind="render"><td>toss-render.html</td><td class="font-mono text-[13px]">#gz=payload</td><td>render</td></tr>
+        </tbody>
+      </table>
+      <pre id="tsv" class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto min-w-64 min-h-24">Show the TSV puts it here, and holds the menu open.</pre>
+    </div>
+  </section>
+
+  <section class="space-y-2">
+    <h2 class="text-[11px] font-semibold uppercase tracking-widest text-base-content/40">From a script</h2>
+    <pre class="text-[12.5px] bg-base-200 border border-base-300 rounded p-3 overflow-x-auto"><code>const detach = rowMenu.attach(table, {
+  noun: 'kit',                                   // "Copy this kit"
+  deck: { title: 'Kits' },                       // false, or omitted where record-deck is unloaded
+  items: [{ label: 'Pin it', icon: 'ph-push-pin', run: ({ data }) =&gt; pin(data) }],
+});
+rowMenu.columnsOf(table)                         // the visible, field-bearing columns
+rowMenu.tsv(cols, rows)                          // headers plus a line each, for a paste
+rowMenu.open({ x, y, mark: tr, items })          // the menu alone, on any host
+detach()                                         // and the row tap is a row tap again</code></pre>
+  </section>
+
+</main>
+</body>
+</html>

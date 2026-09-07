@@ -58,6 +58,11 @@ test('the harness registry matches tools/ and scripts/', () => {
 // the generator's own closing comment claims. It went unnoticed because the
 // projection is read by machines and diffed by nobody, and because the estate
 // had only one board carrying it. It now has ten.
+test('the kits registry matches lib/kits/', () => {
+  const r = check(['tools/build/kits-index.mjs', '--check']);
+  assert.equal(r.status, 0, (r.stderr || '').trim() || 'kits-index --check failed');
+});
+
 test('docs/themes.json matches the corpus the theme graph is read from', () => {
   const r = spawnSync('python3', ['scripts/duplicated-claims.py', '--emit', 'docs/themes.json', '--check'],
                       { cwd: repoRoot, encoding: 'utf8' });

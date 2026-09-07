@@ -192,11 +192,10 @@ test('the picker only routes to mechanisms that exist', () => {
 //
 // So showing.md gets the same instrument CLAUDE.md has, for the same reason.
 // The ceiling is set with room above the 2026-08-19 chop and well under what
-// the file was; the remedy when it fires is extraction, never shaving. If the
-// material is a mechanism, a boundary, or an address, it is a row in
-// showing-mechanisms.csv or a field of the routes.json showing block. What
-// belongs in prose is what no row can hold: a relation between two rows, or a
-// record of what a boundary cost to find.
+// the file was. If it fails, a mechanism, a boundary or an address is a row in
+// showing-mechanisms.csv or a field of the routes.json showing block. Prose
+// keeps what no row can hold: a relation between two rows, or a record of what
+// a boundary cost to find. Raising the limit requires user approval.
 const SHOWING_LIMIT = 1500;
 
 test('docs/showing.md delegates the mechanisms rather than restating them', () => {
@@ -210,9 +209,9 @@ test('docs/showing.md delegates the mechanisms rather than restating them', () =
   const words = doc.split(/\s+/).length;
   assert.ok(words < SHOWING_LIMIT,
     `docs/showing.md is ${words} words, over its ${SHOWING_LIMIT}-word ceiling. ` +
-    'The fix is extraction, not shaving: a mechanism, a boundary or an address ' +
-    'is a row in showing-mechanisms.csv or a field of the routes.json showing ' +
-    'block. Prose keeps only what no row can hold.');
+    'A mechanism, a boundary or an address is a row in showing-mechanisms.csv ' +
+    'or a field of the routes.json showing block. Prose keeps only what no row ' +
+    'can hold. Raising the limit requires user approval.');
 });
 
 // The one duplicate a word cap cannot see, because it is inside the budget:
@@ -352,26 +351,36 @@ test('every kind that names a kit inlines its own row there', () => {
     assert.equal(lit.aim, row.aim, row.kit + ': aim');
     assert.equal(lit.aimLabel, row.aim_label, row.kit + ': aim_label');
     assert.equal(lit.aimHint, row.aim_hint, row.kit + ': aim_hint');
+    assert.equal(lit.aimIcon || '', row.aim_icon, row.kit + ': aim_icon');
     assert.ok(row.unit.startsWith(lit.unit),
       `${row.kit}: unit "${row.unit}" does not open with "${lit.unit}"`);
   }
 });
 
 // The optional half of the contract, stated as a check so it cannot quietly
-// become mandatory. A kind with an aim has to name what that aim is called and
-// what its hint says, since kits/annotate.js draws the row from those two and
-// an empty label would paint a blank control. A kind WITHOUT one carries
-// neither: source code declines the gesture half because a line range is what
-// an ordinary text selection already spans.
+// become mandatory. A kind with an aim has to name what that aim is called,
+// what its hint says and what glyph marks it, since kits/annotate.js and
+// alpineComponents/fab.js draw the row from those three and an empty one paints
+// a blank control. A kind WITHOUT an aim carries none of them: source code
+// declines the gesture half because a line range is what an ordinary text
+// selection already spans.
+//
+// THE ICON IS AS MANDATORY AS THE LABEL, and that is the point of the column.
+// Both surfaces hardcoded `ph-text-align-left` until 2026-09-06, so a kind
+// declaring an aim inherited markdown's glyph with its own name. Making it
+// optional here would leave the fallback in place and the same drift with it.
 test('a kind names its aim completely, or carries no aim at all', () => {
   for (const k of manifest.kinds) {
     if (k.aim) {
       assert.ok(k.aim_label, k.kind + ': an aim with no label paints a blank row');
       assert.ok(k.aim_hint, k.kind + ': an aim with no hint');
       assert.ok(k.kit, k.kind + ': an aim needs a kit to define its units');
+      assert.match(k.aim_icon, /^ph-[a-z0-9-]+$/,
+        k.kind + ': an aim needs a phosphor glyph, so both surfaces stop guessing one');
     } else {
       assert.equal(k.aim_label, '', k.kind + ': a label for an aim that does not exist');
       assert.equal(k.aim_hint, '', k.kind + ': a hint for an aim that does not exist');
+      assert.equal(k.aim_icon, '', k.kind + ': an icon for an aim that does not exist');
     }
   }
 });

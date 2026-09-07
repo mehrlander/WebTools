@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Floating steps</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🪟</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+<script defer src="https://unpkg.com/alpinejs"></script>
+
+<!--
+  pip-steps.html — a walkthrough that stays on screen while you work somewhere else.
+
+  THE PROBLEM IT SOLVES. Handing over "do these nine taps in Settings" fails in
+  a way a link cannot fix: the reader leaves the message to do the taps, and the
+  instructions leave with it. They come back, re-find their place, and go again.
+  iOS has exactly one mechanism that survives the app switch, and it is
+  Picture-in-Picture, which floats video and nothing else. So the steps are
+  shipped as frames of text: scripts/pip-steps.py renders one still card per
+  step and encodes them at a fixed seconds-per-step, which turns the player's
+  own scrubber into a step navigator.
+
+  This page is the launcher, and it exists to remove the taps a bare video URL
+  cannot. `autopictureinpicture` floats the window on its own when the app is
+  backgrounded, so the reader opens the link, switches to the app they are
+  actually working in, and the steps follow them: no PiP button to find. The
+  Float button stays for the explicit route, and asks inside the click handler
+  because iOS grants PiP only on a live user gesture, preferring
+  webkitSetPresentationMode as the iOS spelling.
+
+  Media Session gives the PiP transport real card boundaries, so a tap lands on
+  the start of a card instead of wherever a fixed skip interval falls. The card
+  duration is set to the skip interval anyway, which makes the bare video behave
+  too, but only the page can be exact.
+
+  Where no PiP API exists the same steps render as a list, from the same JSON the
+  video was built from, so the page is never a dead end.
+
+  IT MUST BE OPENED IN A BROWSER, not in a web view. Whether a Shortcuts or
+  in-app web view permits PiP is unmeasured; Safari is the known-good venue, so
+  a shortcut reaches this through Open-URL rather than showing it inline.
+
+  A CARD HOLDS WHAT THE READER CAN ACT ON WITHOUT LOOKING BACK, so grouping two
+  or three shortens the loop. That is the cost this format has to keep down: a
+  reader who misses their card waits for the whole cycle to come round.
+
+  ADDRESS. ?v= the MP4, ?steps= the cards JSON behind it; both default to the
+  probe-automation pair. The JSON's title names the walkthrough.
+-->
+</head>
+<body class="bg-base-200">
+
+<div x-data="pip()" class="fixed inset-0 grid grid-rows-[auto_1fr_auto]">
+
+  <header class="flex items-center gap-3 px-4 py-3 bg-base-100 border-b border-base-300">
+    <h1 class="text-xl font-semibold text-balance grow" x-text="title">Floating steps</h1>
+    <button class="btn btn-primary" @click="float()" x-show="canFloat">
+      <i class="ph-bold ph-picture-in-picture"></i> Float
+    </button>
+  </header>
+
+  <main class="overflow-y-auto p-4">
+    <video x-ref="v" :src="video" class="w-full max-h-[60dvh] mx-auto object-contain rounded-box bg-black"
+           playsinline muted loop controls autoplay autopictureinpicture preload="auto"></video>
+
+    <ol x-show="!canFloat || listed" class="mt-4 space-y-6">
+      <template x-for="(c, i) in cards" :key="i">
+        <li class="text-xl leading-8">
+          <span class="text-xs font-mono opacity-60" x-text="`${i + 1}/${cards.length}`"></span>
+          <template x-for="line in c.lines" :key="line">
+            <div class="font-semibold text-pretty" x-text="line"></div>
+          </template>
+          <div class="opacity-70 text-pretty" x-show="c.note" x-text="c.note"></div>
+        </li>
+      </template>
+    </ol>
+  </main>
+
+  <footer class="flex items-center gap-3 px-4 py-3 bg-base-100 border-t border-base-300">
+    <span class="text-xs font-mono opacity-60" x-text="`${cards.length} cards · ${seconds}s each · ${cards.length * seconds}s loop`"></span>
+    <span class="grow"></span>
+    <button class="btn btn-ghost btn-sm" @click="listed = !listed" x-show="canFloat"
+            x-text="listed ? 'Hide list' : 'Show list'"></button>
+  </footer>
+
+</div>
+
+<script>
+function pip() {
+  const q = new URLSearchParams(location.search);
+  return {
+    video: q.get('v') || 'media/probe-automation.mp4',
+    source: q.get('steps') || '../data/pip-steps/probe-automation.json',
+    seconds: Number(q.get('seconds') || 6),
+    title: 'Floating steps',
+    cards: [],
+    listed: false,
+    canFloat: false,
+
+    async init() {
+      const v = this.$refs.v;
+      // Feature-detect on the element, since iOS ships the webkit spelling only.
+      this.canFloat = typeof v.webkitSetPresentationMode === 'function'
+        || (document.pictureInPictureEnabled && typeof v.requestPictureInPicture === 'function');
+      // The property, not just the attribute: Safari reads the IDL attribute, and
+      // this is what floats the window on its own when the app is backgrounded.
+      v.autoPictureInPicture = true;
+      const doc = await fetch(this.source).then(r => r.json());
+      this.title = doc.title || this.title;
+      this.cards = doc.cards || [];
+      this.wireCardControls();
+    },
+
+    // Card boundaries are exact, so the transport buttons land on a card start
+    // rather than wherever a fixed skip interval happens to fall.
+    wireCardControls() {
+      if (!('mediaSession' in navigator) || !this.cards.length) return;
+      const v = this.$refs.v, s = this.seconds;
+      const jump = n => () => {
+        const here = Math.floor(v.currentTime / s);
+        const next = Math.min(Math.max(here + n, 0), this.cards.length - 1);
+        v.currentTime = next * s;
+        v.play();
+      };
+      navigator.mediaSession.metadata = new MediaMetadata({ title: this.title });
+      for (const [action, handler] of [
+        ['nexttrack', jump(1)], ['previoustrack', jump(-1)],
+        ['seekforward', jump(1)], ['seekbackward', jump(-1)],
+      ]) {
+        try { navigator.mediaSession.setActionHandler(action, handler); } catch {}
+      }
+    },
+
+    // Both calls stay synchronous inside the click: iOS drops the PiP request
+    // once the gesture that authorised it has been awaited away.
+    float() {
+      const v = this.$refs.v;
+      v.play();
+      if (typeof v.webkitSetPresentationMode === 'function') v.webkitSetPresentationMode('picture-in-picture');
+      else v.requestPictureInPicture().catch(() => { this.canFloat = false; });
+    },
+  };
+}
+</script>
+</body>
+</html>
