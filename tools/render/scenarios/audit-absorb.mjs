@@ -86,4 +86,74 @@ export default async function (page) {
   if (undone.complaints.length) throw new Error('undo broke the annotation');
   if (undone.end === after.sel.end) throw new Error('undo did not move the boundary back');
   console.log(`UNDO   one step: boundary back to ${undone.end}, patch head at ${undone.at}`);
+
+  // ── AND THE OTHER DIRECTION ────────────────────────────────────────────
+  // Reaching back absorbs into the span on the right, which is the reader's
+  // subject, so the assertion is that the subject SURVIVES and grows leftward.
+  // The merge's keep:'right' is what makes that true; the default would join
+  // each pair into the earlier unit and the subject would be the casualty.
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[x-ref="doc"] span');
+  const b = await page.evaluate(async () => {
+    const d = Alpine.$data(document.body);
+    for (let k = 5; k < d.units.length - 3; k++) {
+      const u = d.units[k];
+      if (u.kind !== 'sent') continue;
+      d.sel = { ...u };
+      document.querySelector(`[data-uid="${CSS.escape(u.uid)}"]`)?.scrollIntoView({ block: 'center' });
+      d.placePins();
+      await new Promise(r => setTimeout(r, 80));
+      const s = [...document.querySelectorAll('[data-edge]')]
+        .map(x => ({ e: x.getAttribute('data-edge'), r: x.getBoundingClientRect() }))
+        .find(x => x.e === 'start');
+      if (s) return { uid: u.uid, count: d.units.length, sel: { start: u.start, end: u.end },
+                      back: { start: d.units[k - 3].start, end: d.units[k - 3].end },
+                      pin: { x: s.r.left + s.r.width / 2, y: s.r.top + s.r.height / 2 } };
+    }
+    return null;
+  });
+  if (!b) throw new Error('no unit with three spans before it');
+  await page.touchscreen.tap(b.pin.x, b.pin.y);
+  await page.waitForTimeout(300);
+
+  // Scrolled in AND not under the panel: the panel floats over the document, so
+  // a point inside the text can still be under a button. An earlier version of
+  // this tapped Merge next and read the result as a reach.
+  const back = await page.evaluate(async (b) => {
+    const d = Alpine.$data(document.body);
+    for (let at = b.back.start + 4; at < b.back.end - 1; at++) {
+      const h = Standoff.nodeAt(d.$refs.doc, at);
+      if (!h) continue;
+      h.node.parentElement?.scrollIntoView({ block: 'center' });
+      await new Promise(r => setTimeout(r, 120));
+      const r = document.createRange();
+      r.setStart(h.node, h.offset); r.setEnd(h.node, h.offset + 1);
+      const rect = r.getBoundingClientRect();
+      if (!rect.width || rect.top < 60 || rect.bottom > innerHeight - 60) continue;
+      const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+      const top = document.elementFromPoint(x, y);
+      if (!top?.closest('[data-uid]') || top.closest('[data-panel]')) continue;
+      return { at, x, y };
+    }
+    return null;
+  }, b);
+  if (!back) throw new Error('cannot bring a point before the pair on screen');
+  await page.touchscreen.tap(back.x, back.y);
+  await page.waitForTimeout(450);
+
+  const grew = await page.evaluate((b) => {
+    const d = Alpine.$data(document.body);
+    const u = d.units.find(x => x.uid === b.uid);
+    return { msg: d.opErr, count: d.units.length, selUid: d.sel?.uid,
+             span: u ? [u.start, u.end] : null, complaints: Standoff.check(d.so, d.a.text) };
+  }, b);
+  const m = Number((grew.msg.match(/absorbed (\d+)/) || [])[1]);
+  if (!m) throw new Error(`reaching back reported nothing: ${grew.msg}`);
+  if (!grew.span) throw new Error('the subject was destroyed reaching back');
+  if (grew.selUid !== b.uid) throw new Error(`the highlight left the subject: ${grew.selUid}`);
+  if (grew.span[1] !== b.sel.end) throw new Error('the far edge moved');
+  if (grew.span[0] !== back.at) throw new Error(`the near edge is at ${grew.span[0]}, asked ${back.at}`);
+  if (b.count - grew.count !== m) throw new Error('the count does not match the units that went');
+  if (grew.complaints.length) throw new Error('the annotation broke: ' + grew.complaints[0]);
+  console.log(`BACK   ${grew.msg}  |  ${b.uid} [${b.sel.start},${b.sel.end}] -> [${grew.span}]`);
 }

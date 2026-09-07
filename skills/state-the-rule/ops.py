@@ -171,9 +171,16 @@ def split(so, text, uid, at, why=None):
     return so
 
 
-def merge(so, text, uid, why=None):
+def merge(so, text, uid, why=None, keep="left"):
     """A unit absorbs its successor. Refused where they are not adjacent, since
-    merging across a gap would swallow text nobody annotated."""
+    merging across a gap would swallow text nobody annotated.
+
+    `keep` says WHICH SIDE SURVIVES and is the caller's to state. The default
+    keeps this unit, which is what absorbing a successor means. "right" keeps
+    the successor's identity instead: the same joined span, carrying the later
+    unit's label, verdict and note rather than this one's. A boundary reaching
+    leftward needs it, since what it crosses has to be absorbed INTO the span
+    the reader is working from, which is the one on the right."""
     units = sorted(so["units"], key=lambda x: x["start"])
     i, u = _at(so, uid)
     if i + 1 >= len(units):
@@ -188,7 +195,9 @@ def merge(so, text, uid, why=None):
     # be in the wrong place. Refusing states the disagreement instead.
     if any(ins.get("after") == uid for ins in so.get("insertions", [])):
         raise ValueError(f"{uid}: an insertion sits on the boundary this merge removes")
-    joined = {**u, "end": nxt["end"], "kind": kind_of(text, u["start"], nxt["end"]),
+    heir = nxt if keep == "right" else u
+    joined = {**heir, "start": u["start"], "end": nxt["end"],
+              "kind": kind_of(text, u["start"], nxt["end"]),
               "words": len(text[u["start"]:nxt["end"]].split()),
               "from": f"merge:{uid}+{nxt['uid']}"} | ({"why": why} if why else {})
     so["units"] = units[:i] + [joined] + units[i + 2:]
@@ -301,7 +310,8 @@ def note(so, text, uid, text_, **_):
 
 
 HANDLERS = {"split": lambda so, t, o: split(so, t, o["uid"], o["at"], o.get("why")),
-            "merge": lambda so, t, o: merge(so, t, o["uid"], o.get("why")),
+            "merge": lambda so, t, o: merge(so, t, o["uid"], o.get("why"),
+                                            o.get("keep", "left")),
             "shift": lambda so, t, o: shift(so, t, o["after"], o["to"], o.get("why")),
             "relabel": lambda so, t, o: relabel(so, t, o["uid"], o["label"], o.get("why")),
             "verdict": lambda so, t, o: verdict(so, t, o["uid"], o["verdict"], o.get("why")),

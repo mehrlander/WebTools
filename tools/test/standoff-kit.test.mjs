@@ -459,3 +459,67 @@ test('an insertion anchored to a uid the units do not carry is skipped, not thro
   const so = mat(MUNITS, [{ after: 'm-99', text: 'orphan' }]);
   assert.equal(S.materialize(so, MDOC).out, MDOC);
 });
+
+// ── WHICH SIDE OF A MERGE SURVIVES ───────────────────────────────────────────
+// The joined span is the same either way; what differs is whose judgment it
+// carries. Held here because the difference is invisible in the offsets, which
+// is exactly how it would rot.
+
+test('a merge keeps the left unit by default, span and judgment both', () => {
+  const so = base();
+  so.units[1].label = 'WHY-MOT';
+  so.units[1].verdict = 'DROP';
+  const uid = S.ops.merge(so, DOC, { uid: 'u-001' });
+  assert.equal(uid, 'u-001');
+  assert.equal(so.units.length, 1);
+  assert.deepEqual([so.units[0].start, so.units[0].end], [0, 59]);
+  assert.equal(so.units[0].label, 'WHAT');
+  assert.equal(so.units[0].verdict, undefined);
+});
+
+test("keep:'right' joins the pair into the later unit instead", () => {
+  const so = base();
+  so.units[1].label = 'WHY-MOT';
+  so.units[1].verdict = 'DROP';
+  const uid = S.ops.merge(so, DOC, { uid: 'u-001', keep: 'right' });
+  assert.equal(uid, 'u-002');
+  assert.equal(so.units.length, 1);
+  // The same span: the survivor's identity moved, its extent did not.
+  assert.deepEqual([so.units[0].start, so.units[0].end], [0, 59]);
+  assert.equal(so.units[0].label, 'WHY-MOT');
+  assert.equal(so.units[0].verdict, 'DROP');
+  assert.deepEqual(S.check(so, DOC), []);
+});
+
+test('either side survives with the same provenance, since one boundary went', () => {
+  const l = base(), r = base();
+  S.ops.merge(l, DOC, { uid: 'u-001' });
+  S.ops.merge(r, DOC, { uid: 'u-001', keep: 'right' });
+  assert.equal(l.units[0].from, 'merge:u-001+u-002');
+  assert.equal(r.units[0].from, l.units[0].from);
+});
+
+test('merge and the Python that owns it agree on both sides', () => {
+  for (const keep of ['left', 'right']) {
+    const so = base();
+    so.units[1].label = 'WHY-MOT';
+    so.units[1].verdict = 'DROP';
+    const dir = mkdtempSync(path.join(tmpdir(), 'merge-'));
+    try {
+      writeFileSync(path.join(dir, 'so.json'), JSON.stringify(so));
+      writeFileSync(path.join(dir, 'doc.md'), DOC);
+      writeFileSync(path.join(dir, 'patch.json'),
+        JSON.stringify([{ op: 'merge', uid: 'u-001', keep }]));
+      execFileSync('python3', [path.join(repoRoot, 'skills/state-the-rule/ops.py'),
+                               path.join(dir, 'so.json'), path.join(dir, 'patch.json'),
+                               path.join(dir, 'doc.md'), '--write'],
+                   { cwd: repoRoot, stdio: ['ignore', 'ignore', 'pipe'] });
+      const py = JSON.parse(readFileSync(path.join(dir, 'so.json'), 'utf8'));
+      const js = base();
+      js.units[1].label = 'WHY-MOT';
+      js.units[1].verdict = 'DROP';
+      S.ops.merge(js, DOC, { uid: 'u-001', keep });
+      assert.deepEqual(js.units, py.units, `keep:'${keep}'`);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  }
+});

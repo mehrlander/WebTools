@@ -966,11 +966,12 @@ window.__audit = {
     // none of them, so what gets reported is the outcome and the cause has to
     // be inferred. It is recorded rather than inferred now.
     trace: [],
-    // Four lines, ON SCREEN. They were one line plus a title attribute until
-    // the first report came back from a phone, where nothing hovers: the line
-    // that mattered (which edge was armed when the tap landed) was in the half
-    // a reader could not reach. A diagnostic the reader cannot read is not one.
-    say(s) { this.trace.push(s); if (this.trace.length > 4) this.trace.shift(); },
+    // KEPT, AND NO LONGER ON SCREEN. Four lines of it sat in the header while
+    // three defects were found through it, which is what it was for; the reader
+    // never needed them, since the panel says what was refused and what was
+    // absorbed in its own words. A driver reads `trace` directly, so the
+    // evidence survives without the scaffolding.
+    say(s) { this.trace.push(s); if (this.trace.length > 8) this.trace.shift(); },
     get build() {
       const has = [
         typeof this.pinUnder === 'function' && 'pins2',   // the nearest-bar pin hit test
@@ -978,7 +979,7 @@ window.__audit = {
         Array.isArray(this.trace) && 'trace1',            // the on-screen gesture trace
         'tap2',                                           // a click must carry its own tap
         this.push.length > 1 && 'keep1',                  // an edit keeps the reader's subject selected
-        typeof this.absorbTo === 'function' && 'reach1',  // a boundary reaches past its pair, counted
+        typeof this.absorbTo === 'function' && 'reach2',  // a boundary reaches past its pair, both ways
       ].filter(Boolean);
       return `build ${has.join('·') || 'base'} · lib ${(this.ref || 'main').slice(0, 7)}`;
     },
@@ -1079,9 +1080,9 @@ window.__audit = {
       if (op.op === 'shift') {
         if (i < 0 || i + 1 >= us.length)
           return 'nothing follows this boundary, so there is no pair to move it within';
-        return 'reaching back would absorb the span you are pointing at rather '
-             + `than the ground between: tap inside “${q(us[i], true)}” or `
-             + `“${q(us[i + 1])}”`;
+        return 'a boundary moves within the two spans it separates, and reaches '
+             + `past them only by absorbing what it crosses: tap inside `
+             + `“${q(us[i], true)}” or “${q(us[i + 1])}”`;
       }
       if (op.op === 'split') return 'a split needs text on both sides of the point';
       if (op.op === 'merge') return 'nothing follows this span to merge it with';
@@ -1148,13 +1149,13 @@ window.__audit = {
     // each merge is its own patch entry, which is what lets undo step back
     // through them one at a time and lets ops.py replay the same sequence.
     //
-    // FORWARD ONLY, and the asymmetry is the merge convention rather than a
-    // preference. Reaching right, the boundary's left unit absorbs what it
-    // crosses and the survivor is the unit the reader is working from.
-    // Reaching left, the span the reader is pointing at would be the one
-    // destroyed, since the survivor keeps the left uid: the gesture would eat
-    // the subject rather than the ground it is crossing. That case still
-    // refuses, and says so.
+    // BOTH DIRECTIONS, and the merge's `keep` is what makes the second one
+    // honest. Reaching right, the boundary's left unit absorbs what it crosses
+    // and the survivor is already the span the reader is working from. Reaching
+    // left it is the other way round, so the merge keeps the RIGHT side's
+    // identity: without that the gesture would join each pair into the earlier
+    // unit and destroy the subject rather than the ground being crossed, which
+    // is why this direction refused outright until 2026-09-07.
     absorbTo(after, to) {
       const lost = [];
       for (let guard = 0; guard < 40; guard++) {
@@ -1162,8 +1163,24 @@ window.__audit = {
         const i = us.findIndex(x => x.uid === after);
         if (i < 0 || i + 1 >= us.length) return null;
         const u = us[i], n = us[i + 1];
-        if (u.start < to && to < n.end) return lost;   // the pair now reaches it
-        if (to <= u.start) return null;                // leftward: see above
+        if (u.start < to && to < n.end) return { after, lost };  // the pair reaches it
+        if (to <= u.start) {
+          // LEFTWARD, absorbing INTO the span on the right, which is the one
+          // the reader is working from. keep:'right' is what makes that the
+          // survivor; the default would join the pair into the left unit and
+          // destroy the subject instead of the ground being crossed.
+          if (i < 1) return null;                      // nothing before it to cross
+          lost.push({ label: u.label || '', verdict: u.verdict || 'KEEP' });
+          // The survivor is THIS boundary's left unit, keeping its identity and
+          // reaching back over the one it absorbed, so `after` still names it.
+          // Re-pointing at the absorbed uid instead left the loop looking for a
+          // unit that no longer existed; it returned null, the caller's plain
+          // shift then succeeded on the widened pair, and the whole reach read
+          // as working while reporting nothing and failing on the second span.
+          if (!this.push({ op: 'merge', uid: us[i - 1].uid, keep: 'right' },
+                         this.sel?.uid)) return null;
+          continue;
+        }
         if (i + 2 >= us.length) return null;           // nothing past it to keep
         lost.push({ label: n.label || '', verdict: n.verdict || 'KEEP' });
         if (!this.push({ op: 'merge', uid: u.uid }, this.sel?.uid)) return null;
@@ -1524,14 +1541,15 @@ window.__audit = {
         if (e && e.shiftable) {
           const us = [...this.units].sort((a, b) => a.start - b.start);
           const i = us.findIndex(x => x.uid === e.after);
-          const past = i >= 0 && i + 1 < us.length && off >= us[i + 1].end;
-          if (past) {
-            const lost = this.absorbTo(e.after, off);
-            if (lost && lost.length) {
-              this.push({ op: 'shift', after: e.after, to: off }, this.sel?.uid);
-              const what = lost.map(l => `${l.label} ${l.verdict}`).join(', ');
-              this.opErr = `absorbed ${lost.length} span${lost.length > 1 ? 's' : ''}: ${what}`;
-              this.say(`absorbed ${lost.length} (${what})`);
+          const outside = i >= 0 && i + 1 < us.length
+                       && (off >= us[i + 1].end || off <= us[i].start);
+          if (outside) {
+            const r = this.absorbTo(e.after, off);
+            if (r && r.lost.length) {
+              this.push({ op: 'shift', after: r.after, to: off }, this.sel?.uid);
+              const what = r.lost.map(l => `${l.label} ${l.verdict}`).join(', ');
+              this.opErr = `absorbed ${r.lost.length} span${r.lost.length > 1 ? 's' : ''}: ${what}`;
+              this.say(`absorbed ${r.lost.length} (${what})`);
               return;
             }
           }
@@ -1947,10 +1965,7 @@ window.__audit = {
         <a class="text-xs link link-primary" :href="so.target.url" x-show="so.target.url">source</a>
         <span class="text-xs font-mono opacity-60" x-text="build"
               title="what this page file carries, and the ref its lib came from"></span>
-        <div class="text-xs font-mono text-warning w-full leading-tight"
-             x-show="trace.length" @click="trace = []">
-          <template x-for="t in trace" :key="t"><div x-text="t"></div></template>
-        </div>
+
         <div class="join ml-auto">
           <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
                   @click="view='source'; paint()">Source</button>
