@@ -65,11 +65,21 @@ export default async function (page) {
   const t = await page.evaluate((f) => {
     const d = Alpine.$data(document.body);
     const g = (uid) => { const u = d.units.find(x => x.uid === uid); return { start: u.start, end: u.end }; };
-    return { prev: g(f.prevUid), sel: g(f.uid), trace: d.trace };
+    return { prev: g(f.prevUid), sel: g(f.uid), trace: d.trace,
+             selUid: d.sel?.uid, selSpan: d.sel ? [d.sel.start, d.sel.end] : null };
   }, f);
+  // THE SELECTION IS PART OF THE OUTCOME, not decoration. ops.shift returns the
+  // left unit of the pair, so re-selecting the return value moved the highlight
+  // onto the neighbour and the reader saw the whole span jump. The boundary
+  // being right is not enough when the thing on screen is a different span.
+  if (t.selUid !== f.uid)
+    throw new Error(`the highlight left the subject: editing ${f.uid}, now on ${t.selUid}`);
+  if (t.selSpan[1] !== f.sel.end)
+    throw new Error(`the selected span's end moved: ${f.sel.end} -> ${t.selSpan[1]}`);
   if (t.sel.end !== f.sel.end) throw new Error(`the end boundary moved: ${f.sel.end} -> ${t.sel.end}`);
   if (t.sel.start === f.sel.start) throw new Error('the tap did not move the start boundary');
   if (t.prev.end !== t.sel.start) throw new Error('the pair no longer tiles');
   console.log(`TOUCH start ${f.sel.start} -> ${t.sel.start}, end held at ${t.sel.end}`);
+  console.log(`      still editing ${t.selUid}, now [${t.selSpan}]`);
   console.log('  ' + t.trace.join('\n  '));
 }

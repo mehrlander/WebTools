@@ -959,6 +959,7 @@ window.__audit = {
         typeof this.toShorter === 'function' && 'shorter1', // the projection handoff
         Array.isArray(this.trace) && 'trace1',            // the on-screen gesture trace
         'tap2',                                           // a click must carry its own tap
+        this.push.length > 1 && 'keep1',                  // an edit keeps the reader's subject selected
       ].filter(Boolean);
       return `build ${has.join('·') || 'base'} · lib ${(this.ref || 'main').slice(0, 7)}`;
     },
@@ -1046,7 +1047,16 @@ window.__audit = {
       if (i < 0 || i + 1 >= us.length) return `: ${op.after} has nothing after it`;
       return `: asked ${op.to}, needs ${us[i].start}..${us[i + 1].end}`;
     },
-    push(op) {
+    // `keep` NAMES THE READER'S SUBJECT, which is not always the unit the
+    // operation returns. ops.shift returns the LEFT unit of the pair it moved
+    // between, so moving an END boundary returns the unit being edited and
+    // moving a START boundary returns its neighbour. Re-selecting the return
+    // value therefore moved the highlight off the span the reader was working
+    // on and onto the one before it: a span at [240,291] became a selection at
+    // [120,267], which reads as the whole span jumping rather than one edge
+    // being placed. Reported four times before it was measured, on 2026-09-07,
+    // because every account of it was about the pins and the pins were fine.
+    push(op, keep) {
       // Applied to the live annotation so the view moves under your thumb, then
       // checked and rolled back if it broke something. Same rule ops.py runs on
       // a whole patch: valid against its base, or it does not stand.
@@ -1066,7 +1076,7 @@ window.__audit = {
       // schedules placePins and the pins are drawn from the selected unit's
       // edges. Setting it after left the pins one operation behind: still armed,
       // still red, still on the boundary the edit had just moved.
-      const u = this.units.find(x => x.uid === uid);
+      const u = this.units.find(x => x.uid === keep) || this.units.find(x => x.uid === uid);
       this.sel = u ? { ...u, ref: this.srcRef(u) } : null;
       this.paint();
     },
@@ -1422,7 +1432,7 @@ window.__audit = {
         // through and selects, which is what it would have done unarmed, rather
         // than pushing a shift both implementations would refuse.
         if (e && e.shiftable) {
-          this.push({ op: 'shift', after: e.after, to: off });
+          this.push({ op: 'shift', after: e.after, to: off }, this.sel?.uid);
           return;
         }
       }
@@ -1769,8 +1779,9 @@ window.__audit = {
         if (landed != null && landed !== e0.at) {
           this.say(`drag ${which} from ${e0.at} to ${landed}, after ${after}`);
           Standoff.ops.shift(this.so, this.a.text, { after, to: e0.at });
+          const subject = this.sel?.uid;
           this.armed = null;
-          this.push({ op: 'shift', after, to: landed });
+          this.push({ op: 'shift', after, to: landed }, subject);
           return;
         }
         if (landed != null) Standoff.ops.shift(this.so, this.a.text, { after, to: e0.at });
