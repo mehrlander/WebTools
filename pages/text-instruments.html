@@ -48,6 +48,7 @@
 <style>[x-cloak]{display:none!important}</style>
 
 <script type="module">
+ try {
   const params = new URLSearchParams(location.search);
   const ref = params.get('use');
   if (ref) {
@@ -60,8 +61,6 @@
     await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
   }
   await gh.load('gh-auth.js');
-  await gh.load('kits/guide-render.js');
-  await gh.load('kits/source-peek.js');
 
   document.addEventListener('alpine:init', () => {
     Alpine.data('textInstruments', () => ({
@@ -114,6 +113,7 @@
       framed: window.self !== window.top,
 
       async init() {
+        document.getElementById('boot')?.remove();
         this.home = new window.GH({ token: window.TOKEN || '', repo: this.REPO, ref: this.DATA_REF });
         try {
           const res = await this.home.get(`${this.ROOT}/probes/probes.json`);
@@ -155,15 +155,27 @@
           && (!this.concept || p.concepts.includes(this.concept)));
       },
 
+      // The two render kits load here rather than in the boot chain. The
+      // register is one pane of three, and a kit that fails to arrive must not
+      // be able to blank the other two: everything on this page sits inside one
+      // x-cloak root, so anything that stops Alpine starting renders as a white
+      // page with nothing to read.
       async showPane(name) {
         this.pane = name;
         if (name !== 'instruments' || this.guideHtml) return;
-        const res = await this.home.get(`${this.ROOT}/INSTRUMENTS.md`);
-        await window.GuideRender.needMarked();
-        const src = window.SourcePeek.fenceFrontmatter(res.text);
-        this.guideHtml = window.GuideRender.render(src, { knownRefs: [this.DATA_REF, 'main'] }).html;
+        try {
+          await gh.load('kits/guide-render.js');
+          await gh.load('kits/source-peek.js');
+          const res = await this.home.get(`${this.ROOT}/INSTRUMENTS.md`);
+          await window.GuideRender.needMarked();
+          this.guideHtml = window.GuideRender.render(
+            window.SourcePeek.fenceFrontmatter(res.text),
+            { knownRefs: [this.DATA_REF, 'main'] }).html;
+        } catch (e) {
+          this.error = `INSTRUMENTS.md: ${e.message || e}`;
+        }
       },
-      get guideBodyClass() { return window.GuideRender.bodyClass('page') },
+      get guideBodyClass() { return window.GuideRender ? window.GuideRender.bodyClass('page') : '' },
 
       // An artifact is either an absolute URL or a path relative to probes/.
       // The relative form resolves into a blob at the ref being read, so the
@@ -186,10 +198,22 @@
   });
 
   await gh.load('alpine-bundle.js');   // starts Alpine
+ } catch (e) {
+  // Without this the page has no way to say anything. The boot chain runs
+  // before Alpine, and every element is inside the x-cloak root, so a rejected
+  // await left a blank white page carrying no clue as to which step failed.
+  const b = document.getElementById('boot');
+  if (b) b.textContent = `boot failed at ${location.hostname}: ${e.message || e}`;
+  throw e;
+ }
 </script>
 </head>
 
 <body class="bg-base-100 min-h-dvh text-base-content">
+
+<!-- Sits outside the cloaked root and is removed by init(), so the page always
+     says something: booting, or which step failed. -->
+<div id="boot" class="p-6 font-mono text-sm opacity-40">loading…</div>
 
 <div x-data="textInstruments" x-cloak>
 
