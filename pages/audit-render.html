@@ -1607,11 +1607,42 @@ window.__audit = {
       const past = travel > 0 ? Math.max(0, travel - buffer) : travel;
       return y0 + Math.round(past / lineH) * lineH;
     },
+    // WHICH PIN THE FINGER MEANT, which is not always the one the browser
+    // hands over. A pin's touch target is a 32px box padded above and below
+    // the line it marks, so two pins on adjacent lines overlap wherever their
+    // x values are close, and elementFromPoint then answers with whichever was
+    // appended last, which is always `end`. Grabbing the start pin and
+    // watching the end boundary move is what that looks like from the outside,
+    // and it is what this page did until 2026-09-07: measured at 430px on the
+    // stored CONVENTIONS.md run, the start box sat at (132,301,32x53) and the
+    // end box at (117,328,32x53), so the start pin's own centre was inside the
+    // end pin's box.
+    //
+    // Resolved by distance to the BAR, which is the thing a pin actually
+    // marks, rather than by stacking order. Only boxes containing the point
+    // are considered and the gate above is unchanged, so a point inside one
+    // box alone still answers with that box.
+    pinUnder(ev) {
+      const hit = [...(this.$refs.pins?.querySelectorAll('[data-edge]') || [])]
+        .filter(b => {
+          const r = b.getBoundingClientRect();
+          return ev.clientX >= r.left && ev.clientX <= r.right
+              && ev.clientY >= r.top && ev.clientY <= r.bottom;
+        });
+      if (!hit.length) return null;
+      const far = (b) => {
+        const r = (b.firstElementChild || b).getBoundingClientRect();
+        return Math.hypot(ev.clientX - (r.left + r.width / 2),
+                          ev.clientY - (r.top + r.height / 2));
+      };
+      return hit.reduce((a, b) => (far(b) < far(a) ? b : a)).getAttribute('data-edge');
+    },
     pinDown(ev) {
-      const box = ev.target?.closest?.('[data-edge]');
+      if (!ev.target?.closest?.('[data-edge]')) return;
+      const which = this.pinUnder(ev);
+      const box = which && this.$refs.pins?.querySelector(`[data-edge="${which}"]`);
       if (!box) return;
       ev.preventDefault(); ev.stopPropagation();
-      const which = box.getAttribute('data-edge');
       const was = this.armed === which;
       // MEASURED BEFORE ANYTHING IS REPAINTED. The bar is the pin's first child
       // and it IS the text line; the painter restyles in place but a repaint

@@ -85,6 +85,7 @@ tools/render/scenarios/audit-insert.mjs,"drive an insertion on the audit render:
 tools/render/scenarios/audit-list.mjs,,tools/render/scenarios,73,driver,no,no,no
 tools/render/scenarios/audit-overflow.mjs,"measure horizontal overflow in both audit views, which a viewport shot cannot show",tools/render/scenarios,15,driver,no,no,no
 tools/render/scenarios/audit-panel-fit.mjs,,tools/render/scenarios,76,driver,no,no,no
+tools/render/scenarios/audit-pin-overlap.mjs,,tools/render/scenarios,69,driver,no,no,no
 tools/render/scenarios/audit-read.mjs,"the audit render's Read view, framed on the units that cannot render alone",tools/render/scenarios,18,driver,no,no,no
 tools/render/scenarios/audit-split-offers.mjs,"drive what the audit render's split menu offers and what it refuses. A heading is one unit, so nothing is offered inside one: its colon fired the clause branch and the menu offered to cut three of CONVENTIONS.md's section titles from their own claims. A unit spanning a blank line offers that line, which the clause regex cannot see, and the assertion is a round trip: a shift across a blank line makes a mixed unit, and splitting at the offered boundary puts both kinds back, which a boundary one character off would not do. Also constructs the case reaching both branches at one offset, since the payload holds none",tools/render/scenarios,128,driver,no,no,no
 tools/render/scenarios/audit-standoff.mjs,the audit render's Standoff view: the annotation as rows over spans,tools/render/scenarios,12,driver,no,no,no
