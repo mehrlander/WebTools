@@ -119,19 +119,31 @@ test('the page reads guide, then files, then the documents', () => {
 // height as a presented file. Leading with it only helps if leading with it is
 // cheap: a two-thousand-word body at the top of the page is the failure the
 // files had when they led.
-test('the guide is clipped shorter than a presented file, by the same mechanism', () => {
+test('the guide scrolls as well as expands; a panel only expands', () => {
   const guide = window.document.querySelector('[x-ref="guide"]');
   const clip = guide.querySelector('[x-init]');
   assert.match(clip.getAttribute('x-init'), /watchClip\(\$el, 'guide'\)/);
-  assert.match(clip.className, /overflow-hidden/, 'clipped, not scrolled');
 
-  // SHORTER THAN A PANEL, and the difference is deliberate. A panel in the
-  // strip IS the document, which is what the page exists to show; the guide is
-  // a preview of prose whose full text is one tap away. Read as rem off the
-  // classes so the two cannot silently converge.
-  const rem = (el) => Number((/max-h-\[(\d+)rem\]/.exec(el.className || '') || [])[1]);
+  // THE ASYMMETRY IS LOAD-BEARING. A panel's card owns a scroller inside its
+  // own pane, so a second one there is a scrollbar inside a scrollbar; the
+  // guide card owns none, so its clip can be the scroller. Shipped
+  // overflow-hidden on 2026-09-06 and reported the next day, since a reader
+  // skimming the body had nothing to drag.
   const panel = [...window.document.querySelectorAll('[x-init*="watchClip"]')]
     .find(e => !/'guide'/.test(e.getAttribute('x-init')));
+  assert.match(clip.className, /overflow-y-auto/, 'the guide scrolls in place');
+  assert.ok(panel && /overflow-hidden/.test(panel.className),
+    'a presented file is clipped, not scrolled');
+  // Nothing pins the vertical overscroll, so a drag that reaches the end of the
+  // guide carries on down the page instead of stopping dead.
+  assert.ok(!/overscroll-y-contain|overscroll-contain/.test(clip.className),
+    'and a drag past its end chains to the page');
+
+  // SHORTER THAN A PANEL TOO, and that difference is deliberate as well. A
+  // panel in the strip IS the document, which is what the page exists to show;
+  // the guide is a preview of prose whose full text is one tap away. Read as
+  // rem off the classes so the two cannot silently converge.
+  const rem = (el) => Number((/max-h-\[(\d+)rem\]/.exec(el.className || '') || [])[1]);
   assert.equal(rem(clip), 18);
   assert.ok(panel && rem(panel) > rem(clip),
     'a presented document gets more room than the guide preview');
