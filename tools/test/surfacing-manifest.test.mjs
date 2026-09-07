@@ -14,10 +14,16 @@ import { parseCsv } from '../build/registries-load.mjs';
 import { repoRoot } from './bootstrap.mjs';
 
 const manifest = { primitives: parseCsv(readFileSync(path.join(repoRoot, 'docs', 'surfacing.csv'), 'utf8')) };
+// TWO documents since 2026-09-07. SURFACING.md is injected into every session
+// and carries the primitives most replies use; surfacing-extended.md is not
+// injected and holds the carriers that reach a session rarely. The index covers
+// the surfacing system, so it spans both, and a row may point at either.
 const surfacing = readFileSync(path.join(repoRoot, 'docs', 'SURFACING.md'), 'utf8');
+const extended = readFileSync(path.join(repoRoot, 'docs', 'surfacing-extended.md'), 'utf8');
 
 // The primitives section: from its heading to the next hr/heading at its level.
-const section = surfacing.split('## Surfacing primitives')[1]?.split('\n---')[0] || '';
+const section = (surfacing.split('## Surfacing primitives')[1]?.split('\n---')[0] || '')
+  + '\n' + extended;
 const norm = (s) => s.replace(/[:.]\s*$/, '').trim();
 const leadIns = [...section.matchAll(/^\* \*\*(.+?)\*\*/gm)].map(m => norm(m[1]));
 

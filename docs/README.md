@@ -13,8 +13,8 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 19 are named by CLAUDE.md,
-9 by a skill, 27 by a page or component. The remaining 20 are
+2 arrive in every session's context, 16 are named by CLAUDE.md,
+9 by a skill, 28 by a page or component. The remaining 22 are
 marked *(orphan)* below: nothing points at them except this index.
 
 ## docs/
@@ -92,7 +92,7 @@ marked *(orphan)* below: nothing points at them except this index.
 ## docs/envelopes/schemas/profiles/
 
 - [`branch-review-v1.schema.json`](envelopes/schemas/profiles/branch-review-v1.schema.json) *(orphan)* — the branch-review profile schema
-- [`inquiry-v1.schema.json`](envelopes/schemas/profiles/inquiry-v1.schema.json) — the inquiry profile schema
+- [`inquiry-v1.schema.json`](envelopes/schemas/profiles/inquiry-v1.schema.json) *(orphan)* — the inquiry profile schema
 - [`stage-v1.schema.json`](envelopes/schemas/profiles/stage-v1.schema.json) *(orphan)* — the stage profile schema
 
 ## docs/environment/
@@ -113,7 +113,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`github-surfacing.md`](github/github-surfacing.md) — GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks
 - [`markdown.md`](github/markdown.md) *(orphan)* — what GitHub's static renderer turns markdown into
 - [`mcp-server-routing.md`](github/mcp-server-routing.md) *(record, orphan)* — two GitHub MCP servers at once: the 2026-07-15 observation, superseded
-- [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) — why a merged branch stops being a live workspace: merged means closed
+- [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) *(orphan)* — why a merged branch stops being a live workspace: merged means closed
 
 13 shared statements are registered in
 [`owners.csv`](owners.csv), with each repetition in [`repetitions.csv`](repetitions.csv).

@@ -151,7 +151,9 @@ test('the guide-body sync does not prescribe a file list in the body', () => {
   const course = readFileSync(path.join(repoRoot, 'docs', 'SURFACING.md'), 'utf8')
     .split('## The surfacing course')[1] || '';
   assert.ok(course.length > 0, 'the course section still exists');
-  assert.ok(/The body does not enumerate files/.test(course),
+  // Reworded 2026-09-07 ("Do not list files, diff statistics, or CI results
+  // there"), so the pattern matches the rule rather than one phrasing of it.
+  assert.ok(/not (?:list|enumerate) files/i.test(course),
     'the course should say the body carries judgment, not a file list');
   assert.ok(/no link triplets/.test(course),
     'the guide template should ask for prose, not the caption\'s link triplets');
