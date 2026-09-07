@@ -770,7 +770,15 @@ window.__audit = {
   // `kind` is the segmenter's word, and the panel was printing it raw: a reader
   // asked what "sent" meant, which is a fair question about a field abbreviated
   // for a JSONL file and then shown to a person.
-  const KINDS = { sent: 'sentence', code: 'code block', table: 'table', mixed: 'mixed',
+  const KINDS = { sent: 'sentence', code: 'code block', table: 'table',
+                  // NOT A DEFECT AND NOT A FAILURE TO RENDER. A unit is a span
+                  // over the SOURCE, not a formatting scope: type comes from the
+                  // markdown render and stays where the markdown puts it. Pull a
+                  // heading's end down into the paragraph below and the heading
+                  // does not grow, because what the span now covers is a heading
+                  // AND prose. kindOf re-derives that as this, which is the
+                  // page saying the span no longer describes one thing.
+                  mixed: 'heading and prose together',
                   h1: 'heading 1', h2: 'heading 2', h3: 'heading 3',
                   h4: 'heading 4', h5: 'heading 5', h6: 'heading 6' };
 
@@ -872,21 +880,31 @@ window.__audit = {
     // insert, which needs one side where shift needs two, and it is the case
     // where a boundary the reader can plainly see, and can plainly put text at,
     // still cannot be moved.
+    // WHICH EDGE, AND WHAT THE OTHER ONE DOES. This said "the head of the
+    // document takes text and cannot be dragged" over a unit whose END pin
+    // drags perfectly well, and both pins are painted, so the reader read a
+    // flat refusal, moved the other pin, and watched it work. True about one
+    // edge, unreadable as written.
+    //
+    // x-text evaluates whether or not x-show is displaying it, so the empty
+    // case is a real branch and not a hypothetical one: without it this read
+    // "the undefined edge cannot be dragged" in the DOM of every unit whose
+    // boundaries are both fine.
     get noDrag() {
       const e = this.unpinned;
-      // x-text evaluates whether or not x-show is displaying it, so the empty
-      // case is a real branch and not a hypothetical one: without it this read
-      // "the undefined edge cannot be dragged" in the DOM of every unit whose
-      // boundaries are both fine.
-      const ends = this.edges.filter(x => !x.shiftable && !e.includes(x.edge))
-                             .map(x => x.edge === 'start' ? 'head' : 'tail');
-      if (ends.length)
-        return `the ${ends[0]} of the document takes text and cannot be dragged: `
-             + 'it has a unit on one side only';
+      const stuck = this.edges.filter(x => !x.shiftable && !e.includes(x.edge));
+      if (stuck.length) {
+        const free = this.edges.find(x => x.shiftable && !e.includes(x.edge));
+        const side = stuck[0].edge === 'start' ? 'starts' : 'ends';
+        const where = stuck[0].edge === 'start' ? 'start' : 'end';
+        return `this span ${side} the document, so its ${where} has nothing to `
+             + `move between; it still takes text.`
+             + (free ? ` Its ${free.edge} moves.` : '');
+      }
       if (!e.length) return '';
       return e.length === 2
-        ? 'neither edge can be dragged: both fall in markup the render does not show'
-        : `the ${e[0]} edge cannot be dragged: it falls in markup the render does not show`;
+        ? 'neither edge can be moved: both fall in markup the render does not show'
+        : `this span's ${e[0]} cannot be moved: it falls in markup the render does not show`;
     },
     // The panel's two pills, as data: one row per axis, each naming the
     // operation that edits it, the choices, and the value in force. Written
