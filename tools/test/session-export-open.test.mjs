@@ -434,6 +434,35 @@ test('no row carries a state of its own, so nothing behind the ask can return', 
   }
 });
 
+test('a second tap on the owning row closes the panel, rather than reopening it', () => {
+  // The toggle the trigger promises, and it did not fire. The root's capture
+  // pointerdown ran BEFORE the click: it shut the panel and cleared peekAt, so
+  // showPeek then saw nothing open and opened it again. Shut and reopened in
+  // one gesture reads as nothing happening. Measured 2026-09-07 with hasTouch:
+  // tapping row 2 twice left it open on row 2 both times.
+  buildWith(STATEFUL);
+  const down = (el) => el.dispatchEvent(new window.PointerEvent('pointerdown', { bubbles: true }));
+
+  down(trig(1)); trig(1).click();
+  assert.ok(peekOf(1), 'the row opens its panel');
+  down(trig(1)); trig(1).click();
+  assert.equal(peekOf(1), null, 'and the same row closes it');
+});
+
+test('a tap on a DIFFERENT row moves the panel rather than stacking a second', () => {
+  // The other half of the same listener, and the half that was already right:
+  // excluding the owning trigger must not exclude any other one.
+  buildWith(STATEFUL);
+  const down = (el) => el.dispatchEvent(new window.PointerEvent('pointerdown', { bubbles: true }));
+
+  down(trig(1)); trig(1).click();
+  assert.ok(peekOf(1));
+  down(trig(2)); trig(2).click();
+  assert.equal(peekOf(1), null, 'the first row gave the panel up');
+  assert.ok(peekOf(2), 'and the second row has it');
+  assert.equal(window.document.querySelectorAll('.shadow-xl').length, 1, 'one panel, moved');
+});
+
 test('a tap INSIDE the panel does not dismiss it on a coarse pointer', async () => {
   // Reported 2026-09-07 from the phone: "I tap the popover and it disappears."
   // Lifting a finger fires pointerout with a NULL relatedTarget, so
