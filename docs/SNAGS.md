@@ -166,6 +166,10 @@ script was not run: the failure is no longer picking the wrong link, it is
 minting a link by hand at all. **Where a branch changes a page file, run the
 script rather than composing the address.**
 *(seen: 2026-09-07)*
+Not the same as `page-skips-the-loader-ignores-use` below, though the index
+pairs them: there, `?use=` reaches a page that has opted out of the loader, so
+the **lib** is wrong; here it reaches the loader fine and the **page file** is
+main's. One link shape, two ways to show the wrong thing.
 → [../CLAUDE.md](../CLAUDE.md) "Showing: which link shows what"; [scripts/showing.py](../scripts/showing.py)
 
 ### merge-drops-authored-csv-cells: taking one side of a derived registry loses the authored half, and the generator refills it blank
@@ -1323,7 +1327,8 @@ premise is that the page boots through the loader, and transform.html loads
 one. Until the page is aligned or the exception recorded where links are
 minted, the honest lib-change view for it is the 🥏 address toss at the SHA.
 *(seen: 2026-08-11)*
-→ [loader.md](loader.md); the page-boot alignment is an open thread on PR #406
+→ [loader.md](loader.md); the page-boot alignment is an open thread on PR #406;
+the other way `?use=` shows the wrong thing is `use-swaps-the-lib-not-the-page`
 ### combine-serves-cjs: a jsDelivr /combine/ spec served the CommonJS build, and the local mirror hid it
 
 `npm/alpinejs@3` inside a `cdn.jsdelivr.net/combine/` URL resolves through
