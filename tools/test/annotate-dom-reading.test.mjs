@@ -187,6 +187,29 @@ test('subject: a staged rectangle reads as a region, not a node', () => {
   assert.match(t, /covers nothing on the page\.|contains \d+|touches \d+/);
 });
 
+// A REGION READS THE SAME FILED AS IT DOES LIVE. It did not until 2026-09-07:
+// a filed region fell through to the element branch, where elementOf resolves a
+// rect to the first element it covers, so a note on a 380x200 area came back
+// describing one link inside it. The same target answering two ways depending
+// on whether the drag had been committed is the one thing a reading of a note
+// must not do.
+test('subject: a filed region reads as a region too, not as one node inside it', () => {
+  const w = boot();
+  const A = w.Annotate;
+  const rect = { x: 0, y: 0, w: 300, h: 200 };
+
+  A._state.aimRect = { ...rect };
+  A.setReading('dom');
+  const live = head(A);
+
+  A._state.aimRect = null;
+  const it = A.add({ type: 'region', rect: { ...rect }, excerpt: 'x' }, 'filed');
+  A._state.selId = it.id;
+  A.setReading('dom');
+  assert.equal(head(A), live, 'the same rectangle, the same answer');
+  assert.match(head(A), /^region/);
+});
+
 // Arming the element aim is one deliberate act with one question behind it, so
 // the pane that answers it is switched to with the mode rather than found
 // after. It used to OPEN the card as well; with the collapsed state gone
@@ -248,9 +271,18 @@ test('elementOf: every target type resolves through one function', () => {
   const w = boot();
   const A = w.Annotate;
   const d = w.document;
+
+  // THE PAGE IS NOT AN ELEMENT. It read <body> until 2026-09-07: a selector
+  // called unique, a depth, a sibling index, the whole subtree. All true, all
+  // about a node's place inside something, which is the question a page target
+  // has already declined to ask (see PAGE_TARGET).
   A.add({ type: 'page' }, 'p');
   A.setReading('dom');
-  assert.match(head(A), /^body/, 'a page note reads the body');
+  assert.match(head(A), /^page/, 'a page note reads as the page');
+  assert.match(head(A), /Sample doc/, 'naming the document rather than a tag');
+  const pageTxt = A._state.domBody.textContent;
+  assert.match(pageTxt, /No anchor/, 'and saying plainly that there is nothing under it');
+  assert.doesNotMatch(pageTxt, /unique|depth/, 'with no element vocabulary left on it');
 
   A.clear();
   const p1 = d.getElementById('p1').firstChild;
@@ -258,4 +290,29 @@ test('elementOf: every target type resolves through one function', () => {
   r.setStart(p1, 4); r.setEnd(p1, 19);
   A.add({ type: 'text', quote: A._quoteFor(d.body, r), display: 'quick brown fox' }, 't');
   assert.equal(head(A), 'p#p1', 'a text note reads its block');
+});
+
+// The defect this file could not see, because every quote above starts INSIDE
+// a block. Select from a block's first character, which is what selecting a
+// whole sentence does, and the resolved offset sits on a node boundary: it
+// ends the inter-element whitespace before the paragraph and begins the
+// paragraph's own text at once. offsetPoint took the first match for both ends
+// of the range, so the start landed on the whitespace, whose parent is the
+// container, and the reading described the container.
+test('a quote that starts a block reads that block, not its container', () => {
+  const w = boot();
+  const A = w.Annotate;
+  const d = w.document;
+  const p1 = d.getElementById('p1').firstChild;
+  const r = d.createRange();
+  r.setStart(p1, 0); r.setEnd(p1, 19);
+  const q = A._quoteFor(d.body, r);
+  assert.match(q.exact, /^The quick brown fox/, 'the quote itself was never the problem');
+
+  const rr = A._resolveQuote(d.body, q);
+  assert.equal(rr.startContainer, p1, 'and it resolves into the paragraph, not the whitespace before it');
+
+  A.add({ type: 'text', quote: q, display: q.exact }, 't');
+  A.setReading('dom');
+  assert.equal(head(A), 'p#p1');
 });

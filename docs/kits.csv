@@ -1,5 +1,5 @@
 path,namespace,gloss,lines,boot,demo,users,tested
-lib/kits/annotate.js,Annotate,"notes pinned to pieces of a page: select text (or pick an element, or drag a rectangle), write a note, and carry the set out as markdown for a chat model, as…",4946,no,yes,12,yes
+lib/kits/annotate.js,Annotate,"notes pinned to pieces of a page: select text (or pick an element, or drag a rectangle), write a note, and carry the set out as markdown for a chat model, as…",5028,no,yes,12,yes
 lib/kits/branch-brief.js,BranchBrief,"a branch as a subject, not a row.",377,no,no,7,yes
 lib/kits/branch-status.js,BranchStatus,"Branch-scan math: the content-level landed/stranded signal, ported from home's tools/unmerged-branches.sh (the CLI reference instrument).",532,no,no,5,yes
 lib/kits/brief.js,brief,"assemble a page into a review brief: one markdown document holding the page source plus the source of the modules the page itself loaded, sized for pasting…",238,no,no,3,yes
