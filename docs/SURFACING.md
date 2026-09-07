@@ -122,36 +122,42 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
 
 ## The surfacing course
 
-Once a PR opens, its body is the branch's current state: live while the branch is open, the shipped account after merge. Open it as a draft at first push.
+A PR body is the branch's live state and post-merge record. Open it as a draft on the first push.
 
 ```markdown
-<One sentence: what this branch is doing and why.> [Follow-up to #N.]
+<One-sentence summary of what this branch does and why.> [Follow-up to #N]
 
 [//]: # (guide)
 
-⭐ **Look:** [<the thing to open>](<branch preview w/ commit SHA, else [new] blob>)
+<⭐|🥏|📦|📊> **Look:** [<Resource name>](<Rendered link, using commit SHA not branch name>)
 
-<The change set in prose: only the files with something non-obvious to say,
-paths plain and no link triplets, `renders on:` for a shared component.
-Omit where the opener already says it.>
+<Why this branch exists and any non-obvious implementation details. Plain prose,
+plain paths, no link triplets. Use `renders on:` for shared components.>
 
-**Next steps / open threads:**
-- <current and honest; revise on every sync>
+**Open threads:**
+- [ ] <Unfinished work. Strike through when obsolete.>
+- [ ] ✴️ <User action required (e.g., physical device testing).>
+- <Decided but not acted on. No checkbox. A record, not a task.>
 
-**Notes / Risk:** <what to scrutinize, test status, non-obvious why>
+**Risk:** <Areas needing manual scrutiny and blind spots not covered by CI.>
 
 [//]: # (/guide)
 
-<session-link footer>
+<Session footer link>
 ```
 
-- **The body does not enumerate files.** The Files tab and the branch page already do, current by construction.
-- **It is state, not a changelog.** Narrative goes in dated PR comments; **Next steps** must stay honest.
-- **The markers are link labels, not HTML comments,** which the GitHub MCP strips on readback. Rewrite only between them, via `update_pull_request`. Read either form, emit this one, and stop rather than guess if neither is present. Check URLs first: `python3 scripts/mcp-link-safe.py --check body.md`.
-- **Ready is the user's decision,** on explicit instruction or an accepted wrap-up offer.
-- **"Wrap up" means green, not merged:** preflight `git merge-tree` against main, run per-session refreshes, finalize the guide, mark ready. **"Merge" means merge,** so run that sequence and merge without asking twice. Never merge red, and never by any route but the PR.
-- **Abandon by closing the draft,** with a comment saying why.
-- **Before the container goes,** route anything costly that exists only in session context into the guide or a PR comment, never a tracker task.
-- **Post-merge edits need a new PR.** Merge terminates the branch ([why](https://github.com/mehrlander/web-tools/blob/main/docs/github/post-merge-branch-mutation.md)); `git log main..HEAD` shows what is waiting.
+**Content**
+* Keep the region between the markers under 250 words.
+* The body does not enumerate files, or repeat CI status.
+* Session context that exists nowhere else goes here or in a PR comment, never a tracker task.
+* Deliver ✴️ items in the reply; the body holds the copy.
 
-Delivery history is the merged PRs themselves: do not commit a projection of them, and do not run a second history beside [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)'s task axis.
+**Automation**
+* Rewrite only between the markers, using `update_pull_request`. Read either marker form, emit `[//]: #`, and abort if neither is present.
+* Verify URLs first: `python3 scripts/mcp-link-safe.py --check body.md`.
+
+**Lifecycle** (each phase begins on the user's word)
+* **Wrap up:** Preflight `git merge-tree` against `main`, run refreshes, finalize the guide, mark ready.
+* **Merge:** Complete wrap up, then merge. Never red, and never by any route but the PR.
+* **Abandon:** Close the draft with a comment.
+* **Post-merge:** Merging terminates the branch ([why](https://github.com/mehrlander/web-tools/blob/main/docs/github/post-merge-branch-mutation.md)). Open a new PR for further edits; delivery history is the merged PRs themselves.
