@@ -260,10 +260,8 @@ for h in https://registry.npmjs.org/alpinejs \
 *(measured 2026-07-30)*
 
 The box cannot POST GraphQL. The proxy serves only a pinned set of operations
-(`This GraphQL query is not enabled for this session`), and repository-scoped
-REST via `curl` is gated too (refined 2026-09-07: per path, not per method, and
-two account-level routes do answer, see the section below), so a query written
-here ships without ever having run.
+(`This GraphQL query is not enabled for this session`), and direct REST via
+`curl` is gated too, so a query written here ships without ever having run.
 
 The shape question does not need the network, though, and this is the general
 move rather than a GitHub trick: an API that publishes a **static schema** turns
@@ -278,51 +276,6 @@ runs the check in the normal suite.
 What stays out of reach is semantics: whether a field holds what we assume, how
 pagination behaves, whether permissions silently elide nodes. Those still need a
 browser with a token.
-
-## `api.github.com` by `curl`: two denials, and the loud one blames the wrong party
-
-*(measured 2026-09-07)*
-
-The host is reachable and the proxy attaches a real token, so this is not an
-allowlist entry in the table above. It is a **route policy**, and it refuses
-almost everything with one of two synthetic 403s. Neither comes from GitHub.
-
-| Route | Result |
-| --- | --- |
-| `GET /user`, `GET /rate_limit` | **200**, authenticated as the owner, `X-RateLimit-Limit: 15000`, and a `Github-Authentication-Token-Expiration` header |
-| `GET /meta`, `/users/{x}`, `/orgs/{x}`, `/user/repos`, `/search/*` | 403 `This GitHub API path is not available: sessions are bound to their configured repositories. Use repository-scoped endpoints (repos/{owner}/{repo}/...)` |
-| Anything under `/repos/{owner}/{repo}/`, **in session scope or not, read or write** | 403 `GitHub access is not enabled for this session. An org admin must connect the Claude GitHub App for this organization.` |
-| `PATCH /repos/{owner}/{repo}` | 403 `Repository settings writes are not permitted through this proxy`, a route-specific rule checked ahead of the general one |
-
-**The two messages contradict each other, and that is the trap.** The first
-directs you to repository-scoped endpoints; the second refuses them. Worse, the
-second names a remedy that is not the cause: repository access is working in the
-same session through the GitHub MCP server, which is how every repo in scope was
-read while this was being measured. A session that meets that message while the
-MCP is healthy will go chase an org admin over an App installation that is not
-broken. It is the pattern `sandbox-traps` exists for, a failure impersonating a
-worse one.
-
-**So `api.github.com` is three channels with three policies, and only the middle
-one reaches a repository.** Raw `curl` gets `/user` and `/rate_limit`. The GitHub
-MCP server gets the repositories. `git` fetch and push get their own credentials
-by injection (`gitConfigInjection: true` in `$HTTPS_PROXY/__agentproxy/status`).
-Do not reason from one to another.
-
-This supersedes the GraphQL section's aside that "direct REST via `curl` is
-gated too", which was right about the outcome and wrong about the shape: two
-account-level routes do answer, and the gate is per path rather than per method.
-
-**One consequence worth knowing before you build a dispatch caller.** GitHub's
-REST reference documents `POST /repos/{owner}/{repo}/actions/workflows/{id}/dispatches`
-as returning **200** with a body of `workflow_run_id`, `run_url` and `html_url`
-(read verbatim off the reference twice on 2026-09-07). A live dispatch of
-`web-tools-private`'s `runner-probe.yml` through the GitHub MCP reported **204
-No Content**. The gap is unresolved and **cannot be closed from here**, because
-the only path that can send the write is the MCP and its status line is one
-layer removed from the wire. Treat the run id as absent: to report the run you
-started, list the workflow's runs afterwards and match on `created_at`, which is
-racy if two dispatches land in the same second.
 
 ## Browsers / headless rendering: available
 
