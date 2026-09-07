@@ -59,6 +59,9 @@ const { window, problems } = makeWindow({
     <div id="filled" x-data="fileReview({ repo: 'mehrlander/web-tools', ref: 'feat/x', base: 'main',
          path: 'pages/a.html', status: 'modified', patch: '@@ -1 +1 @@',
          read: true, open: true, fill: true })"></div>
+    <div id="hosted" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'mb-sha',
+         baseName: 'main', path: 'lib/d.js', status: 'modified', patch: '@@ -1 +1 @@',
+         read: true, open: true, hosted: true })"></div>
   </body></html>`,
 });
 
@@ -602,6 +605,69 @@ test('the compare picker shrinks before the path does, and truncates', () => {
     .querySelector('[x-text="dirPart"]');
   assert.match(path.className, /shrink-\[9999\]/,
     'dirPart carries the same weight, which is what makes the pair legible');
+});
+
+// ── WHEN THE HOST DRAWS THE CHROME ──────────────────────────────────────────
+//
+// `hosted` is the file deck since 2026-09-07: its header names the file on
+// every swipe and carries the file's own controls beside the name, so a card
+// that also drew them would be the duplication that pass removed. The card
+// keeps the STATE behind them, because what layouts exist and where the file
+// opens are decided by what the file IS, which only the card knows.
+test('a hosted card draws no chrome, and still holds it', async () => {
+  const card = window.document.getElementById('hosted'), d = data('hosted');
+
+  assert.equal(d.hosted, true);
+  assert.equal(d.bare, true,
+    'hosted implies bare: naming the file is part of the chrome');
+  // THE CONDITION, not the rendered display. A card still loading hides its row
+  // anyway, so reading style alone passed whether or not `hosted` was in the
+  // expression: the mutation that dropped it was silent (2026-09-07).
+  const row = [...card.querySelectorAll('div')]
+    .find(e => /\bflex items-center gap-1\b/.test(e.className || '')
+            && e.querySelector('details[x-ref="ghMenu"]'));
+  assert.ok(row, 'the row exists in the template');
+  assert.match(row.getAttribute('x-show') || '', /!hosted/,
+    'and stands down for a host: ' + row.getAttribute('x-show'));
+  assert.equal(row.style.display, 'none', 'so nothing of it is on screen');
+
+  // What the host reads instead. Not a copy of the markup: the host places
+  // these, and a second rendering of them here is what this is preventing.
+  assert.ok(d.viewModes.length > 0, 'the layouts are still computed');
+  assert.ok(d.ghLinks.length > 0, 'and so are the links');
+  assert.equal(typeof d.pickView, 'function', 'and the way to act on them');
+});
+
+// A HOST CANNOT WATCH ALPINE STATE FROM OUTSIDE, so the card owes it a nudge.
+// The signature is what changes, not the fields: five of them move the same
+// controls, and one callback beats five watchers that must be kept in step
+// with the getters they mirror.
+test('a hosted card tells its host when the chrome moved', async () => {
+  const d = data('hosted');
+  const seen = [];
+  d.onChrome = (c) => seen.push(c.tab);
+  // Somewhere it is not: a source file on a reading surface opens on its
+  // comparison, so asking for the one it is already on would prove nothing.
+  const target = d.panes.map(p => p.id).find(id => id !== d.tab);
+  assert.ok(target, 'the card offers a second pane to move to');
+  const before = d.chromeKey;
+  d.setTab(target);
+  await tick(4);
+  assert.notEqual(d.chromeKey, before, 'the signature moved');
+  assert.ok(seen.includes(target), 'and the host heard: ' + JSON.stringify(seen));
+
+  // The signature has to move for a change of WHICH layout is lit, not only
+  // for a change of which exist: that is the state the header draws.
+  // NAMED IN THE SIGNATURE, not inferred from the key moving: the tab is in
+  // there too, so any tab change moves the key whether or not the lit flag is
+  // carried, and the mutation that dropped it was silent (2026-09-07).
+  const lit = d.viewModes.filter(m => m.on).map(m => m.key);
+  assert.equal(lit.length, 1, 'exactly one layout is lit');
+  assert.ok(d.chromeKey.includes(lit[0] + '!'),
+    'and the signature marks which: ' + d.chromeKey);
+  assert.ok(d.viewModes.filter(m => !m.on)
+    .every(m => !d.chromeKey.includes(m.key + '!')), 'and only that one');
+  d.onChrome = null;
 });
 
 // COPY IS THE WHOLE UTILITY GROUP on a reading card, so dropping it is what
