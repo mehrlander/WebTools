@@ -500,14 +500,15 @@ test('a compare that lands after a step does not overwrite the newer branch', as
 // and a tab made each one the cost of hiding the other. Both render now, and
 // `pane` names what an ADDRESS asked for rather than what is visible.
 //
-// THE GUIDE LEADS, since 2026-09-06. Files led while the guide was the only
-// prose on the page, on the reading that the list is what cannot be read
-// anywhere else in one place. Presenting the readable files ended that: the
-// page then opened on a document with no statement of what the branch was for,
-// and the one unautomated thing on it was last. Why, then what, then the
-// documents themselves.
+// THE ORDER HAS MOVED TWICE, and each move was the reader's. Files led while
+// the guide was the only prose on the page, on the reading that the list is
+// what cannot be read anywhere else in one place. The guide led on 2026-09-06,
+// because presenting the readable files meant the page opened on a document
+// with no statement of what the branch was for. Files lead again from
+// 2026-09-07: the list is SHUT, so it costs a heading row rather than a screen,
+// and the guide keeps the clip that made leading with it affordable.
 
-test('both sections render at once, the guide above the files', async () => {
+test('both sections render at once, the files above the guide', async () => {
   window.BranchBrief.forget();
   reset();
   const d = await mount('feat/a');
@@ -516,12 +517,12 @@ test('both sections render at once, the guide above the files', async () => {
   const files = d.$el.querySelector('[x-ref="files"]');
   const guide = d.$el.querySelector('[x-ref="guide"]');
   assert.ok(files && guide, 'both sections are in the tree');
-  // DOCUMENT_POSITION_FOLLOWING: the files come after the guide.
-  assert.ok(guide.compareDocumentPosition(files) & 4,
-    'the guide leads, so the page opens on why rather than on what');
+  // DOCUMENT_POSITION_FOLLOWING: the guide comes after the files.
+  assert.ok(files.compareDocumentPosition(guide) & 4,
+    'the shut list leads, so the page opens on what the branch touched');
   // And the presented documents come last of the three.
   const strip = d.$el.querySelector('[x-ref="revStrip"]');
-  if (strip) assert.ok(files.compareDocumentPosition(strip) & 4,
+  if (strip) assert.ok(guide.compareDocumentPosition(strip) & 4,
     'the documents themselves are last');
   // SHOWN, not merely present. Everything here renders into the tree and hides
   // with a style, so a textContent check would pass on a panel nobody can see:
@@ -530,7 +531,7 @@ test('both sections render at once, the guide above the files', async () => {
   const list = d.$el.querySelector('[x-ref="fileList"]');
   assert.ok(list && list.style.display !== 'none', 'the file list is on screen');
   assert.ok(list.textContent.includes('a.js'), 'carrying the branch\'s one changed file');
-  assert.ok(guide.textContent.includes('#443'), 'and the guide is above it, without a tap');
+  assert.ok(guide.textContent.includes('#443'), 'and the guide is under it, without a tap');
   // Asking for one hides nothing. That is the whole difference from a tab, and
   // the assertion the switch could never have passed.
   d.setPane('guide');

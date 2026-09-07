@@ -96,23 +96,40 @@ test('the two sections partition the branch, and each heading counts its own', (
 
 // ── The reading order ───────────────────────────────────────────────────────
 //
-// Why, then what, then the documents themselves. Each of the three has been
-// first at some point in this branch and the order is the whole argument, so it
-// is asserted rather than left to whoever edits the template next.
-test('the page reads guide, then files, then the documents', () => {
-  const root = window.document.querySelector('#m > div');
-  const sections = root.lastElementChild;
-  const at = (sel) => [...sections.children].findIndex(c => c.matches(sel) || c.querySelector(sel));
-  const guide = at('[x-ref="guide"]');
-  const row = [...sections.children].findIndex(c => /sticky top-0/.test(c.className || ''));
-  const files = at('[x-ref="files"]');
-  assert.ok(guide >= 0 && row >= 0 && files >= 0, 'all three are children of the one scroller');
-  assert.ok(guide < row, 'the guide leads');
-  assert.ok(row < files, 'the heading row heads the list it belongs to');
-  // The reviewable section is last, and it is only in the tree when there is
-  // something reviewable, so it is checked where the fixture has one.
-  const rev = [...sections.children].findIndex(c => c.querySelector('[x-ref="revStrip"]'));
-  assert.ok(rev > files, 'and the documents are last');
+// What changed, then why, then the documents themselves. The order moved twice
+// in two days and each move was the reader's, so it is asserted rather than
+// left to whoever edits the template next.
+const sectionOrder = () => {
+  const sections = window.document.querySelector('#m > div').lastElementChild;
+  const kids = [...sections.children];
+  const at = (sel) => kids.findIndex(c => c.matches(sel) || c.querySelector(sel));
+  return { kids,
+           row: kids.findIndex(c => /sticky top-0/.test(c.className || '')),
+           files: at('[x-ref="files"]'), guide: at('[x-ref="guide"]'),
+           rev: kids.findIndex(c => c.querySelector('[x-ref="revStrip"]')) };
+};
+
+test('the page reads files, then the guide, then the documents', () => {
+  const o = sectionOrder();
+  assert.ok(o.row >= 0 && o.files >= 0 && o.guide >= 0,
+    'all three are children of the one scroller');
+  assert.ok(o.row < o.files, 'the heading row heads the list it belongs to');
+  assert.ok(o.files < o.guide, 'the list leads, shut, so it costs a row not a screen');
+  assert.ok(o.rev > o.guide, 'and the documents are last');
+});
+
+// THE MARKER'S ARROW IS DERIVED, not asserted. It pointed the wrong way once
+// per reorder until this existed, which is twice in two days: it says a guide
+// exists and where it is, from a row pinned while everything else scrolls under
+// it, so an arrow aimed backwards is worse than none.
+test('the guide marker points the way the guide actually is', () => {
+  const o = sectionOrder();
+  const row = o.kids[o.row];
+  const arrow = row.querySelector('.ph-arrow-up, .ph-arrow-down');
+  assert.ok(arrow, 'the marker carries an arrow');
+  const want = o.guide > o.row ? 'ph-arrow-down' : 'ph-arrow-up';
+  assert.ok(arrow.className.includes(want),
+    'the guide is ' + (o.guide > o.row ? 'below' : 'above') + ' the row, so the arrow is ' + want);
 });
 
 // The guide is CLIPPED, not scrolled, and by the same mechanism and the same
