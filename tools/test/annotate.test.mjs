@@ -1229,6 +1229,35 @@ test('the Page chip opens a draft outright: no gesture to make first', () => {
   A.disable();
 });
 
+// ── A quote resolves into the block it starts, not the whitespace before it ──
+//
+// offsetPoint maps a text offset back to a (node, offset) pair, and an offset
+// that ends one text node also begins the next, so at a block boundary two
+// rows match. Taking the first for both ends of a range put every START on the
+// trailing edge of what came before, which between two blocks is the
+// inter-element whitespace, whose parent is the container. The quote, the
+// anchor and the highlight were all correct; what got the wrong answer was
+// "which element is this range in", which elementOf asks (blockOf on the
+// range's start) for scrollToTarget and for anything else that needs the node.
+//
+// The gate has to select from a block's FIRST character, which is what
+// selecting a whole sentence does. Every other quote in this suite starts
+// mid-block, which is why the defect lived here unseen until 2026-09-07.
+test('a quote that starts a block resolves into that block', () => {
+  A.enable({ doc, subject: { title: 'x', url: '' } });
+  const p1 = doc.getElementById('p1').firstChild;
+  const r = doc.createRange();
+  r.setStart(p1, 0); r.setEnd(p1, 19);
+  const q = A._quoteFor(doc.body, r);
+  assert.match(q.exact, /^The quick brown fox/, 'the quote itself was never the problem');
+
+  const rr = A._resolveQuote(doc.body, q);
+  assert.equal(rr.startContainer, p1,
+    'the start lands in the paragraph, not the whitespace text node before it');
+  assert.equal(rr.startOffset, 0);
+  A.disable();
+});
+
 test('the count rides the list reading, and is empty until there is one', () => {
   // It was the expander's, `Notes 3 ⌄`, and the expander went with the
   // collapsed state (2026-09-06): a number saying how many notes there are
