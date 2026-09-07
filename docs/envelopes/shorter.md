@@ -34,6 +34,8 @@ A payload is read by [`lib/kits/shorter-payload.js`](../../lib/kits/shorter-payl
 }
 ```
 
+**One producer worth naming.** [`pages/audit-render.html`](https://mehrlander.github.io/web-tools/pages/audit-render.html) mints this envelope from a standoff annotation: its **adjudicate** link projects the document (DROP spans cut, insertions placed) and hands the pair over as `#gz=`. The two pages split one job. Audit decides what a span is and whether it earns its place; this one decides what the replacement says. The projection is `Standoff.materialize`, held byte for byte against `skills/state-the-rule/materialize.py`.
+
 `proposal` is optional. An envelope without one is a bare payload that also carries a title. Neither side is validated past being a string: the page word-diffs whatever it is given, and an empty proposal is the page's own "draft one for me" path rather than an error.
 
 **The discriminator is narrow on purpose.** The thing being shortened is arbitrary text, and some of it is JSON. An object qualifies as an envelope only when it declares `kind: "shorter/1"` or carries a string `original`. A JSON document that merely parses is read as bare text, which is what someone shortening a config file wants. This is the same rule [`lib/kits/data-payload.js`](../../lib/kits/data-payload.js) applies, for the same reason.

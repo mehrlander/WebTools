@@ -8,7 +8,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { repoRoot } from './bootstrap.mjs';
 
@@ -375,4 +377,85 @@ test('a patch converts its offsets and leaves an insertion alone', () => {
   assert.equal(out[1].to, 18, 'two');
   assert.deepEqual(out[2], patch[2]);
   assert.deepEqual(out[3], patch[3]);
+});
+
+// ── THE PROJECTION, AGAINST THE PYTHON THAT OWNS IT ──────────────────────────
+// materialize() and skills/state-the-rule/materialize.py are the same edit in
+// two languages, so the assertion is byte equality on the projected document
+// and key equality on the account, over fixtures covering every shape that
+// executes: a DROP, a head insertion anchored to nothing, a block insertion
+// read off a blank-line gap, and a run insertion that overrules the reading.
+//
+// The one place the two could drift is the whitespace tally, since Python's \s
+// and JavaScript's \s do not match the same character set at the edges. These
+// fixtures stay on ASCII whitespace, so what is held here is the projection
+// rather than a claim that the two regex engines agree everywhere.
+
+const MDOC = 'First rule here.\n\nSecond rule, which goes.\n\nThird rule stands.\n';
+const mat = (units, insertions) => ({
+  kind: 'standoff/1',
+  self: { repo: 'o/r', path: 'runs/x/standoff.json' },
+  target: { path: 'doc.md' },
+  vocabulary: [{ label: 'WHAT', side: 'declaration' }],
+  units, ...(insertions ? { insertions } : {}),
+});
+// Offsets counted once, by hand, off MDOC.
+const MUNITS = [
+  { uid: 'm-1', start: 0, end: 16, kind: 'sent', words: 3, label: 'WHAT' },
+  { uid: 'm-2', start: 18, end: 41, kind: 'sent', words: 4, label: 'WHAT' },
+  { uid: 'm-3', start: 43, end: 61, kind: 'sent', words: 3, label: 'WHAT' },
+];
+
+function viaPython(so, text) {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mat-'));
+  try {
+    writeFileSync(path.join(dir, 'so.json'), JSON.stringify(so));
+    writeFileSync(path.join(dir, 'doc.md'), text);
+    const json = execFileSync('python3',
+      [path.join(repoRoot, 'skills/state-the-rule/materialize.py'),
+       path.join(dir, 'so.json'), path.join(dir, 'doc.md'),
+       '--json', '--out', path.join(dir, 'out.md')],
+      { cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    return { out: readFileSync(path.join(dir, 'out.md'), 'utf8'), report: JSON.parse(json) };
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+}
+
+const CASES = {
+  'a DROP removes its span and counts its words': [
+    MUNITS.map(u => u.uid === 'm-2' ? { ...u, verdict: 'DROP' } : u), null],
+  'a head insertion anchored to nothing arrives as a block': [
+    MUNITS, [{ after: null, text: 'A new opening.' }]],
+  'an insertion at a blank-line gap is read as a block': [
+    MUNITS, [{ after: 'm-1', text: 'Placed between rules.' }]],
+  'a stated shape overrules the gap the document holds': [
+    MUNITS, [{ after: 'm-1', text: 'joined on', as: 'run' }]],
+  'REWRITE and MOVE stand, and are reported by uid': [
+    MUNITS.map(u => u.uid === 'm-1' ? { ...u, verdict: 'REWRITE' }
+                  : u.uid === 'm-3' ? { ...u, verdict: 'MOVE' } : u), null],
+  'a drop and an insertion in one pass do not disturb each other': [
+    MUNITS.map(u => u.uid === 'm-2' ? { ...u, verdict: 'DROP' } : u),
+    [{ after: 'm-1', text: 'Standing in for it.' }]],
+};
+
+for (const [name, [units, insertions]] of Object.entries(CASES)) {
+  test(`materialize: ${name}`, () => {
+    const so = mat(units, insertions);
+    const js = S.materialize(so, MDOC);
+    const py = viaPython(so, MDOC);
+    assert.equal(js.out, py.out, 'the projected document');
+    assert.deepEqual(js.report, py.report, 'the account of what ran');
+  });
+}
+
+test('materialize leaves the annotation it was given untouched', () => {
+  const so = mat(MUNITS.map(u => u.uid === 'm-2' ? { ...u, verdict: 'DROP' } : u),
+                 [{ after: 'm-1', text: 'Added.' }]);
+  const before = JSON.stringify(so);
+  S.materialize(so, MDOC);
+  assert.equal(JSON.stringify(so), before);
+});
+
+test('an insertion anchored to a uid the units do not carry is skipped, not thrown', () => {
+  const so = mat(MUNITS, [{ after: 'm-99', text: 'orphan' }]);
+  assert.equal(S.materialize(so, MDOC).out, MDOC);
 });

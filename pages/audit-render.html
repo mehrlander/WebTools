@@ -775,6 +775,18 @@ window.__audit = {
                   h4: 'heading 4', h5: 'heading 5', h6: 'heading 6' };
 
   const WORD = /[\w'\u2019-]/;
+  // The fragment encoding pages/shorter.html reads: gzip, then base64url with
+  // the padding dropped. Its own gunzipB64url is the inverse, character for
+  // character; kits/compression.js is the wrong shelf for this, since its gzip
+  // emits a GZ64-prefixed payload for a different reader.
+  const gzipB64url = async (text) => {
+    const cs = new CompressionStream('gzip');
+    const buf = await new Response(new Blob([text]).stream().pipeThrough(cs)).arrayBuffer();
+    let bin = '';
+    for (const b of new Uint8Array(buf)) bin += String.fromCharCode(b);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  };
+
   const snapWord = (text, i) => {
     if (i <= 0 || i >= text.length) return i;
     if (!WORD.test(text[i - 1]) || !WORD.test(text[i])) return i;   // already between words
@@ -918,6 +930,34 @@ window.__audit = {
     get units() { return this.so.units; },
     get raw() { return JSON.stringify(this.so, null, 1); },
     get srcHref() { return 'data:application/json;charset=utf-8,' + encodeURIComponent(this.raw); },
+
+    // ── HANDING THE PROJECTION ON ────────────────────────────────────────
+    // This page decides what a span IS and whether it earns its place; it does
+    // not decide what the replacement should SAY. pages/shorter.html does that,
+    // segment by segment, and reads a shorter/1 envelope carrying both sides.
+    // So the projection travels as `original` (the document as annotated) and
+    // `proposal` (the same document with the DROPs cut and the insertions
+    // placed), gzipped into the fragment, which never reaches a server.
+    //
+    // MINTED ON THE PRESS, NOT ON EVERY RENDER. Gzip is async, so a bound
+    // href would have to be recomputed on every edit and would hand over a
+    // stale payload between the edit and the next tick. The anchor carries
+    // only the count of what would travel; pressing it projects and opens.
+    get shorterLabel() {
+      const n = this.units.filter(u => u.verdict === 'DROP').length
+              + (this.so.insertions || []).length;
+      return n ? `adjudicate (${n})` : 'adjudicate';
+    },
+    async toShorter(e) {
+      e.preventDefault();
+      const { out, report } = Standoff.materialize(this.so, this.a.text);
+      if (out === this.a.text) return alert('Nothing to project: no DROP and no insertion.');
+      const env = { kind: 'shorter/1',
+                    title: `${report.target} (projected from the audit)`,
+                    original: this.a.text, proposal: out };
+      const gz = await gzipB64url(JSON.stringify(env));
+      open('https://mehrlander.github.io/web-tools/pages/shorter.html#gz=' + gz, '_blank');
+    },
     slice(u) { return this.a.text.slice(u.start, u.end).trim(); },
     // The uid's prefix is the document, which every row on this page shares.
     // Only the ordinal distinguishes them, and the full uid wrapped to two
@@ -1838,6 +1878,8 @@ window.__audit = {
         <span x-text="so.target.bytes + ' bytes'"></span>
         <span class="opacity-60" x-text="'sha256 ' + so.target.sha256.slice(0,16)"></span>
         <a class="link" :href="srcHref" download="standoff.json">download</a>
+        <a class="link link-secondary" href="#" @click="toShorter($event)"
+           x-text="shorterLabel">adjudicate</a>
       </div>
       <div class="overflow-x-auto">
         <table class="table table-xs">
