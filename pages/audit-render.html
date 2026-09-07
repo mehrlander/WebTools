@@ -940,10 +940,21 @@ window.__audit = {
     // the live code makes about ITSELF, read off the object at render time, so
     // a token can only appear when the behaviour it names is actually present.
     // Add one whenever a change here is worth being able to see from a phone.
+    // THE LAST FEW THINGS THIS PAGE DID, in the order it did them, on screen.
+    // Added 2026-09-07 after two rounds of diagnosis from the outside settled
+    // nothing: a boundary moved that nobody armed, and every account of why was
+    // a guess. A pin gesture crosses three places (which pin resolved, which
+    // edge was armed, which boundary the op was asked for) and a reader can see
+    // none of them, so what gets reported is the outcome and the cause has to
+    // be inferred. It is recorded rather than inferred now.
+    trace: [],
+    say(s) { this.trace.push(s); if (this.trace.length > 6) this.trace.shift(); },
+    get traceLine() { return this.trace.length ? this.trace[this.trace.length - 1] : ''; },
     get build() {
       const has = [
         typeof this.pinUnder === 'function' && 'pins2',   // the nearest-bar pin hit test
         typeof this.toShorter === 'function' && 'shorter1', // the projection handoff
+        Array.isArray(this.trace) && 'trace1',            // the on-screen gesture trace
       ].filter(Boolean);
       return `build ${has.join('·') || 'base'} · lib ${(this.ref || 'main').slice(0, 7)}`;
     },
@@ -1026,7 +1037,9 @@ window.__audit = {
       const uid = Standoff.ops[op.op]?.(this.so, this.a.text, op) ?? null;
       const bad = uid === null ? [`${op.op} ${op.uid ?? op.after} was refused`]
                               : Standoff.check(this.so, this.a.text);
-      if (bad.length) { this.so.units = before; this.opErr = bad[0]; return; }
+      if (bad.length) { this.so.units = before; this.opErr = bad[0];
+                        this.say(`refused: ${bad[0]}`); return; }
+      this.say(`${op.op} ${op.after ?? op.uid} -> ${op.to ?? op.at ?? ''} ok`);
       this.opErr = '';
       this.patch.length = this.at;      // a new move drops the redo tail
       this.patch.push(op);
@@ -1364,6 +1377,8 @@ window.__audit = {
     hit(u) {
       if (this.armed) {
         const e = this.armedEdge, off = this.lastTapOffset;
+        this.say(`tap@${off} with ${this.armed} armed`
+               + `, after ${e ? e.after : 'no edge'}${e && !e.shiftable ? ' (not shiftable)' : ''}`);
         this.armed = null;
         // A tap relocates a boundary that HAS two sides. The head and the tail
         // have one, so there is nothing to relocate them between: the tap falls
@@ -1658,6 +1673,8 @@ window.__audit = {
     pinDown(ev) {
       if (!ev.target?.closest?.('[data-edge]')) return;
       const which = this.pinUnder(ev);
+      this.say(`down on ${ev.target.closest('[data-edge]').getAttribute('data-edge')}`
+             + `, resolved ${which}, was ${this.armed || 'none'}`);
       const box = which && this.$refs.pins?.querySelector(`[data-edge="${which}"]`);
       if (!box) return;
       ev.preventDefault(); ev.stopPropagation();
@@ -1713,6 +1730,7 @@ window.__audit = {
         d.removeEventListener('pointercancel', up, true);
         d.body.style.userSelect = ''; d.body.style.touchAction = '';
         if (landed != null && landed !== e0.at) {
+          this.say(`drag ${which} from ${e0.at} to ${landed}, after ${after}`);
           Standoff.ops.shift(this.so, this.a.text, { after, to: e0.at });
           this.armed = null;
           this.push({ op: 'shift', after, to: landed });
@@ -1852,6 +1870,9 @@ window.__audit = {
         <a class="text-xs link link-primary" :href="so.target.url" x-show="so.target.url">source</a>
         <span class="text-xs font-mono opacity-60" x-text="build"
               title="what this page file carries, and the ref its lib came from"></span>
+        <span class="text-xs font-mono text-warning w-full" x-text="traceLine"
+              x-show="traceLine" @click="trace = []"
+              :title="trace.join('\n')"></span>
         <div class="join ml-auto">
           <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
                   @click="view='source'; paint()">Source</button>
