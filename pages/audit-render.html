@@ -948,8 +948,11 @@ window.__audit = {
     // none of them, so what gets reported is the outcome and the cause has to
     // be inferred. It is recorded rather than inferred now.
     trace: [],
-    say(s) { this.trace.push(s); if (this.trace.length > 6) this.trace.shift(); },
-    get traceLine() { return this.trace.length ? this.trace[this.trace.length - 1] : ''; },
+    // Four lines, ON SCREEN. They were one line plus a title attribute until
+    // the first report came back from a phone, where nothing hovers: the line
+    // that mattered (which edge was armed when the tap landed) was in the half
+    // a reader could not reach. A diagnostic the reader cannot read is not one.
+    say(s) { this.trace.push(s); if (this.trace.length > 4) this.trace.shift(); },
     get build() {
       const has = [
         typeof this.pinUnder === 'function' && 'pins2',   // the nearest-bar pin hit test
@@ -1029,13 +1032,26 @@ window.__audit = {
     },
     undo() { if (this.canUndo) this.replay(this.at - 1); },
     redo() { if (this.canRedo) this.replay(this.at + 1); },
+    // WHAT THE OPERATION WOULD HAVE NEEDED. ops.shift refuses an offset outside
+    // the pair it moves between, and "was refused" alone leaves the reader to
+    // work out which of three guards it hit. The window is the one that fires
+    // in practice: a tap past the span's end refuses as a start move and
+    // succeeds as an end move, which is two unrelated-looking symptoms from one
+    // gesture landing outside.
+    whyRefused(op) {
+      if (op.op !== 'shift') return '';
+      const us = [...this.units].sort((a, b) => a.start - b.start);
+      const i = us.findIndex(u => u.uid === op.after);
+      if (i < 0 || i + 1 >= us.length) return `: ${op.after} has nothing after it`;
+      return `: asked ${op.to}, needs ${us[i].start}..${us[i + 1].end}`;
+    },
     push(op) {
       // Applied to the live annotation so the view moves under your thumb, then
       // checked and rolled back if it broke something. Same rule ops.py runs on
       // a whole patch: valid against its base, or it does not stand.
       const before = JSON.parse(JSON.stringify(this.units));
       const uid = Standoff.ops[op.op]?.(this.so, this.a.text, op) ?? null;
-      const bad = uid === null ? [`${op.op} ${op.uid ?? op.after} was refused`]
+      const bad = uid === null ? [`${op.op} ${op.uid ?? op.after} was refused` + this.whyRefused(op)]
                               : Standoff.check(this.so, this.a.text);
       if (bad.length) { this.so.units = before; this.opErr = bad[0];
                         this.say(`refused: ${bad[0]}`); return; }
@@ -1870,9 +1886,10 @@ window.__audit = {
         <a class="text-xs link link-primary" :href="so.target.url" x-show="so.target.url">source</a>
         <span class="text-xs font-mono opacity-60" x-text="build"
               title="what this page file carries, and the ref its lib came from"></span>
-        <span class="text-xs font-mono text-warning w-full" x-text="traceLine"
-              x-show="traceLine" @click="trace = []"
-              :title="trace.join('\n')"></span>
+        <div class="text-xs font-mono text-warning w-full leading-tight"
+             x-show="trace.length" @click="trace = []">
+          <template x-for="t in trace" :key="t"><div x-text="t"></div></template>
+        </div>
         <div class="join ml-auto">
           <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
                   @click="view='source'; paint()">Source</button>

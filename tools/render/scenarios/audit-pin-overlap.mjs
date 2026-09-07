@@ -55,7 +55,15 @@ export default async function (page) {
 
   await page.mouse.move(found.pin.x, found.pin.y);
   await page.mouse.down();
-  for (let k = 1; k <= 6; k++) { await page.mouse.move(found.pin.x - k * 8, found.pin.y); await page.waitForTimeout(40); }
+  // RIGHTWARD, because that direction always has text under it. A boundary
+  // sitting at the start of a wrapped line has nothing to its left but the
+  // margin, so a leftward drag clamps and lands back on the offset it started
+  // from: not the page failing, but a driver that reads it as failure cries
+  // wolf, which it did the moment the header grew a line and moved the pin.
+  // Which WAY the offset then goes is the page's business, since the aim point
+  // maps through the line box; what is asserted below is that the start moved
+  // and the end did not.
+  for (let k = 1; k <= 6; k++) { await page.mouse.move(found.pin.x + k * 8, found.pin.y); await page.waitForTimeout(40); }
   await page.mouse.up();
   await page.waitForTimeout(400);
 
@@ -109,13 +117,18 @@ export default async function (page) {
   // is asking for.
   const aim = await page.evaluate((f) => {
     const d = Alpine.$data(document.body);
-    const at = Math.round(f.sel.start + (f.sel.end - f.sel.start) / 3);
-    const hit = Standoff.nodeAt(d.$refs.doc, at);
-    if (!hit) return null;
-    const r = document.createRange();
-    r.setStart(hit.node, hit.offset); r.setEnd(hit.node, hit.offset + 1);
-    const b = r.getBoundingClientRect();
-    return { at, x: b.left + b.width / 2, y: b.top + b.height / 2 };
+    // Scan forward for the first offset that maps to a painted character: a
+    // third of the way in can land in markup, and a driver that gives up there
+    // reports a defect it did not find.
+    for (let at = Math.round(f.sel.start + (f.sel.end - f.sel.start) / 3); at < f.sel.end - 1; at++) {
+      const hit = Standoff.nodeAt(d.$refs.doc, at);
+      if (!hit) continue;
+      const r = document.createRange();
+      r.setStart(hit.node, hit.offset); r.setEnd(hit.node, hit.offset + 1);
+      const b = r.getBoundingClientRect();
+      if (b.width) return { at, x: b.left + b.width / 2, y: b.top + b.height / 2 };
+    }
+    return null;
   }, f2);
   if (!aim) throw new Error('cannot locate the inward tap point');
   await page.mouse.click(aim.x, aim.y);
