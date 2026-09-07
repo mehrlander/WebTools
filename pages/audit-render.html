@@ -929,6 +929,24 @@ window.__audit = {
     get so() { return this.a.standoff; },
     get units() { return this.so.units; },
     get raw() { return JSON.stringify(this.so, null, 1); },
+    // WHICH PAGE IS ON SCREEN, said by the page rather than assumed from a link.
+    // Two rounds of "no change" were spent on a `?use=` address, which swaps the
+    // LIB at a ref and never the page file: Pages serves the page from the
+    // default branch, so a fix living in this file was absent with nothing on
+    // screen to say so (docs/SNAGS.md, use-swaps-the-lib-not-the-page).
+    //
+    // A stamp injected at build time would be the general answer and is not
+    // what this is. This is cheaper and cannot go stale: each token is a claim
+    // the live code makes about ITSELF, read off the object at render time, so
+    // a token can only appear when the behaviour it names is actually present.
+    // Add one whenever a change here is worth being able to see from a phone.
+    get build() {
+      const has = [
+        typeof this.pinUnder === 'function' && 'pins2',   // the nearest-bar pin hit test
+        typeof this.toShorter === 'function' && 'shorter1', // the projection handoff
+      ].filter(Boolean);
+      return `build ${has.join('·') || 'base'} · lib ${(this.ref || 'main').slice(0, 7)}`;
+    },
     get srcHref() { return 'data:application/json;charset=utf-8,' + encodeURIComponent(this.raw); },
 
     // ── HANDING THE PROJECTION ON ────────────────────────────────────────
@@ -1832,6 +1850,8 @@ window.__audit = {
               x-text="`${units.length} units · ${words.toLocaleString()} words · ` + (lens === 'verdict'
                         ? `${decided} decided` : `${pctOn('explanation')}% explanation`)"></span>
         <a class="text-xs link link-primary" :href="so.target.url" x-show="so.target.url">source</a>
+        <span class="text-xs font-mono opacity-60" x-text="build"
+              title="what this page file carries, and the ref its lib came from"></span>
         <div class="join ml-auto">
           <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
                   @click="view='source'; paint()">Source</button>
