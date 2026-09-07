@@ -47,6 +47,12 @@
    fixed emission order, so whichever the sheet puts last always won and the
    override was inert. */
 [x-ref="pins"] [data-edge] { pointer-events: auto; }
+
+/* The health readout's tone, set as an attribute so painting it cannot rewrite
+   the class list (an earlier version stripped text-xs along with the colour). */
+#audit-faults[data-tone="wait"]  { color: color-mix(in oklch, currentColor 50%, transparent); }
+#audit-faults[data-tone="ok"]    { color: var(--color-success); }
+#audit-faults[data-tone="error"] { color: var(--color-error); }
 [x-ref="pins"][data-audit-drag] [data-edge] { pointer-events: none; }
 </style>
 <script>
@@ -814,13 +820,14 @@ window.__audit = {
   // unanswered.
   window.__auditFaults = [];
   const fault = (what) => {
-    const line = String(what).replace(/\s+/g, ' ').slice(0, 160);
+    let line;
+    try { line = String(what).replace(/\s+/g, ' ').slice(0, 160); } catch { line = 'a fault that will not print'; }
     // Repeats are counted rather than stacked: one failing call in a loop
     // would otherwise push everything else off a four-line readout.
     const seen = window.__auditFaults.find(f => f.line === line);
     if (seen) seen.n++;
     else window.__auditFaults.push({ line, n: 1 });
-    paintFaults();
+    try { paintFaults(); } catch {}
   };
 
   // IT SAYS SO EITHER WAY, because silence cannot tell "checked and clean" from
@@ -836,18 +843,20 @@ window.__audit = {
   const paintFaults = () => {
     const box = document.getElementById('audit-faults');
     if (!box) return;
+    // The tone is its own attribute rather than a rewrite of the class list:
+    // stripping /text-\S+/ took text-xs with it, so the readout also grew.
+    const tone = (t) => box.setAttribute('data-tone', t);
     const all = window.__auditFaults;
     if (all.length) {
       const shown = all.slice(0, 4).map(f => f.line + (f.n > 1 ? ` ×${f.n}` : ''));
       if (all.length > 4) shown.push(`+${all.length - 4} more`);
-      box.className = box.className.replace(/text-\S+/g, '') + ' text-error';
+      tone('error');
       box.textContent = shown.join('\n');
       return;
     }
     const kits = ['Standoff', 'mdDoc', 'Dictate', 'marked'];
     const gone = kits.filter(k => !window[k]);
-    box.className = box.className.replace(/text-\S+/g, '')
-                  + (window.__auditReady && !gone.length ? ' text-success' : ' text-base-content/50');
+    tone(window.__auditReady && !gone.length ? 'ok' : 'wait');
     box.textContent = !window.__auditReady ? 'checking…'
       : gone.length ? `not loaded: ${gone.join(', ')}`
       : `no faults · ${kits.length} kits loaded (${kits.join(', ')})`;
@@ -865,12 +874,28 @@ window.__audit = {
   }, true);
   addEventListener('unhandledrejection',
     (e) => fault('unhandled: ' + (e.reason?.message || e.reason)));
-  // console.error and console.warn, kept passing through to the real console so
-  // a desktop reader loses nothing.
+  // A DIAGNOSTIC MUST NOT BE ABLE TO BREAK THE PAGE, and this one did. The
+  // first version formatted a console argument with JSON.stringify, which
+  // throws on anything circular: a DOM node, an event, window itself. So the
+  // moment a library logged an object, the wrapper threw, the module script
+  // died before Alpine mounted, every x-cloak element stayed hidden and the
+  // page came up WHITE. The instrument built to reveal failures was the
+  // failure, and it shipped because the sandbox happens to log nothing early.
+  //
+  // Hence: every argument formatted behind its own try, the whole report behind
+  // another, and the real console called either way so nothing is lost even if
+  // the readout gives up entirely.
+  const asText = (x) => {
+    try {
+      if (x instanceof Error) return x.message;
+      if (typeof x !== 'object' || x === null) return String(x);
+      return JSON.stringify(x);
+    } catch { return Object.prototype.toString.call(x); }
+  };
   for (const level of ['error', 'warn']) {
     const was = console[level].bind(console);
     console[level] = (...a) => {
-      fault(level + ': ' + a.map(x => x?.message || (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(' '));
+      try { fault(level + ': ' + a.map(asText).join(' ')); } catch {}
       was(...a);
     };
   }
