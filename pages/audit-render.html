@@ -1040,6 +1040,34 @@ window.__audit = {
     // in practice: a tap past the span's end refuses as a start move and
     // succeeds as an end move, which is two unrelated-looking symptoms from one
     // gesture landing outside.
+    // TWO AUDIENCES, AND THEY WANT DIFFERENT SENTENCES. The trace is a
+    // diagnostic and keeps the offsets, which is what makes a near miss legible
+    // (asked 827, needs 615..826, so the tap was one character past the end).
+    // The panel is read by whoever just tapped, and "shift conven-008 was
+    // refused: asked 827, needs 615..826" tells them an operation name, a unit
+    // id and two character offsets, none of which is on screen. What they need
+    // is the rule and where to tap, so the panel names the two spans instead.
+    refusal(op) {
+      const us = [...this.units].sort((a, b) => a.start - b.start);
+      const i = us.findIndex(u => u.uid === (op.after ?? op.uid));
+      // Enough of each span to recognise it, from the end of the one before and
+      // the start of the one after, since those are the sides facing the
+      // boundary.
+      const q = (u, tail) => {
+        const t = this.a.text.slice(u.start, u.end).trim().replace(/\s+/g, ' ');
+        return t.length <= 30 ? t : tail ? '…' + t.slice(-29) : t.slice(0, 29) + '…';
+      };
+      if (op.op === 'shift') {
+        if (i < 0 || i + 1 >= us.length)
+          return 'nothing follows this boundary, so there is no pair to move it within';
+        return 'a boundary moves only within the two spans it separates: '
+             + `“${q(us[i], true)}” and “${q(us[i + 1])}”`;
+      }
+      if (op.op === 'split') return 'a split needs text on both sides of the point';
+      if (op.op === 'merge') return 'nothing follows this span to merge it with';
+      if (op.op === 'insert') return 'this boundary cannot take text';
+      return `${op.op} was refused`;
+    },
     whyRefused(op) {
       if (op.op !== 'shift') return '';
       const us = [...this.units].sort((a, b) => a.start - b.start);
@@ -1064,8 +1092,12 @@ window.__audit = {
       const uid = Standoff.ops[op.op]?.(this.so, this.a.text, op) ?? null;
       const bad = uid === null ? [`${op.op} ${op.uid ?? op.after} was refused` + this.whyRefused(op)]
                               : Standoff.check(this.so, this.a.text);
-      if (bad.length) { this.so.units = before; this.opErr = bad[0];
-                        this.say(`refused: ${bad[0]}`); return; }
+      if (bad.length) {
+        this.so.units = before;
+        this.opErr = uid === null ? this.refusal(op) : bad[0];
+        this.say(`refused: ${bad[0]}`);
+        return;
+      }
       this.say(`${op.op} ${op.after ?? op.uid} -> ${op.to ?? op.at ?? ''} ok`);
       this.opErr = '';
       this.patch.length = this.at;      // a new move drops the redo tail
