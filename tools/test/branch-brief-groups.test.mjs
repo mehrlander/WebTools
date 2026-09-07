@@ -118,6 +118,45 @@ test('the page reads files, then the guide, then the documents', () => {
   assert.ok(o.rev > o.guide, 'and the documents are last');
 });
 
+// ── The vertical rhythm ─────────────────────────────────────────────────────
+//
+// Two rules the page states with spacing rather than with prose, both reported
+// from a phone on 2026-09-07.
+//
+// ONE CORNER. The guide, the file list and a presented document are the page's
+// three content containers, and they carried rounded-lg over a daisyUI card
+// whose own radius is --radius-box: an 8px clip around a 16px card, which shows
+// as a doubled corner beside a panel that has a clean one. They take the theme
+// token now, so a theme that moves its radius moves all three together.
+//
+// GROUPING IS SPACING. A control sits closer to what it controls than sections
+// sit to each other: the file list is flush to its heading row, the strip's dots
+// are a gap-1 under the strip, and the container's gap-2 is reserved for one
+// section against the next.
+test('the content containers share one corner, and grouping is spacing', () => {
+  const doc = window.document;
+  const radius = (el) => (String(el.className || '').match(/\brounded-(?!b-)[a-z0-9]+\b/) || [])[0];
+  const guideClip = doc.querySelector('[x-init*="watchClip($el, \'guide\'"]');
+  const panelWrap = [...doc.querySelectorAll('[x-init*="watchClip"]')]
+    .find(e => !/'guide'/.test(e.getAttribute('x-init')));
+  const listPanel = [...doc.querySelectorAll('div')]
+    .find(e => /border-base-300 rounded-\S+ overflow-hidden/.test(e.className || ''));
+  const found = { guide: radius(guideClip), panel: radius(panelWrap), list: listPanel && radius(listPanel) };
+  assert.ok(found.guide && found.panel && found.list, 'all three carry a radius: ' + JSON.stringify(found));
+  assert.equal(new Set(Object.values(found)).size, 1, 'and it is the same one: ' + JSON.stringify(found));
+  assert.equal(found.guide, 'rounded-box',
+    'the theme token, so a theme that moves its radius moves all three');
+  // A fade sits on its container's bottom edge and has to round with it.
+  for (const fade of doc.querySelectorAll('.bg-gradient-to-b'))
+    assert.match(fade.className, /rounded-b-box/, 'the fade follows its container');
+
+  // The heading row is a toolbar: its height is four max-sm:h-11 tap targets,
+  // and padding on top of that pads an affordance that carries its own room.
+  const row = [...doc.querySelectorAll('div')].find(e => /sticky top-0/.test(e.className || ''));
+  assert.ok(!/\bpy-\d/.test(row.className), 'no vertical padding on the row: ' + row.className);
+  assert.match(row.className, /px-4/, 'the horizontal padding stays, since it cancels the full bleed');
+});
+
 // THE MARKER'S ARROW IS DERIVED, not asserted. It pointed the wrong way once
 // per reorder until this existed, which is twice in two days: it says a guide
 // exists and where it is, from a row pinned while everything else scrolls under
