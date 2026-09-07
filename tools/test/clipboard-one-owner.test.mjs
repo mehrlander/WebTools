@@ -43,8 +43,10 @@ test('every kit that copies delegates to io.copy and fetches it at load time', (
   // Fetched when the kit loads, never inside the click: a write has to run in
   // the gesture that asked for it, and an await before it can spend the user
   // activation Safari counts.
-  const consumers = ['chat-render.js', 'session-export.js', 'vanilla-demo.js', 'md-doc.js',
-                     'row-menu.js'];
+  // session-export.js was here and is not: it stopped copying on 2026-09-06,
+  // so the delegate and the load-time fetch went with the button. A kit that
+  // does not copy is not exempt from this rule, it is outside it.
+  const consumers = ['chat-render.js', 'vanilla-demo.js', 'md-doc.js', 'row-menu.js'];
   for (const name of consumers) {
     const src = readFileSync(join(KITS, name), 'utf8');
     assert.match(src, /window\.io\.copy\(text\)/, name + ' delegates the write');
@@ -52,6 +54,15 @@ test('every kit that copies delegates to io.copy and fetches it at load time', (
     assert.doesNotMatch(src, /ghRef\.load\('kits\/io\.js'\)[\s\S]{0,80}await/,
       name + ' does not await io.js inside a handler');
   }
+});
+
+test('a kit that does not copy carries no clipboard machinery', () => {
+  // The list above is a membership claim in one direction only. This is the
+  // other: session-export draws the session outline and has no copy control, so
+  // an io.js fetch sitting in it would be a load nothing spends.
+  const src = readFileSync(join(KITS, 'session-export.js'), 'utf8');
+  assert.doesNotMatch(src, /window\.io\.copy/, 'no clipboard delegate');
+  assert.doesNotMatch(src, /kits\/io\.js/, 'and nothing fetches io.js for it');
 });
 
 test('io.copy returns the deferred write\'s own answer', () => {
