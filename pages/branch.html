@@ -142,17 +142,25 @@
      at 900 tall the sections get 618px however narrow the window is, and at
      390 tall (a phone turned sideways) they would get 108. The floor is 700.
 
-     Width is not about the head at all. It is the phone-in-portrait test: 390
-     by 844 passes the height floor comfortably, and locking there would still
-     be wrong, because an app shell costs a phone its URL-bar collapse
-     (session.html's own header carries that argument). 640 sits above every
-     phone portrait and below any window a person would call a desktop.
+     THE WIDTH CLAUSE IS GONE, 2026-09-07, and it was the reader who took it
+     out. It read `min-width: 640px` as the phone-in-portrait test: 390 by 844
+     clears the height floor, and locking there was held to be wrong because an
+     app shell costs a phone its URL-bar collapse. That was a fair trade when
+     the head cost 234px and the sections were a list and some prose. It is not
+     now: the head is 93, the guide is a pane that scrolls itself, and the
+     reader asked for the two panels to divide the screen rather than run off
+     the bottom of it. A URL bar that stays put is the price and it is theirs to
+     pay.
+
+     So height is the only axis. 700 is still the floor, which a phone in
+     portrait clears and a phone turned sideways (390 tall) does not, and
+     sideways is exactly where two panels are worth nothing.
 
      THIS REPLACED `lg:`, which was the wrong axis and too high besides: a
      900px-wide desktop window, an ordinary thing, kept scrolling the document
      while the head measured the same 234px it does at 1440 (2026-09-04). -->
 <style type="text/tailwindcss">
-  @custom-variant roomy (@media (min-width: 640px) and (min-height: 700px));
+  @custom-variant roomy (@media (min-height: 700px));
 </style>
 </head>
 <!-- WHERE THE SCROLLBAR IS, and the two answers are both deliberate.

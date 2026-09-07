@@ -473,21 +473,23 @@ test('standalone: the document is left alone, and the lock is roomy-only', () =>
     'roomy, the view fills the height the page hands it');
   assert.ok(sectionsSmall.has(R('flex-1')) && sectionsSmall.has(R('min-h-0')),
     'the sections are the box');
-  assert.ok(sectionsSmall.has(R('overflow-y-auto')),
-    'and that box is the one thing that scrolls');
+  assert.ok(!sectionsSmall.has(R('overflow-y-auto')),
+    'and it divides the box rather than scrolling it');
 
-  // NO SECTION OWNS A SCROLLER OR A SHARE. Either one puts a scrollbar inside
-  // the scrollbar above, which is the shape this file and the house style
-  // refuse, and the height rules that used to divide the box are what the
-  // second scrollbar needed.
+  // TWO PANES AGAIN, since 2026-09-07, and the reason is different from the
+  // first time. The box scrolled as one while the guide was a fixed clip; now
+  // the guide is a pane that scrolls itself, so the reader asked for the two
+  // panels to divide the screen and for the guide to take the slack. The list
+  // gets its cap back with the pane it defends against.
   const files = root.querySelector('[x-ref="files"]');
   const guide = root.querySelector('[x-ref="guide"]');
-  for (const [name, el] of [['files', files], ['guide', guide]]) {
-    const c = classes(el);
-    assert.ok(!c.has(R('overflow-y-auto')), name + ' does not scroll itself');
-    assert.ok(!c.has(R('max-h-[45%]')) && !c.has(R('grow')),
-      name + ' does not divide the box');
-  }
+  assert.ok(classes(guide).has(R('flex-1')) && classes(guide).has(R('min-h-0')),
+    'the guide takes whatever the others leave: ' + guide.className);
+  assert.match(files.getAttribute(':class') || '', /roomy:max-h-\[40%\]/,
+    'and the list is capped so it cannot crush it');
+  const guideClip = guide.querySelector('[x-init]');
+  assert.match(guideClip.className, /roomy:max-h-none/, 'the clip stops clipping and fills');
+  assert.match(guideClip.className, /overflow-y-auto/, 'scrolling what does not fit');
   // The guide is clipped instead, by the page's one expander, which is what
   // makes leading with it affordable.
   const clip = guide.querySelector('[x-init]');
@@ -591,8 +593,15 @@ test('every standalone host of this component declares the roomy variant', () =>
     // at the first inner one and reads half the rule as the whole of it.
     const decl = src.match(/@custom-variant\s+roomy\s*\(([\s\S]*?)\)\s*;/);
     assert.ok(decl, `${name} uses roomy: classes but never declares the variant`);
-    assert.match(decl[1], /min-width:\s*640px/,
-      `${name}: the width floor keeps a phone in portrait on document scroll`);
+    // HEIGHT ONLY, since 2026-09-07. The declaration carried a 640px width
+    // floor whose whole job was keeping a phone in portrait on document scroll,
+    // on the argument that an app shell costs a phone its URL-bar collapse.
+    // The reader overturned it: with the head at 93px and the guide a pane that
+    // scrolls itself, they asked for the two panels to divide the screen. So
+    // the floor that survives is 700px of height, which a phone in portrait
+    // clears and a phone turned sideways does not.
+    assert.doesNotMatch(decl[1], /min-width/,
+      `${name}: the lock turns on height alone, so a phone in portrait locks too`);
     assert.match(decl[1], /min-height:\s*700px/,
       `${name}: the height floor is what decides whether two panes fit at all`);
   }
