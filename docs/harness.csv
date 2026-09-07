@@ -58,8 +58,8 @@ tools/render/scenarios/annotate-caret-wrap.mjs,"a sweep of 560 caret positions i
 tools/render/scenarios/annotate-cursor-pad.mjs,"the cursor pad mid-drag, in both its subjects: the caret walking back through wrapped lines, and (STATE=pin) an armed selection edge dragged by the same gesture, which is what retired the arrow cluster. The half jsdom cannot see, since it maps a virtual point to an offset through caret-from-point",tools/render/scenarios,53,driver,no,no,yes
 tools/render/scenarios/annotate-demo.mjs,"a text selection annotated end to end: bubble, draft, saved note, painted highlight",tools/render/scenarios,68,driver,no,no,no
 tools/render/scenarios/annotate-dictate-demo.mjs,"the voice-first compose surface with SpeechRecognition stubbed: committed text, a live interim, the punctuation bar, and a resume across a pause, which is the case that shows the period and the capital coming back off together",tools/render/scenarios,67,driver,no,no,no
-tools/render/scenarios/annotate-dom-crumb.mjs,tap the DOM reading's ancestor trail and check the outline follows the crumb,tools/render/scenarios,55,driver,no,no,yes
-tools/render/scenarios/annotate-dom-reading.mjs,drive the annotate card to its DOM reading and step the element pick up its ancestor chain,tools/render/scenarios,85,driver,no,no,yes
+tools/render/scenarios/annotate-dom-crumb.mjs,tap the DOM reading's ancestor trail and check the outline follows the crumb,tools/render/scenarios,55,driver,no,no,no
+tools/render/scenarios/annotate-dom-reading.mjs,drive the annotate card to its DOM reading and step the element pick up its ancestor chain,tools/render/scenarios,85,driver,no,no,no
 tools/render/scenarios/annotate-double-tap.mjs,"a double tap on a word opening the keyboard with the caret inside that word, and the long press still taking the word: the two gestures that traded places on 2026-08-13, both needing a real caret-from-point that jsdom stubs",tools/render/scenarios,62,driver,no,no,no
 tools/render/scenarios/annotate-drop-stage.mjs,"letting go of a stage in all three aims: the ✕, a pick that lands on nothing, a tap on the card that is not a miss, and a selection across blocks keeping its chip",tools/render/scenarios,173,driver,no,no,yes
 tools/render/scenarios/annotate-edit-row.mjs,"the pencil folding a note out of the list while it is open in the composer, and the row coming back on save. Needs a browser: the two states are one DOM apart and the point is that only one copy of the note is on screen at a time",tools/render/scenarios,46,driver,no,no,no
@@ -154,7 +154,7 @@ tools/render/scenarios/map-tests-compared.mjs,"the Map view's Tests tab with the
 tools/render/scenarios/map-tests.mjs,the Map view's Tests tab: the test registry rendered live with assertion names expanded,tools/render/scenarios,63,driver,no,no,no
 tools/render/scenarios/nest-probe.mjs,"probe: a nested self-toss's address bar, and the FAB's actions at depth two",tools/render/scenarios,44,driver,no,no,no
 tools/render/scenarios/open-drawer.mjs,the FAB drawer open with the take grid scrolled into view,tools/render/scenarios,20,driver,no,no,no
-tools/render/scenarios/outline-follows-page.mjs,scroll the page and check every live outline stays on the thing it is drawn around,tools/render/scenarios,78,driver,no,no,yes
+tools/render/scenarios/outline-follows-page.mjs,scroll the page and check every live outline stays on the thing it is drawn around,tools/render/scenarios,78,driver,no,no,no
 tools/render/scenarios/paste-address-routes.mjs,,tools/render/scenarios,52,driver,no,no,no
 tools/render/scenarios/paste-anywhere.mjs,dispatches a real two-flavor ClipboardEvent on a non-Stage view and reports where the app-wide paste routed it,tools/render/scenarios,42,driver,no,no,no
 tools/render/scenarios/paste-button.mjs,"drives the header Paste button from a non-Stage view with window.io stubbed, and reports where it routed",tools/render/scenarios,46,driver,no,no,no

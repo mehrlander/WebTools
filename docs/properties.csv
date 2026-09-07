@@ -86,6 +86,7 @@ routes-kinds,address,recorded,,none,column,yes,,what a position inside this kind
 routes-kinds,aim,recorded,,none,column,yes,,the annotate aim this kind adds beyond the universal three; blank means only those three
 routes-kinds,aim_label,recorded,,none,column,yes,,"what that aim is called in the annotator, carried here so the kit holds no strings of its own"
 routes-kinds,aim_hint,recorded,,none,column,yes,,the one line under that aim in the menu
+routes-kinds,aim_icon,recorded,,none,column,yes,,"the phosphor glyph that marks that aim, carried here for the same reason the label is: both surfaces that draw the aim hardcoded one, so a kind got its own name and markdown's icon"
 showing-mechanisms,glyph,recorded,,value,column,yes,,the marker the caption uses
 showing-mechanisms,label,recorded,,value,column,yes,,the mechanism name a reader sees
 showing-mechanisms,form,recorded,,none,column,yes,,the address shape; absent where the mechanism is not a URL
