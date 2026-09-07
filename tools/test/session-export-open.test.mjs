@@ -434,6 +434,32 @@ test('no row carries a state of its own, so nothing behind the ask can return', 
   }
 });
 
+test('a tap INSIDE the panel does not dismiss it on a coarse pointer', async () => {
+  // Reported 2026-09-07 from the phone: "I tap the popover and it disappears."
+  // Lifting a finger fires pointerout with a NULL relatedTarget, so
+  // `peek.contains(e.relatedTarget)` is false and the leave timer ran: the
+  // panel vanished 220ms after being touched. The trigger's own hover handlers
+  // were already gated on `(hover: hover)`; the panel's pair was not.
+  //
+  // This harness stubs matchMedia to `matches: false`, so canHover() is false
+  // here and this file tests the coarse-pointer path by default, which is why
+  // the gate belongs on the panel rather than on the timer.
+  buildWith(STATEFUL);
+  trig(1).click();
+  assert.ok(peekOf(1), 'the row opens its panel');
+
+  const panel = peekOf(1);
+  panel.dispatchEvent(new window.PointerEvent('pointerout', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 350));      // past LEAVE_MS, which is 220
+  assert.ok(peekOf(1), 'and a touch that leaves the panel does not close it');
+
+  // The routes that DO dismiss on a coarse pointer are unaffected, and they are
+  // the whole set: the close button, Escape, an outside pointerdown, and a
+  // second tap on the row.
+  trig(1).click();
+  assert.equal(peekOf(1), null, 'a second tap on the row still closes it');
+});
+
 test('the panel is bounded, so a long exchange stays a panel in the list', () => {
   // The row expanded in place until 2026-09-02 and opened to nine screens of
   // reply, so the row that was tapped scrolled off the top and the list under
