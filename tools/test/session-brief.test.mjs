@@ -136,12 +136,34 @@ test('a lent row renders the strip and the title without waiting on the record',
   // they are present at all: a slide that blanked until its fetch landed would
   // flash the whole head on every swipe.
   const s = strip(lent());
-  assert.equal(s.asks, 2);
   assert.equal(s.calls, 40);
   assert.equal(s.failures, 1);
   assert.equal(s.ran, '3h 0m');
   assert.equal(s.repos, 'web-tools');
-  assert.equal(s['out tokens'], '337,631');
+  assert.equal(s.day, '2026-08-05');
+});
+
+test('the strip carries five facts and no more, and names which', () => {
+  // A CEILING, not a list for its own sake. Nine facts wrapped the strip to
+  // three lines at 430px, half of a phone's head, and two of the nine were
+  // printed again 44px below as the Outline and Files tab counts. `asks` and
+  // `files` went for that duplication, `schema` because it is the record
+  // FORMAT's version rather than a fact about the session, and `out tokens`
+  // because nothing reads differently for a large one.
+  // Array.from, because a getter's return reaches a test through Alpine's
+  // reactive proxy and deepEqual compares prototypes.
+  assert.deepEqual(Array.from(lent().strip, f => f.k),
+    ['day', 'ran', 'calls', 'failures', 'repos']);
+});
+
+test('a unit word rides only the values that do not name themselves', () => {
+  // `f.k` stays the fact's NAME, which the notes and these tests key on; `unit`
+  // is the word actually drawn after the value. A date reads as a date and a
+  // duration reads as a duration, so those draw bare; 251 does not read as
+  // calls.
+  const units = Object.fromEntries(lent().strip.map(f => [f.k, f.unit]));
+  assert.deepEqual(units,
+    { day: '', ran: '', calls: 'calls', failures: 'failed', repos: '' });
 });
 
 test('the strip counts a zero rather than dropping it, and drops what is absent', () => {
@@ -159,13 +181,13 @@ test('the strip counts a zero rather than dropping it, and drops what is absent'
   assert.ok(!('ran' in s), 'a duration nothing could compute is absent, not zero');
 });
 
-test('the closing reply is on the page from the row, record or no record', () => {
+test('an unreadable record costs the outline and nothing else', () => {
+  // The store is private, so a reader whose token cannot reach it still gets
+  // everything the cache knew. What it loses is the record, and therefore the
+  // outline; the head is the row's the whole time and does not blank.
   const d = Alpine.$data(window.document.getElementById('unread'));
   assert.equal(d.record, null, 'this record could not be read');
-  assert.equal(d.closingRaw, 'a closing reply the cache carried');
   assert.match(d.err, /Could not open nosuch/, 'and it says so rather than reading as empty');
-  // The strip is the row's the whole time, so an unreadable record costs the
-  // outline and nothing else.
   assert.equal(Object.fromEntries(d.strip.map(f => [f.k, f.v])).calls, 40);
 });
 
@@ -200,21 +222,16 @@ test('the record overwrites what the row lent', () => {
   const d = lent();
   assert.equal(d.record.short, 'b8fae678');
   assert.equal(d.head.title, 'described b8fae678', 'describe owns the name once the record is here');
-  assert.equal(d.closingRaw, 'and here is what came of it',
-    'the CLOSING reply, by timestamp, not the first or the longest');
-  assert.equal(d.closingLabel, 'closing reply');
 });
 
-test('a record with no replies says its text is a tail, not a turn', () => {
-  window.__old = { id: 'z', repo: STORE, record: { short: 'z', schema: 2, last_message: 'the tail' } };
-  const el = window.document.createElement('div');
-  el.setAttribute('x-data', 'sessionBrief(window.__old)');
-  window.document.body.append(el);
-  Alpine.initTree(el);
-  const d = Alpine.$data(el);
-  assert.equal(d.closingRaw, 'the tail');
-  assert.equal(d.closingLabel, 'final turn, tail only');
-});
+// The closing reply, and the fidelity label that said whether it was the whole
+// turn or the recorder's 500-character tail, were asserted here over a block
+// this view drew above the tab row. The block went on 2026-09-06 and both
+// claims are still gated, one surface over: estate-sessions.test.mjs holds
+// `replyTurns` to the same reply and `replyLabel` to the same "final turn, tail
+// only" wording, on the Sessions card that renders it properly. Two copies of
+// one assertion was what this file had; the one that stayed is on the view that
+// still draws the thing.
 
 test('the host is told what only a finished read knows', () => {
   // The deck header names a session before its record is here, off the row. The
@@ -435,56 +452,47 @@ test('the brief fills its host, rather than drawing a phone column on a desktop'
   assert.match(shell[1], /\bw-full\b/);
 });
 
-test('the closing reply is markdown, and its rest is a tap rather than a tooltip', async () => {
-  // It was `x-text` of a string this component flattened itself, with the whole
-  // of it parked in a `title`: a fact with no route on a phone, and the one
-  // thing the house style names outright. It is a reply like every other one on
-  // this page, so it goes through the kit that renders those.
+test('the closing-reply block is gone, and nothing here flattens markdown', () => {
+  // A clamped, expandable block drew the session's last reply above the tab
+  // row. It cost 124px of a 932px phone, a quarter of everything standing
+  // between the reader and the first card, and it was the third copy of one
+  // claim: the estate's Sessions card renders that reply properly, and the
+  // record's last outline row previews it. Removed 2026-09-06.
   const src = readFileSync(path.join(repoRoot, 'lib/alpineComponents/session-brief.js'), 'utf8');
-  const at = src.indexOf('x-show="closingRaw"');
-  assert.ok(at > 0, 'the block is found by the thing it shows on');
-  // To the end of the card, not to the first `</button>`: the control is the
-  // label row now, and the body it governs sits after it.
-  const block = src.slice(at, src.indexOf('<!-- The switch and the exits', at));
-  assert.doesNotMatch(block, /:?title=/, 'no tooltip carries the rest of it');
-  // The LABEL is still x-text, and should be: it is a fidelity claim in one
-  // word, not the reply.
-  assert.doesNotMatch(block, /x-text="closing(Raw)?"/, 'the reply itself is not set as flat text');
-  assert.match(block, /x-ref="closingBody"/);
-  assert.match(block, /aria-expanded/, 'the block is the control the tooltip used to be');
+  for (const gone of ['closingRaw', 'closingLabel', 'closingOpen', 'closingBody', 'CLAMP'])
+    assert.doesNotMatch(src, new RegExp(gone), gone + ' went with the block');
 
-  // AND IT IS CUT BY HEIGHT, NOT BY `line-clamp`. That utility counts line
-  // boxes, which needs inline content; this holds the paragraphs a markdown
-  // render returns. Chrome clamps anyway and iOS Safari does not: it keeps the
-  // box at the full height of every paragraph and hides only the spill, so the
-  // collapsed block reached a phone as three lines over an inch of empty card.
-  // The desktop cannot show this failure, which is why the rule is asserted
-  // rather than the pixels.
-  assert.doesNotMatch(block, /line-clamp/, 'no clamp on a container of blocks');
-  assert.match(block, /:style="closingOpen \? '' : CLAMP"/, 'the collapsed state is a style');
-  assert.match(src, /CLAMP: 'max-height:\d+px;/, 'and what it sets is a height');
-  assert.match(src, /chatRender\.markdown\(md, \{ dense: true \}\)/,
-    'through the same renderer every other reply on this page uses');
-
-  // And the flattening it used to do is GONE rather than merely unused: a
-  // second markdown-to-text pass sitting here is what would get reached for
-  // next time.
+  // THE FLATTENING GATE OUTLIVES THE BLOCK, and always did: it is scoped to the
+  // whole file, not to that markup. A reply was arriving with its bold markers
+  // showing because this component reduced markdown to text itself instead of
+  // calling the kit that renders every other turn. A second such pass sitting
+  // here is what would get reached for next time.
   assert.doesNotMatch(src, /speechText/, 'session-brief no longer flattens anything itself');
+
+  // And the tooltip rule the block was the worked case of. A FACT may not ride
+  // in a title: no touch screen shows one and no screenshot captures one.
+  const el = window.document.getElementById('lent');
+  assert.equal(el.querySelectorAll('.cursor-help').length, 0);
 });
 
-test('the clipped box is not inside the button, because Safari sizes one from its unclipped content', () => {
-  // The whole block was a button with the body inside it. The body clipped and
-  // the fade landed, and the button stayed as tall as five paragraphs: three
-  // lines of text over an inch of empty card, on the phone only. Chrome sizes
-  // the button from the clipped child and shows nothing wrong, so this is
-  // asserted as structure rather than measured as pixels.
-  const el = window.document.getElementById('lent');
-  const clip = [...el.querySelectorAll('div')].find(d => /max-height/.test(d.getAttribute('style') || ''));
-  assert.ok(clip, 'the collapsed body carries its height inline');
-  assert.equal(clip.closest('button'), null, 'and no button is sized by what it hides');
-  const btn = [...el.querySelectorAll('button[aria-expanded]')][0];
-  assert.ok(btn, 'the control is still there');
-  assert.equal(btn.contains(clip), false, 'holding only the small thing you tap');
+test('a clamped box is never a button, because Safari sizes one from its unclipped content', () => {
+  // THIS GUARD MOVED RATHER THAN GOING. Its subject was the closing block, a
+  // <button> wrapping a clipped body: Safari sizes a button from its UNCLIPPED
+  // content, so the body clipped, the fade landed, and the button stood as tall
+  // as five paragraphs. Chrome sizes from the clipped child and shows nothing
+  // wrong, which is why this is asserted as structure and never as pixels.
+  //
+  // The rule outlived the block. session-export's row title is a two-line
+  // `line-clamp` and is a role="button" div for exactly this reason, stated in
+  // `asTrigger`, and that is now the estate's only clamped trigger. Snag:
+  // safari-button-sizes-from-unclipped-content.
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/session-export.js'), 'utf8');
+  const at = src.indexOf('const asTrigger = (el, key, host, label, fill) => {');
+  assert.ok(at > 0, 'the row trigger, which is what carries the clamped line');
+  const fn = src.slice(at, src.indexOf('\n    };', at));
+  assert.match(fn, /setAttribute\('role', 'button'\)/, 'a role, so it keeps the reach');
+  assert.match(fn, /setAttribute\('tabindex', '0'\)/);
+  assert.doesNotMatch(fn, /h\('button'/, 'and never the element, which would size from the clip');
 });
 
 test('a fact carries its definition on data-note, not in a title', () => {
@@ -498,7 +506,7 @@ test('a fact carries its definition on data-note, not in a title', () => {
   // controls below keep a `title`, which is the case rule 11 does sanction, a
   // simple label on a control that also carries an aria-label or is a link
   // naming its own destination. What may not sit in one is a FACT.
-  const strip = el.querySelector('.flex.flex-wrap.items-center.gap-x-4');
+  const strip = el.querySelector('.flex.flex-wrap.items-center.gap-x-2\\.5');
   assert.ok(strip, 'the facts strip');
   assert.equal(strip.querySelectorAll('[title]').length, 0, 'no fact is stranded in a title');
 
@@ -508,12 +516,18 @@ test('a fact carries its definition on data-note, not in a title', () => {
   // hand-rolled a tap-to-reveal line for one commit, which was that kit again
   // with no keyboard, no screen reader and no affordance before the tap.
   const noted = [...el.querySelectorAll('[data-note]')];
-  assert.ok(noted.length >= 6, 'every fact and the id');
+  assert.equal(noted.length, d.strip.length + 1, 'every fact and the id, and nothing else');
+  // MATCHED ON THE VALUE, not on the fact's name, because the name is no longer
+  // drawn: the strip renders `2026-08-05` and `40 calls`, so a lookup keyed on
+  // "day" or "calls" would find the definition of whichever fact happened to
+  // start with those letters. The rendered text is what a reader points at, so
+  // it is what the note has to be attached to.
   const byNote = new Map(noted.map(n => [n.textContent.replace(/\s+/g, ' ').trim(), n.getAttribute('data-note')]));
   for (const f of d.strip) {
-    const hit = [...byNote].find(([k]) => k.startsWith(f.k));
-    assert.ok(hit, 'strip row ' + f.k + ' is on the page');
-    assert.equal(hit[1], f.t, 'and states the definition the strip carries, not a copy of it');
+    const shown = String(f.v) + (f.unit ? ' ' + f.unit : '');
+    assert.ok(byNote.has(shown), 'strip row ' + f.k + ' is on the page as "' + shown + '"');
+    assert.equal(byNote.get(shown), f.t,
+      'and states the definition the strip carries, not a copy of it');
   }
   assert.match(noted.find(n => /^\(/.test(n.textContent))?.getAttribute('data-note') || '', /filename stem/);
 });
