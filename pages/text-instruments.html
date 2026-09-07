@@ -101,6 +101,18 @@
           dir: 'projects/doc-audit', page: 'projects/doc-audit/demo/index.html' },
       ],
 
+      // A resource has coverage to assess and no inference to run, which is the
+      // distinction local-models/README.md draws against an instrument, and the
+      // reason these are a separate register rather than rows in INSTRUMENTS.md.
+      // held: committed somewhere in the estate. fetched: depended on and
+      // downloaded at run time, so no version is recorded anywhere. absent:
+      // named in the field and not used here, which is the shopping list.
+      STATES: {
+        held:    { text: 'text-success' },
+        fetched: { text: 'text-warning' },
+        absent:  { text: 'text-base-content' },
+      },
+
       home: null,
       pane: params.get('pane') || 'probes',
       probes: [],
@@ -108,6 +120,9 @@
       filterStanding: '',
       open: null,
       guideHtml: '',
+      resources: [],
+      rate: '',
+      filterState: '',
       loading: true,
       error: '',
       framed: window.self !== window.top,
@@ -123,7 +138,10 @@
           this.error = `${e.message || e} — ${this.REPO}@${this.DATA_REF}`;
         }
         this.loading = false;
-        if (this.pane === 'instruments') this.showPane('instruments');
+        // Whatever ?pane= asked for, not just the one that used to need it:
+        // each pane's own guard makes the call a no-op when it has nothing to
+        // fetch, so naming a single pane here was a bug waiting for the second.
+        this.showPane(this.pane);
       },
 
       // build-index.py's rule, on one probe's own verdict: open wins, then
@@ -162,20 +180,69 @@
       // page with nothing to read.
       async showPane(name) {
         this.pane = name;
-        if (name !== 'instruments' || this.guideHtml) return;
         try {
-          await gh.load('kits/guide-render.js');
-          await gh.load('kits/source-peek.js');
-          const res = await this.home.get(`${this.ROOT}/INSTRUMENTS.md`);
-          await window.GuideRender.needMarked();
-          this.guideHtml = window.GuideRender.render(
-            window.SourcePeek.fenceFrontmatter(res.text),
-            { knownRefs: [this.DATA_REF, 'main'] }).html;
+          if (name === 'instruments' && !this.guideHtml) {
+            await gh.load('kits/guide-render.js');
+            await gh.load('kits/source-peek.js');
+            const res = await this.home.get(`${this.ROOT}/INSTRUMENTS.md`);
+            await window.GuideRender.needMarked();
+            this.guideHtml = window.GuideRender.render(
+              window.SourcePeek.fenceFrontmatter(res.text),
+              { knownRefs: [this.DATA_REF, 'main'] }).html;
+          }
+          if (name === 'resources' && !this.resources.length) {
+            await gh.load('kits/csv.js');
+            const res = await this.home.get(`${this.ROOT}/resources.csv`);
+            this.resources = window.Csv.rows(res.text);
+          }
         } catch (e) {
-          this.error = `INSTRUMENTS.md: ${e.message || e}`;
+          this.error = `${name}: ${e.message || e}`;
         }
       },
       get guideBodyClass() { return window.GuideRender ? window.GuideRender.bodyClass('page') : '' },
+
+      get resCounts() {
+        const c = { held: 0, fetched: 0, absent: 0 };
+        this.resources.forEach(r => c[r.state]++);
+        return c;
+      },
+      // What each resource rates: the question a session arrives with is "what
+      // do we have that carries concreteness", not "what is in concept-lab".
+      get rates() {
+        const m = new Map();
+        this.resources.forEach(r => this.list(r.rates).forEach(x => m.set(x, (m.get(x) || 0) + 1)));
+        return [...m].sort((a, b) => a[0].localeCompare(b[0]));
+      },
+      get shownResources() {
+        return this.resources.filter(r =>
+          (!this.filterState || r.state === this.filterState)
+          && (!this.rate || this.list(r.rates).includes(this.rate)));
+      },
+      resGroups() {
+        return ['held', 'fetched', 'absent']
+          .map(state => ({ state, items: this.shownResources.filter(r => r.state === state) }))
+          .filter(g => g.items.length);
+      },
+      list(s) { return window.Csv ? window.Csv.list(s) : [] },
+
+      // Four locator forms, and one of them deliberately has no link: an nltk
+      // download id names a corpus, not a page.
+      resourceUrl(loc) {
+        if (!loc) return '';
+        if (/^https?:/.test(loc)) return loc;
+        if (loc.startsWith('npm:')) return `https://www.npmjs.com/package/${loc.slice(4)}`;
+        if (loc.startsWith('pip:')) return `https://pypi.org/project/${loc.slice(4)}/`;
+        if (loc.startsWith('nltk:')) return '';
+        const [repo, path] = loc.split(':');
+        const ref = repo === this.REPO ? this.DATA_REF : 'main';
+        return `https://github.com/${repo}/blob/${ref}/${path}`;
+      },
+      resourceLabel(loc) {
+        if (!loc) return '';
+        if (/^https?:/.test(loc)) return new URL(loc).hostname;
+        if (/^(npm|pip|nltk):/.test(loc)) return loc;
+        return loc.split('/').pop();
+      },
 
       // An artifact is either an absolute URL or a path relative to probes/.
       // The relative form resolves into a blob at the ref being read, so the
@@ -227,10 +294,10 @@
       <h1 x-show="!framed" class="font-serif text-xl sm:text-2xl tracking-tight">Text Instruments</h1>
 
       <nav class="flex gap-4 font-mono text-xs">
-        <template x-for="[key, label] in [['probes','probes'],['instruments','instruments'],['runs','runs']]" :key="key">
+        <template x-for="key in ['probes','instruments','resources','runs']" :key="key">
           <button class="hover:opacity-100 transition-opacity"
                   :class="pane === key ? 'opacity-100 font-medium' : 'opacity-40'"
-                  @click="showPane(key)" x-text="label"></button>
+                  @click="showPane(key)" x-text="key"></button>
         </template>
       </nav>
 
@@ -247,6 +314,39 @@
             <span x-text="key"></span>
           </button>
         </template>
+      </div>
+
+      <!-- The resources pane takes the same two controls as probes: the counts
+           are the filter, and the closed domain sits in a dropdown. -->
+      <div x-show="pane === 'resources'" class="flex items-baseline gap-x-3 font-mono text-xs">
+        <template x-for="key in ['held','fetched','absent']" :key="key">
+          <button class="hover:opacity-100 transition-opacity"
+                  :class="filterState === key ? [STATES[key].text, 'opacity-100', 'font-medium'] : 'opacity-40'"
+                  @click="filterState = filterState === key ? '' : key">
+            <span x-text="resCounts[key]"></span>
+            <span x-text="key"></span>
+          </button>
+        </template>
+      </div>
+
+      <div x-show="pane === 'resources'" class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="font-mono text-xs opacity-40 hover:opacity-100 transition-opacity"
+             :class="rate && 'opacity-100 font-medium'">
+          <span x-text="rate || 'all properties'"></span>
+          <i class="ph ph-caret-down"></i>
+        </div>
+        <ul tabindex="0" class="dropdown-content menu flex-nowrap bg-base-100 border border-base-300 rounded-box z-30 w-72 max-h-[70vh] overflow-y-auto shadow-lg">
+          <li><a class="font-mono text-xs" @click="rate = ''; shut()">all properties</a></li>
+          <template x-for="[name, n] in rates" :key="name">
+            <li>
+              <a class="font-mono text-xs justify-between" :class="rate === name && 'font-medium'"
+                 @click="rate = name; shut()">
+                <span x-text="name"></span>
+                <span class="opacity-40" x-text="n"></span>
+              </a>
+            </li>
+          </template>
+        </ul>
       </div>
 
       <div x-show="pane === 'probes'" class="dropdown dropdown-end">
@@ -335,6 +435,56 @@
         <span class="loading loading-dots loading-md opacity-20"></span>
       </div>
       <div :class="guideBodyClass" x-html="guideHtml"></div>
+    </section>
+
+    <!-- ── resources ──────────────────────────────────────────────────────
+         Grouped by state, so the state word appears once per group instead of
+         once per row. That is also why no row carries a coloured bar the way a
+         probe does: inside a group every row would wear the same one, and
+         colour that repeats a heading is decoration. -->
+    <section x-show="pane === 'resources'">
+      <div x-show="!resources.length" class="py-24 text-center">
+        <span class="loading loading-dots loading-md opacity-20"></span>
+      </div>
+
+      <template x-for="g in resGroups()" :key="g.state">
+        <section class="mb-10">
+          <h2 class="font-mono text-xs uppercase tracking-wide mb-1" :class="STATES[g.state].text">
+            <span x-text="g.state"></span>
+            <span class="opacity-40" x-text="g.items.length"></span>
+          </h2>
+
+          <template x-for="r in g.items" :key="r.id">
+            <article class="border-t border-base-300 py-4">
+              <div class="flex items-baseline gap-4">
+                <div class="text-lg leading-7 font-medium grow min-w-0" x-text="r.name"></div>
+                <div class="font-mono text-xs opacity-40 shrink-0" x-show="!!r.rows" x-text="(+r.rows).toLocaleString() + ' rows'"></div>
+                <a class="font-mono text-xs opacity-40 hover:opacity-100 transition-opacity shrink-0"
+                   x-show="!!resourceUrl(r.locator)" :href="resourceUrl(r.locator)" target="_blank" rel="noopener">
+                  <span x-text="resourceLabel(r.locator)"></span><i class="ph ph-arrow-square-out ml-1"></i>
+                </a>
+                <span class="font-mono text-xs opacity-30 shrink-0"
+                      x-show="!!r.locator && !resourceUrl(r.locator)" x-text="r.locator"></span>
+              </div>
+
+              <p class="text-lg leading-7 text-pretty mt-0.5" x-text="r.note"></p>
+
+              <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-xs mt-2">
+                <template x-for="p in list(r.rates)" :key="p">
+                  <button class="opacity-40 hover:opacity-100 underline decoration-dotted underline-offset-2 transition-opacity"
+                          @click="rate = p" x-text="p"></button>
+                </template>
+                <span class="opacity-30" x-text="list(r.unit).join(', ')"></span>
+                <span class="opacity-30" x-show="!!r.source" x-text="r.source"></span>
+              </div>
+            </article>
+          </template>
+        </section>
+      </template>
+
+      <p x-show="resources.length && !shownResources.length" class="py-16 text-center font-mono text-xs opacity-40">
+        no resource carries that combination
+      </p>
     </section>
 
     <!-- ── runs ───────────────────────────────────────────────────────── -->
