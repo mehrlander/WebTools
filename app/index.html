@@ -6738,6 +6738,27 @@ function app(){ return {
     }];
   },
 
+  // The SAME switch, on the launcher's long-press menu, because the Render tab
+  // is the wrong and only place for it on the view that needs it most. An app
+  // view opens at shellMode 'none' by design, so it arrives with no header on
+  // screen and no clue that a header exists; finding the way back meant knowing
+  // which of the drawer's four tabs holds it, and then spotting one word at the
+  // end of the width-preset row. Reported from a phone on 2026-09-08 by a
+  // reader who knew the control existed and still could not find it.
+  //
+  // fab.js's own description already claimed show-repo contributed this row,
+  // and it did not: nothing declared `menu` anywhere, so readPageMenu found
+  // none. The claim is now true rather than deleted, since the reason it gave
+  // was the right one.
+  get menu(){
+    const on = this.shellMode !== 'none';
+    return [{
+      label: on ? 'Hide the header' : 'Show the header',
+      icon: 'ph-layout',
+      run: () => this.setHeader(!on),
+    }];
+  },
+
   // ── Swipe paging between dashboard views (touch only) ─────────────────────
   // The estateNav set (Activity / Repos / Stage / Tools / Map, plus
   // Proposals while it is showing) is a closed, ordered carousel. The header's
