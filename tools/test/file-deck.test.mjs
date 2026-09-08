@@ -427,6 +427,32 @@ test('the github menu opens under its button, from the kit', async () => {
   assert.deepEqual([...box.querySelectorAll('a')].map(a => a.getAttribute('href')),
     ['https://x/1', 'https://x/raw'], 'carrying the card\'s own links');
   assert.equal(box.querySelector('a').target, '_blank');
+
+  // PLACED BY MEASUREMENT, not by a fixed side. right-0 and top-full were
+  // hardcoded, which is right for an anchor in the header's right-hand cluster
+  // and wrong for a mark beside the title: the menu opened 156px to the LEFT
+  // of what it hangs from, and started mid-header over the crumb. jsdom
+  // computes no layout, so what is holdable here is that the decision is
+  // inline and the classes no longer name a side; where it actually lands is
+  // measured in tools/render/scenarios/deck-chrome.mjs.
+  assert.ok(!/\bright-0\b/.test(box.className), 'no hardcoded side: ' + box.className);
+  assert.ok(!/\btop-full\b/.test(box.className), 'nor a hardcoded top');
+  assert.ok(box.style.left !== '', 'the horizontal placement is measured');
+  assert.ok(box.style.top !== '', 'and so is the vertical, off the header rather than the anchor');
+  d.close(); await tick(6);
+});
+
+// A CARET IS WHAT SAYS IT IS SAFE TO TAP. Without it the mark reads as a link,
+// so a reader expects to be taken somewhere and hesitates over a control that
+// only opens a list. Both the other github menus in the estate carry one
+// (alpineComponents/file-review.js and branch-brief.js), at the same size.
+test('the github mark says it opens a menu', async () => {
+  const d = window.fileDeck.open({ ...AT, files: FILES });
+  await tick(4);
+  const gh = [...d.el.querySelectorAll('.sd-header button')]
+    .find(b => b.title === 'This file on GitHub');
+  assert.ok(gh.querySelector('.ph-github-logo'), 'the mark');
+  assert.ok(gh.querySelector('.ph-caret-down'), 'and the caret beside it');
   d.close(); await tick(6);
 });
 

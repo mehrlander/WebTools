@@ -28,6 +28,7 @@ import openList from '/home/user/web-tools/tools/render/scenarios/estate-open.mj
 export default async function (page, ctx) {
   await openList(page, ctx);
   await page.waitForTimeout(600);
+  await page.evaluate((keep) => { window.__keepMenu = keep; }, process.env.SHOT === 'menu');
 
   const out = await page.evaluate(async () => {
     const wait = (ms) => new Promise(r => setTimeout(r, ms));
@@ -105,12 +106,30 @@ export default async function (page, ctx) {
 
     tap(/GitHub/i); await wait(400);
     const m = document.querySelector('.sd-hdr-menu');
+    const ghBtn = [...window.swipeDeck.top().el.querySelectorAll('.sd-header button')]
+      .find(b => /GitHub/i.test(b.title || ''));
     const menu = !m ? null : {
       rows: [...m.querySelectorAll('a,button')].map(a => a.textContent.trim()),
-      onScreen: m.getBoundingClientRect().right <= innerWidth + 1,
+      onScreen: (() => { const r = m.getBoundingClientRect();
+                         return r.right <= innerWidth + 1 && r.left >= -1; })(),
+      // WHICH WAY IT OPENED, measured against the mark it hangs from rather
+      // than asserted from a class: the kit picks the side by fit.
+      opensRightOfTheMark: (() => {
+        const r = m.getBoundingClientRect(), b = ghBtn.getBoundingClientRect();
+        return Math.round(r.left - b.left);
+      })(),
+      caret: !!ghBtn.querySelector('.ph-caret-down'),
+      box: (() => { const r = m.getBoundingClientRect();
+        const last = m.lastElementChild.getBoundingClientRect();
+        const cs = getComputedStyle(m);
+        return { h: Math.round(r.height), scrollH: m.scrollHeight,
+                 lastRowBottom: Math.round(last.bottom - r.top),
+                 overflow: cs.overflow, bg: cs.backgroundColor,
+                 clipped: Math.round(last.bottom - r.bottom) }; })(),
     };
-    if (m) m.remove();
-    window.swipeDeck.top().deck.go(0); await wait(900);
+    // SHOT=menu leaves it open, which is the only way to see where it opened.
+    if (m && !window.__keepMenu) m.remove();
+    if (!window.__keepMenu) { window.swipeDeck.top().deck.go(0); await wait(900); }
     return { opened, tapped, swiped, menu };
   });
 
