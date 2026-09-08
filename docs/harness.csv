@@ -15,7 +15,7 @@ scripts/mcp-link-safe.py,"report markdown links the GitHub MCP write path would 
 scripts/ocr-pdf.py,"OCR a scanned PDF into text, and say how much to trust the result",scripts,187,argv,no,yes,no
 scripts/page-strips.py,"render a PDF page as overlapping horizontal strips a vision model can read, since the binding constraint is the display cap rather than scan resolution",scripts,97,argv,no,yes,no
 scripts/pip-steps.py,,scripts,208,none found,no,no,no
-scripts/showing.py,"decide which render link, if any, shows what a branch changed, and print it ready to paste. Executes rules already stated as data (routes.json showing.picker, showing-mechanisms.csv) rather than restating them: lib or dist to ?use=, a page file to a toss, the renderer to a nested toss, a shell change touching the top-level document to no link at all. Also checks the two failures that are silent: that the SHA it names is pushed, and that dist/ was rebuilt so ?use= carries the change. Advisory, never gates",scripts,559,npm:showing,no,yes,yes
+scripts/showing.py,"decide which render link, if any, shows what a branch changed, and print it ready to paste. Executes rules already stated as data (routes.json showing.picker, showing-mechanisms.csv) rather than restating them: lib or dist to ?use=, a page file to a toss, the renderer to a nested toss, a shell change touching the top-level document to no link at all. Also checks the two failures that are silent: that the SHA it names is pushed, and that dist/ was rebuilt so ?use= carries the change. Advisory, never gates",scripts,604,npm:showing,no,yes,yes
 scripts/stranded-titles.py,,scripts,326,npm:stranded-titles,no,yes,yes
 scripts/sunset-scan.py,scan a repo for SUNSET(YYYY-MM-DD) markers and report the ones now due,scripts,111,npm:sunset,no,yes,yes
 scripts/text-carriers.py,"inventory the CSV and JSON carriers that already hold authored prose, and registry their field names to show how much vocabulary the carriers share",scripts,539,argv,no,yes,yes
@@ -95,7 +95,7 @@ tools/render/scenarios/branch-address.mjs,,tools/render/scenarios,83,driver,no,n
 tools/render/scenarios/branch-brief-errors.mjs,"the branch page's failure states, driven through the real load() path",tools/render/scenarios,59,driver,no,no,no
 tools/render/scenarios/branch-deck.mjs,,tools/render/scenarios,131,driver,no,yes,no
 tools/render/scenarios/branch-file-card.mjs,a branch row's file pair opened as a card over the seeded Activity view,tools/render/scenarios,140,driver,no,no,no
-tools/render/scenarios/branch-guide.mjs,the branch page showing a branch with its guide PR body rendered in place,tools/render/scenarios,88,driver,no,no,no
+tools/render/scenarios/branch-guide.mjs,the branch page showing a branch with its guide PR body rendered in place,tools/render/scenarios,88,driver,no,no,yes
 tools/render/scenarios/branch-page-cold.mjs,"the branch view mounted as a PAGE, with no host lending it facts or a verdict",tools/render/scenarios,111,driver,no,no,no
 tools/render/scenarios/branch-panes.mjs,,tools/render/scenarios,103,driver,no,no,no
 tools/render/scenarios/branch-takeover.mjs,show-repo's branch-detail takeover with the embedded branch page fully rendered,tools/render/scenarios,86,driver,no,no,no
@@ -108,6 +108,7 @@ tools/render/scenarios/code-layers-guide-lower.mjs,scroll the code-layers guide 
 tools/render/scenarios/data-view-item-tossed.mjs,"the #item= addressing end to end through a toss, proving the two halves meet",tools/render/scenarios,61,driver,no,yes,no
 tools/render/scenarios/data-view-item.mjs,"data-view's #item= addressing, read and written",tools/render/scenarios,89,driver,no,yes,yes
 tools/render/scenarios/data-view-items.mjs,"the data-view demo through its envelope's three items, each declared view winning",tools/render/scenarios,13,driver,no,no,no
+tools/render/scenarios/deck-chrome.mjs,,tools/render/scenarios,144,driver,no,no,yes
 tools/render/scenarios/deck-split.mjs,,tools/render/scenarios,45,driver,yes,no,no
 tools/render/scenarios/dictate-page.mjs,"pages/dictate.html mid-dictation with SpeechRecognition stubbed: committed text, a live hypothesis, the mark row and the header instruments. Options take it on to a word selected by long press (the casing face) and the armed target",tools/render/scenarios,77,driver,no,no,yes
 tools/render/scenarios/diff-tool-at.mjs,the diff tool's address field driving the browse panel over captured API fixtures,tools/render/scenarios,187,driver,no,no,no
@@ -189,7 +190,7 @@ tools/render/scenarios/section-structure.mjs,"the section rules a markdown aim d
 tools/render/scenarios/session-contents.mjs,"enters the session deck from the outline the page opens on, then opens the deck's own contents list: the rows readable at 390px, the reader marked, and one pager gap per exchange",tools/render/scenarios,65,driver,no,no,no
 tools/render/scenarios/session-exchange-card.mjs,,tools/render/scenarios,58,driver,no,no,no
 tools/render/scenarios/showing-paste-rows.mjs,,tools/render/scenarios,27,driver,no,no,no
-tools/render/scenarios/sidebar-compare.mjs,,tools/render/scenarios,169,driver,no,yes,no
+tools/render/scenarios/sidebar-compare.mjs,,tools/render/scenarios,194,driver,no,yes,yes
 tools/render/scenarios/sidebar-projects-overlay.mjs,the same sidebar state in overlay posture; only the posture distinguishes the pair,tools/render/scenarios,51,driver,no,yes,no
 tools/render/scenarios/sidebar-projects.mjs,drive show-repo's sidebar into the nested-projects state,tools/render/scenarios,66,driver,no,yes,no
 tools/render/scenarios/sidebar-repo-menus.mjs,the sidebar Repos index with one row's two menus open,tools/render/scenarios,61,driver,no,no,no

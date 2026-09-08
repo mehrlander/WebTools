@@ -245,3 +245,34 @@ function appViewFromUrlSource() {
   assert.ok(end > at, 'appViewFromUrl did not close');
   return shell.slice(at, end);
 }
+
+// ── A missed slug is a stale cache far more often than a dead link ──────────
+//
+// Slugs resolve out of the registry's config cache. The first load after a repo
+// edits its .web-tools.json asks a cache that predates the edit, misses, and
+// falls to the estate; the refresh that would have answered it commits moments
+// later, too late for the routing decision it just lost. Worse, the fallback
+// stamps `?app=<slug>` to `?view=estate`, so the reader cannot even retry by
+// reloading: the address that would have worked is gone from the bar.
+//
+// Measured three times on this app between 2026-09-07 and 2026-09-08, twice on
+// the same link, each time reported as "it didn't work". So a missed slug buys
+// one forced refresh and one retry before the fallback, and this pins all three
+// halves: the retry, the guard that bounds it, and the fallback it precedes.
+test('a slug that misses refreshes the cache once and asks again', () => {
+  const at = shell.indexOf("    { key: 'app',");
+  assert.ok(at > 0, "the app route row was not found");
+  const open = shell.slice(at, shell.indexOf('\n      ready()', at));
+
+  assert.match(open, /if \(!v && u\.app && !this\._slugRefetched\)/,
+    'a missed slug must retry, and only for the slug form');
+  assert.match(open, /this\._slugRefetched = true/,
+    'the retry must be bounded to once per load, or a dead slug loops');
+  assert.match(open, /configRefreshing \? this\.configsSettled\(\) : this\.refreshConfigs\(\)/,
+    'a refresh already in flight is waited out; refreshConfigs() returns ' +
+    'immediately when one is running, so awaiting it would prove nothing');
+  assert.ok(open.lastIndexOf('appViewFromUrl') > open.indexOf('_slugRefetched'),
+    'the retry has to re-resolve AFTER the refresh, not reuse the first answer');
+  assert.match(open, /if \(v\) this\.goAppView\(v\); else this\.goDashboard\(\)/,
+    'a genuinely dead slug still lands on the estate rather than an empty frame');
+});

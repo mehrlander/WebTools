@@ -2707,6 +2707,20 @@ function app(){ return {
   // before the async crawl commits, so a plain reload lags a step; awaiting the
   // crawl first is what makes the new entry appear immediately). The estate
   // component reloads its cards off the dispatched event.
+  // Wait out a refresh ALREADY IN FLIGHT. refreshConfigs() returns immediately
+  // when one is running, so awaiting it there would prove nothing and the
+  // caller would retry against the same stale table it just missed on. Raced
+  // against a timeout because the in-flight run can finish between the caller's
+  // check and this listener, and a router that hangs is worse than one that
+  // falls back.
+  _slugRefetched: false,
+  configsSettled(ms = 8000){
+    return Promise.race([
+      new Promise(res => document.addEventListener('web-tools:configs-refreshed', res, { once: true })),
+      new Promise(res => setTimeout(res, ms)),
+    ]);
+  },
+
   async refreshConfigs(){
     if (this.configRefreshing || !this.hasToken()) return;
     this.configRefreshing = true;
@@ -5168,7 +5182,26 @@ function app(){ return {
     // resolves, so no minted link ever stops working.
     { key: 'app', when: u => !!(u.app || (u.appRepo && u.appPath)),
       async open(u){
-        const v = await this.appViewFromUrl(u);
+        let v = await this.appViewFromUrl(u);
+        // A SLUG THE CACHE CANNOT ANSWER IS USUALLY A CACHE ONE MANIFEST BEHIND,
+        // not a dead link. Slugs resolve out of the registry's config cache, so
+        // the first load after a repo edits its .web-tools.json asks a cache
+        // that predates the edit, misses, and lands on the estate. The refresh
+        // that would have answered it commits moments later, too late for the
+        // routing decision it just lost, and goDashboard's stamp has by then
+        // rewritten `?app=<slug>` to `?view=estate`, so reloading retries the
+        // wrong address and the reader cannot get back without the original
+        // link. Hit three times between 2026-09-07 and 2026-09-08, twice on one
+        // link, each time reported as "it didn't work".
+        //
+        // So a missed slug buys one forced refresh and one retry. Bounded: the
+        // guard fires at most once per load, and only a genuinely dead slug
+        // pays for it.
+        if (!v && u.app && !this._slugRefetched) {
+          this._slugRefetched = true;
+          await (this.configRefreshing ? this.configsSettled() : this.refreshConfigs());
+          v = await this.appViewFromUrl(u);
+        }
         // Captured HERE, not read at render time, and the ordering is the whole
         // reason: goAppView stamps, the stamp deletes `on` (it is in VIEW_KEYS),
         // and a render-time read would then find the fallback already gone. So
@@ -6735,6 +6768,27 @@ function app(){ return {
       title: on ? 'Hide the header and show the view alone (?shell=none)'
                 : 'Bring the header back, and its sidebar toggle with it',
       set: v => this.setHeader(v),
+    }];
+  },
+
+  // The SAME switch, on the launcher's long-press menu, because the Render tab
+  // is the wrong and only place for it on the view that needs it most. An app
+  // view opens at shellMode 'none' by design, so it arrives with no header on
+  // screen and no clue that a header exists; finding the way back meant knowing
+  // which of the drawer's four tabs holds it, and then spotting one word at the
+  // end of the width-preset row. Reported from a phone on 2026-09-08 by a
+  // reader who knew the control existed and still could not find it.
+  //
+  // fab.js's own description already claimed show-repo contributed this row,
+  // and it did not: nothing declared `menu` anywhere, so readPageMenu found
+  // none. The claim is now true rather than deleted, since the reason it gave
+  // was the right one.
+  get menu(){
+    const on = this.shellMode !== 'none';
+    return [{
+      label: on ? 'Hide the header' : 'Show the header',
+      icon: 'ph-layout',
+      run: () => this.setHeader(!on),
     }];
   },
 

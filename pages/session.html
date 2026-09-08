@@ -148,7 +148,14 @@
      every ancestor `overflow: visible` until the body clipped it. `min-h-` and
      not `h-`, so short content still fills the screen; branch.html is the same
      shape. The deck needs nothing here, since it locks
-     `documentElement.style.overflow` itself and restores what it found. -->
+     `documentElement.style.overflow` itself and restores what it found.
+
+     Document scroll is only half the shape the house style asks for, and this
+     page shipped for two days with the other half missing: `min-h-dvh` plus
+     STICKY CHROME (daisy-alpine rule 5). Nothing was sticky, so the tab row,
+     the outline's Cards chips and its export bar all scrolled away with the
+     head. session-brief pins them now; the numbers are in its own header. This
+     line is unchanged and stays that way. -->
 <body class="min-h-[100dvh] flex flex-col bg-base-100 text-base-content" x-data="sessionPage()" x-cloak>
 
   <!-- Stands down inside a frame, the courtesy branch.html and links.html pay
@@ -180,7 +187,7 @@
     Name a session above, or link straight to one:
     <code class="text-xs">#id=abc12345</code> &middot;
     <code class="text-xs">#branch=claude/some-branch</code>
-    <div class="mt-2 text-xs opacity-70">An id is the record's filename stem, eight hex characters; a branch opens its latest session.</div>
+    <div class="mt-2 text-xs opacity-70">An id is the eight hex characters that end the record's filename; a branch opens its latest session.</div>
   </div>
 
   <div x-show="busy" class="flex justify-center py-16">

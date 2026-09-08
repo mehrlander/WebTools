@@ -48,6 +48,38 @@ test('the body carries a link color, from the theme variable rather than a utili
   assert.ok(!/\[&_/.test(G.CSS), 'no arbitrary variants: this is a stylesheet, not a class list');
 });
 
+// A SELECTOR THAT MATCHES NOTHING LOOKS EXACTLY LIKE A RULE THAT WORKS, which
+// is why this is asserted against real elements rather than against the CSS
+// text. The rule was ".guide-body :not([data-md-scroll])>table", which needs an
+// element BETWEEN the body and the table, so a table at the top level of a
+// document, which is where most tables are, never matched: measured 2026-09-06
+// at 390px, a SNAGS.md table 398px wide inside a 358px pane, the pane scrolling
+// sideways and eating the horizontal gesture meant for the strip around it.
+test('a table scrolls itself at every depth, and defers where md-doc wrapped it', () => {
+  const d = new JSDOM('<!doctype html><html><body>' +
+    '<div class="guide-body">' +
+    '  <table id="top"></table>' +
+    '  <div><table id="nested"></table></div>' +
+    '  <div data-md-scroll><table id="wrapped"></table></div>' +
+    '</div></body></html>');
+  const $ = (id) => d.window.document.getElementById(id);
+  // The default: every table in the body is its own horizontal scroller.
+  for (const id of ['top', 'nested', 'wrapped'])
+    assert.ok($(id).matches('.guide-body table'), id + ' is reached by the default rule');
+  // The exception: one md-doc already wrapped keeps width:100% and stays a
+  // table, so a narrow one still stretches. One owner per table.
+  assert.ok($('wrapped').matches('.guide-body [data-md-scroll]>table'), 'the wrapped one opts out');
+  for (const id of ['top', 'nested'])
+    assert.ok(!$(id).matches('.guide-body [data-md-scroll]>table'), id + ' does not');
+  // And the shape that failed is gone as a RULE, not merely supplemented. The
+  // regex is anchored to a line start because the comment above the rule quotes
+  // the retired selector on purpose, and a bare search finds that instead.
+  assert.ok(!/^\.guide-body :not\(\[data-md-scroll\]\)>table/m.test(G.CSS),
+    'the parent-:not() form is retired, since it is the one that missed');
+  assert.match(G.CSS, /\.guide-body table\{[^}]*overflow-x:auto/,
+    'the default carries the scroller');
+});
+
 test('bodyClass names the shared base and the drawer modifier', () => {
   assert.equal(G.bodyClass('page'), 'guide-body');
   assert.equal(G.bodyClass('drawer'), 'guide-body guide-body-sm');

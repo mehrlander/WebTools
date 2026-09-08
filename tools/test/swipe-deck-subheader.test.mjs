@@ -112,3 +112,48 @@ test('the slot does not disturb the header the contents list hangs off', async (
   h.close();
   await tick(3);
 });
+
+// ── THE TITLE'S OWN SLOT ────────────────────────────────────────────────────
+//
+// A second place for chrome, and the difference from `actions` is what it
+// belongs to: an action belongs to the DECK and clusters with the others at
+// the right; a title mark belongs to the NAME. kits/file-deck.js hangs a
+// github menu there, because a github destination answers "which copy of this
+// file" and reads as part of the controls anywhere in the cluster, at either
+// end (tried both, 2026-09-07 and 08).
+test('a title mark sits inside the h1, and the crumb stays its adjacent sibling', async () => {
+  const h = window.swipeDeck.open({ count: 1, title: 'a.md', subtitle: 'lib · kits',
+                                    render: () => {} });
+  await tick();
+  const h1 = h.el.querySelector('.sd-header h1');
+  assert.equal(h1.textContent, 'a.md', 'the name, and nothing else, before any mark');
+  assert.ok(h.el.querySelector('h1 + p'), 'the crumb is the h1\'s adjacent sibling');
+
+  // WITH TEXT IN IT, deliberately. A mark is usually an icon and contributes
+  // no text, which makes `title` reading the whole h1 and reading the name
+  // alone indistinguishable: the mutation that widened it was silent until
+  // this mark said something (2026-09-08).
+  const mark = document.createElement('button');
+  mark.textContent = 'MARK';
+  mark.title = 'somewhere';
+  h.setTitleMark(mark);
+  await tick();
+  assert.ok(h1.contains(mark), 'the mark lands inside the title');
+  // A MARK MUST NOT CHANGE THE NAME. setTitle writes a span rather than the
+  // h1, so the two never overwrite each other, and `title` reads that span so
+  // a deck asking its own name back gets the name and not the chrome with it.
+  assert.equal(h.title, 'a.md', 'the name, without the mark: ' + h.title);
+  assert.ok(h.el.querySelector('h1 + p'), 'and the crumb is still adjacent');
+
+  h.setTitle('b.md');
+  await tick();
+  assert.equal(h.title, 'b.md', 'a retitle writes the name');
+  assert.ok(h1.contains(mark), 'and leaves the mark where it was, which is what a swipe needs');
+
+  h.setTitleMark(null);
+  await tick();
+  assert.ok(!h1.contains(mark), 'null empties the slot');
+  assert.equal(h1.textContent, 'b.md', 'and the h1 is the name again');
+  h.close();
+  await tick(3);
+});

@@ -15,7 +15,7 @@ lib/kits/compression.js,compression,Brotli/Gzip/Acorn wrappers + bookmarklet pac
 lib/kits/console.js,consoleKit,console retention + filter + subscribe layer.,115,yes,no,7,yes
 lib/kits/content-registry.js,ContentRegistry,"the epistemic content registry, read in the browser.",111,no,no,4,yes
 lib/kits/crawl-runs.js,CrawlRuns,The `runs` ring: the few facts about a crawl that its output cannot show.,89,no,no,2,yes
-lib/kits/csv.js,Csv,"CSV, small and shared.",54,no,no,6,yes
+lib/kits/csv.js,Csv,"CSV, small and shared.",54,no,no,7,yes
 lib/kits/data-payload.js,DataPayload,Reading a data toss.,190,no,no,4,yes
 lib/kits/data-shelf.js,dataShelf,shelf record schema + helpers.,62,no,no,1,yes
 lib/kits/dictate.js,Dictate,"voice input as a plain text buffer: start the engine, speak, and read `text` back.",1407,no,yes,10,yes
@@ -23,9 +23,9 @@ lib/kits/dock-split.js,dockSplit,the drag handle between two panes.,264,no,yes,5
 lib/kits/docx.js,docxKit,"WordprocessingML (.docx) preparation: what a Word file has to have done to it before a browser renderer draws it faithfully, and what it knows about itself…",497,no,no,1,yes
 lib/kits/estate-search.js,EstateSearch,"The estate's search calls, in one place, with one cache.",354,no,no,5,yes
 lib/kits/export.js,exporter,"export a page to a portable, self-resolving copy: ""download this page plus the data it read()s"" as one zip, optionally with its code inlined.",199,no,yes,8,yes
-lib/kits/file-deck.js,fileDeck,"a changeset's files, read one at a time.",371,no,no,10,yes
+lib/kits/file-deck.js,fileDeck,"a changeset's files, read one at a time.",478,no,no,10,yes
 lib/kits/github-links.js,GithubLinks,"the GitHub destinations for one repo, as menu rows.",98,no,no,3,yes
-lib/kits/guide-render.js,GuideRender,"a guide PR body, rendered as something you can walk.",289,no,no,7,yes
+lib/kits/guide-render.js,GuideRender,"a guide PR body, rendered as something you can walk.",296,no,no,8,yes
 lib/kits/io.js,io,,213,no,yes,19,yes
 lib/kits/land.js,Land,"where the reader was just sent, and how they get told.",260,no,yes,5,yes
 lib/kits/last-write.js,LastWrite,"the copy this page just committed, for the next fold",70,no,no,2,yes
@@ -52,13 +52,13 @@ lib/kits/row-menu.js,rowMenu,"a tap on a row, and what you can do with it",242,n
 lib/kits/session-export.js,sessionExport,"a session as a list of exchanges, plus the pure function that turns any part of one into markdown.",982,no,no,6,yes
 lib/kits/session-render.js,sessionRender,a session record as a readable conversation.,877,no,no,3,yes
 lib/kits/shorter-payload.js,ShorterPayload,Reading a shorter toss.,76,no,no,1,yes
-lib/kits/source-peek.js,SourcePeek,the hover card behind an exact-file GitHub jump-over.,477,yes,yes,10,yes
+lib/kits/source-peek.js,SourcePeek,the hover card behind an exact-file GitHub jump-over.,477,yes,yes,11,yes
 lib/kits/src-doc.js,srcDoc,"A RENDERED VIEW OF A SOURCE FILE SAYS SO, AND SAYS WHICH FILE.",118,no,no,8,yes
 lib/kits/stage-handoff.js,StageHandoff,"one paste, two documents",126,no,no,3,no
 lib/kits/standoff.js,Standoff,"The standoff annotation: its invariants, the six edits it admits, and the one serialization both of its writers must agree on.",471,no,no,1,yes
 lib/kits/subject-channel.js,subjectChannel,telling the FAB sidebar what you are looking at.,140,no,no,6,yes
 lib/kits/surface.js,Surface,"the surface envelope, in one place.",205,no,no,1,yes
-lib/kits/swipe-deck.js,swipeDeck,"the house swipe format: a snap-scrolling track of slides, and the fullscreen takeover that frames it.",1269,no,yes,17,yes
+lib/kits/swipe-deck.js,swipeDeck,"the house swipe format: a snap-scrolling track of slides, and the fullscreen takeover that frames it.",1383,no,yes,17,yes
 lib/kits/text-diff.js,textDiff,"patience diff over lines, plus word-level diff inside a changed line pair.",318,no,no,4,yes
 lib/kits/traffic.js,Traffic,"the pure read of what a page has pulled over the network, and the vocabulary the FAB's Traffic tab renders.",394,yes,no,3,yes
 lib/kits/treemap.js,treemap,pure logic for mapping a file tree as a treemap.,154,no,no,2,yes

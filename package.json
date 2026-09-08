@@ -43,6 +43,7 @@
     "test:traffic-states": "node tools/test/traffic-states.mjs",
     "test:tabstrip": "node tools/test/fab-tabstrip-geometry.mjs",
     "test:deck-dock": "node tools/test/deck-dock-reflow.mjs",
+    "test:session-chrome": "node tools/test/session-chrome-flow.mjs",
     "test:ask-fill": "node tools/test/chat-render-ask-fill.mjs",
     "test:deck-split": "node tools/test/deck-split-drag.mjs",
     "test:peek-link": "node tools/test/peek-head-link.mjs",
