@@ -127,6 +127,33 @@ const IDENT = {
   GIT_COMMITTER_NAME: 'showing-test', GIT_COMMITTER_EMAIL: 'showing-test@invalid',
 };
 
+// THE LINK THAT RESOLVES, RENDERS, AND SHOWS NOTHING, one level down from the
+// one this script exists to prevent. A page routing on its own hash opens on
+// its default without an address, and for branch.html and session.html that
+// default is the empty form. Emitted twice on 2026-09-05 and opened twice
+// before anyone worked out why.
+test('a page that routes on its own hash is warned about, and --at answers it', () => {
+  const bare = run('pages/branch.html');
+  assert.equal(bare.mechanism, 'toss-gh');
+  assert.ok(bare.warnings.some(w => /location\.hash/.test(w) && /--at/.test(w)),
+    'the warning names the risk and the flag: ' + JSON.stringify(bare.warnings));
+  assert.ok(!bare.links[0].url.includes('#gh=mehrlander/web-tools&pr='),
+    'and the bare link carries no address');
+
+  const at = run('pages/branch.html', ['--at', 'gh=owner/repo&pr=12']);
+  assert.ok(at.links[0].url.endsWith(':pages/branch.html#gh=owner/repo&pr=12'),
+    'the address rides as a trailing fragment, which the toss hands the page as its own hash');
+  assert.equal(at.warnings.filter(w => /location\.hash/.test(w)).length, 0,
+    'and the warning stands down once an address is given');
+});
+
+// The warning is scoped, not blanket: a file that reaches no hash-routing page
+// must not carry it, or it becomes noise every session learns to skip.
+test('a subject that reads no hash is not warned about', () => {
+  const d = run('docs/showing.md');
+  assert.equal(d.warnings.filter(w => /location\.hash/.test(w)).length, 0);
+});
+
 test('a diff that FAILS is never reported as a diff that found nothing', () => {
   const emptyTree = execFileSync('git', ['hash-object', '-t', 'tree', '/dev/null'],
     { cwd: repoRoot, encoding: 'utf8' }).trim();

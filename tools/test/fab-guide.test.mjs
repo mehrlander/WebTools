@@ -252,6 +252,20 @@ test('the github mark is a menu over the ref on display, with the file rows firs
   delete window.GithubLinks;
 });
 
+// The picker ARRIVES rather than being there: its mount is gated on
+// pickerReady, which the fab sets after asking its loader for
+// path-picker.js, so it lands a tick after `open` rather than with it.
+// Waiting for it is the honest assertion; a fixed tick count would be a
+// guess that goes stale the next time the gate moves.
+async function awaitPicker(d, host) {
+  for (let i = 0; i < 40; i++) {
+    if (d._picker && d._picker()) return d._picker();
+    if (host && host.querySelector('[x-data^="pathPicker"]')) return true;
+    await tick(1);
+  }
+  return null;
+}
+
 test('the path row is a picker, and a picked file is a request to render it', async () => {
   const d = await mountFab();
   d.viaToss = true;
@@ -263,7 +277,7 @@ test('the path row is a picker, and a picked file is a request to render it', as
 
   // The picker really mounts and gets its GH from the fab rather than from
   // Alpine's browser store.
-  const picker = d._picker();
+  const picker = await awaitPicker(d);
   assert.ok(picker, 'pathPicker mounted inside the render tab');
 
   // ROOTS: this repo at the ref on display, first and carrying its ref, then
@@ -389,6 +403,7 @@ test('a real tap on the trigger opens the tree and leaves it open', async () => 
   const d = Alpine.$data(host.firstElementChild);
   d.open = true;            // the body, the trigger in it, is built on first open
   await tick(3);
+  await awaitPicker(d, host);
 
   const trigger = host.querySelector('button[class*="group/id"]');
   assert.ok(trigger, 'the repo/path block is one trigger');

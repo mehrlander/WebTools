@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Lab</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔬</text></svg>">
+<link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
+
+<!--
+  text-lab.html — the estate's text-analysis and NLP work as one reading
+  surface. Four panes over one subject, in the order a reader wants them: what
+  we tried, what we read with, what we read against, what came out.
+
+  Named Text LAB, not Text Instruments. That name collided twice: with Texas
+  Instruments on sight, which no amount of context undoes, and with this page's
+  own `instruments` tab, so the whole and one of its four parts wore one word.
+  `-lab` is the suffix the tools themselves already use (termlab, registerlab,
+  entitylab, concept-lab), so it names the whole without renaming a part.
+
+    probes       projects/local-models/probes/probes.json. One record per
+                 bounded question: question, method, corpus, result, verdict,
+                 what it opens. Failures are recorded at the same weight as
+                 successes, so the standing counts lead the header rather than
+                 being tucked behind a total.
+    instruments  projects/local-models/INSTRUMENTS.md, rendered. Organised by
+                 unit of analysis (word, term of art, named entity, speaker,
+                 sentence, document), because that is the question a session
+                 actually arrives with: I have text at this grain.
+    resources    projects/local-models/resources.csv, the word lists and norms
+                 tables, grouped by whether the estate holds one, fetches it at
+                 run time, or does not have it. A coverage grid leads the pane:
+                 property by state, so the empty cells read as loudly as the
+                 full ones.
+    runs         the five dated runs, each pointing at whatever it actually
+                 produced. A run with no page says "no page" instead of
+                 pretending, which is the same honesty the probe log keeps.
+
+  Data contract. Everything is read live from mehrlander/home through the
+  viewer's token (gh-api + gh-auth). This page holds no copy of the probe
+  records or the register, so it cannot drift from them; the cost is that home
+  is private, so a tokenless reader meets the auth prompt, exactly as
+  links.html does over the same repo.
+
+  Standing is derived here from the first sentence of the verdict, by the same
+  rule probes/build-index.py uses to derive it for the generated README. Two
+  readings of one field, so the page and the README cannot disagree.
+
+  Colour appears on one thing: a probe's standing. Nothing else takes an
+  accent, so any colour on this page is a verdict and nothing else. The four
+  values are a scale, not four decorations.
+
+  Two params:
+    ?use=<ref>   pins this page's own lib chain to a ref.
+    ?data=<ref>  pins which ref of home is read (defaults to main).
+-->
+
+<style>[x-cloak]{display:none!important}</style>
+
+<script type="module">
+ try {
+  const params = new URLSearchParams(location.search);
+  const ref = params.get('use');
+  if (ref) {
+    window.__ghBlobBoot = { repo: 'mehrlander/web-tools', ref };
+    const r = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/lib/gh-api.js`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`?use=${ref}: could not fetch gh-api.js (HTTP ${r.status})`);
+    const u = URL.createObjectURL(new Blob([await r.text()], { type: 'text/javascript' }));
+    try { await import(u); } finally { URL.revokeObjectURL(u); }
+  } else {
+    await import('https://cdn.jsdelivr.net/gh/mehrlander/web-tools@main/lib/gh-api.js');
+  }
+  await gh.load('gh-auth.js');
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('textInstruments', () => ({
+      REPO: 'mehrlander/home',
+      ROOT: 'projects/local-models',
+      TOSS: 'https://mehrlander.github.io/web-tools/pages/toss-render.html',
+      DATA_REF: params.get('data') || 'main',
+
+      PANES: ['probes', 'instruments', 'resources', 'runs'],
+
+      // The page's only coloured dimension.
+      STANDINGS: {
+        worked: { bar: 'bg-success', text: 'text-success' },
+        mixed:  { bar: 'bg-warning', text: 'text-warning' },
+        failed: { bar: 'bg-error',   text: 'text-error'   },
+        open:   { bar: 'bg-info',    text: 'text-info'    },
+      },
+
+      // Dated runs, newest first. `page` is what a reader can open; a run that
+      // produced results and prose but no page carries an empty one, and the
+      // row says so rather than linking its folder twice.
+      RUNS: [
+        { date: '2026-08-26', title: 'The scare-quote test',
+          line: 'Whether a reader\'s urge to put quotation marks round a term detects the term doing unearned work.',
+          dir: 'projects/local-models/runs/2026-08-26-scare-quote', page: '' },
+        { date: '2026-08-19', title: 'Model voice',
+          line: 'Which words and phrases each speaker owns, and which phrases every model overuses against a human control corpus.',
+          dir: 'projects/local-models/runs/2026-08-19-model-voice',
+          page: 'projects/local-models/runs/2026-08-19-model-voice/report.html' },
+        { date: '2026-08-18', title: 'Claim strength',
+          line: 'Measuring how far a claim reaches and how sharply it resolves, and which lexical features carry neither.',
+          dir: 'projects/local-models/runs/2026-08-18-claim-strength',
+          page: 'projects/local-models/runs/2026-08-18-claim-strength/report.html' },
+        { date: '2026-08-04', title: 'Pension classification',
+          line: 'A local open-weight model set against Haiku\'s reads of the same pension bills.',
+          dir: 'projects/local-models/runs/2026-08-04-pension-classification',
+          page: 'projects/local-models/runs/2026-08-04-pension-classification/deck.html' },
+        { date: '2026-06-09', title: 'Document audit',
+          line: 'Reading one document unit by unit: redundancy, drift, and what a receipt cannot see.',
+          dir: 'projects/doc-audit', page: 'projects/doc-audit/demo/index.html' },
+      ],
+
+      // A resource has coverage to assess and no inference to run, which is the
+      // distinction local-models/README.md draws against an instrument, and the
+      // reason these are a separate register rather than rows in INSTRUMENTS.md.
+      // held: committed somewhere in the estate. fetched: depended on and
+      // downloaded at run time, so no version is recorded anywhere. absent:
+      // named in the field and not used here, which is the shopping list.
+      STATES: {
+        held:    { text: 'text-success' },
+        fetched: { text: 'text-warning' },
+        // Muted rather than full-strength: absent has no accent of its own (it
+        // is neither good nor bad, just unacquired), and at full weight plain
+        // base-content outshouted both coloured states and made the shopping
+        // list the loudest thing in the coverage grid.
+        absent:  { text: 'text-base-content/60' },
+      },
+
+      home: null,
+      pane: params.get('pane') || 'probes',
+      probes: [],
+      concept: '',
+      filterStanding: '',
+      open: null,
+      guideHtml: '',
+      guideClass: '',
+      resources: [],
+      rate: '',
+      filterState: '',
+      loading: true,
+      error: '',
+      framed: window.self !== window.top,
+
+      async init() {
+        document.getElementById('boot')?.remove();
+        this.home = new window.GH({ token: window.TOKEN || '', repo: this.REPO, ref: this.DATA_REF });
+        try {
+          const res = await this.home.get(`${this.ROOT}/probes/probes.json`);
+          this.probes = JSON.parse(res.text).probes
+            .sort((a, b) => (b.date + b.id).localeCompare(a.date + a.id));
+        } catch (e) {
+          this.error = `${e.message || e} — ${this.REPO}@${this.DATA_REF}`;
+        }
+        this.loading = false;
+        // Whatever ?pane= asked for, not just the one that used to need it:
+        // each pane's own guard makes the call a no-op when it has nothing to
+        // fetch, so naming a single pane here was a bug waiting for the second.
+        this.showPane(this.pane);
+      },
+
+      // build-index.py's rule, on one probe's own verdict: open wins, then
+      // worked, then failed, and anything else is mixed.
+      standingOf(p) {
+        const v = (p.verdict || '').split('.')[0].toLowerCase();
+        return v.startsWith('open') ? 'open'
+             : v.startsWith('work') ? 'worked'
+             : v.startsWith('fail') ? 'failed' : 'mixed';
+      },
+
+      get counts() {
+        const c = { worked: 0, mixed: 0, failed: 0, open: 0 };
+        this.probes.forEach(p => c[this.standingOf(p)]++);
+        return c;
+      },
+
+      // The field's own vocabulary, which is what the log is indexed by, so a
+      // term from the literature lands somewhere.
+      get concepts() {
+        const m = new Map();
+        this.probes.forEach(p => p.concepts.forEach(c => m.set(c, (m.get(c) || 0) + 1)));
+        return [...m].sort((a, b) => a[0].localeCompare(b[0]));
+      },
+
+      get shown() {
+        return this.probes.filter(p =>
+          (!this.filterStanding || this.standingOf(p) === this.filterStanding)
+          && (!this.concept || p.concepts.includes(this.concept)));
+      },
+
+      // Sixteen probes are three working sessions, not sixteen loose questions,
+      // and ten of them share one date. Grouping turns that repetition into
+      // structure and takes the date off every row, where it was the same
+      // string ten times over.
+      probeGroups() {
+        const out = [];
+        for (const p of this.shown) {
+          const last = out[out.length - 1];
+          if (last && last.date === p.date) last.items.push(p);
+          else out.push({ date: p.date, items: [p] });
+        }
+        return out;
+      },
+
+      // The two render kits load here rather than in the boot chain. The
+      // register is one pane of three, and a kit that fails to arrive must not
+      // be able to blank the other two: everything on this page sits inside one
+      // x-cloak root, so anything that stops Alpine starting renders as a white
+      // page with nothing to read.
+      async showPane(name) {
+        this.pane = name;
+        try {
+          if (name === 'instruments' && !this.guideHtml) {
+            await gh.load('kits/guide-render.js');
+            await gh.load('kits/source-peek.js');
+            const res = await this.home.get(`${this.ROOT}/INSTRUMENTS.md`);
+            await window.GuideRender.needMarked();
+            // bodyClass() injects the stylesheet as a side effect, so this
+            // assignment is what styles the pane, not just what labels it.
+            this.guideClass = window.GuideRender.bodyClass('page');
+            this.guideHtml = window.GuideRender.render(
+              window.SourcePeek.fenceFrontmatter(res.text),
+              { knownRefs: [this.DATA_REF, 'main'] }).html;
+          }
+          if (name === 'resources' && !this.resources.length) {
+            await gh.load('kits/csv.js');
+            const res = await this.home.get(`${this.ROOT}/resources.csv`);
+            this.resources = window.Csv.rows(res.text);
+          }
+        } catch (e) {
+          this.error = `${name}: ${e.message || e}`;
+        }
+      },
+
+      get resCounts() {
+        const c = { held: 0, fetched: 0, absent: 0 };
+        this.resources.forEach(r => c[r.state]++);
+        return c;
+      },
+      // What each resource rates: the question a session arrives with is "what
+      // do we have that carries concreteness", not "what is in concept-lab".
+      get rates() {
+        const m = new Map();
+        this.resources.forEach(r => this.list(r.rates).forEach(x => m.set(x, (m.get(x) || 0) + 1)));
+        return [...m].sort((a, b) => a[0].localeCompare(b[0]));
+      },
+      get shownResources() {
+        return this.resources.filter(r =>
+          (!this.filterState || r.state === this.filterState)
+          && (!this.rate || this.list(r.rates).includes(this.rate)));
+      },
+      resGroups() {
+        return ['held', 'fetched', 'absent']
+          .map(state => ({ state, items: this.shownResources.filter(r => r.state === state) }))
+          .filter(g => g.items.length);
+      },
+
+      // What the pane is actually for, in one grid: for each property a word
+      // can be rated on, how many resources carry it and in which state. It
+      // answers "can we rate valence" (no) and "how many ways can we rate
+      // frequency" (four) without reading twenty-three rows. A matrix rather
+      // than a row of tiles, because the comparison across two axes IS the
+      // finding: the absent column is where the shopping list lives.
+      get matrix() {
+        return this.rates.map(([name]) => {
+          const of = s => this.resources.filter(r =>
+            r.state === s && this.list(r.rates).includes(name)).length;
+          return { name, held: of('held'), fetched: of('fetched'), absent: of('absent') };
+        });
+      },
+      list(s) { return window.Csv ? window.Csv.list(s) : [] },
+
+      // Four locator forms, and one of them deliberately has no link: an nltk
+      // download id names a corpus, not a page.
+      resourceUrl(loc) {
+        if (!loc) return '';
+        if (/^https?:/.test(loc)) return loc;
+        if (loc.startsWith('npm:')) return `https://www.npmjs.com/package/${loc.slice(4)}`;
+        if (loc.startsWith('pip:')) return `https://pypi.org/project/${loc.slice(4)}/`;
+        if (loc.startsWith('nltk:')) return '';
+        const [repo, path] = loc.split(':');
+        const ref = repo === this.REPO ? this.DATA_REF : 'main';
+        return `https://github.com/${repo}/blob/${ref}/${path}`;
+      },
+      resourceLabel(loc) {
+        if (!loc) return '';
+        if (/^https?:/.test(loc)) return new URL(loc).hostname;
+        if (/^(npm|pip|nltk):/.test(loc)) return loc;
+        return loc.split('/').pop();
+      },
+
+      // An artifact is either an absolute URL or a path relative to probes/.
+      // The relative form resolves into a blob at the ref being read, so the
+      // link is correct from wherever the page was opened.
+      artifactUrl(a) {
+        if (/^https?:/.test(a)) return a;
+        const out = [];
+        for (const seg of `${this.ROOT}/probes/${a}`.split('/')) {
+          if (seg === '..') out.pop();
+          else if (seg && seg !== '.') out.push(seg);
+        }
+        return `https://github.com/${this.REPO}/blob/${this.DATA_REF}/${out.join('/')}`;
+      },
+      artifactName(a) { return a.split('/').filter(Boolean).pop() },
+
+      tossUrl(path) { return `${this.TOSS}#gh=${this.REPO}@${this.DATA_REF}:${path}` },
+      treeUrl(path) { return `https://github.com/${this.REPO}/tree/${this.DATA_REF}/${path}` },
+      shut() { document.activeElement?.blur() },
+    }));
+  });
+
+  await gh.load('alpine-bundle.js');   // starts Alpine
+ } catch (e) {
+  // Without this the page has no way to say anything. The boot chain runs
+  // before Alpine, and every element is inside the x-cloak root, so a rejected
+  // await left a blank white page carrying no clue as to which step failed.
+  const b = document.getElementById('boot');
+  if (b) b.textContent = `boot failed at ${location.hostname}: ${e.message || e}`;
+  throw e;
+ }
+</script>
+</head>
+
+<body class="bg-base-100 min-h-dvh text-base-content">
+
+<!-- Sits outside the cloaked root and is removed by init(), so the page always
+     says something: booting, or which step failed. -->
+<div id="boot" class="p-6 font-mono text-sm opacity-40">loading…</div>
+
+<div x-data="textInstruments" x-cloak>
+
+  <!-- ── chrome ───────────────────────────────────────────────────────────
+       Sticky rather than fixed: this page is a tenant, embedded as an app
+       view in show-repo, and a fixed root measures against the outer viewport
+       inside a narrower frame. -->
+  <!-- TWO BANDS, not one wrapping row.
+       The header used to put the title, the tabs, the counts and a dropdown in
+       a single flex-wrap line. On a phone that stacked into three rows of
+       identical lowercase monospace at one size, and four grey words at the top
+       of a framed page read as a stylesheet that failed to load rather than as
+       chrome. The bands separate the two kinds of control: what you are looking
+       at, then what you are filtering it by. -->
+  <header class="sticky top-0 z-20 bg-base-100 border-b border-base-300">
+
+    <div class="px-5 sm:px-7 flex items-center gap-x-4 sm:gap-x-6 overflow-x-auto">
+      <h1 x-show="!framed" class="font-serif text-xl sm:text-2xl tracking-tight py-2.5 shrink-0">Text Lab</h1>
+      <nav class="flex gap-4 sm:gap-6 text-sm shrink-0">
+        <template x-for="key in PANES" :key="key">
+          <button class="py-2.5 -mb-px border-b-2 whitespace-nowrap transition-colors"
+                  :class="pane === key ? 'border-base-content font-medium' : 'border-transparent opacity-40 hover:opacity-70'"
+                  @click="showPane(key)" x-text="key"></button>
+        </template>
+      </nav>
+    </div>
+
+    <!-- The counts are the filter: a number that does nothing is a stat card
+         with the border removed. The number sits tight against its own word,
+         with the gap BETWEEN pairs five times the gap inside one, because the
+         old spacing was equal both ways and four buttons read as one sentence
+         ("4 worked 6 mixed 5 failed 1 open"). -->
+    <div class="px-5 sm:px-7 py-2 border-t border-base-200 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs">
+
+      <div x-show="pane === 'probes'" class="flex items-baseline gap-x-5">
+        <template x-for="key in ['worked','mixed','failed','open']" :key="key">
+          <button class="hover:opacity-100 transition-opacity whitespace-nowrap"
+                  :class="filterStanding === key ? [STANDINGS[key].text, 'opacity-100', 'font-medium'] : 'opacity-40'"
+                  @click="filterStanding = filterStanding === key ? '' : key">
+            <span class="tabular-nums" x-text="counts[key]"></span><span class="ml-1" x-text="key"></span>
+          </button>
+        </template>
+      </div>
+
+      <div x-show="pane === 'resources'" class="flex items-baseline gap-x-5">
+        <template x-for="key in ['held','fetched','absent']" :key="key">
+          <button class="hover:opacity-100 transition-opacity whitespace-nowrap"
+                  :class="filterState === key ? [STATES[key].text, 'opacity-100', 'font-medium'] : 'opacity-40'"
+                  @click="filterState = filterState === key ? '' : key">
+            <span class="tabular-nums" x-text="resCounts[key]"></span><span class="ml-1" x-text="key"></span>
+          </button>
+        </template>
+      </div>
+
+      <div class="grow"></div>
+
+      <div x-show="pane === 'resources'" class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="font-mono text-xs opacity-40 hover:opacity-100 transition-opacity"
+             :class="rate && 'opacity-100 font-medium'">
+          <span x-text="rate || 'all properties'"></span>
+          <i class="ph ph-caret-down"></i>
+        </div>
+        <ul tabindex="0" class="dropdown-content menu flex-nowrap bg-base-100 border border-base-300 rounded-box z-30 w-72 max-h-[70vh] overflow-y-auto shadow-lg">
+          <li><a class="font-mono text-xs" @click="rate = ''; shut()">all properties</a></li>
+          <template x-for="[name, n] in rates" :key="name">
+            <li>
+              <a class="font-mono text-xs justify-between" :class="rate === name && 'font-medium'"
+                 @click="rate = name; shut()">
+                <span x-text="name"></span>
+                <span class="opacity-40" x-text="n"></span>
+              </a>
+            </li>
+          </template>
+        </ul>
+      </div>
+
+      <div x-show="pane === 'probes'" class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="font-mono text-xs opacity-40 hover:opacity-100 transition-opacity"
+             :class="concept && 'opacity-100 font-medium'">
+          <span x-text="concept || 'all concepts'"></span>
+          <i class="ph ph-caret-down"></i>
+        </div>
+        <ul tabindex="0" class="dropdown-content menu flex-nowrap bg-base-100 border border-base-300 rounded-box z-30 w-72 max-h-[70vh] overflow-y-auto shadow-lg">
+          <li><a class="font-mono text-xs" @click="concept = ''; shut()">all concepts</a></li>
+          <template x-for="[name, n] in concepts" :key="name">
+            <li>
+              <a class="font-mono text-xs justify-between" :class="concept === name && 'font-medium'"
+                 @click="concept = name; shut()">
+                <span x-text="name"></span>
+                <span class="opacity-40" x-text="n"></span>
+              </a>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <main class="px-5 sm:px-7 py-7 max-w-[72rem] mx-auto">
+
+    <div x-show="loading" class="py-24 text-center">
+      <span class="loading loading-dots loading-md opacity-20"></span>
+    </div>
+    <div x-show="error" class="font-mono text-sm text-error py-6" x-text="error"></div>
+
+    <!-- ── probes ─────────────────────────────────────────────────────── -->
+    <section x-show="pane === 'probes' && !loading">
+      <template x-for="g in probeGroups()" :key="g.date">
+       <section class="mb-9">
+        <h2 class="font-mono text-xs uppercase tracking-wide opacity-40 pb-1 border-b border-base-300">
+          <span x-text="g.date"></span>
+          <span class="ml-2" x-text="g.items.length + (g.items.length === 1 ? ' probe' : ' probes')"></span>
+        </h2>
+
+        <template x-for="p in g.items" :key="p.id">
+        <article class="border-b border-base-200 py-5">
+
+          <button class="w-full text-left flex items-start gap-3" @click="open = open === p.id ? null : p.id">
+            <span class="mt-2.5 w-1 h-5 rounded-sm shrink-0" :class="STANDINGS[standingOf(p)].bar"></span>
+            <span class="grow min-w-0">
+              <span class="block text-lg leading-7 text-pretty" x-text="p.question"></span>
+              <!-- The concepts belong on the collapsed row: they are the field's
+                   own vocabulary and the thing the header's filter selects on,
+                   so keeping them behind a tap left that filter with no visible
+                   referent and every row looking alike. -->
+              <span class="block mt-1 font-mono text-xs opacity-40 truncate">
+                <span :class="STANDINGS[standingOf(p)].text" x-text="standingOf(p)"></span>
+                <span class="ml-2" x-text="p.concepts.join(' · ')"></span>
+              </span>
+            </span>
+            <i class="ph shrink-0 mt-2 opacity-30" :class="open === p.id ? 'ph-caret-down' : 'ph-caret-right'"></i>
+          </button>
+
+          <div x-show="open === p.id" class="pl-4 mt-4 grid gap-4">
+            <template x-for="field in [['Method', p.method], ['Corpus', p.corpus], ['Result', p.result], ['Verdict', p.verdict], ['Opens', p.opens]]" :key="field[0]">
+              <div x-show="!!field[1]">
+                <div class="font-mono text-xs uppercase tracking-wide opacity-40" x-text="field[0]"></div>
+                <p class="text-lg leading-7 text-pretty mt-0.5" x-text="field[1]"></p>
+              </div>
+            </template>
+
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-xs pt-1">
+              <template x-for="a in p.artifacts" :key="a">
+                <a class="opacity-40 hover:opacity-100 transition-opacity"
+                   :href="artifactUrl(a)" target="_blank" rel="noopener">
+                  <span x-text="artifactName(a)"></span><i class="ph ph-arrow-square-out ml-1"></i>
+                </a>
+              </template>
+              <span class="opacity-40" x-show="!!p.cost">cost: <span x-text="p.cost"></span></span>
+              <span class="opacity-30" x-text="p.id"></span>
+            </div>
+          </div>
+        </article>
+        </template>
+       </section>
+      </template>
+
+      <p x-show="!shown.length && !error" class="py-16 text-center font-mono text-xs opacity-40">
+        no probe carries that combination
+      </p>
+    </section>
+
+    <!-- ── instruments ────────────────────────────────────────────────── -->
+    <section x-show="pane === 'instruments'">
+      <div x-show="!guideHtml" class="py-24 text-center">
+        <span class="loading loading-dots loading-md opacity-20"></span>
+      </div>
+      <div :class="guideClass" x-html="guideHtml"></div>
+    </section>
+
+    <!-- ── resources ──────────────────────────────────────────────────────
+         Grouped by state, so the state word appears once per group instead of
+         once per row. That is also why no row carries a coloured bar the way a
+         probe does: inside a group every row would wear the same one, and
+         colour that repeats a heading is decoration. -->
+    <section x-show="pane === 'resources'">
+      <div x-show="!resources.length" class="py-24 text-center">
+        <span class="loading loading-dots loading-md opacity-20"></span>
+      </div>
+
+      <!-- Coverage, before the list. One row per property a word can be rated
+           on, one column per state, so the empty cells are as legible as the
+           full ones: the absent column read down is the shopping list. Tapping
+           a row filters the list below to that property. -->
+      <div x-show="resources.length" class="mb-10 overflow-x-auto">
+        <table class="font-mono text-xs">
+          <thead>
+            <tr class="opacity-40">
+              <th class="text-left font-normal pb-1 pr-6">property</th>
+              <template x-for="s in ['held','fetched','absent']" :key="s">
+                <th class="font-normal pb-1 px-3 w-16" x-text="s"></th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="row in matrix" :key="row.name">
+              <tr class="border-t border-base-200 cursor-pointer hover:bg-base-200"
+                  @click="rate = rate === row.name ? '' : row.name">
+                <td class="py-1.5 pr-6 whitespace-nowrap"
+                    :class="rate === row.name ? 'font-medium' : 'opacity-70'" x-text="row.name"></td>
+                <template x-for="s in ['held','fetched','absent']" :key="s">
+                  <td class="py-1.5 px-3 text-center tabular-nums"
+                      :class="row[s] ? STATES[s].text : 'opacity-20'"
+                      x-text="row[s] || '·'"></td>
+                </template>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <template x-for="g in resGroups()" :key="g.state">
+        <section class="mb-10">
+          <h2 class="font-mono text-xs uppercase tracking-wide mb-1" :class="STATES[g.state].text">
+            <span x-text="g.state"></span>
+            <span class="opacity-40" x-text="g.items.length"></span>
+          </h2>
+
+          <template x-for="r in g.items" :key="r.id">
+            <article class="border-t border-base-300 py-4">
+              <div class="flex items-baseline gap-4">
+                <div class="text-lg leading-7 font-medium grow min-w-0" x-text="r.name"></div>
+                <div class="font-mono text-xs opacity-40 shrink-0" x-show="!!r.rows" x-text="(+r.rows).toLocaleString() + ' rows'"></div>
+                <a class="font-mono text-xs opacity-40 hover:opacity-100 transition-opacity shrink-0"
+                   x-show="!!resourceUrl(r.locator)" :href="resourceUrl(r.locator)" target="_blank" rel="noopener">
+                  <span x-text="resourceLabel(r.locator)"></span><i class="ph ph-arrow-square-out ml-1"></i>
+                </a>
+                <span class="font-mono text-xs opacity-30 shrink-0"
+                      x-show="!!r.locator && !resourceUrl(r.locator)" x-text="r.locator"></span>
+              </div>
+
+              <p class="text-lg leading-7 text-pretty mt-0.5" x-text="r.note"></p>
+
+              <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-xs mt-2">
+                <template x-for="p in list(r.rates)" :key="p">
+                  <button class="opacity-40 hover:opacity-100 underline decoration-dotted underline-offset-2 transition-opacity"
+                          @click="rate = p" x-text="p"></button>
+                </template>
+                <span class="opacity-30" x-text="list(r.unit).join(', ')"></span>
+                <span class="opacity-30" x-show="!!r.source" x-text="r.source"></span>
+              </div>
+            </article>
+          </template>
+        </section>
+      </template>
+
+      <p x-show="resources.length && !shownResources.length" class="py-16 text-center font-mono text-xs opacity-40">
+        no resource carries that combination
+      </p>
+    </section>
+
+    <!-- ── runs ───────────────────────────────────────────────────────── -->
+    <section x-show="pane === 'runs'">
+      <template x-for="r in RUNS" :key="r.dir">
+        <article class="border-b border-base-300 py-5 flex items-start gap-5">
+          <div class="grow min-w-0">
+            <div class="text-lg leading-7 font-medium text-balance" x-text="r.title"></div>
+            <div class="text-lg leading-7 text-pretty" x-text="r.line"></div>
+            <div class="mt-1 font-mono text-xs opacity-40" x-text="r.date"></div>
+          </div>
+          <div class="flex flex-col items-end gap-1 font-mono text-xs shrink-0">
+            <a class="opacity-40 hover:opacity-100 transition-opacity"
+               :href="treeUrl(r.dir)" target="_blank" rel="noopener">files<i class="ph ph-arrow-square-out ml-1"></i></a>
+            <a x-show="!!r.page" class="opacity-40 hover:opacity-100 transition-opacity"
+               :href="tossUrl(r.page)" target="_blank" rel="noopener">open<i class="ph ph-arrow-square-out ml-1"></i></a>
+            <span x-show="!r.page" class="opacity-30">no page</span>
+          </div>
+        </article>
+      </template>
+    </section>
+
+  </main>
+</div>
+
+</body>
+</html>

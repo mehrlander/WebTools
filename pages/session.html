@@ -64,27 +64,75 @@
   window.__depsReady = new Promise(r => { window.__depsDone = r; });
 </script>
 <script type="module">
-  const ref = new URLSearchParams(location.search).get('use');
-  if (ref) {
-    const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
-    if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
-    const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
-    try { await import(url); } finally { URL.revokeObjectURL(url); }
-  } else {
-    await import('../dist/web-tools.js');
-  }
-  // proof.js backs chat-render's sandboxed Render frames; swipe-deck owns the
-  // track and the takeover; chat-render renders a turn. session-render sits on
-  // all three, and session-export reads session-render, so the chain is strictly
-  // ordered from the bottom up. kits/claude-mark.js is the fourth and is not
-  // listed: gh-boot carries it as standing equipment, so it is already here.
+  // ── A BOOT FAILURE HAS TO SAY SO, because otherwise it says nothing ───────
+  //
+  // The body carries x-cloak and the style block below hides a cloaked element
+  // outright, so Alpine removing that attribute is the only thing that ever
+  // reveals this page. A throw anywhere in this script means Alpine never
+  // starts, the attribute never comes off, and the reader gets a WHITE PAGE
+  // with the real message sitting in a console no phone opens.
+  //
+  // Measured 2026-09-06 on a handed-over `?use=` link whose ref was mistyped:
+  // the fetch 404s, this script throws exactly the right sentence, and the page
+  // is indistinguishable from a broken one. A bad LINK and a broken PAGE have
+  // to look different or every bad link costs a round trip.
+  //
+  // Inline styles, and no framework: the point of this path is that the page's
+  // machinery did not arrive, so reporting it must not depend on any of it.
+  // Tailwind's browser build may not have run, and daisyUI's classes ride a
+  // stylesheet that is loaded separately and may have failed for the same
+  // reason the bundle did.
+  const bootFailed = (e) => {
+    const ref = new URLSearchParams(location.search).get('use');
+    document.body?.removeAttribute('x-cloak');
+    const box = document.createElement('div');
+    box.setAttribute('role', 'alert');
+    box.style.cssText = 'margin:2rem auto;max-width:34rem;padding:1rem 1.25rem;'
+      + 'border:1px solid #d9dee3;border-radius:.75rem;background:#fff;'
+      + 'font:14px/1.55 system-ui,sans-serif;color:#1f2937';
+    const h = document.createElement('div');
+    h.style.cssText = 'font-weight:600;margin-bottom:.4rem';
+    h.textContent = 'This page could not start.';
+    const why = document.createElement('div');
+    why.textContent = e?.message || String(e);
+    const hint = document.createElement('div');
+    hint.style.cssText = 'margin-top:.6rem;opacity:.7';
+    // The ref is echoed because a MISTYPED one is the common case and it is the
+    // one thing the reader can check without a console.
+    hint.textContent = ref
+      ? 'The ?use= ref this link carries is "' + ref + '". If that commit does not '
+        + 'exist or is not pushed, drop ?use= to run the deployed code instead.'
+      : 'Reload, or open the page without any query string.';
+    box.append(h, why, hint);
+    document.body?.replaceChildren(box);
+  };
+
   try {
-    await gh.load('kits/proof.js');
-    await gh.load('kits/swipe-deck.js');
-    await gh.load('kits/chat-render.js');
-    await gh.load('kits/session-render.js');
-    await gh.load('kits/session-export.js');
-  } finally { window.__depsDone(); }
+    const ref = new URLSearchParams(location.search).get('use');
+    if (ref) {
+      const src = await fetch(`https://raw.githubusercontent.com/mehrlander/web-tools/${ref}/dist/web-tools.js`, { cache: 'no-store' });
+      if (!src.ok) throw new Error(`?use=${ref}: could not fetch the bundle (HTTP ${src.status})`);
+      const url = URL.createObjectURL(new Blob([await src.text()], { type: 'text/javascript' }));
+      try { await import(url); } finally { URL.revokeObjectURL(url); }
+    } else {
+      await import('../dist/web-tools.js');
+    }
+    // proof.js backs chat-render's sandboxed Render frames; swipe-deck owns the
+    // track and the takeover; chat-render renders a turn. session-render sits on
+    // all three, and session-export reads session-render, so the chain is strictly
+    // ordered from the bottom up. kits/claude-mark.js is the fourth and is not
+    // listed: gh-boot carries it as standing equipment, so it is already here.
+    try {
+      await gh.load('kits/proof.js');
+      await gh.load('kits/swipe-deck.js');
+      await gh.load('kits/chat-render.js');
+      await gh.load('kits/session-render.js');
+      await gh.load('kits/session-export.js');
+    } finally { window.__depsDone(); }
+  } catch (e) {
+    bootFailed(e);
+    throw e;                 // and the console still gets the stack
+  }
 </script>
 <style>
   [x-cloak]{display:none!important}
@@ -100,7 +148,14 @@
      every ancestor `overflow: visible` until the body clipped it. `min-h-` and
      not `h-`, so short content still fills the screen; branch.html is the same
      shape. The deck needs nothing here, since it locks
-     `documentElement.style.overflow` itself and restores what it found. -->
+     `documentElement.style.overflow` itself and restores what it found.
+
+     Document scroll is only half the shape the house style asks for, and this
+     page shipped for two days with the other half missing: `min-h-dvh` plus
+     STICKY CHROME (daisy-alpine rule 5). Nothing was sticky, so the tab row,
+     the outline's Cards chips and its export bar all scrolled away with the
+     head. session-brief pins them now; the numbers are in its own header. This
+     line is unchanged and stays that way. -->
 <body class="min-h-[100dvh] flex flex-col bg-base-100 text-base-content" x-data="sessionPage()" x-cloak>
 
   <!-- Stands down inside a frame, the courtesy branch.html and links.html pay
@@ -132,7 +187,7 @@
     Name a session above, or link straight to one:
     <code class="text-xs">#id=abc12345</code> &middot;
     <code class="text-xs">#branch=claude/some-branch</code>
-    <div class="mt-2 text-xs opacity-70">An id is the record's filename stem, eight hex characters; a branch opens its latest session.</div>
+    <div class="mt-2 text-xs opacity-70">An id is the eight hex characters that end the record's filename; a branch opens its latest session.</div>
   </div>
 
   <div x-show="busy" class="flex justify-center py-16">
@@ -229,6 +284,28 @@
           } else if (t.kind === 'id') {
             opts = { id: t.id, repo: STORE };
           } else {
+            // ── THE ADDRESS GRAMMAR THIS PAGE DOCUMENTS, ACTUALLY PARSED ──────
+            // The header above promises `#gh=owner/repo[@ref]:path` and this
+            // line could not deliver it: `parseSpec` lives in kits/data-payload.js
+            // and NOTHING on this page ever loaded that kit, so the optional
+            // chaining swallowed the miss and the whole "owner/repo:path" string
+            // became the path, which 404s against the default store. Silent by
+            // construction, and it shipped that way (found 2026-09-06).
+            //
+            // Loaded HERE rather than in the boot chain above, and only for an
+            // address that could be one: parseSpec returns null for a bare path,
+            // so `#gh=sessions/2026/…json` needs no parser and pays nothing.
+            // repo-address.js first, since data-payload throws without it.
+            if (String(t.spec).includes(':') && !window.DataPayload) {
+              try {
+                await gh.load('kits/repo-address.js');
+                await gh.load('kits/data-payload.js');
+              } catch { /* fall through to the bare-path reading below */ }
+            }
+            // `|| {}` still stands, and it is the bare-path case rather than a
+            // guard against the kit being absent: parseSpec REPORTS null for a
+            // string that is not an address, so a caller can read it as a path
+            // in the default store, which is what this does.
             const spec = window.DataPayload?.parseSpec?.(t.spec) || {};
             opts = { repo: spec.repo || STORE, path: spec.path || t.spec };
           }

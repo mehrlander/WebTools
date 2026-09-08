@@ -56,6 +56,7 @@ const NOTES = {
   'demos/wring-dom.html':      'Repeated DOM components from signatures or pasted HTML.',
   'stories/bookmarklets-story.html': 'Field notes on bookmarklet packing.',
   // Kit demos live under lib/kits/demos/ — surfaced here under the kit-demos group.
+  'kit-demos/card.html':         'Card kit — the ghost ✕ and the three ways out of a card.',
   'kit-demos/compression.html':  'Compression kit — brotli/gz round-trip, live.',
   'kit-demos/export.html':       'Export kit — file download from a user gesture.',
   'kit-demos/io.html':           'IO kit — read/write helpers, shown live.',

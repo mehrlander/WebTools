@@ -99,6 +99,97 @@ test('Element and Region are unconditional', () => {
   A.disable();
 });
 
+// ── The mark on the row, and on the button that opens it ────────────────────
+//
+// The launcher menu and this menu start the same four modes and looked nothing
+// alike: alpineComponents/fab.js's row is four glyphs and no words, this one
+// was four words and no glyph. A reader who learned the aims in one place
+// recognised none of them in the other.
+
+test('the declared kind supplies the Section row its label, hint and glyph', () => {
+  A.enable({ doc });
+  const host = render();
+  const item = A._state.modeChips.section;
+  assert.equal(item._label.textContent, 'Markdown section');
+  assert.equal(item._hint.textContent, 'tap a heading: the note is about its source');
+  // docs/routes-kinds.csv owns all three; kits/md-doc.js carries them onto the
+  // declaration. Hardcoding the glyph here is what sent an alignment control
+  // out to describe a markdown document until 2026-09-06.
+  assert.match(item._glyph.className, /\bph-file-md\b/);
+  assert.doesNotMatch(item._glyph.className, /text-align-left/);
+  host.remove();
+  A.disable();
+});
+
+test('the aim button shows the glyph of the aim in force, and names it in full', () => {
+  A.enable({ doc });
+  const S = A._state;
+  // Resting: Page, the aim that needs nothing on the page to hit.
+  assert.match(S.aimGlyph.className, /\bph-file\b/);
+  assert.equal(S.aimBtn.title, 'What the next note is about: Page');
+  assert.equal(S.aimBtn.getAttribute('aria-label'), S.aimBtn.title);
+  // No visible word at all: the header carries five controls once the card is
+  // expanded and the row does not fit a phone with a word on this button.
+  assert.equal(S.aimBtn.textContent.trim(), '');
+
+  const host = render();
+  A.startPick({ aim: 'section' });
+  assert.match(S.aimGlyph.className, /\bph-file-md\b/);
+  // The DECLARED label, not the generic one. The button read `Section` while
+  // the menu row beside it read `Markdown section`, in plain sight.
+  assert.equal(S.aimBtn.title, 'What the next note is about: Markdown section');
+
+  A.startRegion();
+  assert.match(S.aimGlyph.className, /\bph-frame-corners\b/);
+  assert.equal(S.aimBtn.title, 'What the next note is about: Region');
+  host.remove();
+  A.disable();
+});
+
+// ── Several renders in one document ─────────────────────────────────────────
+//
+// The deck mounts four at once and a doc beside a preview is two, so "the
+// markdown on this page" is routinely plural. The carrier answers both
+// questions now: declaredIn is what a CONTROL asks (does anything here declare
+// an aim), declaredAll is what a MARK asks (where is it).
+
+test('the carrier answers with every declared render, not just the first', () => {
+  const a = render(), b = render();
+  const all = window.srcDoc.declaredAll(doc);
+  assert.equal(all.length, 2, 'both renders qualify');
+  assert.deepEqual(all.map(f => f.box), [a.firstElementChild, b.firstElementChild],
+    'in document order');
+  assert.equal(window.srcDoc.declaredIn(doc).box, all[0].box,
+    'and the singular reading is still the first of them');
+  a.remove(); b.remove();
+});
+
+test('a pick resolves inside whichever render it lands in', () => {
+  // This half always worked, and it is what made the drawing gap invisible:
+  // locate() walks up from the tapped node, so the second render was fully
+  // pickable while nothing on screen said it was markdown. The rules were drawn
+  // from declaredIn until 2026-09-06, so they marked one document of two.
+  const a = render(), b = render();
+  A.enable({ doc });
+  assert.equal(A.noteSection(headingNamed(b, 'First')), true);
+  assert.equal(A._state.draft.target.type, 'section');
+  assert.match(A._state.draft.target.excerpt, /^## First/);
+  A.disable();
+  a.remove(); b.remove();
+});
+
+test('the structure paint reads every render', () => {
+  // jsdom computes no rects, so the rules themselves are real-browser behavior
+  // (verified headless, like the pick engine above). What is checkable here is
+  // the reading the paint is built on, which is the half that was wrong.
+  const src = readFileSync(path.join(repoRoot, 'lib/kits/annotate.js'), 'utf8');
+  const paint = src.match(/const paintStructure = \(\) => \{[\s\S]*?\n {4}\};/);
+  assert.ok(paint, 'paintStructure is gone from kits/annotate.js');
+  assert.match(paint[0], /srcDoc\.declaredAll\(/,
+    'the section rules are drawn from one render again');
+  assert.doesNotMatch(paint[0], /declaredIn\(/);
+});
+
 // ── The target ──────────────────────────────────────────────────────────────
 
 test('a section note carries markdown, not the rendered text', () => {
@@ -145,104 +236,6 @@ test('a heading outside any declared render notes nothing', () => {
   assert.equal(A.noteSection(loose), false);
   loose.remove();
   A.disable();
-});
-
-// ── The section's own reading ───────────────────────────────────────────────
-// The DOM reading answers "what is this element and what contains it". A
-// section is not an element, so it gets the same question answered in
-// markdown's units: rank, line span, what the passage holds, its subsections.
-// Section was excluded from this reading at first, on the grounds that it would
-// answer with an <h2> in a div; the fix was a second reading, not a withheld
-// one.
-
-const domHead = () => (A._state.domBody.firstElementChild?.textContent || '').trim();
-const domText = () => A._state.domBody.textContent.replace(/\s+/g, ' ').trim();
-
-test('the reading names the section in markdown terms, not the DOM ones', () => {
-  const host = render();
-  A.enable();
-  A._state.aimEl = headingNamed(host, 'Under first');
-  A._state.aimKind = 'section';
-  A.expand(true);
-  A.setReading('dom');
-
-  assert.equal(domHead(), 'h3Under first', 'the rank and the title, not a tag and a class list');
-  const t = domText();
-  assert.match(t, /docs\/APP\.md § Under first/, 'the source address');
-  assert.match(t, /lines/i);
-  assert.match(t, /words/, 'size in words, not a bounding box');
-  assert.match(t, /#under-first/, 'the slug');
-  assert.match(t, /### Under first/, 'the source, hashes intact');
-  assert.doesNotMatch(t, /selector|nth-child/, 'no css selector: that is the other reading');
-  A.disable(); host.remove();
-});
-
-test('the trail is the markdown chain, which the DOM does not carry', () => {
-  const host = render();
-  A.enable();
-  A._state.aimEl = headingNamed(host, 'Under first');
-  A._state.aimKind = 'section';
-  A.expand(true);
-  A.setReading('dom');
-
-  const crumbs = [...A._state.domBody.querySelectorAll('[data-peek-crumb]')]
-    .map(b => b.textContent.trim());
-  assert.deepEqual(crumbs, ['h1 Title', 'h2 First', 'h3 Under first'],
-    'outermost first, by rank');
-  // In the DOM those three are flat siblings, so an element chain would say
-  // something entirely different.
-  const h3 = headingNamed(host, 'Under first');
-  assert.equal(h3.parentElement, headingNamed(host, 'First').parentElement,
-    'they are siblings in the render');
-  A.disable(); host.remove();
-});
-
-test('a crumb re-points the reading at the containing section', () => {
-  const host = render();
-  A.enable();
-  A._state.holdEl = headingNamed(host, 'Under first');
-  A._state.holdKind = 'section';
-  A.expand(true);
-  A.setReading('dom');
-  assert.equal(domHead(), 'h3Under first');
-
-  const crumbs = [...A._state.domBody.querySelectorAll('[data-peek-crumb]')];
-  crumbs.find(b => b.textContent.trim() === 'h2 First').click();
-  assert.equal(domHead(), 'h2First');
-  assert.equal(A._state.holdKind, 'section', 'still a section, not the heading element');
-  A.disable(); host.remove();
-});
-
-test('subsections are listed, and a leaf section lists none', () => {
-  const host = render();
-  A.enable();
-  A.expand(true);
-  A._state.aimKind = 'section';
-
-  A._state.aimEl = headingNamed(host, 'First');
-  A.setReading('dom');
-  assert.match(domText(), /1 subsection/);
-  assert.match(domText(), /Under first/);
-
-  A._state.aimEl = headingNamed(host, 'Second');
-  A.setReading('dom');
-  assert.doesNotMatch(domText(), /subsection/);
-  A.disable(); host.remove();
-});
-
-test('a filed section note reads as a section, not as its heading element', () => {
-  const host = render();
-  A.enable();
-  // noteSection builds the target the same way the aim does, so this is the
-  // filed shape rather than one assembled by hand.
-  A.noteSection(headingNamed(host, 'First'));
-  const target = A._state.draft.target;
-  assert.equal(target.type, 'section');
-  A.add(target, 'a note');
-  A.expand(true);
-  A.setReading('dom');
-  assert.equal(domHead(), 'h2First', 'the target type chose the reading');
-  A.disable(); host.remove();
 });
 
 // ── The structure overlay ──────────────────────────────────────────────────

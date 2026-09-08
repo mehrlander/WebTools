@@ -100,18 +100,19 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
 
 * **Closing state.** End a reply that finishes work, proposes work, or leaves something open with exactly one state.
 
-  - 🟢 **Ready to continue:** work is ready to do now. Name the work available on "go"; "go 1, 3" takes a subset. Work the session conceives is proposed here, never done unprompted (Keep focus).
-  - ❇️ **Ready to assess:** a question is ready to investigate. "Go" means assess it and report back, not implement whatever the assessment suggests.
+  - 🟢 **Ready to continue:** work is ready to do now, and "go" is the whole decision: the work was asked for, or is a step inside what was asked for, and it leaves nothing behind to come back to. Name the work available on "go"; "go 1, 3" takes a subset.
+  - ❇️ **Ready to assess:** a question is ready to investigate, or the session conceived work the reader has not endorsed (Keep focus). "Go" means assess it and report back, not implement whatever the assessment suggests.
   - 🟡 **Pending:** keep this visible, but not ready yet: work waiting on another action, an answer, or a dependency.
   - 🆚 **Choice needed:** a genuine choice remains. Give the assessment and the recommendation, then state what the user needs to choose.
   - ✴️ **Needs you:** something only the reader can supply blocks the next step: a tap, an observation, a value from outside the repo. Ship the link that performs each ask, say in one clause what it buys, and say how the answer comes back.
   - 🟠 **Attention:** a concrete problem or risk to address before going further, not routine uncertainty.
-  - ⚪ **Clean exit:** work here is done. Recommend wrapping up or merging.
+  - ⚪ **Clean exit:** the session has nothing further here. Wrapping up or merging now would be reasonable, and the reader decides.
   - 🟣 **Merged:** this workstream's branch merged. Say what shipped in one line.
   - 🔴 **Closed:** this workstream's branch closed unmerged. Say why in one line.
+  - ⚫ **Done:** the session is finished: every workstream merged or closed, nothing open, nothing proposed. A hard stop, read at a glance when scanning back.
   - 🔵 **Short answer:** answered, with no work proposed. The marker carries "Short answer," so the bold lead is a short, recognizable version of the question with the answer right behind it: 🔵 **Did we get to the double back tap?** No. Shorten toward the sharper question, never the safer one.
 
-  **Boundary:** Write each state to be understood without the message it closes: do not lean on terms established above, and link referenced files. **The colour says who acts:** green is work the session performs, so 🟢 never instructs the reader, while orange needs the reader, 🆚 to decide and ✴️ to do. An ✴️ ask carrying no link is a defect: mint the link, or say in the same line why none can exist. Past about three asks, or wherever the answers need to come back structured, they become an inquiry surface ([`inquiry-v1`](https://github.com/mehrlander/web-tools/blob/main/docs/envelopes/schemas/profiles/inquiry-v1.schema.json)), which names its own return address. 🟣 and 🔴 mark the branch, not a task; a task dropped or deferred inside a live branch does not make the branch 🔴. Where the session could reasonably investigate the question itself, that is ❇️ rather than 🆚 or ✴️. **For confirmation, favor 🟢, not 🆚: 🆚 is for presenting two competing changes.** An assessment that lands on one option is ⚪ when the move is to stop, 🟢 when it is a ready next step the ask points to.
+  **Boundary:** Write each state to be understood without the message it closes: do not lean on terms established above, and link referenced files. **The colour says who acts:** green is work the session performs, so 🟢 never instructs the reader, while orange needs the reader, 🆚 to decide and ✴️ to do. An ✴️ ask carrying no link is a defect: mint the link, or say in the same line why none can exist. Past about three asks, or wherever the answers need to come back structured, they become an inquiry surface ([`inquiry-v1`](https://github.com/mehrlander/web-tools/blob/main/docs/envelopes/schemas/profiles/inquiry-v1.schema.json)), which names its own return address. 🟣 and 🔴 mark the branch, not a task; a task dropped or deferred inside a live branch does not make the branch 🔴. Where the session could reasonably investigate the question itself, that is ❇️ rather than 🆚 or ✴️. **For confirmation, favor 🟢, not 🆚: 🆚 is for presenting two competing changes.** An assessment that lands on one option is ⚪ when the move is to stop, 🟢 when it is a ready next step the ask points to. **Attention debt is the gate on green.** Work that leaves the reader something to return to (a task filed, a doc, check or registry to maintain, a question deferred) is never offered on 🟢; it is ❇️, and it names what it would leave behind. Work that removes work is the clearest green. **⚪ is before the merge, 🟣 is one merge, ⚫ is after the last.** With several workstreams, 🟣 closes each branch as it merges and ⚫ waits for the last one; a reply after the merge that only confirms the estate is quiet is ⚫, not ⚪. ⚫ is the only state about the session rather than the reply it closes, and nothing follows it: a further reply opens a new subject.
 * **External proxies: prohibited.** Never `htmlpreview.github.io`, `raw.githack.com`, `gitcdn.link` or their kin: they fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
 
 * **Subscribe the workstream PR 📬.** On creating a workstream's pull request, call `subscribe_pr_activity` for it.
@@ -121,36 +122,42 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
 
 ## The surfacing course
 
-Once a PR opens, its body is the branch's current state: live while the branch is open, the shipped account after merge. Open it as a draft at first push.
+A PR body is the branch's live state and post-merge record. Open it as a draft on the first push.
 
 ```markdown
-<One sentence: what this branch is doing and why.> [Follow-up to #N.]
+<One-sentence summary of what this branch does and why.> [Follow-up to #N]
 
 [//]: # (guide)
 
-⭐ **Look:** [<the thing to open>](<branch preview w/ commit SHA, else [new] blob>)
+<⭐|🥏|📦|📊> **Look:** [<Resource name>](<Rendered link, using commit SHA not branch name>)
 
-<The change set in prose: only the files with something non-obvious to say,
-paths plain and no link triplets, `renders on:` for a shared component.
-Omit where the opener already says it.>
+<Why this branch exists and any non-obvious implementation details. Plain prose,
+plain paths, no link triplets. Use `renders on:` for shared components.>
 
-**Next steps / open threads:**
-- <current and honest; revise on every sync>
+**Open threads:**
+- [ ] <Unfinished work. Strike through when obsolete.>
+- [ ] ✴️ <User action required (e.g., physical device testing).>
+- <Decided but not acted on. No checkbox. A record, not a task.>
 
-**Notes / Risk:** <what to scrutinize, test status, non-obvious why>
+**Risk:** <Areas needing manual scrutiny and blind spots not covered by CI.>
 
 [//]: # (/guide)
 
-<session-link footer>
+<Session footer link>
 ```
 
-- **The body does not enumerate files.** The Files tab and the branch page already do, current by construction.
-- **It is state, not a changelog.** Narrative goes in dated PR comments; **Next steps** must stay honest.
-- **The markers are link labels, not HTML comments,** which the GitHub MCP strips on readback. Rewrite only between them, via `update_pull_request`. Read either form, emit this one, and stop rather than guess if neither is present. Check URLs first: `python3 scripts/mcp-link-safe.py --check body.md`.
-- **Ready is the user's decision,** on explicit instruction or an accepted wrap-up offer.
-- **"Wrap up" means green, not merged:** preflight `git merge-tree` against main, run per-session refreshes, finalize the guide, mark ready. **"Merge" means merge,** so run that sequence and merge without asking twice. Never merge red, and never by any route but the PR.
-- **Abandon by closing the draft,** with a comment saying why.
-- **Before the container goes,** route anything costly that exists only in session context into the guide or a PR comment, never a tracker task.
-- **Post-merge edits need a new PR.** Merge terminates the branch ([why](https://github.com/mehrlander/web-tools/blob/main/docs/github/post-merge-branch-mutation.md)); `git log main..HEAD` shows what is waiting.
+**Content**
+* Keep the region between the markers under 250 words.
+* The body does not enumerate files, or repeat CI status.
+* Session context that exists nowhere else goes here or in a PR comment, never a tracker task.
+* Deliver ✴️ items in the reply; the body holds the copy.
 
-Delivery history is the merged PRs themselves: do not commit a projection of them, and do not run a second history beside [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md)'s task axis.
+**Automation**
+* Rewrite only between the markers, using `update_pull_request`. Read either marker form, emit `[//]: #`, and abort if neither is present.
+* Verify URLs first: `python3 scripts/mcp-link-safe.py --check body.md`.
+
+**Lifecycle** (each phase begins on the user's word)
+* **Wrap up:** Preflight `git merge-tree` against `main`, run refreshes, finalize the guide, mark ready.
+* **Merge:** Complete wrap up, then merge. Never red, and never by any route but the PR.
+* **Abandon:** Close the draft with a comment.
+* **Post-merge:** Merging terminates the branch ([why](https://github.com/mehrlander/web-tools/blob/main/docs/github/post-merge-branch-mutation.md)). Open a new PR for further edits; delivery history is the merged PRs themselves.
