@@ -49,7 +49,7 @@ lib/kits/review-target.js,reviewTarget,parse and mint the address grammar for th
 lib/kits/route-activity.js,routeActivity,"rank the app's own routes by when the code behind each last moved, and join each to the work in flight against it.",320,no,no,4,yes
 lib/kits/row-menu.js,rowMenu,"a tap on a row, and what you can do with it",242,no,yes,2,yes
 lib/kits/session-export.js,sessionExport,"take part of a session out: pick the turns, say how much of each to include, copy the markdown.",1124,no,no,6,yes
-lib/kits/session-render.js,sessionRender,a session record as a readable conversation.,1012,no,no,3,yes
+lib/kits/session-render.js,sessionRender,a session record as a readable conversation.,1098,no,no,3,yes
 lib/kits/shorter-payload.js,ShorterPayload,Reading a shorter toss.,76,no,no,1,yes
 lib/kits/source-peek.js,SourcePeek,the hover card behind an exact-file GitHub jump-over.,477,yes,yes,10,yes
 lib/kits/src-doc.js,srcDoc,"A RENDERED VIEW OF A SOURCE FILE SAYS SO, AND SAYS WHICH FILE.",97,no,no,8,yes
