@@ -3,15 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Text Instruments</title>
+<title>Text Lab</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔬</text></svg>">
 <link href="https://cdn.jsdelivr.net/combine/npm/daisyui@5/themes.css,npm/daisyui@5" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/combine/npm/@tailwindcss/browser@4,npm/@phosphor-icons/web"></script>
 
 <!--
-  text-instruments.html — the estate's text-analysis and NLP work as one
-  reading surface. Three panes over one subject, in the order a reader wants
-  them: what we tried, what we have, what we produced.
+  text-lab.html — the estate's text-analysis and NLP work as one reading
+  surface. Four panes over one subject, in the order a reader wants them: what
+  we tried, what we read with, what we read against, what came out.
+
+  Named Text LAB, not Text Instruments. That name collided twice: with Texas
+  Instruments on sight, which no amount of context undoes, and with this page's
+  own `instruments` tab, so the whole and one of its four parts wore one word.
+  `-lab` is the suffix the tools themselves already use (termlab, registerlab,
+  entitylab, concept-lab), so it names the whole without renaming a part.
 
     probes       projects/local-models/probes/probes.json. One record per
                  bounded question: question, method, corpus, result, verdict,
@@ -22,6 +28,11 @@
                  unit of analysis (word, term of art, named entity, speaker,
                  sentence, document), because that is the question a session
                  actually arrives with: I have text at this grain.
+    resources    projects/local-models/resources.csv, the word lists and norms
+                 tables, grouped by whether the estate holds one, fetches it at
+                 run time, or does not have it. A coverage grid leads the pane:
+                 property by state, so the empty cells read as loudly as the
+                 full ones.
     runs         the five dated runs, each pointing at whatever it actually
                  produced. A run with no page says "no page" instead of
                  pretending, which is the same honesty the probe log keeps.
@@ -69,6 +80,8 @@
       TOSS: 'https://mehrlander.github.io/web-tools/pages/toss-render.html',
       DATA_REF: params.get('data') || 'main',
 
+      PANES: ['probes', 'instruments', 'resources', 'runs'],
+
       // The page's only coloured dimension.
       STANDINGS: {
         worked: { bar: 'bg-success', text: 'text-success' },
@@ -110,7 +123,11 @@
       STATES: {
         held:    { text: 'text-success' },
         fetched: { text: 'text-warning' },
-        absent:  { text: 'text-base-content' },
+        // Muted rather than full-strength: absent has no accent of its own (it
+        // is neither good nor bad, just unacquired), and at full weight plain
+        // base-content outshouted both coloured states and made the shopping
+        // list the loudest thing in the coverage grid.
+        absent:  { text: 'text-base-content/60' },
       },
 
       home: null,
@@ -173,6 +190,20 @@
           && (!this.concept || p.concepts.includes(this.concept)));
       },
 
+      // Sixteen probes are three working sessions, not sixteen loose questions,
+      // and ten of them share one date. Grouping turns that repetition into
+      // structure and takes the date off every row, where it was the same
+      // string ten times over.
+      probeGroups() {
+        const out = [];
+        for (const p of this.shown) {
+          const last = out[out.length - 1];
+          if (last && last.date === p.date) last.items.push(p);
+          else out.push({ date: p.date, items: [p] });
+        }
+        return out;
+      },
+
       // The two render kits load here rather than in the boot chain. The
       // register is one pane of three, and a kit that fails to arrive must not
       // be able to blank the other two: everything on this page sits inside one
@@ -222,6 +253,20 @@
         return ['held', 'fetched', 'absent']
           .map(state => ({ state, items: this.shownResources.filter(r => r.state === state) }))
           .filter(g => g.items.length);
+      },
+
+      // What the pane is actually for, in one grid: for each property a word
+      // can be rated on, how many resources carry it and in which state. It
+      // answers "can we rate valence" (no) and "how many ways can we rate
+      // frequency" (four) without reading twenty-three rows. A matrix rather
+      // than a row of tiles, because the comparison across two axes IS the
+      // finding: the absent column is where the shopping list lives.
+      get matrix() {
+        return this.rates.map(([name]) => {
+          const of = s => this.resources.filter(r =>
+            r.state === s && this.list(r.rates).includes(name)).length;
+          return { name, held: of('held'), fetched: of('fetched'), absent: of('absent') };
+        });
       },
       list(s) { return window.Csv ? window.Csv.list(s) : [] },
 
@@ -288,46 +333,54 @@
        Sticky rather than fixed: this page is a tenant, embedded as an app
        view in show-repo, and a fixed root measures against the outer viewport
        inside a narrower frame. -->
+  <!-- TWO BANDS, not one wrapping row.
+       The header used to put the title, the tabs, the counts and a dropdown in
+       a single flex-wrap line. On a phone that stacked into three rows of
+       identical lowercase monospace at one size, and four grey words at the top
+       of a framed page read as a stylesheet that failed to load rather than as
+       chrome. The bands separate the two kinds of control: what you are looking
+       at, then what you are filtering it by. -->
   <header class="sticky top-0 z-20 bg-base-100 border-b border-base-300">
-    <div class="px-5 sm:px-7 py-3 flex flex-wrap items-center gap-x-5 gap-y-2">
 
-      <h1 x-show="!framed" class="font-serif text-xl sm:text-2xl tracking-tight">Text Instruments</h1>
-
-      <nav class="flex gap-4 font-mono text-xs">
-        <template x-for="key in ['probes','instruments','resources','runs']" :key="key">
-          <button class="hover:opacity-100 transition-opacity"
-                  :class="pane === key ? 'opacity-100 font-medium' : 'opacity-40'"
+    <div class="px-5 sm:px-7 flex items-center gap-x-4 sm:gap-x-6 overflow-x-auto">
+      <h1 x-show="!framed" class="font-serif text-xl sm:text-2xl tracking-tight py-2.5 shrink-0">Text Lab</h1>
+      <nav class="flex gap-4 sm:gap-6 text-sm shrink-0">
+        <template x-for="key in PANES" :key="key">
+          <button class="py-2.5 -mb-px border-b-2 whitespace-nowrap transition-colors"
+                  :class="pane === key ? 'border-base-content font-medium' : 'border-transparent opacity-40 hover:opacity-70'"
                   @click="showPane(key)" x-text="key"></button>
         </template>
       </nav>
+    </div>
 
-      <div class="grow"></div>
+    <!-- The counts are the filter: a number that does nothing is a stat card
+         with the border removed. The number sits tight against its own word,
+         with the gap BETWEEN pairs five times the gap inside one, because the
+         old spacing was equal both ways and four buttons read as one sentence
+         ("4 worked 6 mixed 5 failed 1 open"). -->
+    <div class="px-5 sm:px-7 py-2 border-t border-base-200 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs">
 
-      <!-- The counts are the filter. A number that does nothing is a stat
-           card with the border removed. -->
-      <div x-show="pane === 'probes'" class="flex items-baseline gap-x-3 font-mono text-xs">
+      <div x-show="pane === 'probes'" class="flex items-baseline gap-x-5">
         <template x-for="key in ['worked','mixed','failed','open']" :key="key">
-          <button class="hover:opacity-100 transition-opacity"
+          <button class="hover:opacity-100 transition-opacity whitespace-nowrap"
                   :class="filterStanding === key ? [STANDINGS[key].text, 'opacity-100', 'font-medium'] : 'opacity-40'"
                   @click="filterStanding = filterStanding === key ? '' : key">
-            <span x-text="counts[key]"></span>
-            <span x-text="key"></span>
+            <span class="tabular-nums" x-text="counts[key]"></span><span class="ml-1" x-text="key"></span>
           </button>
         </template>
       </div>
 
-      <!-- The resources pane takes the same two controls as probes: the counts
-           are the filter, and the closed domain sits in a dropdown. -->
-      <div x-show="pane === 'resources'" class="flex items-baseline gap-x-3 font-mono text-xs">
+      <div x-show="pane === 'resources'" class="flex items-baseline gap-x-5">
         <template x-for="key in ['held','fetched','absent']" :key="key">
-          <button class="hover:opacity-100 transition-opacity"
+          <button class="hover:opacity-100 transition-opacity whitespace-nowrap"
                   :class="filterState === key ? [STATES[key].text, 'opacity-100', 'font-medium'] : 'opacity-40'"
                   @click="filterState = filterState === key ? '' : key">
-            <span x-text="resCounts[key]"></span>
-            <span x-text="key"></span>
+            <span class="tabular-nums" x-text="resCounts[key]"></span><span class="ml-1" x-text="key"></span>
           </button>
         </template>
       </div>
+
+      <div class="grow"></div>
 
       <div x-show="pane === 'resources'" class="dropdown dropdown-end">
         <div tabindex="0" role="button" class="font-mono text-xs opacity-40 hover:opacity-100 transition-opacity"
@@ -380,17 +433,27 @@
 
     <!-- ── probes ─────────────────────────────────────────────────────── -->
     <section x-show="pane === 'probes' && !loading">
-      <template x-for="p in shown" :key="p.id">
-        <article class="border-b border-base-300 py-5">
+      <template x-for="g in probeGroups()" :key="g.date">
+       <section class="mb-9">
+        <h2 class="font-mono text-xs uppercase tracking-wide opacity-40 pb-1 border-b border-base-300">
+          <span x-text="g.date"></span>
+          <span class="ml-2" x-text="g.items.length + (g.items.length === 1 ? ' probe' : ' probes')"></span>
+        </h2>
+
+        <template x-for="p in g.items" :key="p.id">
+        <article class="border-b border-base-200 py-5">
 
           <button class="w-full text-left flex items-start gap-3" @click="open = open === p.id ? null : p.id">
             <span class="mt-2.5 w-1 h-5 rounded-sm shrink-0" :class="STANDINGS[standingOf(p)].bar"></span>
             <span class="grow min-w-0">
               <span class="block text-lg leading-7 text-pretty" x-text="p.question"></span>
-              <span class="block mt-1 font-mono text-xs opacity-40">
-                <span x-text="p.date"></span> ·
-                <span :class="STANDINGS[standingOf(p)].text" x-text="standingOf(p)"></span> ·
-                <span x-text="p.id"></span>
+              <!-- The concepts belong on the collapsed row: they are the field's
+                   own vocabulary and the thing the header's filter selects on,
+                   so keeping them behind a tap left that filter with no visible
+                   referent and every row looking alike. -->
+              <span class="block mt-1 font-mono text-xs opacity-40 truncate">
+                <span :class="STANDINGS[standingOf(p)].text" x-text="standingOf(p)"></span>
+                <span class="ml-2" x-text="p.concepts.join(' · ')"></span>
               </span>
             </span>
             <i class="ph shrink-0 mt-2 opacity-30" :class="open === p.id ? 'ph-caret-down' : 'ph-caret-right'"></i>
@@ -412,16 +475,12 @@
                 </a>
               </template>
               <span class="opacity-40" x-show="!!p.cost">cost: <span x-text="p.cost"></span></span>
-            </div>
-
-            <div class="flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs">
-              <template x-for="c in p.concepts" :key="c">
-                <button class="opacity-40 hover:opacity-100 underline decoration-dotted underline-offset-2 transition-opacity"
-                        @click="concept = c" x-text="c"></button>
-              </template>
+              <span class="opacity-30" x-text="p.id"></span>
             </div>
           </div>
         </article>
+        </template>
+       </section>
       </template>
 
       <p x-show="!shown.length && !error" class="py-16 text-center font-mono text-xs opacity-40">
@@ -445,6 +504,37 @@
     <section x-show="pane === 'resources'">
       <div x-show="!resources.length" class="py-24 text-center">
         <span class="loading loading-dots loading-md opacity-20"></span>
+      </div>
+
+      <!-- Coverage, before the list. One row per property a word can be rated
+           on, one column per state, so the empty cells are as legible as the
+           full ones: the absent column read down is the shopping list. Tapping
+           a row filters the list below to that property. -->
+      <div x-show="resources.length" class="mb-10 overflow-x-auto">
+        <table class="font-mono text-xs">
+          <thead>
+            <tr class="opacity-40">
+              <th class="text-left font-normal pb-1 pr-6">property</th>
+              <template x-for="s in ['held','fetched','absent']" :key="s">
+                <th class="font-normal pb-1 px-3 w-16" x-text="s"></th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="row in matrix" :key="row.name">
+              <tr class="border-t border-base-200 cursor-pointer hover:bg-base-200"
+                  @click="rate = rate === row.name ? '' : row.name">
+                <td class="py-1.5 pr-6 whitespace-nowrap"
+                    :class="rate === row.name ? 'font-medium' : 'opacity-70'" x-text="row.name"></td>
+                <template x-for="s in ['held','fetched','absent']" :key="s">
+                  <td class="py-1.5 px-3 text-center tabular-nums"
+                      :class="row[s] ? STATES[s].text : 'opacity-20'"
+                      x-text="row[s] || '·'"></td>
+                </template>
+              </tr>
+            </template>
+          </tbody>
+        </table>
       </div>
 
       <template x-for="g in resGroups()" :key="g.state">
