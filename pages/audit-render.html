@@ -889,9 +889,17 @@ window.__audit = {
     const crumb = localStorage.getItem('fab:step');
     if (crumb) {
       localStorage.removeItem('fab:step');
-      const [stage, at] = crumb.split(' @');
+      // A trail now, one entry per stage with its elapsed reading and heap.
+      // The old single-string form is still read, because a device may be
+      // carrying one written before this change.
+      let trail = null, stage = crumb, at = null;
+      try { const t = JSON.parse(crumb); if (t && Array.isArray(t.steps)) {
+        trail = t; at = t.at; stage = t.steps.at(-1)?.stage || 'unknown'; } } catch {}
+      if (!trail) [stage, at] = crumb.split(' @');
       const ago = Number(at) ? Math.round((Date.now() - Number(at)) / 1000) : null;
-      window.__auditCrumb = { stage, ago };
+      window.__auditCrumb = { stage, ago, steps: trail?.steps || null };
+      // On screen it stays one line, since that is all a phone has room for;
+      // the whole trail rides the filed report, which has no such limit.
       fault(`previous fab tap never finished: ${stage}` + (ago === null ? '' : ` (${ago}s ago)`));
     }
   } catch {}
