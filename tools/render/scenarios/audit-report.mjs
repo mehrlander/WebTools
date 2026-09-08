@@ -1,79 +1,89 @@
-// THE PAGE FILES ITS OWN REPORT, AND ONLY WHEN ARMED.
+// THE PAGE FILES ITS OWN REPORT, WITH NOBODY TURNING IT ON.
 //
 //   npm run shot -- pages/audit-render.html --width 430 --touch \
 //     --script tools/render/scenarios/audit-report.mjs
 //
 // kits/page-report commits the page's own account of a failure to a private
 // repo through the viewer's token, which is far more than a screenshot can
-// carry. The properties worth gating are the ones that keep it from becoming
-// a page nobody can hand to anyone: off by default, silent when clean, loud on
-// screen while it is on, and self-expiring.
+// carry. The page opts in once in its own source; the reader taps nothing. So
+// what is worth gating on the page is that reporting really is live on a plain
+// load, that a clean load still writes nothing, and that a repeat of the same
+// failure is dropped rather than filed again on every reload.
 //
 // The write itself is stubbed. A driver that actually committed would put a
-// file in the private repo on every run of the suite, which is the behaviour
-// this kit exists to make impossible.
+// file in the private repo on every run of the suite.
 
 export default async function (page) {
   await page.waitForSelector('[x-ref="doc"] span', { timeout: 20000 });
-  await page.waitForTimeout(2200);
+  await page.waitForTimeout(2400);
 
-  // Stub the commit, and count what it was asked to write.
-  await page.evaluate(() => {
+  const stub = () => page.evaluate(() => {
     window.__sent = [];
     window.PageReport.send = async function (extra) {
-      const doc = this.collect(extra);
-      window.__sent.push(doc);
-      const a = this.arm_;
-      if (a) { a.left -= 1; a.left > 0 ? localStorage.setItem('pageReport:arm', JSON.stringify(a)) : this.disarm(); }
+      window.__sent.push(this.collect(extra));
+      this._filed = (this._filed || 0) + 1;
+      // Mirror the real send's bookkeeping, which is what the repeat gate reads.
+      const all = JSON.parse(localStorage.getItem('pageReport:seen') || '{}');
+      const faults = (extra.faults || []).map(f => f.line).join('|');
+      const crumb = extra.crumb ? `crumb:${extra.crumb.stage || extra.crumb}` : '';
+      all[[extra.reason || '', crumb, faults].join('~').slice(0, 400)] = Date.now();
+      localStorage.setItem('pageReport:seen', JSON.stringify(all));
       return { ok: true, path: 'stub/' + window.__sent.length + '.json' };
     };
   });
+  await stub();
 
-  const read = () => page.evaluate(() => {
-    const d = Alpine.$data(document.body);
-    return { armed: !!window.PageReport.armed, sent: window.__sent.length,
-             label: document.body.innerText.includes('● reporting'),
-             off: document.body.innerText.includes('○ report off'),
-             status: d.reportStatus, build: d.build };
-  });
+  const read = () => page.evaluate(() => ({
+    enabled: !!window.PageReport.enabled,
+    sent: window.__sent.length,
+    status: Alpine.$data(document.body).reportStatus,
+    build: Alpine.$data(document.body).build,
+    onScreen: document.body.innerText.includes('reporting to mehrlander/web-tools-private'),
+  }));
 
-  // 1. Off by default, and saying so.
+  // 1. Live on a plain load, with no tap, and saying so quietly.
   let s = await read();
-  if (s.armed) throw new Error('reporting was armed with nobody asking');
-  if (!s.off) throw new Error('the off state is not on screen');
+  if (!s.enabled) throw new Error('the page loaded without reporting live');
+  if (!s.onScreen) throw new Error('reporting is live and the page does not say so');
   if (!/report1/.test(s.build)) throw new Error(`the kit is not in the build token: ${s.build}`);
 
-  // 2. Arming files one immediately, which is what proves the write path.
-  await page.click('button:has-text("report off")');
-  await page.waitForTimeout(600);
-  s = await read();
-  if (!s.armed) throw new Error('the arm did not take');
-  if (s.sent !== 1) throw new Error(`arming filed ${s.sent} reports, wanted 1`);
-  if (!s.label) throw new Error('armed, and the page does not say so');
-  if (!/reporting to .+ · \d+ left · \d+m/.test(s.status)) throw new Error(`no nag countdown: ${s.status}`);
+  // 2. Clean load, nothing filed. Reporting on is not a request to record
+  //    every load, which is the whole reason it can be on by default.
+  const clean = await page.evaluate(async () => {
+    window.__auditFaults.length = 0; window.__auditCrumb = null;
+    return window.PageReport.auto({ faults: [], crumb: null });
+  });
+  if (clean.ok) throw new Error('a clean load filed a report anyway');
 
-  // 3. The report carries what a screenshot cannot.
-  const doc = await page.evaluate(() => window.__sent[0]);
+  // 3. A fault files exactly one, carrying what a screenshot cannot.
+  const first = await page.evaluate(() => {
+    window.PageReport.forget();
+    window.__auditFaults.push({ line: 'a made-up fault', n: 1 });
+    return window.__auditReport();
+  });
+  if (!first.ok) throw new Error(`a fault filed nothing: ${first.why}`);
+  const doc = await page.evaluate(() => window.__sent.at(-1));
   for (const k of ['at', 'url', 'page', 'environment', 'resources', 'build', 'faults', 'doc'])
     if (!(k in doc)) throw new Error(`the report omits ${k}`);
   if (!doc.environment.ua) throw new Error('no user agent in the report');
   if (typeof doc.resources?.count !== 'number') throw new Error('no resource census in the report');
 
-  // 4. Armed and clean writes nothing: the arm is a window in which failures
-  //    report themselves, not an instruction to record every load.
-  const auto = await page.evaluate(async () => {
-    window.__auditFaults.length = 0;
-    window.__auditCrumb = null;
-    return window.PageReport.auto({ faults: [], crumb: null });
-  });
-  if (auto.ok) throw new Error('an armed, clean page filed a report anyway');
+  // 4. The same fault again is dropped, which is what stops one persistent
+  //    failure becoming one commit per reload.
+  const again = await page.evaluate(() => window.__auditReport());
+  if (again.ok) throw new Error('the same failure was filed twice');
+  if (again.why !== 'already filed') throw new Error(`dropped for the wrong reason: ${again.why}`);
 
-  // 5. Disarm, and the nag goes.
-  await page.click('button:has-text("reporting")');
-  await page.waitForTimeout(400);
-  s = await read();
-  if (s.armed) throw new Error('the disarm did not take');
-  if (!s.off) throw new Error('disarmed, and the page still shows the nag');
+  // 5. The address turns it off for one load, for handing the page on.
+  await page.goto(page.url() + (page.url().includes('?') ? '&' : '?') + 'report=off');
+  await page.waitForSelector('[x-ref="doc"] span', { timeout: 20000 });
+  await page.waitForTimeout(2000);
+  const off = await page.evaluate(() => ({
+    enabled: !!window.PageReport.enabled,
+    status: Alpine.$data(document.body).reportStatus,
+  }));
+  if (off.enabled) throw new Error('?report=off did not turn it off');
+  if (!/off for this load/.test(off.status)) throw new Error(`the off state is not said: ${off.status}`);
 
-  console.log('off by default · arming files one · clean load files none · disarm clears the nag');
+  console.log('live with no tap · clean load files none · a fault files one · a repeat is dropped · ?report=off holds');
 }

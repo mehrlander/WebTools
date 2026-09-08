@@ -740,7 +740,13 @@ window.__audit = {
   await gh.load('kits/guide-render.js');   // house markdown type, not prose-sm
   await gh.load('kits/standoff.js');       // the annotation's rules, shared with ops.py
   await gh.load('kits/dictate.js');        // Dictate.pins: the settled edge-pin treatment
-  await gh.load('kits/page-report.js');    // the page files its own bug report, when armed
+  await gh.load('kits/page-report.js');
+  // THE OPT-IN, and it is the page's, not the reader's. Reporting is on from
+  // here: a failure that needs a tap before it is recorded is a failure nobody
+  // records, and the person holding the phone is the last one who should have
+  // to decide whether this load was worth keeping. Quiet by having nothing to
+  // say, not by friction; see the kit's header for the four gates.
+  window.PageReport?.watch();
   // md-doc's html() returns '' with no window.marked, which is a silent empty
   // render rather than an error. Found by looking at the pixels.
   window.marked = (await import('https://cdn.jsdelivr.net/npm/marked@12/+esm')).marked;
@@ -896,13 +902,20 @@ window.__audit = {
   // page's own account of itself on screen, which is one line on a phone and
   // has to be retyped or cropped into a screenshot to travel. kits/page-report
   // commits the whole account to a private repo instead, so a failure arrives
-  // in full rather than in the shape a reader could relay. It is armed
-  // explicitly, expires on its own, and says so on screen the whole time.
+  // in full rather than in the shape a reader could relay. It is on from the
+  // moment the kit loads, and says so quietly on screen for as long as it is.
   //
   // On the settling frame rather than at DOMContentLoaded: the faults worth
   // reporting are mostly boot faults, and half of them have not happened yet
   // when the DOM is ready. `auto` sends nothing when there is nothing to
-  // report, so an armed page that loads cleanly writes no commit.
+  // report, so a clean load writes no commit.
+  //
+  // THE OUTCOME IS NOT A FAULT. A first version pushed `report filed: <path>`
+  // into the fault list, which is wrong twice: it puts the instrument's own
+  // chatter in the readout reserved for the page's failures, and it changes the
+  // signature the kit dedupes on, so the second sighting of one persistent
+  // fault looked like a new one and was filed again. It rides the report line
+  // instead, where nothing reads it as a defect.
   window.__auditReport = async (reason) => {
     try {
       if (!window.PageReport) return { ok: false, why: 'kit not loaded' };
@@ -916,8 +929,10 @@ window.__audit = {
         kits: ['Standoff', 'mdDoc', 'Dictate', 'marked'].filter(k => !window[k]),
       };
       const res = reason ? await window.PageReport.send(extra) : await window.PageReport.auto(extra);
-      if (res.ok) fault(`report filed: ${res.path}`);
-      else if (reason) fault(`report not filed: ${res.why}`);
+      if (res.ok) window.__auditReportNote = `filed ${res.path.split('/').pop()}`;
+      else if (res.why !== 'nothing to report' && res.why !== 'already filed'
+               && res.why !== 'not watching') window.__auditReportNote = `not filed: ${res.why}`;
+      try { Alpine.$data(document.body).syncReport(); } catch {}
       return res;
     } catch (e) { return { ok: false, why: String(e) }; }
   };
@@ -1147,33 +1162,16 @@ window.__audit = {
       const gone = Object.keys(want).filter(k => !window[k]);
       return gone.length ? `not loaded: ${gone.map(k => `${k} (${want[k]})`).join(', ')}` : '';
     },
-    // ── THE REPORT ARM ───────────────────────────────────────────────────
-    // Mirrored into component state rather than read from the kit on every
-    // render, because Alpine cannot see a localStorage write and would leave
-    // the nag line stale for the life of the page. The kit stays the authority;
-    // these two fields are a projection of it, refreshed whenever this page
-    // does something that could change it.
-    reporting: false,
+    // ── THE REPORT LINE ──────────────────────────────────────────────────
+    // A projection of the kit's state, not a second copy of it: Alpine cannot
+    // see a localStorage write, so this is refreshed whenever the page does
+    // something that could change it. There is no control here any more. The
+    // page opts in at load and the reader taps nothing.
     reportStatus: '',
     syncReport() {
-      const P = window.PageReport;
-      this.reporting = !!P?.armed;
-      this.reportStatus = P?.status || '';
-    },
-    toggleReport() {
-      const P = window.PageReport;
-      if (!P) return;
-      P.armed ? P.disarm() : P.arm();
-      this.syncReport();
-      // A fresh arm files immediately, so the very first tap proves the whole
-      // path (token, repo, write) instead of proving it later, on the load
-      // after the failure you armed it for.
-      if (this.reporting) this.fileReport();
-    },
-    async fileReport() {
-      const res = await window.__auditReport?.('asked for');
-      this.syncReport();
-      return res;
+      const base = window.PageReport?.status || '';
+      const note = window.__auditReportNote;
+      this.reportStatus = base && note ? `${base} · ${note}` : base;
     },
 
     get build() {
@@ -2176,21 +2174,14 @@ window.__audit = {
                     text-base-content/50"
              @click="window.__auditFaults.length = 0; window.__auditSettled()">checking…</div>
 
-        <!-- THE ARM, AND ITS NAG. Reporting is off until it is turned on here,
-             and while it is on this line says so on every load until it
-             expires: a recorder that is quiet about recording is the failure
-             worth designing against. The status text comes from the kit, so
-             the countdown a reader sees is the state the kit will actually act
-             on rather than a second copy of it. -->
-        <div class="text-xs font-mono w-full flex items-center gap-2 leading-tight">
-          <button class="btn btn-ghost btn-xs h-5 min-h-0 px-1 font-mono"
-                  :class="reporting ? 'text-warning' : 'opacity-40'"
-                  @click="toggleReport()"
-                  :title="reporting ? 'stop filing reports' : 'file this page\'s faults to the private log'"
-                  x-text="reporting ? '● reporting' : '○ report off'"></button>
-          <span class="text-warning/80" x-show="reporting" x-text="reportStatus"></span>
-          <button class="link opacity-40" x-show="reporting" @click="fileReport()">file one now</button>
-        </div>
+        <!-- Reporting is the normal state, so this is a fact about the page
+             rather than a warning, and there is nothing on it to act on. It
+             stays visible because a page that files reports must be answerable
+             to whoever is holding it; the address carries ?report=off for one
+             load, and the kit's disable() for good. -->
+        <div class="text-xs font-mono w-full opacity-30 leading-tight"
+             x-text="reportStatus" x-show="reportStatus"
+             title="this page files its own diagnostics when something goes wrong"></div>
 
         <div class="join ml-auto">
           <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
