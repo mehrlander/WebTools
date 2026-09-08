@@ -132,6 +132,7 @@ tools/render/scenarios/estate-sessions.mjs,"the Sessions and Lists panes on fixt
 tools/render/scenarios/estate-skills.mjs,,tools/render/scenarios,106,driver,no,no,no
 tools/render/scenarios/estate-surfaces-embed.mjs,"the Surfaces view rendering a kind:embed item, collapsed",tools/render/scenarios,81,driver,no,no,no
 tools/render/scenarios/estate-unfiled.mjs,,tools/render/scenarios,99,driver,no,no,no
+tools/render/scenarios/fab-console-cost.mjs,,tools/render/scenarios,70,driver,no,no,no
 tools/render/scenarios/fab-export.mjs,the FAB's Export controls,tools/render/scenarios,31,driver,no,yes,no
 tools/render/scenarios/fab-guide.mjs,the fab's Render tab seeded token-free so the guide pane renders,tools/render/scenarios,144,driver,no,no,no
 tools/render/scenarios/fab-menu.mjs,"The launcher's long-press menu on the app: its three built-in rows, one line each, and the app answering as a stage host so its paste stays in place.",tools/render/scenarios,39,driver,no,no,no
