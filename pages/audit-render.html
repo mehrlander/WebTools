@@ -740,6 +740,7 @@ window.__audit = {
   await gh.load('kits/guide-render.js');   // house markdown type, not prose-sm
   await gh.load('kits/standoff.js');       // the annotation's rules, shared with ops.py
   await gh.load('kits/dictate.js');        // Dictate.pins: the settled edge-pin treatment
+  await gh.load('kits/page-report.js');    // the page files its own bug report, when armed
   // md-doc's html() returns '' with no window.marked, which is a silent empty
   // render rather than an error. Found by looking at the pixels.
   window.marked = (await import('https://cdn.jsdelivr.net/npm/marked@12/+esm')).marked;
@@ -861,7 +862,13 @@ window.__audit = {
       : gone.length ? `not loaded: ${gone.join(', ')}`
       : `no faults · ${kits.length} kits loaded (${kits.join(', ')})`;
   };
-  window.__auditSettled = () => { window.__auditReady = true; paintFaults(); };
+  window.__auditSettled = () => {
+    window.__auditReady = true;
+    paintFaults();
+    // A beat after settling, so a fault thrown by the first paint is in the
+    // list before the report is taken.
+    setTimeout(() => { window.__auditReport?.(); }, 1200);
+  };
 
   // THE CRASH THE READOUT ABOVE CANNOT SEE. Safari's "A problem repeatedly
   // occurred" is the WEB PROCESS dying, not a JS exception: no handler runs, so
@@ -878,11 +885,42 @@ window.__audit = {
       localStorage.removeItem('fab:step');
       const [stage, at] = crumb.split(' @');
       const ago = Number(at) ? Math.round((Date.now() - Number(at)) / 1000) : null;
+      window.__auditCrumb = { stage, ago };
       fault(`previous fab tap never finished: ${stage}` + (ago === null ? '' : ` (${ago}s ago)`));
     }
   } catch {}
 
   addEventListener('DOMContentLoaded', paintFaults);
+
+  // FILING THE REPORT, when it has been armed to. Everything above puts the
+  // page's own account of itself on screen, which is one line on a phone and
+  // has to be retyped or cropped into a screenshot to travel. kits/page-report
+  // commits the whole account to a private repo instead, so a failure arrives
+  // in full rather than in the shape a reader could relay. It is armed
+  // explicitly, expires on its own, and says so on screen the whole time.
+  //
+  // On the settling frame rather than at DOMContentLoaded: the faults worth
+  // reporting are mostly boot faults, and half of them have not happened yet
+  // when the DOM is ready. `auto` sends nothing when there is nothing to
+  // report, so an armed page that loads cleanly writes no commit.
+  window.__auditReport = async (reason) => {
+    try {
+      if (!window.PageReport) return { ok: false, why: 'kit not loaded' };
+      const d = (() => { try { return Alpine.$data(document.body); } catch { return null; } })();
+      const extra = {
+        reason: reason || null,
+        build: d?.build || null,
+        faults: window.__auditFaults.map(f => ({ ...f })),
+        crumb: window.__auditCrumb || null,
+        doc: d ? { units: d.units?.length, words: d.words, view: d.view, lens: d.lens } : null,
+        kits: ['Standoff', 'mdDoc', 'Dictate', 'marked'].filter(k => !window[k]),
+      };
+      const res = reason ? await window.PageReport.send(extra) : await window.PageReport.auto(extra);
+      if (res.ok) fault(`report filed: ${res.path}`);
+      else if (reason) fault(`report not filed: ${res.why}`);
+      return res;
+    } catch (e) { return { ok: false, why: String(e) }; }
+  };
   // Capture phase, because a resource that fails to load fires its error on
   // the element and never reaches window in the bubble phase. Those events
   // carry no message, so the target's own address is the report.
@@ -950,7 +988,7 @@ window.__audit = {
       this.a.standoff = Standoff.adopt(this.a.standoff, this.a.text);
       this.sections = mdDoc.split(this.a.text);
       this.base = JSON.parse(JSON.stringify(this.a.standoff));
-      this.$nextTick(() => { this.bindDoc(); this.paint(); window.__auditSettled?.(); });
+      this.$nextTick(() => { this.bindDoc(); this.paint(); this.syncReport(); window.__auditSettled?.(); });
       // Clicking off every unit clears the selection. Until now the only way
       // out was the panel's own close button, which is the one control a
       // reader is not looking at once they have decided they are done. Capture
@@ -1109,6 +1147,35 @@ window.__audit = {
       const gone = Object.keys(want).filter(k => !window[k]);
       return gone.length ? `not loaded: ${gone.map(k => `${k} (${want[k]})`).join(', ')}` : '';
     },
+    // ── THE REPORT ARM ───────────────────────────────────────────────────
+    // Mirrored into component state rather than read from the kit on every
+    // render, because Alpine cannot see a localStorage write and would leave
+    // the nag line stale for the life of the page. The kit stays the authority;
+    // these two fields are a projection of it, refreshed whenever this page
+    // does something that could change it.
+    reporting: false,
+    reportStatus: '',
+    syncReport() {
+      const P = window.PageReport;
+      this.reporting = !!P?.armed;
+      this.reportStatus = P?.status || '';
+    },
+    toggleReport() {
+      const P = window.PageReport;
+      if (!P) return;
+      P.armed ? P.disarm() : P.arm();
+      this.syncReport();
+      // A fresh arm files immediately, so the very first tap proves the whole
+      // path (token, repo, write) instead of proving it later, on the load
+      // after the failure you armed it for.
+      if (this.reporting) this.fileReport();
+    },
+    async fileReport() {
+      const res = await window.__auditReport?.('asked for');
+      this.syncReport();
+      return res;
+    },
+
     get build() {
       const has = [
         typeof this.pinUnder === 'function' && 'pins2',   // the nearest-bar pin hit test
@@ -1119,6 +1186,7 @@ window.__audit = {
         typeof this.absorbTo === 'function' && 'reach2',  // a boundary reaches past its pair, both ways
         Array.isArray(window.__auditFaults) && 'faults3', // says so either way, clean or not
         window.__fabCrumbRead && 'crumb1',                // a fab tap that crashed names its stage next load
+        !!window.PageReport && 'report1',                 // the page can file its own account of a failure
       ].filter(Boolean);
       return `build ${has.join('·') || 'base'} · lib ${(this.ref || 'main').slice(0, 7)}`;
     },
@@ -2107,6 +2175,22 @@ window.__audit = {
         <div id="audit-faults" class="text-xs font-mono w-full whitespace-pre-line leading-tight
                     text-base-content/50"
              @click="window.__auditFaults.length = 0; window.__auditSettled()">checking…</div>
+
+        <!-- THE ARM, AND ITS NAG. Reporting is off until it is turned on here,
+             and while it is on this line says so on every load until it
+             expires: a recorder that is quiet about recording is the failure
+             worth designing against. The status text comes from the kit, so
+             the countdown a reader sees is the state the kit will actually act
+             on rather than a second copy of it. -->
+        <div class="text-xs font-mono w-full flex items-center gap-2 leading-tight">
+          <button class="btn btn-ghost btn-xs h-5 min-h-0 px-1 font-mono"
+                  :class="reporting ? 'text-warning' : 'opacity-40'"
+                  @click="toggleReport()"
+                  :title="reporting ? 'stop filing reports' : 'file this page\'s faults to the private log'"
+                  x-text="reporting ? '● reporting' : '○ report off'"></button>
+          <span class="text-warning/80" x-show="reporting" x-text="reportStatus"></span>
+          <button class="link opacity-40" x-show="reporting" @click="fileReport()">file one now</button>
+        </div>
 
         <div class="join ml-auto">
           <button class="join-item btn btn-xs" :class="view==='source' && 'btn-active'"
