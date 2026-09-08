@@ -137,6 +137,7 @@
       filterStanding: '',
       open: null,
       guideHtml: '',
+      guideClass: '',
       resources: [],
       rate: '',
       filterState: '',
@@ -217,6 +218,9 @@
             await gh.load('kits/source-peek.js');
             const res = await this.home.get(`${this.ROOT}/INSTRUMENTS.md`);
             await window.GuideRender.needMarked();
+            // bodyClass() injects the stylesheet as a side effect, so this
+            // assignment is what styles the pane, not just what labels it.
+            this.guideClass = window.GuideRender.bodyClass('page');
             this.guideHtml = window.GuideRender.render(
               window.SourcePeek.fenceFrontmatter(res.text),
               { knownRefs: [this.DATA_REF, 'main'] }).html;
@@ -230,7 +234,6 @@
           this.error = `${name}: ${e.message || e}`;
         }
       },
-      get guideBodyClass() { return window.GuideRender ? window.GuideRender.bodyClass('page') : '' },
 
       get resCounts() {
         const c = { held: 0, fetched: 0, absent: 0 };
@@ -493,7 +496,7 @@
       <div x-show="!guideHtml" class="py-24 text-center">
         <span class="loading loading-dots loading-md opacity-20"></span>
       </div>
-      <div :class="guideBodyClass" x-html="guideHtml"></div>
+      <div :class="guideClass" x-html="guideHtml"></div>
     </section>
 
     <!-- ── resources ──────────────────────────────────────────────────────
