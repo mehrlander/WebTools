@@ -2168,17 +2168,7 @@ window.__audit = {
          to a reading column. The figure is one compact line, not stat cards:
          the reading that gives those numbers meaning is one tap away, under
          Reading. -->
-    <!-- OPAQUE, NOT BLURRED, and this is a suspect rather than a taste call.
-         backdrop-filter makes an element's paint depend on everything behind
-         it, so the browser keeps a snapshot of the backdrop and re-derives it
-         whenever the compositing tree above changes. The fab's drawer is a
-         fixed inset-0 layer that appears over exactly this, above a document
-         of two thousand inline-styled spans, and on an iPhone the tab dies in
-         the frame where that happens (measured 2026-09-08: the drawer's DOM
-         completes in 67ms, then no first frame ever arrives).
-         The blur bought a header that reads over scrolled text. An opaque
-         background buys the same thing and costs nothing to paint. -->
-    <header class="sticky top-0 z-20 bg-base-100 border-b border-base-300">
+    <header class="sticky top-0 z-20 bg-base-100/90 backdrop-blur border-b border-base-300">
       <div class="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
         <span class="font-semibold" x-text="a.title"></span>
         <span class="text-xs opacity-60" x-text="so.question"></span>
