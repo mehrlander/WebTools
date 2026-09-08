@@ -89,7 +89,7 @@ Each entry states the rule, then **Form** where there is a syntax, then **Bounda
   | a deep `:path` in a toss | the branch page, or a `#gz=` in chat |
   | anything still over | drop the render link from the body; put it in the chat caption |
 
-  **Boundary:** apply the ⭐ honesty gate at every size; where there is no render link, say why rather than omitting it. The 🌿 line replaces the list, never the prose: a turn that changed something non-obvious still says so in words. Slash-joined `[main](…)/[diff](…)` pairs count as one run, so separate them with `, `. Measurement: [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
+  **Boundary:** apply the ⭐ honesty gate at every size; where there is no render link, say why rather than omitting it. The 🌿 line replaces the list, never the prose: a turn that changed something non-obvious still says so in words. Slash-joined `[main](…)/[diff](…)` pairs count as one run, so separate them with `, `. Measurement: [github/mcp.md](https://github.com/mehrlander/web-tools/blob/main/docs/github/mcp.md).
 * **Review the diff 🔍.** Where the changed files are worth reading, add `…/pages/review.html#gh=owner/repo@branch&base=main` (`:path` for one file): each file's diff against the merge base, its patch and its raw content.
   **Boundary:** it supplements the caption, never replaces it, and is token-gated like every `#gh=`. 🌿 reads the branch, 🔍 the diff.
 

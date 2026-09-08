@@ -19,7 +19,7 @@ survives, and a single character more wraps the pair. Comma-joining ends the run
 and puts each URL back on its own count.
 
 Measured 2026-08-25 (issue #498, PR #499); the evidence, with every probe and
-its control, is in docs/environment/capabilities.md. Chat replies are untouched
+its control, is in docs/github/mcp.md. Chat replies are untouched
 by any of this, so this checker is about write-path output only.
 
 Usage:

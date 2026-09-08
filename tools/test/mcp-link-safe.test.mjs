@@ -11,7 +11,7 @@
 // (issue #498, PR #499, 2026-08-25), so this file is the rule in executable
 // form: if someone "fixes" the threshold or drops the pair handling, the
 // disagreement is with a measurement rather than with an opinion. Evidence:
-// docs/environment/capabilities.md, "What gets counted".
+// docs/github/mcp.md, "Writing: a URL of 150 characters or more is wrapped".
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -13,7 +13,7 @@ observations and is corrected by re-probing; everything else is living and
 must stay correct.
 
 **Reach** (derived by `tools/build/docs-reach.mjs`, gated against the registry):
-2 arrive in every session's context, 25 are named by CLAUDE.md,
+2 arrive in every session's context, 26 are named by CLAUDE.md,
 6 by a skill, 27 by a page or component. The remaining 16 are
 marked *(orphan)* below: nothing points at them except this index.
 
@@ -111,6 +111,7 @@ marked *(orphan)* below: nothing points at them except this index.
 - [`README.md`](github/README.md) *(orphan)* — the github folder's front door: renderer, git treatment, MCP routing, surfacing
 - [`github-surfacing.md`](github/github-surfacing.md) — GitHub-native surfaces for exposing work: branches, compares, drafts, permalinks
 - [`markdown.md`](github/markdown.md) *(orphan)* — what GitHub's static renderer turns markdown into
+- [`mcp.md`](github/mcp.md) *(measured)* — what the MCP layer does to a call and to the text it carries: which server answers, the 150-character write threshold, the HTML-stripping readback
 - [`mcp-server-routing.md`](github/mcp-server-routing.md) *(record, orphan)* — two GitHub MCP servers at once: the 2026-07-15 observation, superseded
 - [`post-merge-branch-mutation.md`](github/post-merge-branch-mutation.md) — why a merged branch stops being a live workspace: merged means closed
 

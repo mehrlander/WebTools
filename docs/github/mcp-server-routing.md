@@ -3,7 +3,7 @@
 *(observed 2026-07-15)*
 
 > [!WARNING]
-> **Stale 2026-08-05 → ../environment/capabilities.md:** the operative rule
+> **Stale 2026-08-05 → mcp.md:** the operative rule
 > moved. A better-evidenced measurement two weeks later (logs, controls, and
 > upstream issues) reaches the same move from a different account of the cause,
 > and that section is now the one owner. This file stays as the record of what
@@ -29,7 +29,7 @@ freshly-reconnected UUID-named server is not, so the same operation prompts
 there. Nothing about the approval flow is broken; the call was simply routed to
 an un-allowlisted twin.
 
-**Stale 2026-08-05 → ../environment/capabilities.md:** this paragraph is the
+**Stale 2026-08-05 → mcp.md:** this paragraph is the
 part that was superseded. The later measurement puts the split at built-in
 versus connector rather than allowlisted versus not, and reports that
 allowlisting the connector's tools was tried upstream and failed, which this

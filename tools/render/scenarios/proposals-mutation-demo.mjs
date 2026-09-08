@@ -22,7 +22,7 @@ export default async (page) => {
           caution: 'Six files now cite issue #498 as the evidence for the 150-character rule. Deleting it breaks those citations, and GitHub keeps no tombstone.',
           by: 'claude-code', authored: '2026-08-25',
           session: 'https://claude.ai/code/session_01QbUsehoYKZzgoZ9jRwJAPW',
-          why: 'A scratch issue opened to hold write-path probe rows. Its measurements are transcribed into docs/environment/capabilities.md, so the issue itself is no longer the record. GitHub REST cannot delete an issue at all; only GraphQL can, and a sandbox session cannot POST GraphQL, which is why this arrives as a proposal rather than as a done thing.' }),
+          why: 'A scratch issue opened to hold write-path probe rows. Its measurements are transcribed into docs/github/mcp.md, so the issue itself is no longer the record. GitHub REST cannot delete an issue at all; only GraphQL can, and a sandbox session cannot POST GraphQL, which is why this arrives as a proposal rather than as a done thing.' }),
         'proposals/pending/scope-demo.json': JSON.stringify({
           id: 'scope-demo', kind: 'set-json-field', repo: 'mehrlander/fn-data',
           path: '.web-tools.json', field: 'scope',
