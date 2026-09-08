@@ -214,9 +214,17 @@ fi
 # being committed, which is the last moment folding it into the entry that
 # already owns it is cheap. So the generator's stdout is shown rather than
 # swallowed, unlike the legs above.
+#
+# BOTH OUTPUTS ARE STAGED, and only one was. The generator rewrites the index
+# block inside docs/SNAGS.md AND emits docs/snags.csv, and this leg staged the
+# markdown alone. So every commit touching the log left the csv dirty in the
+# working tree, which the stop hook caught three times (2026-09-07, 2026-09-08)
+# and no gate did: the csv is not compared against its source by the suite the
+# way dist/ is, so nothing on the way to a merge would have noticed.
 if git status --porcelain -- docs/SNAGS.md | grep -q .; then
   if out="$(npm run snags-index --silent 2>&1)"; then
     stage docs/SNAGS.md
+    stage docs/snags.csv
     printf '%s\n' "$out" >&2
   else
     echo "build hook: 'npm run snags-index' failed — committing without refreshing the snags index" >&2

@@ -70,7 +70,6 @@ https-block-resets-instead-of-403,a blocked host looks like a network flake,1,20
 word-boundary-before-alternation,a scan reports zero and looks authoritative,1,2026-08-03,2026-08-03,
 x-collapse-needs-x-show,a panel renders at zero size,1,2026-07-15,2026-07-15,environment/testing.md
 an-unlayered-rule-beats-every-layer,`max-w-none` reads as the undo and is not one,0,,,
-backtick-in-a-template-comment,"a file that ""did not load""",0,,,
 backtick-in-an-html-comment-ends-the-template,"a component that will not parse, from prose",0,,,
 both-caps-sat-in-the-guard-exemptions,a clean scan over a screen with two corridors,0,,,
 cross-repo-lib-consumer-invisible,in-repo greps cannot see an external runtime consumer of a lib file,0,,,
