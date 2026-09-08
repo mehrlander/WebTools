@@ -6,7 +6,7 @@ docs/HTML-STYLE.md,"a pointer to the house style, kept for the names the style g
 docs/MARKETPLACE.md,the plugin marketplace: how the set is published and subscribed to,living,orphan,545,authored; deliberately does not enumerate the roster (it points at the catalog instead),
 docs/PORTABLE.md,"the portable set: what travels, and how to adopt it",living,project,6846,"authored, edited in place; the roster tables are registry-gated against portable.csv and disk (portable-manifest.test.mjs)",
 docs/README.md,the docs folder's front door: the generated index of this registry,living,app,1460,"generated from docs.csv by tools/build/docs-readme.mjs (commit hook plus the derived-artifacts gate); edit the registry, never this file",
-docs/SNAGS.md,"the friction log: one line per snag, symptom then corrected move",living,project,16047,"authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite",
+docs/SNAGS.md,"the friction log: one line per snag, symptom then corrected move",living,project,16130,"authored; append-on-trip, entries updated on recurrence, graduation to the tracker on the third bite",
 docs/SURFACING.md,the surfacing system: primitives plus the guide-PR course,living,injected,2774,"authored, edited in place; vendored copy byte-gated (portable-manifest.test.mjs)",
 docs/TRACKER.md,"the opt-in cross-session project tracker: schema, ids, board",living,project,3838,"authored, edited in place; the schema the tasks skill implements, held to it by review alone",
 docs/aims.json,the mission the estate's material serves and the five goals it is held to,living,app,220,authored; rendered by the Map view's Aims tab,

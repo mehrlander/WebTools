@@ -347,7 +347,15 @@ hook rebuilds `dist/`, so both the suite and the hook fail loudly. What the four
 trips cost was the loop, not the gate, so the corrected move is a habit: name a
 class in an HTML comment in plain words, and run
 `node -e "new Function(require('fs').readFileSync(<file>,'utf8'))"` before the
-build. →
+build.
+
+Fifth sighting 2026-09-08, in `lib/alpineComponents/fab.js`, and it named a
+sixth term rather than a class: the backticks were around `dom:`, a crumb label.
+Both gates above are commit-time, so before a commit the only report is one line
+in the shot log, **`1 lib file(s) did NOT load: alpineComponents/fab.js`**, above
+a run that otherwise looks like a plain timeout. Read that line first when a
+component is missing: the wrong first diagnosis here was that the new element
+had broken `x-if`'s single-root rule. →
 [`docs/loader.md`](loader.md) for what a component file must satisfy.
 
 ### safari-button-sizes-from-unclipped-content: the child clipped, the fade landed, and the button stayed tall
