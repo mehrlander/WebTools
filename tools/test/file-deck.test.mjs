@@ -373,15 +373,30 @@ test('the header carries the card\'s layouts and its github menu', async () => {
   for (const t of ['Read', 'Compare, side by side', 'Compare, inline', 'This file on GitHub'])
     assert.ok(titles.includes(t), t + ' is on the header: ' + JSON.stringify(titles));
 
-  // IDENTITY THEN ARRANGEMENT, the order the card's own row reads: its github
-  // menu is order-2 on a reading surface, beside the name, and order-11 in a
-  // list. This header IS the name, so the mark takes the end nearest the title
-  // rather than trailing the layouts, which is where it shipped for a day.
-  const own = titles.filter(t => ['This file on GitHub', 'Read',
-    'Compare, side by side', 'Compare, inline'].includes(t));
-  assert.deepEqual(own, ['This file on GitHub', 'Read',
-    'Compare, side by side', 'Compare, inline'],
-    'github leads the cluster: ' + JSON.stringify(own));
+  // THE MARK RIDES THE NAME, NOT THE CLUSTER, and the difference is which
+  // element it is inside. It sat at the cluster's end and then at its start,
+  // and both read as belonging to the group of controls rather than to the
+  // file; the kit grew a slot in its h1 for it (2026-09-08). Asserting DOM
+  // order alone would pass either way, since the title block precedes the
+  // cluster: the containment is the claim.
+  const gh = [...d.el.querySelectorAll('.sd-header button')]
+    .find(b => b.title === 'This file on GitHub');
+  assert.ok(d.el.querySelector('.sd-header h1').contains(gh),
+    'the github mark is inside the title, beside the name');
+  const cluster = [...d.el.querySelectorAll('.sd-header button')]
+    .filter(b => !d.el.querySelector('.sd-header h1').contains(b))
+    .map(b => b.title || '')
+    .filter(t => ['This file on GitHub', 'Read', 'Compare, side by side',
+                  'Compare, inline'].includes(t));
+  assert.deepEqual(cluster, ['Read', 'Compare, side by side', 'Compare, inline'],
+    'and the cluster holds the layouts alone: ' + JSON.stringify(cluster));
+
+  // The subtitle is still the title's ADJACENT sibling. Half the estate reads
+  // this header as `h1 + p`, so a wrapper around the h1 would have found no
+  // crumb rather than a wrong one, in eight tests and three scenarios.
+  assert.ok(d.el.querySelector('h1 + p'), 'h1 + p still reaches the crumb');
+  assert.equal(d.el.querySelector('h1').textContent, head(d).title,
+    'and the h1 still reads as the name alone');
 
   // The one that is lit is the card's answer, not the header's own state.
   const lit = [...d.el.querySelectorAll('.sd-header button')]
