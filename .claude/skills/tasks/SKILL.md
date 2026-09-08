@@ -21,106 +21,62 @@ description: >-
 # tasks
 
 The tracker is cross-session memory on `main`: `tracker/tasks/<id>.md` is the
-source of truth, `tracker/board.md` is a generated rollup.
-
-**This skill owns every rule about operating a tracker**, including when a task
-should exist at all. [`docs/TRACKER.md`](https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/TRACKER.md)
-is the contract behind it: the file schema, the id scheme, the board's shape,
-the parser guarantees, and why each is the way it is. Fetch it when you need the
-schema in full or are changing the design. It states no behavioral rules, so
-nothing here is a restatement of it. Substitute the current repo into URL
-templates.
+source of truth, `tracker/board.md` a generated rollup. **This skill owns every
+rule about operating a tracker**, including when a task should exist.
+[`docs/TRACKER.md`](https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/TRACKER.md)
+is the contract behind it (file schema, id scheme, board shape, parser
+guarantees) and states no behavioral rules; fetch it for the schema in full.
+Substitute the current repo into URL templates.
 
 ## The filing rules
 
-Read these before writing a task file. They answer the failure a tracker
-actually has, which is not too few tasks.
+The failure a tracker actually has is not too few tasks.
 
-**1. The bar.** File only work that a later session would otherwise have to
-rebuild context to rediscover. Not every edit, and never work the current
-session could simply do. Filing what you could finish now converts an hour of
-work into a standing item someone must re-read, re-prioritize, and reconstruct.
-Do the work; let the diff and the reply be the record. A finding already written
-into a report, a chron entry, or a PR body is durable, so it does not also need
-a task. This is the conventions' [Keep focus](https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/CONVENTIONS.md)
-rule at the filing step.
+**1. The bar.** File only work a later session would otherwise have to rebuild
+context to rediscover. Never work this session could do now, and never a
+finding already durable in a report, a chron entry, or a PR body. This is the
+conventions' Keep focus rule at the filing step.
 
-**2. The gate.** Filing a *new* task needs the user's assent. Propose in your
-reply, one line each, and file the ones they name. Batch the proposal at the end
-of a pass so it is one decision rather than several.
+**2. The gate.** Creating a task needs the user's assent: propose in your reply,
+one line each, batched at the end of a pass, and file the ones they name. The
+scarce thing is the backlog, not permission to write `main`. Everything else
+is unattended and is a standing decision, so do not ask whether to ask:
+claiming, updating, closing (a refinement close included, once its findings
+are confirmed), an assessment record the user asked for, regenerating the
+board, and pushing to `main`.
 
-**Know why you are asking.** It is not that writing to `main` needs clearance;
-that permission is standing and covers every tracker write. You are asking
-because the backlog is the scarce thing and a task nobody will claim costs more
-than it saves. So the question is "is this worth carrying", not "may I commit".
-Ask it once, take the answer, and move on.
+**3. No fragmenting.** File by outcome, not by observation: related fixes that
+land together are one task with a scoped list. Split only where the pieces
+decouple (different claimants, different timing, a real dependency boundary),
+and never pre-authorize a split inside the file. Delivery stays elastic the
+other way: a branch may deliver several tasks and a task may span several PRs;
+bundle adjacent small items into the open branch rather than minting a branch
+per item.
 
-Only *creating* a task is gated. Claiming, updating, closing (a refinement
-close included, once its findings are confirmed), writing an assessment record
-the user asked for, regenerating the board, and pushing to `main` are
-unattended: they describe work
-that already exists, and gating them would grow the backlog. This is a standing
-decision, so take the gate without asking whether to ask.
+## Dormant: preserved, and not to be raised
 
-**3. No fragmenting.** File by outcome, not by observation. Related fixes that
-would land together belong in one task with a scoped list. Splitting them hides
-the backlog's shape and multiplies filing overhead. Split only where the pieces
-genuinely decouple: different claimants, different timing, or a real dependency
-boundary. Do not pre-authorize a split inside a task file either ("or split this
-out later if it does not fit"), which is how one task silently becomes two.
-
-Delivery scope stays elastic in the other direction: a branch or PR may deliver
-several tasks, and a task may span several PRs. When adjacent small items can be
-cleared in one pass, bundle them into the open branch rather than minting a
-branch per item. The task files, not the branch topology, carry the accounting.
-
-## Dormant tasks: preserved, and not to be raised
-
-`status: dormant` means the owner has decided this is kept but off the table.
-The board renders it on no section, and **you do not raise it either**: do not
-surface, assess, summarize, recommend, count, or otherwise discuss a dormant
-task unless the user explicitly asks about it or names it.
-
-The temptations to break this all look like diligence, and each is the failure:
-
-- listing it in an assessment "for completeness"
-- counting it in an open-task total, or in a "15 open, one of them dormant"
-- proposing that it be revived, closed, or reconsidered
-- explaining, when a related subject comes up, that there is a dormant task about it
-- mentioning that you are deliberately not mentioning it
-
-A dormant task is not a weaker `blocked` and not a tidier `backlog`. Those two
-say "not now" while still asking to be read on every pass, which is exactly the
-cost the owner is declining to keep paying. If a dormant task genuinely needs to
-come back, the user brings it back.
-
-**Setting one is the user's call, never yours.** Propose it the way you propose
-a close: name the task, say why it looks dormant rather than blocked, and let
-them decide. Once set, the file stays where it is with its history intact, and
-the only thing that changes is that reviews stop discussing it.
+`status: dormant` is kept but off the table. The board renders it in no
+section, and you do not surface, count, assess, summarize, or propose reviving
+it unless the user names it; mentioning that you are not mentioning it is the
+same failure. It is not a weaker `blocked` or a tidier `backlog`, both of which
+still ask to be read on every pass. Setting it is the user's call: propose it
+the way you propose a close.
 
 ## Bare invocation: caption the board
 
-Called with no further ask (e.g. `/tasks` on its own), caption the current board
-before doing anything else. Read `tracker/tasks/*.md` directly rather than
-parsing `board.md`'s prose, so the rows can link. Close with a one-line offer of
-the next action. When the ask names an action instead, skip the caption and go
-straight to it.
-
-One single-column table per status section, no header row, the column header
-being the section name in caps. Dormant tasks appear in no section and are not
-counted; see the rule above. In-progress groups by owning branch: the branch
-name bold on its own row, then each task under it prefixed `↳` (always, even for
-a single task). Backlog and blocked are flat. Omit an empty section. This is the
-`caption` skill's grouped-table grammar applied to tasks; that skill owns the
-general form.
+`/tasks` with no further ask captions the board first. Read
+`tracker/tasks/*.md` directly, not `board.md`, so rows can link. One
+single-column table per status section, no header row, the section name in
+caps as the column header; in-progress grouped by owning branch (branch bold
+on its own row, each task under it prefixed `↳`, always); backlog and blocked
+flat; empty sections omitted; dormant absent. Close with a one-line offer of
+the next action.
 
 ```
 | IN PROGRESS |
 |---|
 | **claude/some-branch-abc123** |
 | ↳ 🎫 [Task title](<blob url>) |
-| ↳ 🎫 [Second task on the same branch](<blob url>) |
 
 | BACKLOG |
 |---|
@@ -129,16 +85,14 @@ general form.
 
 ## No tracker yet
 
-If `tracker/tasks/` doesn't exist in this repo, say so rather than silently
-improvising a format. Offer to bootstrap one (an empty `tracker/tasks/` plus a
-first task file) rather than assuming a tracker is wanted. A repo may
-deliberately run no tracker.
+If `tracker/tasks/` does not exist, say so and offer to bootstrap one (an empty
+`tracker/tasks/` plus a first task) rather than improvising a format. A repo
+may deliberately run none.
 
 ## File a task
 
-After the gate above clears. Mint the id as `<slug>-<rrrrrr>`, a short
-interpretable slug from the title plus a 6-char base36 suffix that keeps two
-sessions from colliding:
+After the gate clears. Mint `<slug>-<rrrrrr>`, a short slug from the title plus
+six base36 characters so two sessions cannot collide:
 
 ```
 python3 -c "import random,string,sys;print(sys.argv[1]+'-'+''.join(random.choices(string.digits+string.ascii_lowercase,k=6)))" cross-corpus-note-index
@@ -162,34 +116,29 @@ project: <optional workspace>
 - <YYYY-MM-DD>: <what happened, and the intended next step>
 ```
 
-Status is one of `backlog | in-progress | blocked | done | dormant`. Three
-optional keys answer what `status` cannot, and all are recognized: the board
-renders them on open rows.
+`status` is `backlog | in-progress | blocked | done | dormant`. Three optional
+keys render on open rows:
 
-- `size: XS | S | M | L | XL | ?` calibrated to the session, the real unit of
-  execution. **XS** folds into another task's pass, **S** is one session with
-  room to spare, **M** is one full session, **L** is several, **XL** is a
-  project and is a smell rather than a value. **`?`** means it needs a design
-  pass before it can be sized, which is worth saying rather than guessing.
-- `awaiting: <free text>` names what is holding a task. It is free text and
-  cleared by hand, and it renders on a `backlog` row as readily as a `blocked`
-  one, because a task can be startable in part and still be waiting on someone
-  for the rest. It is not `depends-on`: nothing mechanically knows when a
-  person has decided.
-- `depends-on: <id>[, <id>...]` names the tasks this one waits on, comma
-  separated. **Absence means no dependency**, so never write a value meaning
-  "none". It replaced the `track` field on 2026-08-23; if you meet `track:` in
-  an old file, migrate it (a `depends-on:<id>` value becomes this key, and every
-  other value is dropped).
+- `size: XS | S | M | L | XL | ?`, in sessions: XS folds into another task's
+  pass, S is one with room to spare, M one full, L several, XL a project and a
+  smell, `?` needs a design pass before sizing.
+- `awaiting: <free text>`: what a person has yet to decide. Cleared by hand,
+  and valid on a `backlog` row, since a task can be startable in part.
+- `depends-on: <id>[, <id>...]`: the tasks this one waits on. Absence means no
+  dependency; never write a value meaning "none". (Replaced `track:` on
+  2026-08-23; migrate an old file's `depends-on:<id>` value and drop the rest.)
 
-Any scalar beyond the recognized set (`priority: high`, `owner: marcus`) is an
-open tag: preserved, shown, not acted on. Full schema in `TRACKER.md`.
+Any other scalar (`priority: high`, `owner: marcus`) is an open tag: kept,
+shown, not acted on.
 
 ## File a runnable task
 
-A task whose method is already settled carries `action: <skill-name>` and is
-written thin: no argument, no history, because the reasoning lives in the skill.
-Add `runner: <machine>` when the session has to happen somewhere particular.
+A task whose method is already a skill carries `action: <skill-name>` and is
+written thin, since the reasoning lives in the skill; add `runner: <machine>`
+when the session must happen somewhere particular. If the procedure is not a
+skill yet, writing the skill is part of filing the task. Work needing no
+session belongs in a hook, a test, or CI, not here. Prefer a parameter that
+derives ("every month in X with no file in Y") over a literal list.
 
 ```markdown
 ---
@@ -211,100 +160,59 @@ Run `<action>` for <the subject, in one line>.
 <the observable condition>
 ```
 
-Two rules decide whether this shape applies at all. **If the procedure is not a
-skill yet, writing the skill is part of filing the task**: the catalog is the
-skill set and nothing else, so an `action` naming a procedure that exists only
-in prose points at nothing. And **work needing no session belongs in a hook, a
-test, or CI**, not here. Prefer a parameter that derives ("every month in X with
-no file in Y") over a literal list, so the task stays true as the work lands.
-Shape and reasoning in `TRACKER.md`.
-
-**Finding them.** A machine picking up its queue holds the clones and greps:
-
-```
-grep -rl 'runner: <machine>' */tracker/tasks/ */*/tracker/tasks/
-```
-
-Both tags ride into `board-tags.csv`, so anything machine-side can
-select on them without the generator changing.
+A machine finds its queue with `grep -rl 'runner: <machine>' */tracker/tasks/
+*/*/tracker/tasks/`; both tags ride into `board-tags.csv`.
 
 ## Claim, update, close
 
-**Claim:** set `status: in-progress`, add `session: <your working branch>`, and
-append a progress-log line. Do the feature work on that branch; update the task
-file on `main` when status, owning branch, or the progress log changes.
+**Claim:** `status: in-progress`, `session: <your working branch>`, a
+progress-log line. Feature work goes on that branch; the task file on `main`
+changes when status, owning branch, or the log does.
 
-**Close:** set `status: done`, `closed: <YYYY-MM-DD>`, `session:` to the
-completing branch, and add a final log entry citing the branch and delivery PR
-("Done on `claude/foo-ab12`; lands via PR #299"). Close when the branch work is
-complete, not at merge, because nothing updates the task at merge time and a
-close deferred to merge never happens. Close each task as it finishes even when
-others remain in progress on the same branch. Report the close and its branch in
-your reply.
+**Close:** `status: done`, `closed: <YYYY-MM-DD>`, `session:` to the completing
+branch, and a final log line citing branch and delivery PR. Close when the
+branch work is complete, not at merge: nothing updates a task at merge time,
+so a close deferred to merge never happens. Close each task as it finishes and
+report the close in your reply.
 
 ## Assess the tracker
 
-Assessment interprets the tracker as a whole; it recommends and never mutates.
-Read every task file's body and progress log plus the repo's recent motion
-(the newest commits, merged PRs), then report in chat: the workstreams the
-open tasks form, framing that lags the implementation, decisions hiding inside
-tasks, differences in scale and readiness, bundles that would travel together,
-and good next-session candidates. **Skip dormant tasks entirely**, including in
-the counts and in `basis`: an assessment that mentions one has failed at its
-one instruction. Dispatch briefs, a ready-to-launch prompt
-per bundle, are among the most useful outputs: converting backlog into
-launchable work is much of an assessment's point.
+Assessment interprets and never mutates. Read every task body and log plus the
+repo's recent motion, then report: the workstreams the open tasks form,
+framing that lags the implementation, decisions hiding inside tasks, scale and
+readiness, bundles that travel together, next-session candidates, and a
+dispatch brief per bundle. Skip dormant tasks entirely, counts included.
 
-The chat report is the deliverable. Offer to keep it as a durable record,
-`tracker/assessments/YYYY-MM-DD.json` (schema `tracker-assessment/1`; contract
-and required keys in TRACKER.md), rather than writing one unprompted: a record
-earns its commit when the judgment would otherwise have to be rebuilt. Anchor
-it to the commit of `main` you actually read, cite task ids rather than
-copying what the task files already say, and push it to `main` by the same
-scratch-branch recipe as any tracker state. Never edit a past assessment: it
-is a dated record, aged rather than wrong when the tracker moves on; supersede
-it with a new one.
-
-Mutating anything the assessment recommends is refinement, below. The
-boundary between the two is permission, not sequencing: an assessment-only
-ask does not imply consent to refine, but when the user asks for both, or
-confirms the findings in the same conversation, one pass assesses and then
-applies the agreed refinement without a second round trip.
+The chat report is the deliverable. Offer, rather than write unprompted, a
+durable `tracker/assessments/YYYY-MM-DD.json` (schema `tracker-assessment/1`,
+keys in TRACKER.md), anchored to the commit of `main` you read, citing task ids
+rather than copying them, pushed by the recipe below. Never edit a past
+assessment; supersede it. Acting on what an assessment recommends is
+refinement, and the boundary is permission: an assessment-only ask does not
+imply consent to refine, while an ask for both, or confirmation in the same
+conversation, runs the two as one pass.
 
 ## Refine the tracker
 
-Refinement restores scope truth by mutating task files. It is the operation
-earlier material called grooming; "groom the tracker" still invokes it. Read
-every task file's body and progress log, not just `board.md`. Flag each
-`backlog`/`blocked` task that is superseded, stale, a duplicate, framed for
-work that has since landed or shifted (wants reframing or narrowing to the
-true residual), or oversized (wants splitting), and any `in-progress` task
-whose `session:` branch is merged or gone. A recent assessment's `hygiene`
-findings are a natural worklist. Propose findings; get confirmation before
-closing, reframing, or splitting.
+Refinement restores scope truth by mutating task files ("groom the tracker"
+still invokes it). Read every body and log. Flag a `backlog` or `blocked` task
+that is superseded, stale, a duplicate, framed for work that has since landed
+or shifted, or oversized, and an `in-progress` task whose `session:` branch is
+merged or gone. Check status, not only prose: waiting on an event or a machine
+is `backlog` with `awaiting:` or `runner:`, since `blocked` reads as "do not
+try"; a `done` without `closed:` or a `backlog` with `session:` is the same
+class of finding. Propose; confirm before closing, reframing, or splitting.
+Dormant tasks are out of scope unless the user just asked about one.
 
-Check the status itself, not only the prose. A `blocked` task waiting on an
-external event wants `awaiting:` and a `backlog` status; one waiting on a
-particular machine wants `runner:` and the same, since both are startable and
-`blocked` reads as "do not try." Leave `blocked` to what genuinely depends on
-other work. A `done` task missing `closed:`, or a `backlog` task carrying a
-`session:`, is the same class of finding.
-
-Dormant tasks are out of scope for refinement too: do not reframe, split, close
-or re-status one, and do not report on it. The exception is a dormant task the
-user has just asked about.
-
-There is no status for a refinement close, since a real `done` means the work
-was completed. Set `status: done` and `closed: <date>` as usual, add the open
-tag `resolution: superseded | stale | duplicate | dropped`, and name the cause
-in a progress-log line.
+A refinement close is `status: done`, `closed: <date>`, the open tag
+`resolution: superseded | stale | duplicate | dropped`, and the cause in a log
+line.
 
 ## Commit tracker state to main
 
 **Task files and `board.md` commit directly to `main`, never to a feature
-branch.** That is what makes the tracker shared. Do the edit on a scratch branch
-cut fresh from `origin/main`, push it to `main`, and return to your working
-branch:
+branch.** Edit on a scratch branch cut from `origin/main`, push it to `main`,
+return:
 
 ```
 git fetch origin main
@@ -316,40 +224,24 @@ git push origin tmp-tracker:main
 git checkout <your-branch> && git branch -D tmp-tracker
 ```
 
-This push is the standing exception to any instruction to keep commits on the
-feature branch. It needs no confirmation, only a note in your reply.
-
-If the push is rejected as non-fast-forward, another session advanced `main`:
-fetch, rebase, regenerate the board, push again. Task files with distinct ids do
-not conflict; `board.md` may, and it is generated, so take either side and rerun
-the generator.
-
-Never hand-edit `board.md`. Where a repo's commit hook regenerates it (web-tools
-runs `npm run tracker-board`), the explicit call above is belt-and-suspenders;
-run it anyway when working outside the hook.
+This push is the standing exception to keeping commits on the feature branch;
+it needs no confirmation, only a note in your reply. A non-fast-forward
+rejection means another session advanced `main`: fetch, rebase, regenerate,
+push again. Task files with distinct ids never conflict; `board.md` is
+generated, so take either side and rerun. Never hand-edit `board.md`; where a
+commit hook regenerates it, the explicit call is belt-and-suspenders.
 
 ## Another repo's tracker
 
-The same recipe, run against that repo's clone, is how you correct a task
-elsewhere; nothing else changes. What differs is when you may.
-
-**Correct, unattended:** a statement that is now false (a path that changed
-repos, a corpus that moved, a dependency closed elsewhere). Same standing
-permission as updating your own task. Note it in your reply.
-
-**File, gated:** a new task in another repo's tracker takes the filing gate,
-because it spends that repo's backlog.
-
-Name the origin in the commit message and add a dated progress-log line saying
-where the correction came from, so the edit is not an unexplained write from a
-session that was working somewhere else. If the repo is not in session scope,
+The same recipe against that repo's clone. A statement now false (a moved path,
+a dependency closed elsewhere) is corrected unattended; a new task there takes
+the filing gate, since it spends that repo's backlog. Name the origin in the
+commit message and in a dated log line. If the repo is not in session scope,
 leave the correction in your reply rather than filing a task at home to
-remember it. [TRACKER.md](https://raw.githubusercontent.com/mehrlander/web-tools/main/docs/TRACKER.md)
-carries the reasoning and the reference-prefix rule that prevents most of these.
+remember it.
 
 ## Boundary with web-tools
 
-This skill owns the tracker: operations, filing rules, and the main-branch
-workflow. The `web-tools` skill owns the surfacing layer: PR bodies,
-`[new]/[main]/[diff]` links, the 🎫 marker's display form, the merge guide, and
-wrap-up. When the ask is about a task file or the board, stay here.
+This skill owns the tracker. The `web-tools` skill owns PR bodies, `[new]`,
+`[main]` and `[diff]` links, the 🎫 marker's display form, the merge guide,
+and wrap-up.

@@ -1,163 +1,127 @@
 # Surfacing
 
-Making a session's work visible, reviewable, and durable when chat is the only output channel. The canonical source is `mehrlander/web-tools` at `docs/SURFACING.md`, loaded with [CONVENTIONS.md](CONVENTIONS.md) by `@`-import or the `web-tools` skill. Local `CLAUDE.md` rules override these defaults. Apply repo- and branch-scoped rules per workstream, and substitute the current repo into URL templates.
-
-The installed set includes the universal **surfacing primitives** and the **surfacing course**, the guide-PR lifecycle that begins when a PR opens. See [PORTABLE.md](https://github.com/mehrlander/web-tools/blob/main/docs/PORTABLE.md).
+Use these rules when chat is the only output channel. The canonical source is `mehrlander/web-tools` at `docs/SURFACING.md`, loaded with [CONVENTIONS.md](CONVENTIONS.md) by `@`-import or the `web-tools` skill. Local `CLAUDE.md` rules override these defaults. Apply repo- and branch-scoped rules per workstream, substituting the current repo in URL templates.
 
 ---
 
 ## Surfacing primitives
 
-This prose is the authoritative statement of the primitives; [`docs/surfacing.csv`](https://github.com/mehrlander/web-tools/blob/main/docs/surfacing.csv) is its gated index (membership held two-way by test), rendered live in the Web Tools app's Map view, Surfacing tab.
+For uncommon carriers, follow [surfacing-extended.md](https://github.com/mehrlander/web-tools/blob/main/docs/surfacing-extended.md).
 
-Each entry states the rule, then **Form** where there is a syntax, then **Boundary** where deleting it would change how the rule applies at an edge.
+### Every reply
 
-* **Reference is a link.** Anything tappable is `[caption](url)`; bare paths drop on mobile, in rendered markdown, and when copied. The first mention of a file the reader may open gets a link: unchanged source `[main]`, touched source `[new]`, a renderable page its 🥏, ⭐ or 📦. A change you are proposing links its file before the reasoning.
-  **Boundary:** only a renderable page gets a render link, and source is a "view", never a preview. Reserve `file:line` for grep and debug.
+* **Closing state.** Use exactly one, last, understandable without the preceding message. Write the glyph at the start of the line with the name in bold, as shown.
+  - 🟢 **Ready to continue:** You have a clear path to proceed, approved or implied by user interest.
+  - ❇️ **Ready to assess:** "Go" means report back, not implement.
+  - 🟡 **Pending:** Waiting on an action, answer, or dependency.
+  - 🆚 **Choice needed:** Two competing changes. Assess, recommend, and name the choice.
+  - ✴️ **Needs you:** Only the reader can supply what is needed. Provide an action link for every ask.
+  - 🟠 **Attention:** A concrete problem must be settled before proceeding.
+  - ⚪ **Clean exit:** Nothing remains here; the reader decides whether to wrap up.
+  - 🟣 **Merged:** This branch merged. State what shipped in one line.
+  - 🔴 **Closed:** This branch closed unmerged. State why in one line.
+  - ⚫ **Done:** Every workstream merged or closed and nothing remains open. Nothing follows.
+  - 🔵 **Short answer:** The question is answered and nothing is proposed. Restate the question in bold, followed by the answer.
 
-* **Show pixels.** For a visual change, send an inspected headless screenshot inline.
-  **Boundary:** a viewport shot cannot show horizontal overflow; measure `scrollWidth`.
+  Every ✴️ ask requires an action link. For more than three asks, use an inquiry surface. Use 🟢, not 🆚, for confirmation.
 
-* **Hand over the artifact.** Send a file the user would open, run, or iterate on with `SendUserFile`, not a description or a path. `proactive` when unprompted, `normal` when replying.
-  **Boundary:** images preview inline; HTML, zip and audio download. For visual work, send the screenshot and the file.
+* **Close in one order.** End with the 🌿 caption, render line, 🧭, then the state. Include a state when no files changed.
 
-* **Lead with the live view.** A README for something that renders opens with a prominent ⭐ link to the hosted version, above the prose.
+### A reply that changed files
 
-* **Toss a live view 🥏.** Render an HTML page that has no hosted URL through the shared toss renderer rather than handing over source alone.
-  **Form:** `toss-render.html#gz=<base64url>` gzips the page in; the fragment never reaches the server, absolute-URL CDN dependencies work, same-repo relative ones do not, and it travels to any reader. `toss-render.html#gh=owner/repo[@ref]:path` fetches a branch or private-repo page live with same-ref relative dependencies, through the viewer's stored token. Either takes a trailing `#frag`, handed to the page as its own hash, and `?w=<px>` on the renderer's own query to lay the page out at that width; an address may carry `?query` and `#frag` together. The drawer's Render tab drives the same widths with four presets.
-  ```bash
-  python3 -c "import gzip,base64,sys,pathlib; b=gzip.compress(pathlib.Path(sys.argv[1]).read_bytes()); s=base64.b64encode(b).decode().replace('+','-').replace('/','_').rstrip('='); print('https://mehrlander.github.io/web-tools/pages/toss-render.html#gz='+s)" page.html
-  ```
-  **Boundary:** `#gh=` is token- and allowlist-gated, and the token is browser-local, so a fresh or in-app browser may 404; fall back to `#gz=`. `?w=` moves the viewport, not `pointer` or `hover`. A `@ref` SHA comes from `git rev-parse HEAD`, never typed; confirm it is pushed with `git rev-parse origin/<branch>`.
+* **Branch anchor.** The first reply that changes files begins with `Working branch: [branch-name](url)`.
 
-* **Publish an artifact 📦.** Publish a self-contained page as a stable private `claude.ai` snapshot; authentication follows the viewer's Claude sign-in, so no browser token. Record the URL in a README, PR body, or task file.
-  **Boundary:** artifact CSP blocks external requests, so bake CDN dependencies in first. Frozen but republishable in place with version history. Private to the author on Pro and Max, so other readers get a 🥏 `#gz=` toss. See `docs/artifacts.md`.
+* **Reference is a link.** Use `[caption](url)` for anything the reader can open. Label touched source `[new]`, unchanged source `[main]`, and changes `[diff]`. Give a renderable page its 🥏, ⭐, or 📦. Reserve `file:line` for grep and debugging.
 
-* **Stage a fileset 🗂️.** Move a fileset across repos for viewing, bundle download, copying, or review diff.
-  **Form:** `…/app/#stage=owner/repo[@ref]:p1,p2;owner2/repo2:p3`, groups `;`-separated and paths `,`-separated. Add `&prompts=<base64url>` for `{label, ask}` review prompts or `&mode=diff` to open on that comparison; `StageLink.read` also accepts these in the query.
-  **Boundary:** token-gated with the same in-app-browser caveat as `#gh=`; for a tokenless reader, download the bundle and hand it over. A stage is an inline handoff, not a caption row. See `docs/stage.md`, `docs/show-repo.md`, and `.web-tools.json`.
+* **Surfacing caption.** Use:
+  `🌿 [<branch>](…/pages/branch.html#gh=<owner>/<repo>@<branch>) · <N> files · [this turn](…/commit/<sha>)`
+  Calculate `<N>` with `git diff origin/main...HEAD --name-only | wc -l`. Omit `this turn` on a single-commit branch. Mention files in prose only when something non-obvious must be said about them. Use the fallbacks in [surfacing-extended.md](https://github.com/mehrlander/web-tools/blob/main/docs/surfacing-extended.md) when the reader lacks a stored token or every URL in an MCP body must be under 150 characters.
 
-* **Carry content in an envelope.** A curated, annotated set of files, chats, diffs, or search hits that should travel and render together goes in an envelope rather than an ad-hoc format. The carriers are stage, surface (`pages/app.html` estate view), chat-results (`pages/chat-results.html`) and data view (`pages/data-view.html`).
-  **Boundary:** they share the `owner/repo[@ref]:path` grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. One contract per carrier in [`docs/envelopes/`](https://github.com/mehrlander/web-tools/tree/main/docs/envelopes).
+* **Open the branch 🌿.** Use `…/pages/branch.html#gh=owner/repo@branch[&base=ref]`, or `…#gh=owner/repo&pr=<n>` for a PR's head and base. Add `&file=<path>` to open a file or `&pane=files` to open the file list.
 
-* **Toss data 📊.** Address a CSV, JSON array, or log through the data route so it opens readable rather than raw: `toss-render.html#data=owner/repo[@ref]:path`. It picks a mode by content (table, tree, preview, code, raw) and leaves every other one a tap away. Bare bytes need no wrapper; an `items` envelope adds several files with a default view and notes for each, and a trailing `#item=<name|index>` opens on one.
-  **A PDF has two routes.** `#data=` is the first look: the page drawn, a pager, the real page and byte counts. `#pdf=` is the workbench (`pages/pdf-inspect.html`), down to characters, vector rules and detected table cells. Pick by what the reader is meant to do.
-  **Boundary:** same token gate as `#gh=`; `#gz=` on the page itself for a tokenless reader. Contract: [`docs/envelopes/data-view.md`](https://github.com/mehrlander/web-tools/blob/main/docs/envelopes/data-view.md). What the kit recovers from a PDF and what it does not: [`pdf-structure.md`](https://github.com/mehrlander/web-tools/blob/main/docs/pdf-structure.md).
+* **Guide pointer 🧭.** Use `🧭 [PR #N](…) (body synced)` only when this turn rewrote the guide region; otherwise use `(body not synced)`. Do not carry the marker forward from an earlier reply.
 
-* **Copy to the clipboard 📋.** A `shortcuts://run-shortcut?name=<shortcut>&input=text&text=<payload>` link whose payoff is content on the reader's clipboard.
-  **Boundary:** only for content that must be made on the device, meaning a pasteboard type you cannot produce or a value computed from device state at tap time; otherwise hand over a file. The payload is opaque, so the caption states what it holds, how many actions, and whether the link replaces or adds. Paste it exactly as its generator emitted it: an edited payload keeps its actions and loses its label, so it works and misreports at once. Hand it over as `[label](shortcuts://…)`, never bare and never in a code span, which the chat client will not autolink. Measured in [markdown-in-chat.md](https://github.com/mehrlander/web-tools/blob/main/docs/markdown-in-chat.md).
+* **Task marker 🎫.** Where the repo runs a tracker, use `🎫 [title](<task blob url>)`. Do not show the filename ID.
 
-* **Run a shortcut 📲.** The same link shape with the payoff anything but the clipboard. The payload is legible, so the caption stays short; the `[label](url)` rule is unconditional for both routes. Generator: [`mehrlander/shortcut-tools`](https://github.com/mehrlander/shortcut-tools), `tools/pack.py` for 📋 and `tools/show.py` for 📲; its `CLAUDE.md` carries the cost discipline that governs when either link is worth sending.
+* **Session diff.** For substantial work, use `Session diff: [main...branch](url)`.
 
-* **Branch anchor.** The first file-modifying reply leads with `Working branch: [branch-name](url)`.
+### Showing something
 
-* **Open the branch 🌿.** For work in flight, link the branch page beside the guide PR.
-  **Form:** `…/pages/branch.html#gh=owner/repo@branch[&base=ref]`, or `…#gh=owner/repo&pr=<n>` for a PR's own head and base. Add `&src=<spec>` or `&gz=<payload>` to lay an authored envelope over a branch with no PR.
-  **Boundary:** its facts are read from the API on every load, so the link is current whenever it is opened and makes no freshness claim. It renders the guide PR body too, so one link carries the judgment and the file list together. Token-gated like every `#gh=`. 🌿 is where you read the branch, 🧭 where you merge it. For browsing rather than linking, `…/app/?view=activity`.
+* **Toss a live view 🥏.** Render an unhosted page with `toss-render.html#gh=owner/repo[@ref]:path`. It may take a trailing `#frag` and `?w=<px>`. If `#gh=` is unavailable because of token or allowlist access, use the `#gz=` fallback in [surfacing-extended.md](https://github.com/mehrlander/web-tools/blob/main/docs/surfacing-extended.md). Obtain an `@ref` SHA with `git rev-parse HEAD` and confirm it was pushed with `git rev-parse origin/<branch>`.
 
-* **Guide pointer 🧭.** Mark the branch's guide PR with 🧭. A reply may close with `🧭 [PR #N](…) (body synced)`, and where the branch has a PR, 🌿 rides beside it.
-  **Boundary:** the parenthetical is a claim about this reply, not about the PR. Write `(body synced)` only when this turn rewrote the guide region, `(body not synced)` otherwise, and never carry it forward from an earlier reply.
+* **Show pixels.** For a visual change, inspect and include a headless screenshot. Measure `scrollWidth` for horizontal overflow.
 
-* **Task marker 🎫.** Where the repo uses [TRACKER.md](https://github.com/mehrlander/web-tools/blob/main/docs/TRACKER.md), surface a task as `🎫 [title](<task blob url>)`. The filename id never shows.
+* **Hand over the artifact.** Send an artifact with `SendUserFile`, not a path. Images preview inline; HTML, zip, and audio download.
 
-* **Surfacing caption.** End a file-modifying turn by saying **where to look**, not by listing what moved: the branch page enumerates them, grouped through the content registry, current on every load, each diff a tap away. Name in the prose only the files with something non-obvious to say, linked per Reference is a link, and enumerate nothing.
-  **Form:**
-  ```
-  🌿 [<branch>](…/pages/branch.html#gh=<owner>/<repo>@<branch>) · <N> files · [this turn](…/commit/<sha>)
-  ```
-  `<N>` is `git diff origin/main...HEAD --name-only | wc -l`. `this turn` is that turn's own commit; drop it where the branch has a single commit. The render line follows unchanged.
+Run `npm run showing` before handing over a render link, and paste the line it prints. It reads the branch's changed files and either names the page and mechanism that reach them, or reports that no link does.
 
-  **Addressing one file, or one section.** `&file=<path>` opens the file deck on that file, which for a changed file beats a `[new]` blob: the slide carries the diff, the file itself, and the compare bar. `&pane=files` opens on the file list, which the page stacks above the guide. Address grammar: [show-repo.md](https://github.com/mehrlander/web-tools/blob/main/docs/show-repo.md).
+For these carriers, follow the full rules in [surfacing-extended.md](https://github.com/mehrlander/web-tools/blob/main/docs/surfacing-extended.md):
 
-  **Where the enumerated list still applies.** The branch page is token-gated, so a reader with no stored token, or a repo with no deployed page, needs the list. Rows stay uniform, filenames plain, link words tappable, a file's links not repeated within a turn:
+* **Lead with the live view.** A README for something renderable begins with its ⭐ link.
 
-  | File state | Links |
-  | --- | --- |
-  | Changed | `[new], [main]/[diff]` |
-  | New | `[new]`, or `[new]/[diff]` after several branch commits |
-  | Deleted | `[main]/[diff]` |
+* **Publish an artifact 📦.** Use for a self-contained page requiring a stable private `claude.ai` snapshot.
 
-  `[new]` is the branch tip, `[main]` the baseline; `[main]/[diff]` is the net change against main and `[new]/[diff]` is on-branch history. Add `#L120` or `#L120-L145` for line anchors.
+* **Stage a fileset 🗂️.** Use for files moved across repos for viewing, downloading, copying, or diffing.
 
-  In an MCP-written body or comment, **a URL of 150 characters or more is wrapped in backticks and renders as literal text; 149 or fewer survives.** Length only, anywhere in the text, the label never counting; chat is untouched. Check with `scripts/mcp-link-safe.py --check`, and shorten in this order:
+* **Carry content in an envelope.** Use for files, chats, diffs, or search results that travel and render together.
 
-  | Too long | Shorten it to |
-  | --- | --- |
-  | a toss carrying `?use=` and `#gh=` together | `#gh=` only |
-  | a `#gh=` address on a `claude/…` branch | the commit SHA |
-  | a compare URL with a `#diff-<hex>` anchor | the plain compare URL |
-  | a deep `:path` in a toss | the branch page, or a `#gz=` in chat |
-  | anything still over | drop the render link from the body; put it in the chat caption |
+### PR events
 
-  **Boundary:** apply the ⭐ honesty gate at every size; where there is no render link, say why rather than omitting it. The 🌿 line replaces the list, never the prose: a turn that changed something non-obvious still says so in words. Slash-joined `[main](…)/[diff](…)` pairs count as one run, so separate them with `, `. Measurement: [environment/capabilities.md](https://github.com/mehrlander/web-tools/blob/main/docs/environment/capabilities.md).
-* **Review the diff 🔍.** Where the changed files are worth reading, add `…/pages/review.html#gh=owner/repo@branch&base=main` (`:path` for one file): each file's diff against the merge base, its patch and its raw content.
-  **Boundary:** it supplements the caption, never replaces it, and is token-gated like every `#gh=`. 🌿 reads the branch, 🔍 the diff.
+* **Subscribe the workstream PR 📬.** Call the `subscribe_pr_activity` tool once, after opening a PR.
 
-* **Close in one order.** Parts that do not apply are skipped; the order never varies: the 🌿 caption line, the render line, 🧭, then exactly one closing state, last.
-  **Boundary:** a reply that changed no files still closes with a state, and nothing follows it. A wake that changed nothing is the exception and says nothing at all: no state, no restated list.
-
-* **Session diff.** Summarize substantial work with `Session diff: [main...branch](url)`.
-
-* **Closing state.** End a reply that finishes work, proposes work, or leaves something open with exactly one state.
-
-  - 🟢 **Ready to continue:** work is ready to do now, and "go" is the whole decision: the work was asked for, or is a step inside what was asked for, and it leaves nothing behind to come back to. Name the work available on "go"; "go 1, 3" takes a subset.
-  - ❇️ **Ready to assess:** a question is ready to investigate, or the session conceived work the reader has not endorsed (Keep focus). "Go" means assess it and report back, not implement whatever the assessment suggests.
-  - 🟡 **Pending:** keep this visible, but not ready yet: work waiting on another action, an answer, or a dependency.
-  - 🆚 **Choice needed:** a genuine choice remains. Give the assessment and the recommendation, then state what the user needs to choose.
-  - ✴️ **Needs you:** something only the reader can supply blocks the next step: a tap, an observation, a value from outside the repo. Ship the link that performs each ask, say in one clause what it buys, and say how the answer comes back.
-  - 🟠 **Attention:** a concrete problem or risk to address before going further, not routine uncertainty.
-  - ⚪ **Clean exit:** the session has nothing further here. Wrapping up or merging now would be reasonable, and the reader decides.
-  - 🟣 **Merged:** this workstream's branch merged. Say what shipped in one line.
-  - 🔴 **Closed:** this workstream's branch closed unmerged. Say why in one line.
-  - ⚫ **Done:** the session is finished: every workstream merged or closed, nothing open, nothing proposed. A hard stop, read at a glance when scanning back.
-  - 🔵 **Short answer:** answered, with no work proposed. The marker carries "Short answer," so the bold lead is a short, recognizable version of the question with the answer right behind it: 🔵 **Did we get to the double back tap?** No. Shorten toward the sharper question, never the safer one.
-
-  **Boundary:** Write each state to be understood without the message it closes: do not lean on terms established above, and link referenced files. **The colour says who acts:** green is work the session performs, so 🟢 never instructs the reader, while orange needs the reader, 🆚 to decide and ✴️ to do. An ✴️ ask carrying no link is a defect: mint the link, or say in the same line why none can exist. Past about three asks, or wherever the answers need to come back structured, they become an inquiry surface ([`inquiry-v1`](https://github.com/mehrlander/web-tools/blob/main/docs/envelopes/schemas/profiles/inquiry-v1.schema.json)), which names its own return address. 🟣 and 🔴 mark the branch, not a task; a task dropped or deferred inside a live branch does not make the branch 🔴. Where the session could reasonably investigate the question itself, that is ❇️ rather than 🆚 or ✴️. **For confirmation, favor 🟢, not 🆚: 🆚 is for presenting two competing changes.** An assessment that lands on one option is ⚪ when the move is to stop, 🟢 when it is a ready next step the ask points to. **Attention debt is the gate on green.** Work that leaves the reader something to return to (a task filed, a doc, check or registry to maintain, a question deferred) is never offered on 🟢; it is ❇️, and it names what it would leave behind. Work that removes work is the clearest green. **⚪ is before the merge, 🟣 is one merge, ⚫ is after the last.** With several workstreams, 🟣 closes each branch as it merges and ⚫ waits for the last one; a reply after the merge that only confirms the estate is quiet is ⚫, not ⚪. ⚫ is the only state about the session rather than the reply it closes, and nothing follows it: a further reply opens a new subject.
-* **External proxies: prohibited.** Never `htmlpreview.github.io`, `raw.githack.com`, `gitcdn.link` or their kin: they fetch server-side, fail on private repos, and route content through another host. Use `[new]` for canonical source and 🥏 for a private or un-deployed render.
-
-* **Subscribe the workstream PR 📬.** On creating a workstream's pull request, call `subscribe_pr_activity` for it.
-  **Boundary:** subscribe once, at creation. Every event arrives, and arrival obliges nothing; acting is decided per event, never automatically. A comment opening `go:` is an instruction that states intent and never authority, since anything holding a write token is indistinguishable from the account owner. A wake that changed nothing says nothing: verify silently and reply with the change or one line, never a table or a restated state. Everything else, a review, a passing check, a failing one, is incoming context; a failing check is addressed when it bears on work this session is responsible for, not because an event arrived. Do not arm a scheduled check-in. Mechanism, the measurements, and the hook that prompts the call: [inbound.md](https://github.com/mehrlander/web-tools/blob/main/docs/inbound.md).
+  Treat each event separately. `go:` expresses intent, not write authorization. Address failing checks only when relevant to this session. If a wake changes nothing, do not reply. When an open PR merges, mark the event and close with the appropriate state even if no files changed. When an open PR closes unmerged, mark it 🔴 even if no files changed.
 
 ---
 
 ## The surfacing course
 
-A PR body is the branch's live state and post-merge record. Open it as a draft on the first push.
+Maintain the PR body as the workstream's current state and durable record. Open a draft PR on the first push.
+
+### PR template
+
+The guide region is bounded by `[//]: # (guide)` and `[//]: # (/guide)`. These are link labels rather than HTML comments, which the GitHub MCP strips on readback. Read either form and emit this one.
 
 ```markdown
-<One-sentence summary of what this branch does and why.> [Follow-up to #N]
-
-[//]: # (guide)
-
-<⭐|🥏|📦|📊> **Look:** [<Resource name>](<Rendered link, using commit SHA not branch name>)
-
-<Why this branch exists and any non-obvious implementation details. Plain prose,
-plain paths, no link triplets. Use `renders on:` for shared components.>
-
-**Open threads:**
-- [ ] <Unfinished work. Strike through when obsolete.>
-- [ ] ✴️ <User action required (e.g., physical device testing).>
-- <Decided but not acted on. No checkbox. A record, not a task.>
-
-**Risk:** <Areas needing manual scrutiny and blind spots not covered by CI.>
-
-[//]: # (/guide)
-
-<Session footer link>
+## What this PR does
+<One sentence stating the resulting capability.>
+## Why this branch exists
+<The motivating problem, user goal, and context needed to resume. Use plain prose,
+plain paths, no link triplets, and render links for pages.>
+## Open threads
+1. 🟢 **<title>**: <current state and next step>
+2. 🟡 **<title>**: <dependency>
+3. ✅ **<title>**: <decision or result>
+Use "0. None." when nothing remains.
+## Risk
+<Uncertainty, failing check, stale assumption, or "None.">
+---
+🌿 [Open the branch](<branch URL>) · 🥏 [Live page](<render URL>) · 🧭 [PR #N](<PR URL>)
 ```
 
-**Content**
-* Keep the region between the markers under 250 words.
-* The body does not enumerate files, or repeat CI status.
-* Session context that exists nowhere else goes here or in a PR comment, never a tracker task.
-* Deliver ✴️ items in the reply; the body holds the copy.
+### Content and automation
 
-**Automation**
-* Rewrite only between the markers, using `update_pull_request`. Read either marker form, emit `[//]: #`, and abort if neither is present.
-* Verify URLs first: `python3 scripts/mcp-link-safe.py --check body.md`.
+* Keep the guide region below about 250 lines.
+* Do not list files, diff statistics, or CI results there.
+* Put session context that belongs nowhere else in the guide or a PR comment, never in a tracker task.
+* Make ✴️ asks in the reply and copy them into the PR body.
+* Update the guide after every push that materially changes state, rewriting only between the markers with `update_pull_request`. Verify URLs first with `python3 scripts/mcp-link-safe.py --check body.md`.
+* Ask binary decisions as **Question?** Yes / No, followed by the recommendation and consequence.
+* Do not create your own action item. If automation can perform it, do it now; if only the user can, make it ✴️.
+* Correct discovered facts immediately.
+* Add a new thread, choice, or risk before continuing work on a new fork.
+* Close threads as implemented or declined. Retain resolved decisions only when marked resolved.
+* Rewrite stale PR-body narrative; do not treat it as authority.
+* Merge current-branch changes from tool or agent updates, including subagent handoffs, before updating the guide.
 
-**Lifecycle** (each phase begins on the user's word)
-* **Wrap up:** Preflight `git merge-tree` against `main`, run refreshes, finalize the guide, mark ready.
-* **Merge:** Complete wrap up, then merge. Never red, and never by any route but the PR.
-* **Abandon:** Close the draft with a comment.
-* **Post-merge:** Merging terminates the branch ([why](https://github.com/mehrlander/web-tools/blob/main/docs/github/post-merge-branch-mutation.md)). Open a new PR for further edits; delivery history is the merged PRs themselves.
+### Lifecycle
+
+Each phase begins only on the user's word.
+
+1. **Plan.** State the recommendation, options, and risks. End 🆚.
+2. **Apply.** Implement the chosen scope, update the guide and template, open a draft PR, and push. Continue until 🟢.
+3. **Review.** Apply requested changes as they arrive. Propose merge only after confirming that no blocker, risk, or choice remains.
+4. **Wrap.** After explicit agreement to wrap: inspect view, checks, and comments; resolve actionable failures and report external failures; sync the guide, commit, and push; stop before merge.
+5. **Merge.** After an explicit merge request, merge and wait for the merge event before announcing it. Reply 🟣. If this was the last workstream, immediately follow with ⚫.
+6. **Abandon.** After an explicit request, close the PR unmerged and reply 🔴.
+
+Merging ends the branch. Open a new PR for further edits.

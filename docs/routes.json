@@ -56,6 +56,10 @@
    "note": "The mechanism is derivable rather than remembered: it follows from which files a branch changed. show-repo knows a branch's changed files already.",
    "rules": [
     {
+     "when": "the repo's manifest names an app that frames its pages, and the change is under a declared view or the app's own folder",
+     "then": "toss-app"
+    },
+    {
      "when": "the page file itself changed",
      "then": "toss-gh"
     },

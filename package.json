@@ -67,6 +67,7 @@
     "test:viewer-docx": "node tools/test/viewer-docx.mjs",
     "test:alpine-teardown": "node tools/test/alpine-teardown.mjs",
     "test:reader-height": "node tools/test/stage-reader-height.mjs",
+    "test:gz-review": "node tools/test/stage-gz-review.mjs",
     "test:shot-warnings": "node tools/test/shot-warnings.mjs",
     "test:data-view-links": "node tools/test/data-view-links.mjs",
     "tests-index": "node tools/build/tests-index.mjs",
