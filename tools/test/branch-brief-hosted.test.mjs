@@ -203,7 +203,10 @@ test('the merged PR is reported, which is the whole point of onMeta', async () =
 });
 
 // The head is the reason `facts` exists: deferring the compare would otherwise
-// blank four numbers the host measured minutes ago.
+// blank the numbers the host measured minutes ago. It asserted the lifespan as
+// its third figure until 2026-09-05, when the head dropped that fact and its
+// getter with it; `behind` took its place, being the number the head now leads
+// with and the only one on the line that says something has to be done.
 test('a host lends its row, and the compare corrects it', async () => {
   window.BranchBrief.forget();
   reset();
@@ -211,7 +214,7 @@ test('a host lends its row, and the compare corrects it', async () => {
                                    lastDate: '2026-07-08T00:00:00Z', sessions: ['s1'] } });
   assert.equal(data.brief.ahead, 9);
   assert.equal(data.brief.state, 'live', 'the badge is right on the first frame');
-  assert.equal(data.lifespan, '7d');
+  assert.equal(data.brief.behind, 1);
   await openFiles();
   assert.equal(data.brief.ahead, 2, 'the read wins wherever the two differ');
   assert.equal(data.brief.sessions.length, 0, 'and the lent list is dropped, not merged');
@@ -295,6 +298,33 @@ test('framed: the head holds its place and the pane takes the scroll', async () 
   assert.ok(root.lastElementChild.className.includes('overflow-y-auto'), 'the pane takes the scroll');
   assert.ok(root.lastElementChild.className.includes('min-h-0'),
     'without which a flex child refuses to shrink and scrolls the document again');
+});
+
+// THE HEAD'S CEILING. It was three bands and 188px at 390x844 until
+// 2026-09-05: an identity block, a bordered card holding four figures, and the
+// Look row. The reader's report was that a third of the phone went by before
+// the first file row. The card went, its figures moved onto the identity block
+// as a plain line, and `lifespan` went with it, being the widest fact on the
+// line and the one they said they never read. The head is 102px now.
+//
+// A jsdom box has no layout, so two mechanical facts stand in for the pixels:
+// how many bands the head has, and whether any of them is drawn as a card. A
+// third band, or a border inside one, is the old shape coming back, and nothing
+// else in the suite would notice. The pixels themselves are
+// tools/render/scenarios/branch-guide.mjs at 390x844.
+test('the head stays two bands, and none of them is a card', async () => {
+  window.BranchBrief.forget();
+  await mount('feat/a');
+  const head = window.document.querySelector('#m > div > div').firstElementChild;
+  assert.ok(head.className.includes('shrink-0'), 'this is the head');
+  assert.equal(head.children.length, 2,
+    'the identity block and the Look row; a third band is the figures card returning');
+  for (const el of head.querySelectorAll('*')) {
+    assert.ok(!/\bborder-base-300\b/.test(String(el.className)),
+      'nothing in the head is drawn as a card: ' + String(el.className).slice(0, 60));
+  }
+  assert.doesNotMatch(head.textContent, /lifespan/i,
+    'the fact that forced the wrap, and the one the reader never read');
 });
 
 test('framed: the document itself is left alone', async () => {
@@ -467,11 +497,18 @@ test('a compare that lands after a step does not overwrite the newer branch', as
 // work in prose, so only the no-PR case it carried alone survived, into the
 // guide's own section. Guide and Files went on 2026-08-31, because a switch
 // between them was answering a question nobody had: they are not alternatives,
-// and a tab made each one the cost of hiding the other. Both render now, files
-// above the guide, and `pane` names what an ADDRESS asked for rather than what
-// is visible.
+// and a tab made each one the cost of hiding the other. Both render now, and
+// `pane` names what an ADDRESS asked for rather than what is visible.
+//
+// THE ORDER HAS MOVED TWICE, and each move was the reader's. Files led while
+// the guide was the only prose on the page, on the reading that the list is
+// what cannot be read anywhere else in one place. The guide led on 2026-09-06,
+// because presenting the readable files meant the page opened on a document
+// with no statement of what the branch was for. Files lead again from
+// 2026-09-07: the list is SHUT, so it costs a heading row rather than a screen,
+// and the guide keeps the clip that made leading with it affordable.
 
-test('both sections render at once, files above the guide', async () => {
+test('files and the guide are tabs over one pane, files first in the tree', async () => {
   window.BranchBrief.forget();
   reset();
   const d = await mount('feat/a');
@@ -482,7 +519,11 @@ test('both sections render at once, files above the guide', async () => {
   assert.ok(files && guide, 'both sections are in the tree');
   // DOCUMENT_POSITION_FOLLOWING: the guide comes after the files.
   assert.ok(files.compareDocumentPosition(guide) & 4,
-    'files lead, because the list is what cannot be read anywhere else in one place');
+    'the shut list leads, so the page opens on what the branch touched');
+  // And the presented documents come last of the three.
+  const strip = d.$el.querySelector('[x-ref="revStrip"]');
+  if (strip) assert.ok(guide.compareDocumentPosition(strip) & 4,
+    'the documents themselves are last');
   // SHOWN, not merely present. Everything here renders into the tree and hides
   // with a style, so a textContent check would pass on a panel nobody can see:
   // it is exactly the state a deferred compare left behind before the x-show
@@ -490,13 +531,18 @@ test('both sections render at once, files above the guide', async () => {
   const list = d.$el.querySelector('[x-ref="fileList"]');
   assert.ok(list && list.style.display !== 'none', 'the file list is on screen');
   assert.ok(list.textContent.includes('a.js'), 'carrying the branch\'s one changed file');
-  assert.ok(guide.textContent.includes('#443'), 'and the guide is under it, without a tap');
-  // Asking for one hides nothing. That is the whole difference from a tab, and
-  // the assertion the switch could never have passed.
+  assert.ok(guide.textContent.includes('#443'), 'and the guide is in the tree beside it');
+  // ASKING FOR ONE HIDES THE OTHER, since 2026-09-07. This asserted the
+  // opposite, which was the whole difference from a tab while both sections
+  // shared one scroll; they ARE tabs now, over one pane the locked layout can
+  // divide, so the swap is the point rather than the thing being avoided.
   d.setPane('guide');
-  await tick(2);
-  assert.ok(d.$el.querySelector('[x-ref="fileList"]').style.display !== 'none',
-    'going to the guide leaves the list where it was');
+  await tick(6);
+  assert.equal(files.style.display, 'none', 'the list steps aside');
+  assert.notEqual(guide.style.display, 'none', 'and the guide has the pane');
+  d.setPane('files');
+  await tick(6);
+  assert.notEqual(files.style.display, 'none', 'and back');
 });
 
 test('with no PR, the commits are the account, and they are read without asking', async () => {

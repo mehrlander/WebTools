@@ -187,6 +187,17 @@ test('the entry affordance is one glyph and one wording, estate-wide', () => {
     'a caller that has not fetched yet still gets the promise, without a number');
   const b = swipeDeck.entry({ count: 3, noun: 'file', onOpen: () => {} });
   assert.match(b.className, /btn-square/);
-  assert.match(b.className, /max-sm:h-11/, 'the phone hit target, since btn-sm is under 44px');
+  // ONE SIZE, 32px. This asserted max-sm:h-11, the phone bump to 44px, until
+  // 2026-09-07: on the branch page four controls at 44 made a 60px band around
+  // a 20px heading, and the reader picked 32 from four renderings of it. The
+  // trade is a smaller target on the surface the reader is holding, and it is
+  // the kit's to make once rather than each host's to make differently.
+  assert.match(b.className, /\bbtn-sm\b/, 'the one size the door takes');
+  assert.doesNotMatch(b.className, /max-sm:h-/, 'and no per-surface bump on top of it');
+  // NO FILL. Primary colours the glyph rather than a ground behind it, which is
+  // what the tone was for: the host saying this deck is what most readers came
+  // to do. Ghost still earns its colour on hover instead of at rest.
+  assert.match(b.className, /btn-ghost text-primary/, 'primary tone wears no fill');
+  assert.doesNotMatch(b.className, /btn-soft/);
   assert.match(b.querySelector('i').className, /ph-cards-three/);
 });

@@ -47,9 +47,21 @@ const { window, problems } = makeWindow({
          path: 'lib/c.js', status: 'modified', patch: '@@ -1 +1 @@', bare: true })"></div>
     <div id="blob" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
          path: 'data/x.dat', status: 'modified' })"></div>
+    <div id="page" x-data="fileReview({ repo: 'mehrlander/web-tools', ref: 'feat/x', base: 'main',
+         path: 'pages/a.html', status: 'modified', patch: '@@ -1 +1 @@', read: true, open: true })"></div>
+    <div id="pageList" x-data="fileReview({ repo: 'mehrlander/web-tools', ref: 'feat/x', base: 'main',
+         path: 'pages/a.html', status: 'modified', open: true })"></div>
+    <div id="pageElsewhere" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'main',
+         path: 'pages/a.html', status: 'modified', patch: '@@ -1 +1 @@', read: true, open: true })"></div>
     <div id="srcRead" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'mb-sha',
          baseName: 'main', path: 'lib/d.js', status: 'modified', patch: '@@ -1 +1 @@',
          read: true, bare: true, open: true })"></div>
+    <div id="filled" x-data="fileReview({ repo: 'mehrlander/web-tools', ref: 'feat/x', base: 'main',
+         path: 'pages/a.html', status: 'modified', patch: '@@ -1 +1 @@',
+         read: true, open: true, fill: true })"></div>
+    <div id="hosted" x-data="fileReview({ repo: 'acme/w', ref: 'feat/x', base: 'mb-sha',
+         baseName: 'main', path: 'lib/d.js', status: 'modified', patch: '@@ -1 +1 @@',
+         read: true, open: true, hosted: true })"></div>
   </body></html>`,
 });
 
@@ -63,7 +75,7 @@ window.GH = class {
     // whose content depends on the ref, which is what gives the compare cases
     // below something to actually differ about.
     return { text: /x\.dat$/.test(p) ? 'ab\u0000cd'
-                 : /d\.js$/.test(p) ? 'body at ' + this.ref : 'x', size: 8 };
+                 : /d\.js$/.test(p) || /a\.html$/.test(p) ? 'body at ' + this.ref : 'x', size: 8 };
   }
   async bytes(p) { fetched.push(this.ref + ':bytes:' + p);
                    return { bytes: new Uint8Array([1, 2, 3]), size: 3 }; }
@@ -310,6 +322,409 @@ test('the controls sit on the tab row, not on a strip above it', () => {
 });
 
 
+// ── One row on a reading card ───────────────────────────────────────────────
+//
+// A presented file had two rows of chrome above it and five controls across
+// them: the collapsed header, then a File/Compare tab pair, a split/unified
+// icon pair, a copy, a deck action and a github menu. On a 390px phone that is
+// most of the first screen spent before the document starts, which is what the
+// reader called too many buttons hovering at the top (2026-09-05).
+test('a reading card puts its name, its layouts and one menu on a single row', () => {
+  const card = window.document.getElementById('page');
+  // The collapsed header stands down once the card is open, because the control
+  // row below carries the name instead. Closed it has to come back, or the card
+  // would have nothing left to tap.
+  const header = [...card.querySelectorAll('div')]
+    .find(e => /hover:bg-base-200\/50/.test(e.className || ''));
+  assert.ok(header, 'the header element is still there');
+  assert.equal(header.style.display, 'none', 'and hidden while the card is open');
+
+  // No text tabs: three layout icons in one group, and the file is the first.
+  assert.equal(data('page').panes.length, 2, 'the file and its comparison');
+  assert.deepEqual(JSON.parse(JSON.stringify(data('page').viewModes.map(m => m.icon))),
+    ['ph-square', 'ph-columns', 'ph-rows'], 'one pane, two columns, two rows');
+  assert.equal(card.querySelector('[role="tablist"]').style.display, 'none',
+    'the text tab strip is not drawn on a reading card');
+
+  // And the utilities fold into the menu rather than sitting beside it.
+  // Copy stays a button on the row rather than a row in the menu: it is the
+  // one utility used often enough to be worth a tap instead of two.
+  const copies = [...card.querySelectorAll('.ph-copy')]
+    .filter(i => i.closest('button').style.display !== 'none');
+  assert.equal(copies.length, 1, 'one copy control on screen');
+  assert.ok(!copies[0].closest('li'), 'and it is a button on the row, not a menu row');
+  // THE MENU IS A GITHUB MENU, and it wears the logo because every row in it
+  // goes to GitHub. That was nearly true already and the one exception was the
+  // Render row, which a card whose first layout icon IS the render has no
+  // business offering a second door onto. It sits beside the name rather than
+  // at the end of the row, by flex order, so the same element serves both
+  // surfaces.
+  assert.ok(card.querySelector('.ph-github-logo'), 'the menu is a github menu');
+  const menu = card.querySelector('details[x-ref="ghMenu"]');
+  assert.match(menu.className, /order-2/, 'and it sits beside the name');
+  const hosts = [...new Set(data('page').ghLinks.map(l => new URL(l.url).host))].sort();
+  assert.deepEqual(hosts, ['github.com', 'raw.githubusercontent.com'],
+    'every row is a GitHub destination: ' + JSON.stringify(data('page').ghLinks.map(l => l.label)));
+  assert.ok(!data('page').ghLinks.some(l => l.label === 'Render'),
+    'the render row is gone, the first layout icon being the same door');
+});
+
+// The row reads left to right as identity, then arrangement, then the one
+// utility: who and which copy on the left, what shape in the middle, take it
+// Read off flex `order`, not DOM position, because one element serves both
+// surfaces: a second copy of the github menu would be forty lines of markup
+// twice, so which end it sits at is a class and nothing moves in the tree.
+const controlRow = (id) => {
+  // Not anchored with $: a filled card's row takes its sticky classes from
+  // Alpine, so the runtime className has more on the end than the literal does.
+  const row = [...window.document.getElementById(id).querySelectorAll('div')].find(e =>
+    /\bflex items-center gap-1\b/.test(e.className || '') &&
+    e.querySelector('details[x-ref="ghMenu"]'));
+  assert.ok(row, id + ': the single control row');
+  return row;
+};
+const rowPart = (el) => {
+  if (el.querySelector('.ph-github-logo')) return 'github';
+  if (el.querySelector('.ph-git-diff')) return 'compare';
+  if (el.querySelector('.ph-copy')) return 'copy';
+  if (el.querySelector('.ph-square')) return 'layouts';
+  if (el.querySelector('[x-text="namePart"]')) return 'name';
+  if (/\bgrow\b/.test(el.className || '')) return 'spacer';
+  return el.tagName.toLowerCase();
+};
+const rowOrder = (row) => [...row.children]
+  .filter(el => el.style.display !== 'none')
+  .map(el => ({ n: rowPart(el), o: Number((/\border-(\d+)\b/.exec(el.className || '') || [])[1]) }))
+  .sort((a, b) => a.o - b.o)
+  .map(e => e.n);
+// The row's x-shows are a CHAIN, not one binding: compareOff decides panes,
+// panes decide viewModes, viewModes decide whether the layouts draw, and each
+// link costs its own Alpine flush. A fixed tick count is a guess at how many,
+// and the guess was three when the answer was past six. Poll instead, and fail
+// with whatever it settled on.
+const settlesTo = async (read, want, n = 40) => {
+  for (let i = 0; i < n && JSON.stringify(read()) !== JSON.stringify(want); i++) await tick(1);
+  return read();
+};
+
+// with you at the end. The middle group is centred by a grow spacer on each
+// side rather than pushed against whichever end is shorter, which is only
+// visible above about 500px and is the reason for the second spacer.
+test('a reading card orders its row identity, arrangement, utility', async () => {
+  const d = data('page');
+  const row = controlRow('page');
+  const order = () => rowOrder(row);
+
+  // THE COMPARE PICKER IS NOT HERE AT REST, since 2026-09-07: it belongs to a
+  // comparison, and a card being read is not one. It rode every reading card
+  // and put a git-diff glyph over a page nobody was diffing.
+  const resting = order();
+  assert.deepEqual(resting,
+    ['name', 'github', 'spacer', 'layouts', 'spacer', 'copy'],
+    'read order: ' + JSON.stringify(resting));
+
+  // On a comparison it takes its place, between the identity cluster and the
+  // layouts, which is where it was when it rode every card. The tick is not
+  // decoration: x-show settles on Alpine's flush, so reading the row in the
+  // same turn as the tab change reads the row before the change.
+  d.setTab('diff');
+  await tick(3);
+  const diffing = order();
+  assert.deepEqual(diffing,
+    ['name', 'github', 'compare', 'spacer', 'layouts', 'spacer', 'copy'],
+    'diff order: ' + JSON.stringify(diffing));
+  // Put it back, in a finally-shaped way: a throw above must not leave the card
+  // on a diff for whatever runs next.
+  d.setTab(d.panes[0].id);
+  await tick(2);
+});
+
+// ── The comparison, as a control ────────────────────────────────────────────
+//
+// A reading card carried a caption reading "against main" under its tabs:
+// true, and inert, since the pair is chosen in a sidebar that is closed on a
+// phone. The fact the reader met in the one place they could do nothing about
+// it is a dropdown now, and the row it took is back.
+test('what a file is compared against is a control, not a caption', async () => {
+  const card = window.document.getElementById('page');
+  const d = data('page');
+  assert.ok(!/against\s*<span/.test(card.innerHTML), 'the caption line is gone');
+  assert.ok(card.querySelector('details[x-ref="cmpMenu"]'), 'a dropdown on the row in its place');
+
+  // OFFERED WHERE THERE IS A COMPARISON, and nowhere else. A card being read is
+  // not one, and the ref beside the glyph was already conditional on the diff
+  // tab, so the icon was half-hidden already.
+  d.setTab(d.panes[0].id);
+  await tick(2);
+  assert.equal(d.comparePicker, false, 'not while the reader is reading the file');
+  d.setTab('diff');
+  await tick(2);
+  assert.ok(d.comparePicker, 'and offered on the comparison it names');
+  d.setTab(d.panes[0].id);
+  await tick(2);
+
+  const choices = JSON.parse(JSON.stringify(d.compareChoices));
+  assert.ok(choices.some(c => c.base === 'main' && c.on), 'the base it was mounted with, and it is the one on');
+  assert.ok(choices.some(c => c.off), 'and a way to turn the comparison off');
+});
+
+// The picker publishes rather than deciding: adoptCompare is what hears it,
+// here and in every other card on the page, so a choice made on one moves all
+// of them and the sidebar with them.
+test('picking a comparison goes out on the channel the sidebar already speaks', () => {
+  const d = data('page');
+  const heard = [];
+  const listen = (e) => heard.push(e.detail);
+  window.addEventListener('web-tools:compare-ref', listen);
+  try {
+    d.pickCompare({ key: 'off', off: true });
+    assert.equal(heard.length, 1);
+    assert.equal(heard[0].off, true);
+    assert.equal(heard[0].repo, 'mehrlander/web-tools', 'addressed, so a sibling deck does not adopt it');
+    assert.equal(window.__compareRef.off, true, 'and left where a card mounting later will find it');
+  } finally {
+    window.removeEventListener('web-tools:compare-ref', listen);
+  }
+});
+
+// The one that would have been a dead end: turning the comparison off empties
+// viewModes, since there is nothing left to lay out, so a picker that appeared
+// only alongside the layouts would be the way out of a state with no way back.
+test('the picker survives the comparison being off', async () => {
+  const d = data('page');
+  d.compareOff = true;
+  await tick(2);
+  try {
+    assert.equal(d.viewModes.length, 0, 'no layouts, there being nothing to lay out');
+    assert.ok(d.comparePicker, 'but the picker is still there to turn it back on');
+    assert.ok(d.compareChoices.some(c => c.off && c.on), 'and says which state it is in');
+  } finally { d.compareOff = false; await tick(2); }
+});
+
+// ── Who bounds the card ─────────────────────────────────────────────────────
+//
+// A reading card normally bounds its own pane at 70vh and scrolls it, because
+// nothing above it has a height. `fill` is the host saying it does: a panel
+// with a definite height and its own overflow. Both bounds at once is not
+// belt-and-braces, it is a scrollbar the reader cannot reach, since 70vh is
+// 591px of pane inside the branch page's 352px panel and the pane's own bar
+// lands below the panel's cut. The more/less expander over the pane was
+// standing in for exactly that, and it went with the second bound.
+test('fill hands the bounding to the host, and nothing bounds twice', async () => {
+  const host = data('filled'), own = data('page');
+
+  assert.match(own.paneClass, /max-h-\[70vh\]/, 'unfilled, the card bounds itself');
+  assert.match(own.paneClass, /overflow-auto/, 'and scrolls what it bounded');
+  assert.doesNotMatch(host.paneClass, /max-h-|overflow-/,
+    'filled, it does neither: ' + host.paneClass);
+
+  // The render pane is the same question asked of an iframe, which has no
+  // content height of its own to grow to.
+  const frame = (id) => {
+    const d = data(id);
+    d.setTab('render');
+    return d;
+  };
+  const hostFrame = frame('filled'), ownFrame = frame('page');
+  await tick(3);
+  const cls = (id) => window.document.getElementById(id)
+    .querySelector('iframe').className;
+  assert.match(cls('page'), /h-\[60vh\]/, 'unfilled, the frame takes a slice of the viewport');
+  assert.match(cls('filled'), /h-full/, 'filled, it takes the panel');
+  assert.doesNotMatch(cls('filled'), /60vh/);
+  hostFrame.setTab(hostFrame.panes[0].id);
+  ownFrame.setTab(ownFrame.panes[0].id);
+  await tick(2);
+});
+
+// THE ROW IS THE CARD'S HEADER, so on a filled card it pins to the scroller the
+// host owns. Left in the flow it goes with the prose, and a screen into a long
+// document the reader has neither the file's name nor the three layouts. There
+// is nowhere to pin it on an unfilled reading card: the PANE is the scroller
+// there and the row sits outside it, so sticky would pin the row to the page.
+test('a filled card pins its control row; an unfilled one has nothing to pin to', () => {
+  const filled = controlRow('filled'), own = controlRow('page');
+  // The RESOLVED className, never the :class attribute: the expression names
+  // every branch, so reading it would find "sticky" on the card that does not
+  // get it.
+  const cls = (el) => el.className || '';
+  assert.match(cls(filled), /\bsticky\b/, 'filled: ' + cls(filled));
+  assert.match(cls(filled), /\btop-0\b/);
+  // Opaque, or the prose slides through it; full-bleed against the wrapper's
+  // px-3, since the pane under it is -mx-3 and would otherwise show at both
+  // edges of a band three units narrow.
+  assert.match(cls(filled), /bg-base-100/, 'and opaque');
+  assert.match(cls(filled), /-mx-3/, 'and as wide as the pane beneath it');
+  assert.doesNotMatch(cls(own), /sticky/, 'unfilled: ' + cls(own));
+
+  // The tint under an opened body is what a filled card drops with it: the card
+  // IS the panel, so there is no collapsed row above for the wash to separate
+  // it from, and an opaque row over a washed ground reads as a seam.
+  const wrap = (id) => window.document.getElementById(id)
+    .querySelector('div[\\:class*="bare ?"]');
+  assert.match(wrap('filled').className, /bg-base-100/, 'filled ground: ' + wrap('filled').className);
+  assert.doesNotMatch(wrap('filled').className, /bg-base-200\/20/);
+  assert.match(wrap('page').className, /bg-base-200\/20/, 'unfilled keeps the wash');
+});
+
+// THE REF IT NAMES IS AN ARBITRARY BRANCH NAME, not a short base: the sidebar
+// picks it, so it can be any branch in the repo. Unshrinkable and untruncated,
+// claude/bookmarklets-shortcuts-iphone-safari-rjakex took 362px of a 398px row
+// and pushed the layouts 88px past the right edge and copy 120px, off the
+// screen (measured 2026-09-07 in the browser, since jsdom computes no layout;
+// the standing measurement is in tools/render/scenarios/sidebar-compare.mjs).
+// What is holdable here is the four classes that let it happen, and their
+// weights: the picker shrinks HARDER than the path beside it, because between
+// the file's own name and the ref it is compared against, the name is the one
+// a reader needs whole.
+test('the compare picker shrinks before the path does, and truncates', () => {
+  const det = window.document.getElementById('page').querySelector('details[x-ref="cmpMenu"]');
+  assert.ok(det, 'the picker');
+  assert.match(det.className, /min-w-0/, 'it can shrink below its content: ' + det.className);
+  assert.match(det.className, /shrink-\[9999\]/, 'and hardest of anything on the row');
+
+  // A btn is inline-flex, which sizes to content and overflows a parent that
+  // shrank under it, so capping the summary is a second rule and not a repeat.
+  const sum = det.querySelector('summary');
+  assert.match(sum.className, /max-w-full/, 'the summary is capped at it: ' + sum.className);
+  assert.match(sum.className, /min-w-0/);
+
+  const name = [...sum.querySelectorAll('span')]
+    .find(e => (e.getAttribute('x-text') || '') === 'baseName');
+  assert.ok(name, 'the ref beside the glyph');
+  assert.match(name.className, /truncate/, 'which is what actually cuts it');
+  assert.match(name.className, /min-w-0/);
+  // The glyph never shrinks: an icon narrowed to nothing is worse than a ref
+  // cut short, since the ref has a tooltip and a menu behind it and the icon
+  // is the only thing saying what the control is.
+  assert.match(sum.querySelector('i').className, /shrink-0/, 'the glyph holds its size');
+
+  // The path's own shrink is the weight this one is set against; if that ever
+  // matches, the two shrink together and neither wins.
+  const path = window.document.getElementById('page')
+    .querySelector('[x-text="dirPart"]');
+  assert.match(path.className, /shrink-\[9999\]/,
+    'dirPart carries the same weight, which is what makes the pair legible');
+});
+
+// ── WHEN THE HOST DRAWS THE CHROME ──────────────────────────────────────────
+//
+// `hosted` is the file deck since 2026-09-07: its header names the file on
+// every swipe and carries the file's own controls beside the name, so a card
+// that also drew them would be the duplication that pass removed. The card
+// keeps the STATE behind them, because what layouts exist and where the file
+// opens are decided by what the file IS, which only the card knows.
+test('a hosted card draws no chrome, and still holds it', async () => {
+  const card = window.document.getElementById('hosted'), d = data('hosted');
+
+  assert.equal(d.hosted, true);
+  assert.equal(d.bare, true,
+    'hosted implies bare: naming the file is part of the chrome');
+  // THE CONDITION, not the rendered display. A card still loading hides its row
+  // anyway, so reading style alone passed whether or not `hosted` was in the
+  // expression: the mutation that dropped it was silent (2026-09-07).
+  const row = [...card.querySelectorAll('div')]
+    .find(e => /\bflex items-center gap-1\b/.test(e.className || '')
+            && e.querySelector('details[x-ref="ghMenu"]'));
+  assert.ok(row, 'the row exists in the template');
+  assert.match(row.getAttribute('x-show') || '', /!hosted/,
+    'and stands down for a host: ' + row.getAttribute('x-show'));
+  assert.equal(row.style.display, 'none', 'so nothing of it is on screen');
+
+  // What the host reads instead. Not a copy of the markup: the host places
+  // these, and a second rendering of them here is what this is preventing.
+  assert.ok(d.viewModes.length > 0, 'the layouts are still computed');
+  assert.ok(d.ghLinks.length > 0, 'and so are the links');
+  assert.equal(typeof d.pickView, 'function', 'and the way to act on them');
+});
+
+// A HOST CANNOT WATCH ALPINE STATE FROM OUTSIDE, so the card owes it a nudge.
+// The signature is what changes, not the fields: five of them move the same
+// controls, and one callback beats five watchers that must be kept in step
+// with the getters they mirror.
+test('a hosted card tells its host when the chrome moved', async () => {
+  const d = data('hosted');
+  const seen = [];
+  d.onChrome = (c) => seen.push(c.tab);
+  // Somewhere it is not: a source file on a reading surface opens on its
+  // comparison, so asking for the one it is already on would prove nothing.
+  const target = d.panes.map(p => p.id).find(id => id !== d.tab);
+  assert.ok(target, 'the card offers a second pane to move to');
+  const before = d.chromeKey;
+  d.setTab(target);
+  await tick(4);
+  assert.notEqual(d.chromeKey, before, 'the signature moved');
+  assert.ok(seen.includes(target), 'and the host heard: ' + JSON.stringify(seen));
+
+  // The signature has to move for a change of WHICH layout is lit, not only
+  // for a change of which exist: that is the state the header draws.
+  // NAMED IN THE SIGNATURE, not inferred from the key moving: the tab is in
+  // there too, so any tab change moves the key whether or not the lit flag is
+  // carried, and the mutation that dropped it was silent (2026-09-07).
+  const lit = d.viewModes.filter(m => m.on).map(m => m.key);
+  assert.equal(lit.length, 1, 'exactly one layout is lit');
+  assert.ok(d.chromeKey.includes(lit[0] + '!'),
+    'and the signature marks which: ' + d.chromeKey);
+  assert.ok(d.viewModes.filter(m => !m.on)
+    .every(m => !d.chromeKey.includes(m.key + '!')), 'and only that one');
+  d.onChrome = null;
+});
+
+// COPY IS THE WHOLE UTILITY GROUP on a reading card, so dropping it is what
+// frees the end of the row for the layouts. A panel in the branch page's strip
+// is a place to read; taking the text is a different errand, and Raw in the
+// menu beside the name still reaches it. The file deck's slides are reading
+// cards too and keep theirs, having no other route to a clipboard.
+test('a filled card drops copy, and the layouts take the end it leaves', async () => {
+  // THE LAYOUTS ARE ONLY DRAWN OVER A COMPARISON, so the row shape this asserts
+  // has a precondition, and these cards share a window: the sidebar channel
+  // every reading card listens on carries an earlier case's choice to this one,
+  // which can leave it with the comparison off or its base moved onto its own
+  // head, and neither draws a layout. Setting compareOff by hand is not the way
+  // back, since the bytes went with it. Drive the card home through its own
+  // door, refetch, and wait for the precondition rather than for the shape:
+  // a failure then names which half is missing.
+  const d = data('filled');
+  d.adoptCompare({ repo: d.repo, ref: d.ref, base: d._homeBase, baseName: d._homeBaseName });
+  d.compareOff = false;
+  // Adopting a base the card had left starts a base-only refetch of its own.
+  // Let that finish before forcing a full load, or the two race and one lands
+  // its null over the other's bytes.
+  await settlesTo(() => d.loading, false);
+  d.loaded = false;
+  await d.load();
+  assert.ok(await settlesTo(() => d.comparable, true),
+    'precondition: a comparison to lay out (loaded ' + d.loaded
+      + ', diffable ' + d.diffable + ', off ' + d.compareOff + ')');
+
+  const want = ['name', 'github', 'spacer', 'layouts'];
+  const filled = await settlesTo(() => rowOrder(controlRow('filled')), want);
+  assert.deepEqual(filled, want, 'filled order: ' + JSON.stringify(filled));
+  assert.ok(d.copyable, 'not for want of anything to copy: the pane holds text');
+  assert.ok(rowOrder(controlRow('page')).includes('copy'),
+    'an unfilled reading card keeps it, and its second spacer with it');
+  // Left comparable on purpose, not restored to what it was found in. Handing
+  // the next case a card whose bytes are gone is what put this one in CI.
+});
+
+// The list is untouched by all of that: there the top row is the LIST ROW,
+// thirty of them scanned at once, and the tab strip names panes a reader is
+// choosing between rather than layouts.
+test('a list card keeps both rows and its named tabs', () => {
+  // pageList, not withPatch: the layout group only exists where there is a
+  // comparison to lay out, and withPatch has loaded two identical sides by the
+  // time this runs, so it would pass the last assertion for the wrong reason.
+  // Same file as the reading card above, same comparison, different surface.
+  const card = window.document.getElementById('pageList');
+  const header = [...card.querySelectorAll('div')]
+    .find(e => /hover:bg-base-200\/50/.test(e.className || ''));
+  assert.notEqual(header.style.display, 'none', 'the list row stays');
+  assert.notEqual(card.querySelector('[role="tablist"]').style.display, 'none');
+  assert.equal(data('pageList').comparable, true, 'there IS a comparison here');
+  assert.equal(data('pageList').viewModes.length, 0, 'and no layout group is offered for it');
+  assert.ok(card.querySelector('.ph-github-logo'), 'the github menu is still a github menu');
+});
+
 // ── the classifier, and why there are two of them ───────────────────────────
 //
 // kits/source-peek.js already decides what a path IS, and map.js's renderDoc
@@ -337,6 +752,52 @@ const kindOfPath = async (path) => {
   await tick(2);
   return Alpine.$data(el).kind;
 };
+
+// ── An html file, shown as the page ─────────────────────────────────────────
+//
+// The pane is an iframe of the shared toss at this ref, so a page previewed in
+// a card and a page opened from a caption link are the same rendering. Three
+// things are checkable without a browser that can actually paint it, and all
+// three were wrong in a draft of this: which tab a surface lands on, whether
+// the card still fetches the bytes, and whether the tab appears at all where
+// the renderer cannot reach the repo.
+test('a reading surface opens an html file on the page; a list opens it on the diff', async () => {
+  const reading = data('page');
+  await tick(3);
+  assert.equal(reading.shownPane, 'render');
+  assert.equal(reading.tab, 'render', 'the deck and the reviewable section want the page');
+  assert.match(reading.tossUrl, /toss-render\.html#gh=mehrlander\/web-tools@feat\/x:pages\/a\.html$/,
+    'and the frame is the same address a caption link carries');
+  const list = data('pageList');
+  await tick(3);
+  assert.equal(list.shownPane, 'render', 'the tab is offered either way');
+  assert.equal(list.tab, 'diff', 'but a changed-file list is asking how it changed');
+  assert.ok(list.panes.some(p => p.id === 'render'), 'and the page is one tap away');
+});
+
+// The trap: `load()` reads "has a kind" as "is not text" and takes the bytes
+// path. Adding html to KIND without adding it to TEXTUAL would leave every
+// page card with empty Diff, New and Base behind a Render tab that worked.
+test('an html card still fetches both sides as text, so its diff survives', async () => {
+  const d = data('page');
+  await tick(3);
+  assert.equal(typeof d.newText, 'string', 'the new side is text, not bytes');
+  assert.equal(typeof d.baseText, 'string');
+  assert.ok(fetched.some(f => f.endsWith(':pages/a.html')), 'and it went down the text path');
+  assert.ok(!fetched.some(f => f.includes('bytes:pages/a.html')), 'not the bytes one');
+  assert.equal(d.copyable, d.newText, 'so the copy button takes the file behind the page');
+});
+
+// tossUrl is the allowlist: the renderer fetches same-origin, so it answers for
+// mehrlander repos and nothing else. A Render tab over a frame that could load
+// nothing would put the source tabs one tap further away for no gain.
+test('no render tab where the renderer cannot reach the repo', async () => {
+  const d = data('pageElsewhere');
+  await tick(3);
+  assert.equal(d.tossUrl, '');
+  assert.equal(d.shownPane, '', 'so the card is plain source again');
+  assert.ok(!d.panes.some(p => p.id === 'render'));
+});
 
 test('the two classifiers agree about what markdown is', async () => {
   window.document.body.insertAdjacentHTML('beforeend', '<div id="m2"></div>');
