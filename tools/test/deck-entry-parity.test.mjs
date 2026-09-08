@@ -50,8 +50,13 @@ const entry = window.swipeDeck.entry;
 // it the deck button, the noun its collection is counted in, and the Alpine
 // expression that counts them.
 const DOORS = [
+  // THE ONE SURFACE WITH A TIGHTER BAND. Its heading row was cut to 36px on
+  // 2026-09-07 at the reader's asking, which meant taking the kit's 44px phone
+  // floor off this door; `size` is how that stays a declaration by one surface
+  // instead of a change to the shared class, which is what it was for a day.
   { what: 'Branch detail', file: 'lib/alpineComponents/branch-brief.js',
-    anchor: 'openFileDeck(0)', noun: 'file', count: "plural(deckFiles.length, 'file')" },
+    anchor: 'openFileDeck(0)', noun: 'file', count: "plural(deckFiles.length, 'file')",
+    size: 'tight' },
   { what: 'Session brief', file: 'lib/alpineComponents/session-brief.js',
     anchor: 'openDeck()', noun: 'card', count: "plural(cards, 'card')" },
   { what: 'Files search', file: 'lib/alpineComponents/search-view.js',
@@ -73,6 +78,17 @@ const DOORS = [
   { what: 'Map / Harness', file: 'lib/alpineComponents/map.js',
     anchor: 'openHarnessDeck(harnessDirFiles[0])', noun: 'file',
     count: "plural(harnessDirFiles.length, 'file')", pending: false, tone: 'ghost' },
+  // THE EIGHTH, added 2026-09-08. It had been on the Kits tab for a while,
+  // wearing the right classes and held to them by nothing: the table above
+  // says an eighth "needs no other change here", which is true and is also how
+  // one came to be missed. A door found by its handler rather than by its
+  // class is what would have caught it sooner; see the note by openKitDeck.
+  // The second door counted in something other than files, and the Tests row
+  // above says why `noun` exists: a Kits tab that offered to read 41 FILES
+  // would name the wrong thing on the one tab whose subject is the kit.
+  { what: 'Map / Kits', file: 'lib/alpineComponents/map.js',
+    anchor: 'openKitDeck(kitRows[0])', noun: 'kit',
+    count: "plural(kitRows.length, 'kit')", pending: false, tone: 'ghost' },
 ];
 
 const src = (d) => readFileSync(path.join(repoRoot, d.file), 'utf8');
@@ -94,7 +110,7 @@ for (const d of DOORS) {
     // As a SET, not a string. Class order does not reach CSS, so pinning it
     // would fail on a reordering that changes nothing and teach people to
     // ignore this.
-    const want = entry.cls(d.tone).split(/\s+/).filter(Boolean).sort().join(' ');
+    const want = entry.cls(d.tone, d.size).split(/\s+/).filter(Boolean).sort().join(' ');
     assert.equal(deckBtnClasses(d), want,
       `${d.file}'s deck button must carry the same classes as swipeDeck.entry.cls()`);
   });
