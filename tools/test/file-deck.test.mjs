@@ -35,11 +35,27 @@ for (const f of ['lib/kits/swipe-deck.js', 'lib/kits/subject-channel.js', 'lib/k
 // fileReview is not under test here; the deck's job is to mount it with the
 // right options, so a recording stub is exactly the right depth.
 const mounted = [];
+// The deck READS its header controls off the mounted card, so the stub answers
+// $data too. One fake card per element, holding only what the header asks for;
+// what those getters mean is fileReview's own business and file-review-card's.
+const CARD = () => ({
+  viewModes: [
+    { key: 'file', icon: 'ph-square', label: 'Read', on: true },
+    { key: 'split', icon: 'ph-columns', label: 'Compare, side by side', on: false },
+    { key: 'unified', icon: 'ph-rows', label: 'Compare, inline', on: false },
+  ],
+  ghLinks: [{ label: 'This version', hint: '', url: 'https://x/1', icon: 'ph-file' },
+            { label: 'Raw', hint: '', url: 'https://x/raw', icon: 'ph-file-text' }],
+  picked: [],
+  pickView(m) { this.picked.push(m.key); },
+});
+const cards = new Map();
 window.Alpine = { initTree: (el) => {
   const expr = el.getAttribute('x-data') || '';
   const m = /^fileReview\(window\.(\w+)\)$/.exec(expr);
   mounted.push(m ? { key: m[1], opts: window[m[1]] } : { raw: expr });
-} };
+  if (m) cards.set(el, CARD());
+}, $data: (el) => cards.get(el) };
 
 const tick = (n = 1) => new Promise(r => setTimeout(r, n * 10));
 // jsdom has no layout, so the scroll the contents list makes to open on the
@@ -339,24 +355,134 @@ test('hosted in a toss, the deck announces to the shell as well', async () => {
   }
 });
 
-test('the header offers a door to the sidebar, and only where it announces', async () => {
+// ── THE HEADER CARRIES THE FILE'S OWN CONTROLS ──────────────────────────────
+//
+// A slide was a row of chrome over a document: the path (already in the header,
+// truncated a second way), three layout icons, a copy button and a github menu,
+// with a door to the sidebar on the header beside them. Every one of those is
+// about the file the header is already naming, so they moved up beside the name
+// and the slide became the document (asked for 2026-09-07).
+//
+// READ OFF THE CARD, not rebuilt from the file row: the layouts and the links
+// are decided by what the file IS, which the card alone knows, so they exist in
+// alpineComponents/file-review.js and are only PLACED here.
+test('the header carries the card\'s layouts and its github menu', async () => {
   const d = window.fileDeck.open({ ...AT, files: FILES });
-  await tick(2);
-  const btn = d.el.querySelector('button[title="Open the sidebar for this file"]');
-  assert.ok(btn, 'a centred desktop deck says nothing about the fab unless it does');
-  let asked = null;
-  const on = (e) => { asked = e.detail && e.detail.tab; };
-  window.addEventListener('web-tools:open-drawer', on);
-  btn.click();
-  assert.equal(asked, 'render', 'and it opens on the tab that answers "which version"');
-  window.removeEventListener('web-tools:open-drawer', on);
-  d.close(); await tick(6);
+  await tick(4);
+  const titles = [...d.el.querySelectorAll('.sd-header button')].map(b => b.title || '');
+  for (const t of ['Read', 'Compare, side by side', 'Compare, inline', 'This file on GitHub'])
+    assert.ok(titles.includes(t), t + ' is on the header: ' + JSON.stringify(titles));
 
-  const quiet = window.fileDeck.open({ ...AT, files: FILES, announce: false });
-  await tick(2);
-  assert.ok(!quiet.el.querySelector('button[title="Open the sidebar for this file"]'),
-    'a deck that does not retarget the sidebar must not offer to open it');
-  quiet.close(); await tick(6);
+  // THE MARK RIDES THE NAME, NOT THE CLUSTER, and the difference is which
+  // element it is inside. It sat at the cluster's end and then at its start,
+  // and both read as belonging to the group of controls rather than to the
+  // file; the kit grew a slot in its h1 for it (2026-09-08). Asserting DOM
+  // order alone would pass either way, since the title block precedes the
+  // cluster: the containment is the claim.
+  const gh = [...d.el.querySelectorAll('.sd-header button')]
+    .find(b => b.title === 'This file on GitHub');
+  assert.ok(d.el.querySelector('.sd-header h1').contains(gh),
+    'the github mark is inside the title, beside the name');
+  const cluster = [...d.el.querySelectorAll('.sd-header button')]
+    .filter(b => !d.el.querySelector('.sd-header h1').contains(b))
+    .map(b => b.title || '')
+    .filter(t => ['This file on GitHub', 'Read', 'Compare, side by side',
+                  'Compare, inline'].includes(t));
+  assert.deepEqual(cluster, ['Read', 'Compare, side by side', 'Compare, inline'],
+    'and the cluster holds the layouts alone: ' + JSON.stringify(cluster));
+
+  // The subtitle is still the title's ADJACENT sibling. Half the estate reads
+  // this header as `h1 + p`, so a wrapper around the h1 would have found no
+  // crumb rather than a wrong one, in eight tests and three scenarios.
+  assert.ok(d.el.querySelector('h1 + p'), 'h1 + p still reaches the crumb');
+  assert.equal(d.el.querySelector('h1').textContent, head(d).title,
+    'and the h1 still reads as the name alone');
+
+  // The one that is lit is the card's answer, not the header's own state.
+  const lit = [...d.el.querySelectorAll('.sd-header button')]
+    .filter(b => b.className.includes('btn-active')).map(b => b.title);
+  assert.deepEqual(lit, ['Read'], 'the card says which reading is showing');
+
+  // And a tap reaches the card rather than being handled up here. THIS deck's
+  // active slide, not the first card the file ever mounted: the map outlives
+  // every case in this file.
+  const slide = d.deck.track.children[d.deck.active()];
+  const card = cards.get(slide.querySelector('[x-data^="fileReview"]'));
+  assert.ok(card, 'the slide has a card');
+  d.el.querySelector('.sd-header button[title="Compare, inline"]').click();
+  assert.deepEqual(card.picked, ['unified'], 'the header asks the card to move');
+  d.close(); await tick(6);
+});
+
+// The menu is the KIT's, because placing it is the half only the kit can
+// answer: it hangs inside the header's stacking context, above the track.
+test('the github menu opens under its button, from the kit', async () => {
+  const d = window.fileDeck.open({ ...AT, files: FILES });
+  await tick(4);
+  const btn = d.el.querySelector('.sd-header button[title="This file on GitHub"]');
+  btn.click();
+  const box = d.el.querySelector('.sd-hdr-menu');
+  assert.ok(box, 'a menu appeared');
+  assert.ok(btn.parentElement.contains(box), 'anchored to the action cluster, not the page');
+  assert.deepEqual([...box.querySelectorAll('a')].map(a => a.getAttribute('href')),
+    ['https://x/1', 'https://x/raw'], 'carrying the card\'s own links');
+  assert.equal(box.querySelector('a').target, '_blank');
+
+  // PLACED BY MEASUREMENT, not by a fixed side. right-0 and top-full were
+  // hardcoded, which is right for an anchor in the header's right-hand cluster
+  // and wrong for a mark beside the title: the menu opened 156px to the LEFT
+  // of what it hangs from, and started mid-header over the crumb. jsdom
+  // computes no layout, so what is holdable here is that the decision is
+  // inline and the classes no longer name a side; where it actually lands is
+  // measured in tools/render/scenarios/deck-chrome.mjs.
+  assert.ok(!/\bright-0\b/.test(box.className), 'no hardcoded side: ' + box.className);
+  assert.ok(!/\btop-full\b/.test(box.className), 'nor a hardcoded top');
+  assert.ok(box.style.left !== '', 'the horizontal placement is measured');
+  assert.ok(box.style.top !== '', 'and so is the vertical, off the header rather than the anchor');
+  d.close(); await tick(6);
+});
+
+// A CARET IS WHAT SAYS IT IS SAFE TO TAP. Without it the mark reads as a link,
+// so a reader expects to be taken somewhere and hesitates over a control that
+// only opens a list. Both the other github menus in the estate carry one
+// (alpineComponents/file-review.js and branch-brief.js), at the same size.
+test('the github mark says it opens a menu', async () => {
+  const d = window.fileDeck.open({ ...AT, files: FILES });
+  await tick(4);
+  const gh = [...d.el.querySelectorAll('.sd-header button')]
+    .find(b => b.title === 'This file on GitHub');
+  assert.ok(gh.querySelector('.ph-github-logo'), 'the mark');
+  assert.ok(gh.querySelector('.ph-caret-down'), 'and the caret beside it');
+  d.close(); await tick(6);
+});
+
+// THE DOOR TO THE SIDEBAR IS GONE, and the announcement is not. The deck still
+// aims the drawer at the file being read, so opening it from the launcher lands
+// here; what went is a second thing to look at on a row with none to spare
+// (asked for 2026-09-07, having been added for discoverability).
+test('no door to the sidebar on the header, and it still announces', async () => {
+  const d = window.fileDeck.open({ ...AT, files: FILES });
+  await tick(4);
+  assert.equal(d.el.querySelector('button[title="Open the sidebar for this file"]'), null,
+    'the header carries the file\'s controls and nothing else');
+  assert.ok(window.__tossSubject && window.__tossSubject.path,
+    'and the sidebar is still aimed at the file: ' + JSON.stringify(window.__tossSubject));
+  d.close(); await tick(6);
+});
+
+// A HOSTED CARD DRAWS NOTHING, which is the other half of the same contract:
+// the header is drawing its name and its controls, so a card that also drew
+// them would be the duplication this pass removed.
+test('the card is mounted hosted, with a way to keep the header in step', async () => {
+  mounted.length = 0;
+  const d = window.fileDeck.open({ ...AT, files: FILES });
+  await tick(4);
+  const first = mounted.find(m => m.opts && m.opts.path === FILES[0].path);
+  assert.equal(first.opts.hosted, true, 'the host draws its chrome');
+  assert.equal(first.opts.read, true, 'and it is a reading surface');
+  assert.equal(typeof first.opts.onChrome, 'function',
+    'with a callback, since the header cannot watch Alpine state from out here');
+  d.close(); await tick(6);
 });
 
 

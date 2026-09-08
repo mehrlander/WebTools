@@ -133,12 +133,62 @@
 <style>
   [x-cloak]{display:none!important}
 </style>
-</head>
-<body class="min-h-screen bg-base-200 text-base-content" x-data="branchPage()" x-cloak>
+<!-- `roomy`: THE ONE CONDITION THE LOCK BELOW TURNS ON, declared once so the
+     page and alpineComponents/branch-brief.js cannot state it two ways.
 
-  <!-- The masthead stands down inside a frame (show-repo's branch-detail
-       takeover embeds this page and supplies its own header), the same
-       courtesy links.html pays its embedder. Standalone use is unchanged.
+     BOTH HALVES ARE MEASURED, and the first one is not the obvious one. Height
+     is what decides whether two panes are worth having: the head costs a flat
+     234px (masthead 49, brief 185) from 1440 all the way down to 640 wide, so
+     at 900 tall the sections get 618px however narrow the window is, and at
+     390 tall (a phone turned sideways) they would get 108. The floor is 700.
+
+     THE WIDTH CLAUSE IS GONE, 2026-09-07, and it was the reader who took it
+     out. It read `min-width: 640px` as the phone-in-portrait test: 390 by 844
+     clears the height floor, and locking there was held to be wrong because an
+     app shell costs a phone its URL-bar collapse. That was a fair trade when
+     the head cost 234px and the sections were a list and some prose. It is not
+     now: the head is 93, the guide is a pane that scrolls itself, and the
+     reader asked for the two panels to divide the screen rather than run off
+     the bottom of it. A URL bar that stays put is the price and it is theirs to
+     pay.
+
+     So height is the only axis. 700 is still the floor, which a phone in
+     portrait clears and a phone turned sideways (390 tall) does not, and
+     sideways is exactly where two panels are worth nothing.
+
+     THIS REPLACED `lg:`, which was the wrong axis and too high besides: a
+     900px-wide desktop window, an ordinary thing, kept scrolling the document
+     while the head measured the same 234px it does at 1440 (2026-09-04). -->
+<style type="text/tailwindcss">
+  @custom-variant roomy (@media (min-height: 700px));
+</style>
+</head>
+<!-- WHERE THE SCROLLBAR IS, and the two answers are both deliberate.
+     Outside `roomy` the document scrolls, which is what a phone wants.
+
+     Inside it the page is locked to the viewport and the two sections scroll
+     inside themselves. Measured 2026-09-04 at 1440x900: 618px for the
+     sections, which the file list caps at 45% of and the guide takes the rest
+     of. Before this the guide began at y=575 and ran off the bottom of a 983px
+     document, so reading it scrolled the branch name, the facts strip and
+     every control away.
+
+     `dvh` rather than `vh`: the page is a tenant (show-repo's branch-detail
+     takeover embeds it), and inside a frame `dvh` measures the frame. This is
+     an `h-dvh` flex column, NOT `fixed inset-0`, which is the shape the house
+     style reserves for a known top-level page. -->
+<body class="min-h-screen bg-base-200 text-base-content roomy:h-dvh roomy:min-h-0 roomy:overflow-hidden roomy:flex roomy:flex-col"
+      x-data="branchPage()" x-cloak>
+
+  <!-- The masthead stands down inside a frame, the same courtesy links.html
+       pays its embedder. Standalone use is unchanged.
+
+       This used to name show-repo's branch-detail takeover as the embedder,
+       which stopped being true on 2026-08-13 when the takeover swapped its
+       iframe for a direct mount of the component. The only page-level
+       embedder left is the toss. This flag is still the page's own and still
+       correct; what was NOT correct was handing the same flag to the brief,
+       which is the note at `framed: false` below.
 
        Except with nothing addressed, which was a dead end: a toss carrying no
        branch rendered "address a branch above" under a hidden bar, with
@@ -146,7 +196,7 @@
        has already supplied an address; where none arrived, the way to supply
        one has to be on the page. Found on session.html 2026-08-26 and fixed
        here in the same pass, since the rule was copied between them. -->
-  <div x-show="!framed || !target" class="border-b border-base-300 bg-base-100">
+  <div x-show="!framed || !target" class="border-b border-base-300 bg-base-100 roomy:shrink-0">
     <div class="mx-auto px-4 py-2 flex items-center gap-2">
       <span class="text-lg">🌿</span>
       <input x-model="input" @keydown.enter="go()" placeholder="owner/repo@branch, or a PR URL"
@@ -161,7 +211,10 @@
     <code class="text-xs">#gh=owner/repo&amp;pr=364</code>
   </div>
 
-  <div x-show="target" id="mount"></div>
+  <!-- The mount is the flex item that gives the brief a height to divide. Its
+       `lg:` classes are inert below the breakpoint, where the body is a plain
+       document again. -->
+  <div x-show="target" id="mount" class="roomy:min-h-0 roomy:grow roomy:flex roomy:flex-col"></div>
 
 <script>
   document.addEventListener('alpine:init', () => {
@@ -253,9 +306,25 @@
         }
         const authored = await this.readAuthored();
         this.input = repo + '@' + ref;
-        // `framed` rides through: an embedder supplies its own header, and the
-        // view drops the identity it would otherwise repeat.
-        this.target = { repo, branch: ref, base, authored, pr: t.pr || '', framed: this.framed,
+        // ONE FLAG WAS STANDING FOR TWO FACTS, and this line passed the wrong
+        // one. `this.framed` says the PAGE is in an iframe, which is why the
+        // masthead above stands down. The brief's `framed` says something
+        // else: that a HOST draws the branch name and the state, so the view
+        // need not repeat them, AND that it is a slide rather than a page, so
+        // it takes the single-scroller shape. That is true of show-repo's
+        // branch deck, which mounts the COMPONENT with framed: true. It is
+        // true of nothing that embeds this PAGE: the takeover stopped using an
+        // iframe on 2026-08-13, so the only embedder left is the toss, and the
+        // toss draws nothing.
+        //
+        // So a tossed branch showed no branch name anywhere and refused the
+        // two-pane lock at any window size, because every roomy: class sits
+        // behind !framed (reported 2026-09-04, measured through the toss at
+        // 1440x900 with the media query matching and the flag still true).
+        // session.html carried the identical defect and fixed it on
+        // 2026-09-01; tools/test/branch-brief-groups.test.mjs now holds both
+        // pages to the literal.
+        this.target = { repo, branch: ref, base, authored, pr: t.pr || '', framed: false,
                         // `&pane=` names a section and `&file=` opens the file
                         // deck on one path; the component owns what each means.
                         pane: t.pane || '', file: t.file || '' };
@@ -267,6 +336,14 @@
           const old = document.getElementById('mount');
           const el = document.createElement('div');
           el.id = 'mount';
+          // THE CLASSES COME FROM THE ELEMENT BEING REPLACED, not from a second
+          // copy written here. They are what hands the brief a height to divide
+          // at lg, and a fresh div built without them left the shell 934px
+          // inside a 900px body with `overflow: hidden` on it: content clipped
+          // and nothing to scroll, which is exactly the failure session.html
+          // shipped on 2026-09-02. Reading them off `old` means the markup
+          // above stays the one place the layout is stated.
+          el.className = old.className;
           el.setAttribute('x-data', 'branchBrief(window.__branchTarget)');
           old.replaceWith(el);
           Alpine.initTree(el);
