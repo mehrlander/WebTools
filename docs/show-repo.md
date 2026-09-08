@@ -2447,8 +2447,10 @@ tracker follow-up.
 
 The stage's contract lives in its own reference now, [stage.md](stage.md):
 the bench, intake (the paste offer bar, the Add panes, manifest seeds), the
-walkable preview and its diff, the Out surface, and the `#stage=` link grammar
-with `&prompts=` and `&mode=`. What stays here is the boundary: the stage is
+walkable preview and its diff, the Out surface, and the `#stage=` link grammar,
+whose four parts are refs, content (`&gz=`, which carries pasted text in the link
+itself and is what a token-less review handoff rides), commentary (`&prompts=`)
+and intent (`&mode=`, `&cmp=`, `&view=`, `&dest=`). What stays here is the boundary: the stage is
 `store.stage`, one list of `{repo, ref, path}` refs (plus local items) sitting
 above any repo, which is why it is a nav stop of the estate rather than
 anything a repo owns.
@@ -2647,7 +2649,6 @@ Three cross-repo live-view channels, one job each:
 
 ## Roadmap (not built)
 
-- A content-carrying `#gz=`-style stage bundle for token-less contexts.
 - A review view: mount `fileReview` cards (pages/review.html's dossier) over
   the stage's Compare result, so a ref-diff reads in place instead of only
   listing files.

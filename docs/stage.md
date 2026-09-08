@@ -521,40 +521,110 @@ from a branch of this repo plus one from another repo →
 …/app/#stage=mehrlander/web-tools@my-branch:lib/gh-api.js,lib/stage.js;mehrlander/home:inbox/note.md
 ```
 
+### The link is four parts
+
+A stage link is one object, and only its first part is token-gated.
+
+| Part | Params | What rides |
+| --- | --- | --- |
+| **Refs** | the `#stage=` spec above | pointers only, so the files stay behind the viewer's token |
+| **Content** | `&gz=` | pasted text items in full, gzipped, needing no token |
+| **Commentary** | `&prompts=` | a list of `{label, ask}` review asks |
+| **Intent** | `&mode=`, `&cmp=`, `&view=`, `&dest=` | what to open on, which pair, which reading, where a send is aimed |
+
+`StageLink.mint(items, base, { prompts, mode, cmp, view, dest })` serializes all
+of it, and `StageLink.mintWithLocals(items, base, opts)` is the same call with
+the pasted text folded into `&gz=` (async, because gzip is). A bare prompts
+array is still accepted in the options slot, for the legacy call.
+`StageLink.parseLink(hash)` returns `{ items, gz, prompts, mode, cmp, view, dest }`;
+the bare `StageLink.parse(hash)` still returns just the items, for callers such
+as the shell seed that want refs alone.
+
+### Content: the `&gz=` param
+
+A **ref** item is a pointer and its file stays behind the token. A **local**
+item is text pasted or dropped into the stage, which the sender already holds,
+so `&gz=` carries it in the link: `[{name, text}]` as JSON, gzipped through
+`CompressionStream`, base64url'd. `GZ_MAX` (24 KB of payload) is the budget, and
+`encodeLocals` throws over it with both numbers rather than minting a link that
+will not open. A local **binary** still cannot ride, since its bytes are not
+text, and the refusal names the item.
+
+A stage carrying nothing but pasted text leads on that key instead, so the link
+is `#gz=` rather than an empty `#stage=`:
+
+```
+…/app/#gz=<base64url(gzip(JSON))>&mode=diff&prompts=<base64url(JSON)>
+```
+
+**That form is the token-less review handoff**, and it is the one thing a ref
+link cannot do: a before and an after that exist only as text, compared by a
+reader with no token, no account, and no access to the repo the edit came from.
+A short before/after pair mints to about 350 characters.
+[`tools/test/stage-gz-review.mjs`](../tools/test/stage-gz-review.mjs) holds it
+end to end with `api.github.com` blocked outright, which is the only form of
+that claim worth making: the shell reads its own repo on boot to orient itself,
+so counting requests would never reach zero and would say nothing about whether
+the link needed the network.
+
+Minting is browser-side, since gzip is. From a session with no shell loaded,
+build the payload directly:
+
+```bash
+python3 - <<'PY'
+import json, gzip, base64
+items = [{"name": "before.md", "text": open("before.md").read()},
+         {"name": "after.md",  "text": open("after.md").read()}]
+raw = gzip.compress(json.dumps(items, separators=(",", ":")).encode())
+print("#gz=" + base64.urlsafe_b64encode(raw).decode().rstrip("="))
+PY
+```
+
+The same base64url step without the gzip is what `&prompts=` takes.
+
 ### Commentary: the `&prompts=` param
 
-A link is one object with two halves, **refs** (the `#stage=` spec) and
-**commentary** (an optional `&prompts=` param). The refs are pointers, so their
-content stays behind the token; the prompts are authored text, so they ride the
-link. `prompts=` is a base64url'd JSON list of `{label, ask}` review asks:
+`prompts=` is a base64url'd JSON list of `{label, ask}` review asks, authored
+text rather than a pointer, so it rides the link whether the content does or
+not:
 
 ```
 …/app/#stage=owner/repo@ref:before.md;owner/repo@head:before.md&prompts=<base64url(JSON)>
 ```
 
 The Diff lens shows those bespoke asks first (a sparkle marks them), above its
-six fixed general prompts, each still one-click-copying both compared texts plus
-the diff plus that ask.
+six fixed general prompts, each one-click-copying both compared texts plus the
+diff plus that ask, for pasting into a separate chat as an independent second
+opinion. Write two to four asks about what is at stake in this particular edit
+(a number, a term, a claim that changed); the fixed six already cover the
+general reads. A soft cap of 24 entries keeps a runaway list from bloating the
+URL.
 
-An optional `&mode=diff` is the third part of the object: the intent that this
-stage opens as a diff. A `mode=diff` link opens the **reader** on its diff and runs the
-compare on open (no click), so a review link lands the reviewer straight on the
-diff; without it a stage opens with the reader closed, on the Out surface (a bundle handoff). `StageLink.mint(items,
-base, { prompts, mode })` encodes all of it (a bare prompts array is still
-accepted for the legacy call), and `StageLink.parseLink(hash)` returns `{ items,
-prompts, mode }`; the bare `StageLink.parse(hash)` still returns just the items
-for callers that only want refs. A soft cap (24 entries) keeps a runaway prompt
-list from bloating the URL. This `{refs, commentary, mode}` shape is the seed of
-a richer surface schema: the same object a manifest's `stage` block or a future
-standalone surface file would carry, with file content the file-only extra the
-token-gated link cannot hold.
+### Intent: `&mode=`, `&cmp=`, `&view=`, `&dest=`
 
-`StageLink.read(location)` reads that object from the **hash first, then the
-`?query`** (same keys: `stage`, `prompts`, `mode`). The fragment stays the
-default and the private form; the query fallback is what lets a stage ride a
-context that eats the `#`: a `toss-render` srcdoc (whose params shim answers
-`?query` lookups, so `…show-repo.html?stage=…&mode=diff` renders a staged diff
-inside the toss), an email or chat that strips the fragment, a deep link. When
-minting a query-form link into a toss `#gh=` address, encode the inner `&`
-separators as `%26` so the toss's own hash parser keeps them inside the `gh=`
-value.
+`&mode=diff` opens the **reader** on its diff and runs the compare on open, with
+no click, so a review link lands the reviewer straight on the comparison.
+Without it a stage opens with the reader closed, on the Out surface, which is a
+bundle handoff rather than a review. `&cmp=` names which staged item is the
+other half of the pair, and `&view=` picks the reading (`unified`, `split`, or
+`patch`); both are ignored rather than trusted when they do not resolve, since a
+link outlives the set it was minted from. `&dest=` prefills the send field with
+`owner/repo[@ref][:dir]`, so a link can open the stage already aimed; nothing
+sends without the user's own taps.
+
+The comparison is a patience diff over lines with a word-level diff inside each
+changed pair ([`lib/kits/text-diff.js`](../lib/kits/text-diff.js), capped at 600
+tokens a side), so a one-word edit highlights as one word rather than as two
+whole lines.
+
+### Where the object is read from
+
+`StageLink.read(location)` reads it from the **hash first, then the `?query`**
+(same keys: `stage`, `gz`, `prompts`, `mode`, `cmp`, `view`, `dest`). The
+fragment stays the default and the private form; the query fallback is what lets
+a stage ride a context that eats the `#`: a `toss-render` srcdoc (whose params
+shim answers `?query` lookups, so `…show-repo.html?stage=…&mode=diff` renders a
+staged diff inside the toss), an email or chat that strips the fragment, a deep
+link. When minting a query-form link into a toss `#gh=` address, encode the
+inner `&` separators as `%26` so the toss's own hash parser keeps them inside
+the `gh=` value.

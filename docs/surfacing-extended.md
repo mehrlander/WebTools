@@ -14,7 +14,8 @@ and its **Boundary** where an edge changes the rule.
 
 * **Stage a fileset 🗂️.** Move a fileset across repos for viewing, bundle download, copying, or review diff.
   **Form:** `…/app/#stage=owner/repo[@ref]:p1,p2;owner2/repo2:p3`, groups `;`-separated and paths `,`-separated. Add `&prompts=<base64url>` for `{label, ask}` review prompts or `&mode=diff` to open on that comparison; `StageLink.read` also accepts these in the query.
-  **Boundary:** token-gated with the same in-app-browser caveat as `#gh=`; for a tokenless reader, download the bundle and hand it over. A stage is an inline handoff, not a caption row. See `docs/stage.md`, `docs/show-repo.md`, and `.web-tools.json`.
+  **Pasted text needs no token.** A stage of text you hold rather than refs you point at mints as `#gz=<base64url(gzip([{name,text}]))>`, budgeted at 24 KB of payload, and opens for a reader with no token and no access to the repo. With `&mode=diff` that is the whole token-less review handoff: a before, an after, and the asks, in one link of a few hundred characters.
+  **Boundary:** the ref half is token-gated with the same in-app-browser caveat as `#gh=`; for a tokenless reader either send the text under `#gz=` or download the bundle and hand it over. A stage is an inline handoff, not a caption row. See `docs/stage.md`, `docs/show-repo.md`, and `.web-tools.json`.
 
 * **Carry content in an envelope.** A curated, annotated set of files, chats, diffs, or search hits that should travel and render together goes in an envelope rather than an ad-hoc format. The carriers are stage, surface (`pages/app.html` estate view), chat-results (`pages/chat-results.html`) and data view (`pages/data-view.html`).
   **Boundary:** they share the `owner/repo[@ref]:path` grammar, the `#gz=`/`?src=` delivery split, and live-code rendering. One contract per carrier in [`docs/envelopes/`](https://github.com/mehrlander/web-tools/tree/main/docs/envelopes).
