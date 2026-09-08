@@ -55,12 +55,18 @@ export default async function (page) {
     const d = Alpine.$data(document.querySelector('[x-data*="fab"]') || document.body);
     const orig = d._crumb.bind(d);
     d._crumb = (stage) => { seen.push(stage); orig(stage); };
+    // The drawer body is built on the FIRST open only (x-if on `opened`), and
+    // this driver has already opened it once, so the build has to be undone to
+    // watch it happen. That build is where the device loses the process, so it
+    // is the part worth walking.
     d.close();
+    d.opened = false;
+    await new Promise(r => setTimeout(r, 200));
     d.toggle();
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise(r => setTimeout(r, 600));
     return seen;
   });
-  for (const want of ['paint', 'frame1'])
+  for (const want of ['paint', 'frame1', 'd:body', 'd:render-head', 'd:inspect', 'd:traffic', 'd:render-body'])
     if (!reached.includes(want)) throw new Error(`the trail never reached ${want}: ${reached.join(',')}`);
   if (!reached.some(s => /^dom:\d+$/.test(s)))
     throw new Error(`no dom count in the trail: ${reached.join(',')}`);
