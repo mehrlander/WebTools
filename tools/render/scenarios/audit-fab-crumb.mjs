@@ -66,7 +66,14 @@ export default async function (page) {
     await new Promise(r => setTimeout(r, 600));
     return seen;
   });
-  for (const want of ['paint', 'frame1', 'd:body', 'd:render-head', 'd:inspect', 'd:traffic', 'd:render-body'])
+  // d:rb-guide and d:rb-take are NOT asserted, and their absence here is
+  // itself a finding rather than a gap. They sit inside <template x-if="path">,
+  // and the harness loads the page with no repo path, so that whole subtree is
+  // never built. On a device opened through a #gh= toss it is, which makes it
+  // the largest piece of the drawer this driver cannot reach and the device's
+  // trail can.
+  for (const want of ['paint', 'frame1', 'd:body', 'd:render-head', 'd:inspect',
+                      'd:traffic', 'd:render-body', 'd:rb-console'])
     if (!reached.includes(want)) throw new Error(`the trail never reached ${want}: ${reached.join(',')}`);
   if (!reached.some(s => /^dom:\d+$/.test(s)))
     throw new Error(`no dom count in the trail: ${reached.join(',')}`);
