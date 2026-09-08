@@ -47,6 +47,24 @@ export default async function (page) {
   const left = await page.evaluate(() => localStorage.getItem('fab:step'));
   if (left) throw new Error(`a completed tap left a crumb: ${left}`);
 
+  // 5. The three stages past the component's own work are reached and named,
+  //    since that is where the device's trail stops and one shared name would
+  //    tell us nothing about which of them it stopped in.
+  const reached = await page.evaluate(async () => {
+    const seen = [];
+    const d = Alpine.$data(document.querySelector('[x-data*="fab"]') || document.body);
+    const orig = d._crumb.bind(d);
+    d._crumb = (stage) => { seen.push(stage); orig(stage); };
+    d.close();
+    d.toggle();
+    await new Promise(r => setTimeout(r, 400));
+    return seen;
+  });
+  for (const want of ['paint', 'frame1'])
+    if (!reached.includes(want)) throw new Error(`the trail never reached ${want}: ${reached.join(',')}`);
+  if (!reached.some(s => /^dom:\d+$/.test(s)))
+    throw new Error(`no dom count in the trail: ${reached.join(',')}`);
+
   // 3. The trail form: a sequence of stages with timings, which is what the
   //    filed report carries. The single-string form above is the older shape,
   //    still read because a device may be carrying one written before it.
@@ -68,6 +86,7 @@ export default async function (page) {
   if (trail.crumb.steps[1].heap !== 380)
     throw new Error('the trail lost its heap readings, which is the half a timing cannot give');
 
+  console.log('stages past the component:', reached.join(' → '));
   console.log('crumb reported:', after.text.split('\n')[0]);
   console.log('the trail reaches the report with its timings and heap');
   console.log('completed tap left no crumb');
