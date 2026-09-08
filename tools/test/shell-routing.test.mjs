@@ -49,13 +49,20 @@ test('every view the shell can enter has a row', () => {
     assert.ok(keys.has(v), `the shell enters view '${v}' but VIEWS has no row for it`);
 });
 
-test('rows are well formed, and keys and aliases are unique', () => {
-  const seen = new Set();
+// Two namespaces, not one, since `writes` split them: a KEY is the shell's own
+// name for a view (`this.view`) and an ADDRESS is a ?view= spelling. They are
+// the same word for almost every row, and where they are not, 'activity' is a
+// key on one row and an address on another, which is the whole point of the
+// split and would read as a collision if both were counted together.
+test('rows are well formed, and keys and addresses are unique', () => {
+  const keys = new Set(), addrs = new Set();
   for (const r of rows) {
     assert.ok(r.key && typeof r.open === 'function', `row ${r.key}: needs a key and an open()`);
-    for (const name of [r.key, r.alias].filter(Boolean)) {
-      assert.ok(!seen.has(name), `two rows answer to '${name}'`);
-      seen.add(name);
+    assert.ok(!keys.has(r.key), `two rows answer to the key '${r.key}'`);
+    keys.add(r.key);
+    for (const name of [r.writes || r.key, r.alias].filter(Boolean)) {
+      assert.ok(!addrs.has(name), `two rows answer to the address '${name}'`);
+      addrs.add(name);
     }
     // `self` says the view names itself another way, so the row must stamp
     // that other way itself; without a stamp it would name nothing at all.
@@ -65,7 +72,24 @@ test('rows are well formed, and keys and aliases are unique', () => {
 
 test('an alias resolves to its row rather than to a view of its own', () => {
   for (const r of rows.filter(r => r.alias))
-    assert.equal(shell.routeFor(r.alias)?.key, r.key, `alias ${r.alias} does not resolve to ${r.key}`);
+    assert.equal(shell.routeForUrl(r.alias)?.key, r.key, `alias ${r.alias} does not resolve to ${r.key}`);
+});
+
+// The word Activity means one thing in the nav and had meant another in the
+// address: the nav stop opens Sessions (goSessions), while ?view=activity
+// opened the branch pane, whose internal name happens to be 'activity'. So a
+// link shared from the Activity stop landed somewhere the reader had not been.
+// Reported 2026-09-08. The branch pane keeps its internal name and gives up the
+// address; ?view=branches, which the retired per-repo review already used, is
+// now what names it.
+test('the Activity address opens what the Activity nav stop opens', () => {
+  assert.equal(shell.routeForUrl('activity')?.key, 'sessions',
+    '?view=activity must land on Sessions, the pane the nav stop opens');
+  assert.equal(shell.routeForUrl('branches')?.key, 'activity',
+    '?view=branches names the branch pane, whose internal key stays activity');
+  const nav = page.match(/label: 'Activity', go: \(\) => this\.(\w+)\(\)/);
+  assert.equal(nav?.[1], 'goSessions',
+    'the nav stop moved; the address alias above has to move with it');
 });
 
 // What each view needs on the shell before it has anything to stamp. A row
@@ -89,7 +113,7 @@ const REPOS = ['mehrlander/home', 'mehrlander/web-tools'];
 function landsOn(reopened, url) {
   if (!url) return 'dashboard';
   if (url.file) return 'files';
-  const r = reopened.routeFor(url.view);
+  const r = reopened.routeForUrl(url.view);
   return r && (!r.when || r.when(url)) ? r.key : 'landing';
 }
 
@@ -349,16 +373,16 @@ test('the repo sidebar hands its Files row to the central surface, scoped', () =
 test('the retired views alias onto what replaced them, carrying their scope', () => {
   const files = makeShell({ search: '?repo=mehrlander/home&view=files&path=docs',
                             browserStore: { repo: '' } });
-  assert.equal(files.shell.routeFor('files')?.key, 'search',
+  assert.equal(files.shell.routeForUrl('files')?.key, 'search',
     'the tree walk moved into the central Files view');
-  files.shell.routeFor('files').open.call(files.shell, files.shell.parseUrl());
+  files.shell.routeForUrl('files').open.call(files.shell, files.shell.parseUrl());
   assert.equal(files.shell.view, 'search');
   assert.equal(files.shell.searchSeed.path, 'docs',
     'the old ?path= scopes the new view rather than being dropped on the floor');
 
   const branches = makeShell({ search: '?repo=mehrlander/home&view=branches',
                                browserStore: { repo: '' } });
-  assert.equal(branches.shell.routeFor('branches')?.key, 'activity',
+  assert.equal(branches.shell.routeForUrl('branches')?.key, 'activity',
     "the per-repo branch review moved into Activity's Branches tab");
 
   // And neither is a view the shell can still enter, which is what would make

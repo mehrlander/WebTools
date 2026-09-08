@@ -5071,8 +5071,14 @@ function app(){ return {
   // reach and could not name. A row here cannot be half-addressable, which is
   // the promise three parallel chains could not make.
   //
-  //   key    the ?view= value AND the this.view value; deliberately one name
-  //   alias  a retired key that still resolves, so saved links land somewhere real
+  //   key    the this.view value, and the ?view= value unless `writes` overrides
+  //   writes the ?view= spelling when it must differ from the key. A view can be
+  //          renamed in the ADDRESS without being renamed in the shell, which is
+  //          the only way to move a spelling whose internal name is load-bearing:
+  //          'activity' is the branch pane's this.view and a crawl id besides, in
+  //          31 places, while ?view=activity has to mean Sessions, the pane the
+  //          Activity nav stop actually opens.
+  //   alias  a retired ?view= spelling that still resolves, so saved links land
   //   open   what a link to it does. `u` is the parsed URL
   //   when   the address carries what open() needs; a miss falls through to the landing
   //   ready  the shell holds what stamp() needs; a miss stamps nothing
@@ -5111,9 +5117,10 @@ function app(){ return {
     { key: 'public',   open(){ this.goPublicBrowse(); } },
     { key: 'todo',     open(){ this.goTodo(); } },
     { key: 'jots',     open(){ this.goJots(); } },
-    // `branches` is the retired per-repo branch review, whose rollup this tab
-    // already carried for every repo at once.
-    { key: 'activity', alias: 'branches', open(){ this.goActivity(); },
+    // The branch rollup. Its this.view stays 'activity' (see `writes` above) and
+    // its address is ?view=branches, which is also what the retired per-repo
+    // branch review was called, so an old link still lands where it always did.
+    { key: 'activity', writes: 'branches', open(){ this.goActivity(); },
       stamp(p){
         // The branch open in the takeover, when one is. Being inside the swiper
         // is a state worth linking to and was the one state here without an
@@ -5126,7 +5133,11 @@ function app(){ return {
         const w = this.branchWindow;
         if (w && w !== this.BRANCH_WINDOW_DEFAULT) p.set('window', this.windowParam(w));
       } },
-    { key: 'sessions', open(){ this.goSessions(); },
+    // ?view=activity resolves HERE, not to the branch pane, because Activity is
+    // the nav stop and Sessions is the pane it opens. A link is an address, and
+    // an address that lands somewhere other than the tap of the same name is the
+    // bug this alias fixes.
+    { key: 'sessions', alias: 'activity', open(){ this.goSessions(); },
       stamp(p){
         // The session open in its swiper, the exact counterpart of `detail` on
         // the row above. Sessions were the one thing in the Activity group with
@@ -5260,7 +5271,18 @@ function app(){ return {
               'sq', 'smode', 'srepo', 'sref', 'spath', 'sfile',
               'app', 'on', 'appRepo', 'appPath', 'appRef', 'appLabel', 'appIcon'],
 
-  routeFor(view){ return this.VIEWS.find(r => r.key === view || r.alias === view); },
+  // Two lookups, deliberately not one. An ADDRESS may name a view by a retired
+  // spelling, so the URL side reads aliases and reads them FIRST; the shell's own
+  // `this.view` is never an alias, so the stamp side matches the key alone. They
+  // were one function until 2026-09-08, and being one meant an alias could point
+  // nowhere but at its own row: ?view=activity had to open the pane internally
+  // named 'activity' even after the Activity nav stop had moved to Sessions, so
+  // the word meant Sessions when tapped and Branches when typed.
+  routeForUrl(view){
+    return this.VIEWS.find(r => r.alias === view)
+        || this.VIEWS.find(r => (r.writes || r.key) === view);
+  },
+  routeFor(view){ return this.VIEWS.find(r => r.key === view); },
 
   // The one dispatch, shared by the boot and the popstate restore. Reports
   // whether the address named a view it could open, so each caller decides what
@@ -5269,7 +5291,7 @@ function app(){ return {
   async routeFromUrl(url){
     if (!url) return false;
     if (url.file) { await this.openFile(url.file); return true; }
-    const r = this.routeFor(url.view);
+    const r = this.routeForUrl(url.view);
     if (!r || (r.when && !r.when(url))) return false;
     await r.open.call(this, url);
     return true;
@@ -5329,7 +5351,7 @@ function app(){ return {
     const r = this.routeFor(this.view);
     if (r && (!r.ready || r.ready.call(this))) {
       const self = typeof r.self === 'function' ? r.self.call(this) : r.self;
-      if (!self) p.set('view', r.key);
+      if (!self) p.set('view', r.writes || r.key);
       r.stamp?.call(this, p, s);
     }
     return p;

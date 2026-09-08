@@ -32,11 +32,15 @@ Packages installed during a session do not transfer to other sessions unless the
 
 The home directory is two layers with different lifetimes, and the modification
 times separate them cleanly. Written fresh at boot: `skills/` (the account's own
-skills, 39 of them), `projects/` (this session's transcript), `session-env/`, and
-the harness's hook scripts. Restored from the environment snapshot, carrying the
-timestamp of the day that snapshot was built: `settings.json`, `CLAUDE.md`, and
-`plugins/`, including `plugins/installed_plugins.json` and the plugin cache below
-it.
+skills, 39 of them), `session-env/`, and the harness's hook scripts. Restored
+from the environment snapshot, carrying the timestamp of the day that snapshot
+was built: `settings.json`, `CLAUDE.md`, and `plugins/`, including
+`plugins/installed_plugins.json` and the plugin cache below it.
+
+`projects/` was listed as written fresh at boot too, and it is not.
+**Stale 2026-07-30 → the section below.** A session's own material persists
+across a restart of its VM, mtimes intact, which matters far more now that the
+session record captures subagent transcripts from that directory.
 
 So **account skills sync every container and account plugins do not.** A plugin is
 pinned at the commit it held when the snapshot was built. Nothing surfaces that
@@ -46,6 +50,42 @@ shipped, so a fix that had merged was running nowhere. The same lifetime governs
 hook installed by hand into `~/.claude/settings.json`. It covers exactly the
 session that wrote it, because a session's filesystem changes never enter the
 snapshot.
+
+
+### A session's own files outlive its VM
+
+*(measured 2026-09-08)*
+
+Three lifetimes are in play here and collapsing them is what produced the
+paragraph corrected above.
+
+**A VM restart keeps the disk.** Measured from inside a session 50 hours old
+whose `/proc/uptime` read 26 minutes: `~/.claude/projects/<id>/subagents/` still
+held 248 files, 46 MB, dated two days earlier with their original mtimes, and
+`/tmp` still held that session's scratchpad from the same day. The machine
+restarts; the filesystem it restarts onto is the one the session had.
+
+**A session idle for days keeps them too.** Two sessions were woken on purpose
+to test it, one idle about 35 hours and one about 50. Both still had every
+per-agent transcript: 156 agents recovered in one and 112 in the other, with
+`agents_unaccounted: 0` on both, the shortfall against their dispatch counts
+being refusals at the concurrency cap rather than losses. Together that recovered
+268 agent runs that had been written off as gone.
+
+**The environment snapshot is a third thing entirely** and never carried session
+material. It holds what the setup script installed, which is why a plugin can be
+days stale while the account's skills are current, and it is the subject of the
+section above.
+
+**What is still unmeasured:** the reclaim boundary itself. The
+[documentation](https://code.claude.com/docs/en/claude-code-on-the-web#environment-expired)
+says an expired environment is reclaimed and reopening "provisions a fresh
+environment and restores the conversation history," which reads as though the
+files would go. Nothing observed here contradicts it; the two probes simply did
+not sit idle long enough to cross whatever line it describes. So the honest
+statement is a floor, not a rule: **at least two days of idleness is survivable,
+and where the ceiling sits is not known.** Do not tell a reader their fan-out is
+unrecoverable without asking the session, which costs one wake and one `ls`.
 
 Two commands freshen a running container:
 

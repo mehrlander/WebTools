@@ -1,7 +1,7 @@
 // alpineComponents/estate.js — the branch takeover's own address.
 //
 // Being inside the swiper is a state, and until 2026-08-07 it was the only
-// state in this view with no address: the list had `?view=activity`, the branch
+// state in this view with no address: the list had `?view=branches`, the branch
 // had its standalone page, and the reader in between could be reached only by
 // tapping. It now stamps `&detail=owner/repo@branch`, follows a swipe, and
 // clears on close, which is what makes Back leave the takeover rather than the
@@ -117,7 +117,7 @@ test('opening stamps the branch, stepping follows it, closing clears it', async 
 test('a link into the swiper opens it, and lands on the branch it names', () => {
   data.closeDetail();
   data._detailFromUrl = false;
-  window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/feat-c');
+  window.history.replaceState(null, '', '/?view=branches&detail=me/tools@claude/feat-c');
 
   data.openDetailFromUrl();
   assert.equal(data.detail.rows.length, 3, 'the whole list is the sequence');
@@ -128,7 +128,7 @@ test('a link into the swiper opens it, and lands on the branch it names', () => 
 test('a branch the list no longer holds still opens, as a list of one', () => {
   data.closeDetail();
   data._detailFromUrl = false;
-  window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/long-merged');
+  window.history.replaceState(null, '', '/?view=branches&detail=me/tools@claude/long-merged');
 
   data.openDetailFromUrl();
   assert.equal(data.detail.rows.length, 1, 'nowhere to swipe, but somewhere to land');
@@ -173,7 +173,7 @@ test('a link opens a branch the window hides, and it arrives carrying its row', 
   try {
     assert.equal(data.openRows.length, 0, 'the fixture really is outside the window');
     const before = slideKeys();
-    window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/feat-b');
+    window.history.replaceState(null, '', '/?view=branches&detail=me/tools@claude/feat-b');
     data.openDetailFromUrl();
     assert.equal(data.detailRow.name, 'claude/feat-b');
     assert.equal(data.detailRow.def, 'main', 'the cached row, not a name pulled out of the address');
@@ -193,7 +193,7 @@ test('a branch no row exists for still gets a base', async () => {
   data.closeDetail();
   data._detailFromUrl = false;
   const before = slideKeys();
-  window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/never-crawled');
+  window.history.replaceState(null, '', '/?view=branches&detail=me/tools@claude/never-crawled');
   data.openDetailFromUrl();
   assert.equal(data.detailRow.name, 'claude/never-crawled');
   const opts = await freshSlide(before);
@@ -204,12 +204,12 @@ test('a branch no row exists for still gets a base', async () => {
 test('the address survives a slashed branch name and refuses a malformed one', () => {
   data.closeDetail();
   data._detailFromUrl = false;
-  window.history.replaceState(null, '', '/?view=activity&detail=not-a-spec');
+  window.history.replaceState(null, '', '/?view=branches&detail=not-a-spec');
   data.openDetailFromUrl();
   assert.equal(data.detail, null, 'a spec with no repo@branch opens nothing');
 
   data._detailFromUrl = false;
-  window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/a/b/c');
+  window.history.replaceState(null, '', '/?view=branches&detail=me/tools@claude/a/b/c');
   data.openDetailFromUrl();
   assert.equal(data.detailRow.name, 'claude/a/b/c', 'slashes belong to the branch, not the split');
 });
@@ -218,7 +218,7 @@ test('the copyable link names the view and the branch', () => {
   data.closeDetail();
   data.openBranchDetail(ROWS[0]);
   const url = data.detailLink();
-  assert.match(url, /view=activity/);
+  assert.match(url, /view=branches/);
   assert.match(url, /detail=me%2Ftools%40claude%2Ffeat-a/);
 });
 
@@ -227,7 +227,7 @@ test('a deep link opens even when the branch list could not be read at all', asy
   // a viewer hits on a rate limit or a bad token. The link still has to land.
   data.closeDetail();
   data._detailFromUrl = false;
-  window.history.replaceState(null, '', '/?view=activity&detail=me/tools@claude/feat-b');
+  window.history.replaceState(null, '', '/?view=branches&detail=me/tools@claude/feat-b');
   await data.loadActivity(new FakeGH({ repo: 'me/private' }));
   await tick(4);
   assert.ok(data.detail, 'the takeover opened');
@@ -282,14 +282,14 @@ const openAddress = async (qs) => {
 };
 
 test('&pane=files hands the slide the pane, so a link lands on the files', async () => {
-  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&pane=files');
+  await openAddress('/?view=branches&detail=me/tools@claude/feat-b&pane=files');
   assert.equal(data.detailRow.name, 'claude/feat-b');
   assert.equal(slideOpts().pane, 'files');
   assert.equal(slideOpts().file, undefined, 'a pane link names no file');
 });
 
 test('&file= hands the slide the path, and lands the list under it on Files', async () => {
-  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&file=lib/kits/file-deck.js');
+  await openAddress('/?view=branches&detail=me/tools@claude/feat-b&file=lib/kits/file-deck.js');
   assert.equal(slideOpts().file, 'lib/kits/file-deck.js');
   // Not decoration: backing out of the deck should leave the reader on the list
   // holding that file, never on a guide they did not ask for.
@@ -297,24 +297,24 @@ test('&file= hands the slide the path, and lands the list under it on Files', as
 });
 
 test('&pane=guide is honoured, since a file address is not the only reason to link', async () => {
-  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&pane=guide');
+  await openAddress('/?view=branches&detail=me/tools@claude/feat-b&pane=guide');
   assert.equal(slideOpts().pane, 'guide');
 });
 
 test('a junk pane is ignored rather than passed through', async () => {
-  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&pane=nonsense');
+  await openAddress('/?view=branches&detail=me/tools@claude/feat-b&pane=nonsense');
   assert.equal(slideOpts().pane, undefined, 'the component picks its own default');
 });
 
 test('only the slide the address named gets the pane', async () => {
-  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&pane=files');
+  await openAddress('/?view=branches&detail=me/tools@claude/feat-b&pane=files');
   const others = allOpts().filter(o => o.branch !== 'claude/feat-b');
   assert.ok(others.length && others.every(o => !o.pane),
     'a neighbour opens on its own default, not on the pane a link named for one branch');
 });
 
 test('the copied link carries the pane the slide reported, and never the file', async () => {
-  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&file=lib/kits/file-deck.js');
+  await openAddress('/?view=branches&detail=me/tools@claude/feat-b&file=lib/kits/file-deck.js');
   // The stub slide reports nothing, so the link carries no pane until one does.
   assert.doesNotMatch(data.detailLink(), /pane=/);
   data.onSlideMeta(data.detail.i, { repo: 'me/tools', branch: 'claude/feat-b', pane: 'files' });
@@ -324,7 +324,7 @@ test('the copied link carries the pane the slide reported, and never the file', 
 });
 
 test('a step drops the pane rather than carrying it to the next branch', async () => {
-  await openAddress('/?view=activity&detail=me/tools@claude/feat-b&pane=files');
+  await openAddress('/?view=branches&detail=me/tools@claude/feat-b&pane=files');
   data.onSlideMeta(data.detail.i, { repo: 'me/tools', branch: 'claude/feat-b', pane: 'files' });
   assert.match(data.detailLink(), /pane=files/);
   data.onDeckSlide(2);

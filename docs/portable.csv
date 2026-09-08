@@ -14,6 +14,7 @@ skill,/portable:drop-link,.claude/skills/drop-link/SKILL.md,drop-link,"mint a li
 skill,/portable:edit-review,.claude/skills/edit-review/SKILL.md,edit-review,"hand over an edited file for second-opinion review: stage before and after into show-repo's Diff lens, with review prompts on the link",plugin
 skill,/portable:file-retrieval,.claude/skills/file-retrieval/SKILL.md,file-retrieval,"retrieve files from a configured corpus through a fixed-behavior tool: ranked snippet search and whole-document reads, one auditable command",plugin
 skill,/portable:scour,.claude/skills/scour/SKILL.md,scour,"acquisition fan-out: send agents to gather source material that does not exist locally, and map who says what about a subject across the open web",plugin
+skill,/portable:gold-set,.claude/skills/gold-set/SKILL.md,gold-set,"measurement fan-out: build an independently labeled sample that scores a classifier or extractor for correctness, blind readers plus an adversarial skeptic plus a scoring script, and decide from the scorecard whether the program should change",plugin
 doc,,docs/CONVENTIONS.md,Working conventions,"the general-behavior hub: prose style, standing decisions, keep-focus, the session/repository/workstream vocabulary",live
 doc,,docs/SURFACING.md,Surfacing,the surfacing system: primitives (chat-handoff mechanics) plus the guide-PR course; loaded with CONVENTIONS.md as one set,live
 doc,,docs/venues.md,Venues,"the venue map: where work can run besides the session reading it, and the attended-versus-unattended split that decides where a job belongs",live
