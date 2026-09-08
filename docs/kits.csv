@@ -23,7 +23,7 @@ lib/kits/dock-split.js,dockSplit,the drag handle between two panes.,264,no,yes,5
 lib/kits/docx.js,docxKit,"WordprocessingML (.docx) preparation: what a Word file has to have done to it before a browser renderer draws it faithfully, and what it knows about itself…",497,no,no,1,yes
 lib/kits/estate-search.js,EstateSearch,"The estate's search calls, in one place, with one cache.",354,no,no,5,yes
 lib/kits/export.js,exporter,"export a page to a portable, self-resolving copy: ""download this page plus the data it read()s"" as one zip, optionally with its code inlined.",199,no,yes,8,yes
-lib/kits/file-deck.js,fileDeck,"a changeset's files, read one at a time.",448,no,no,10,yes
+lib/kits/file-deck.js,fileDeck,"a changeset's files, read one at a time.",462,no,no,10,yes
 lib/kits/github-links.js,GithubLinks,"the GitHub destinations for one repo, as menu rows.",98,no,no,3,yes
 lib/kits/guide-render.js,GuideRender,"a guide PR body, rendered as something you can walk.",296,no,no,7,yes
 lib/kits/io.js,io,,213,no,yes,19,yes

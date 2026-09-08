@@ -373,6 +373,16 @@ test('the header carries the card\'s layouts and its github menu', async () => {
   for (const t of ['Read', 'Compare, side by side', 'Compare, inline', 'This file on GitHub'])
     assert.ok(titles.includes(t), t + ' is on the header: ' + JSON.stringify(titles));
 
+  // IDENTITY THEN ARRANGEMENT, the order the card's own row reads: its github
+  // menu is order-2 on a reading surface, beside the name, and order-11 in a
+  // list. This header IS the name, so the mark takes the end nearest the title
+  // rather than trailing the layouts, which is where it shipped for a day.
+  const own = titles.filter(t => ['This file on GitHub', 'Read',
+    'Compare, side by side', 'Compare, inline'].includes(t));
+  assert.deepEqual(own, ['This file on GitHub', 'Read',
+    'Compare, side by side', 'Compare, inline'],
+    'github leads the cluster: ' + JSON.stringify(own));
+
   // The one that is lit is the card's answer, not the header's own state.
   const lit = [...d.el.querySelectorAll('.sd-header button')]
     .filter(b => b.className.includes('btn-active')).map(b => b.title);
